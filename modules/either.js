@@ -45,6 +45,10 @@ const $either = (dependencies = {}) => {
             assertFunction('fold', 'a function', onRight);
             return onRight(this.value);
         }
+        /**
+         * Apply the function wrapped in Right to another Either.
+         * Throws TypeError if this.value is not a function (Developer Error).
+         */
         ap(v) {
             if (v instanceof Left) return v;
             if (v instanceof Right) return attempt(this.value)(v.value);
@@ -58,7 +62,9 @@ const $either = (dependencies = {}) => {
     const hasConcat = hasFunctions([obj => obj.concat]);
     const checkEither = v => (v instanceof Left || v instanceof Right)
         ? v : raise(new Error(`checkEither: expected Either, got ${typeof v}`));
-    const left = e => new Left(useArrayOrLift(e).map(v => v instanceof Error ? v : new Error(String(v))));
+    const left = e => new Left(useArrayOrLift(e).map(v =>
+        v instanceof Error ? v : new Error(typeof v === 'string' ? v : 'Left Error', { cause: v })
+    ));
     const right = x => new Right(x);
     const attempt = f => {
         assertFunction('attempt', 'a function', f);

@@ -1,6 +1,6 @@
 const $func = (dependencies = {}) => {
     const log = typeof dependencies.log === 'function' ? dependencies.log : console.log;
-    const Types = { Functor: Symbol('fun-fp-js/Functor'), Applicative: Symbol('fun-fp-js/Applicative'), Monad: Symbol('fun-fp-js/Monad') };
+    const Types = { Functor: Symbol.for('fun-fp-js/Functor'), Applicative: Symbol.for('fun-fp-js/Applicative'), Monad: Symbol.for('fun-fp-js/Monad') };
     const raise = e => { throw e; };
     const isFunction = f => typeof f === 'function';
     const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
@@ -13,28 +13,93 @@ const $func = (dependencies = {}) => {
         assertFunction('hasFunctions', 'extracts to be functions', ...extracts);
         return obj => obj && extracts.every(extract => isFunction(extract(obj))) && check(obj);
     };
+    const runCatch = (f, onError = e => log(e)) => {
+        assertFunction('runCatch', 'a function', f);
+        assertFunction('runCatch', 'onError to be a function', onError);
+        return (...args) => {
+            try {
+                return f(...args);
+            } catch (e) {
+                return onError(e);
+            }
+        };
+    };
     const isFunctor = hasFunctions([obj => obj.map], obj => obj[Types.Functor]);
     const isApplicative = hasFunctions([obj => obj.map, obj => obj.ap], obj => obj[Types.Functor] && obj[Types.Applicative]);
     const isMonad = hasFunctions([obj => obj.map, obj => obj.flatMap], obj => obj[Types.Functor] && obj[Types.Monad]);
     const identity = x => x;
     const constant = x => () => x;
-    const partial = (f, ...args) => {
-        assertFunction('partial', 'a function', f);
-        return (...next) => f(...args, ...next);
+    const tuple = (...args) => args;
+    const apply = f => {
+        assertFunction('apply', 'a function', f);
+        return args => {
+            if (!Array.isArray(args)) {
+                raise(new TypeError(`apply: expected an array of arguments, but got ${typeof args}`));
+            }
+            return f(...args);
+        };
     };
-    const negate = f => {
-        assertFunction('negate', 'a function', f);
-        return (...args) => !f(...args);
+    const apply2 = f => {
+        assertFunction('apply2', 'a function', f);
+        return ([a, b]) => f(a, b);
     };
-    const flip = f => {
-        assertFunction('flip', 'a function', f);
-        return (a, b, ...args) => f(b, a, ...args);
+    const unapply = f => {
+        assertFunction('unapply', 'a function', f);
+        return (...args) => f(args);
+    };
+    const unapply2 = f => {
+        assertFunction('unapply2', 'a function', f);
+        return (a, b) => f([a, b]);
     };
     const curry = (f, arity = f.length) => {
         assertFunction('curry', 'a function', f);
         return function _curry(...args) {
             return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
         };
+    };
+    const curry2 = f => {
+        assertFunction('curry2', 'a function', f);
+        return a => b => f(a, b);
+    };
+    const uncurry = f => {
+        assertFunction('uncurry', 'a function', f);
+        return (...args) => args.reduce((acc, arg, i) => {
+            if (!isFunction(acc)) {
+                raise(new TypeError(`uncurry: expected a curried function (function returning functions), but got ${typeof acc} before applying argument ${i}`));
+            }
+            return acc(arg);
+        }, f);
+    };
+    const uncurry2 = f => {
+        assertFunction('uncurry2', 'a function', f);
+        return (a, b) => {
+            const next = f(a);
+            if (!isFunction(next)) {
+                raise(new TypeError(`uncurry2: expected a curried function (function returning a function), but got ${typeof next}`));
+            }
+            return next(b);
+        };
+    };
+    const partial = (f, ...args) => {
+        assertFunction('partial', 'a function', f);
+        return (...next) => f(...args, ...next);
+    };
+    const predicate = (f, fallbackValue = false) => isFunction(f) ? (...args) => Boolean(runCatch(f, _ => fallbackValue)(...args)) : (..._) => Boolean(fallbackValue);
+    const negate = f => {
+        assertFunction('negate', 'a function', f);
+        return (...args) => !f(...args);
+    };
+    const flip = f => {
+        assertFunction('flip', 'a function', f);
+        return (...args) => f(...args.slice().reverse());
+    };
+    const flip2 = f => {
+        assertFunction('flip2', 'a function', f);
+        return (a, b, ...args) => f(b, a, ...args);
+    };
+    const flipC = f => {
+        assertFunction('flipC', 'a function', f);
+        return a => b => f(b)(a);
     };
     const pipe = (...fs) => {
         if (fs.length === 0) return identity;
@@ -58,19 +123,7 @@ const $func = (dependencies = {}) => {
         assertFunction('converge', 'all branch arguments to be functions', ...branches);
         return (...args) => f(...branches.map(branch => branch(...args)));
     };
-    const runCatch = (f, onError = e => log(e)) => {
-        assertFunction('runCatch', 'a function', f);
-        assertFunction('runCatch', 'onError to be a function', onError);
-        return (...args) => {
-            try {
-                return f(...args);
-            } catch (e) {
-                return onError(e);
-            }
-        };
-    };
     const runOrDefault = fallbackValue => g => isFunction(g) ? runCatch(g, _ => fallbackValue)() : fallbackValue;
-    const predicate = (f, fallbackValue = false) => isFunction(f) ? v => Boolean(runCatch(f, _ => fallbackValue)(v)) : _ => Boolean(fallbackValue);
     const capture = (...args) => (f, onError = e => log(e)) => runCatch(f, onError)(...args);
     const tap = (...fs) => {
         assertFunction('tap', 'all arguments to be functions', ...fs);
@@ -80,7 +133,7 @@ const $func = (dependencies = {}) => {
             return x;
         };
     };
-    const also = flip(tap);
+    const also = flipC(tap);
     const useOrLift = (check, lift) => {
         assertFunction('useOrLift', 'check to be a function', check);
         assertFunction('useOrLift', 'lift to be a function', lift);
@@ -101,17 +154,27 @@ const $func = (dependencies = {}) => {
         isMonad,
         identity,
         constant,
+        tuple,
+        apply,
+        unapply,
+        apply2,
+        unapply2,
+        curry,
+        uncurry,
+        curry2,
+        uncurry2,
         partial,
+        predicate,
         negate,
         flip,
-        curry,
+        flip2,
+        flipC,
         pipe,
         compose,
         once,
         converge,
         runCatch,
         runOrDefault,
-        predicate,
         capture,
         tap,
         also,

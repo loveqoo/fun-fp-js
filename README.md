@@ -79,11 +79,11 @@ class MyFunctor {
 #### Basic Functions
 
 ```javascript
-const { identity, constant, raise } = fp;
+const { identity, constant, tuple, raise } = fp;
 
 identity(5);           // 5
 constant(10)();        // 10
-constant(10)(999);     // 10
+tuple(1, 2, 3);        // [1, 2, 3]
 raise(new Error('x')); // throws Error
 ```
 
@@ -100,18 +100,45 @@ pipe(add1, double)(5);     // 12 = (5 + 1) * 2
 compose(add1, double)(5);  // 11 = (5 * 2) + 1
 ```
 
+#### Argument Application (apply/unapply)
+
+Transform how functions receive arguments.
+
+```javascript
+const { apply, unapply, apply2, unapply2 } = fp;
+
+const add3 = (a, b, c) => a + b + c;
+const addList = ([a, b, c]) => a + b + c;
+
+// apply: list -> multiple args
+apply(add3)([1, 2, 3]);    // 6
+
+// unapply: multiple args -> list
+unapply(addList)(1, 2, 3); // 6
+
+// apply2/unapply2: specialized for 2 arguments
+apply2((a, b) => a + b)([1, 2]); // 3
+unapply2(([a, b]) => a + b)(1, 2); // 3
+```
+
 #### Currying & Partial Application
 
 ```javascript
-const { curry, partial } = fp;
+const { curry, curry2, uncurry, uncurry2, partial } = fp;
 
 const add = (a, b, c) => a + b + c;
+const addCurried = a => b => c => a + b + c;
 
 // Curry
 const curriedAdd = curry(add);
 curriedAdd(1)(2)(3);     // 6
-curriedAdd(1, 2)(3);     // 6
-curriedAdd(1)(2, 3);     // 6
+
+// Uncurry
+uncurry(addCurried)(1, 2, 3); // 6
+
+// Binary specialized (2-args)
+curry2((a, b) => a + b)(1)(2);    // 3
+uncurry2(a => b => a + b)(1, 2); // 3
 
 // Partial
 const add10 = partial(add, 10);
@@ -121,11 +148,19 @@ add10(5, 3);             // 18
 #### Higher-Order Functions
 
 ```javascript
-const { flip, negate, once } = fp;
+const { flip, flip2, flipC, negate, once } = fp;
 
-// flip: swap first two argument order
-const sub = (a, b) => a - b;
-flip(sub)(1, 10);        // 9 = 10 - 1
+// flip: reverse all arguments
+const sub = (a, b, c) => a - b - c;
+flip(sub)(1, 2, 10);     // 7 = 10 - 2 - 1
+
+// flip2: swap first two arguments (binary)
+const minus = (a, b) => a - b;
+flip2(minus)(1, 10);     // 9 = 10 - 1
+
+// flipC: swap first two arguments of a curried function
+const curriedMinus = a => b => a - b;
+flipC(curriedMinus)(1)(10); // 9 = 10 - 1
 
 // negate: invert predicate
 const isEven = x => x % 2 === 0;
@@ -148,16 +183,19 @@ const safeJsonParse = runCatch(JSON.parse, err => ({}));
 safeJsonParse('{"a":1}');  // { a: 1 }
 safeJsonParse('invalid');  // {}
 
-// predicate: safe boolean check
+// predicate: safe boolean check (supports multiple args)
 const isPositive = predicate(x => x > 0);
 isPositive(5);             // true
 isPositive('not number');  // false (doesn't throw)
+
+const isSumEven = predicate((a, b) => (a + b) % 2 === 0);
+isSumEven(1, 3);           // true
 ```
 
 #### Side Effects
 
 ```javascript
-const { tap, also } = fp;
+const { tap, also, capture, useOrLift } = fp;
 
 // tap: execute side effects, return original value
 const result = pipe(
@@ -167,18 +205,26 @@ const result = pipe(
 )(5);
 // result: 11
 
-// also: flip(tap) - value first, then functions
-const value = also(5, 
+// also: flipC(tap) - value first, then functions (short for tap)
+also(5)(
     x => console.log('value:', x),
     x => saveToDb(x)
-);
-// value: 5
+); // returns 5
+
+// capture: bind arguments early
+const logWithUser = capture('System', 'UserA')(console.log);
+logWithUser('message');    // logs 'System', 'UserA', 'message'
+
+// useOrLift: conditional transformation
+const ensureArray = useOrLift(Array.isArray, Array.of);
+ensureArray(1);            // [1]
+ensureArray([1]);          // [1]
 ```
 
 #### Utilities
 
 ```javascript
-const { converge, useArrayOrLift, range } = fp;
+const { converge, useArrayOrLift, range, rangeBy, runOrDefault } = fp;
 
 // converge: apply multiple functions, combine results
 const avg = converge(
@@ -188,8 +234,11 @@ const avg = converge(
 );
 avg([1, 2, 3, 4, 5]); // 3
 
-// range: generate number array
-range(5);             // [0, 1, 2, 3, 4]
+// range: generate number array [0...n-1]
+range(3);             // [0, 1, 2]
+
+// rangeBy: start, end
+rangeBy(2, 5);        // [2, 3, 4]
 
 // useArrayOrLift: ensure value is array
 useArrayOrLift([1, 2]); // [1, 2]
@@ -378,6 +427,15 @@ traverse(validatePositive)([1, -2, 3]);
 traverseAll(validatePositive)([1, -2, -3]);
 // Left(['-2 is not positive', '-3 is not positive'])
 ```
+
+#### 🛡️ Error Handling Philosophy
+
+This library distinguishes between **Operational Errors** and **Developer Errors**:
+
+1.  **Operational Errors** (e.g., invalid user input, API failure): Handled via `Either` (`Left`). These represent expected failure states and do not interrupt the program flow.
+2.  **Developer Errors** (e.g., incorrect library setup, type mismatches in composition): Handled via **Exceptions** (`TypeError`). We throw immediately to help you catch bugs during development.
+
+> **Note on `ap`**: If you call `.ap()` on a `Right(x)` where `x` is not a function, the library will throw a `TypeError`. This is because Applicative Functor pattern (`ap`) strictly requires a function to be wrapped in the first `Right`.
 
 ---
 
@@ -705,23 +763,34 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `isMonad(x)` | Check if x is a Monad |
 | `identity(x)` | Returns x |
 | `constant(x)` | Returns () => x |
+| `tuple(...args)` | Returns arguments as an array |
 | `raise(e)` | Throws e |
 | `pipe(...fs)` | Left-to-right composition |
 | `compose(...fs)` | Right-to-left composition |
+| `apply(f)` | multiple args -> array input |
+| `apply2(f)` | binary multiple args -> array input |
+| `unapply(f)` | array input -> multiple args |
+| `unapply2(f)` | binary array input -> multiple args |
 | `curry(f, arity?)` | Curry a function |
+| `curry2(f)` | specialized binary curry |
+| `uncurry(f)` | uncurry a curried function |
+| `uncurry2(f)` | specialized binary uncurry |
 | `partial(f, ...args)` | Partial application |
-| `flip(f)` | Swap curried arguments |
+| `flip(f)` | Reverse all arguments |
+| `flip2(f)` | Swap first two arguments |
+| `flipC(f)` | Swap first two curried arguments |
 | `negate(f)` | Invert predicate |
 | `once(f)` | Execute only once |
 | `runCatch(f, onError?)` | Wrap with try-catch |
 | `runOrDefault(fallback)(f)`| Run f or return fallback |
-| `predicate(f, fallback?)` | Safe boolean check |
+| `predicate(f, fallback?)` | Safe boolean check (variadic) |
 | `tap(...fs)` | Side effects, return original |
-| `also(x, ...fs)` | Side effects (x first), return x |
+| `also(x)(...fs)` | Side effects (x first), return x |
+| `capture(...args)(f)` | bind arguments early |
 | `useOrLift(check, lift)` | conditional lift |
 | `useArrayOrLift(x)` | Ensure x is array |
 | `range(n)` | [0, 1, ..., n-1] |
-| `rangeBy(s, e, step?)` | [s, ..., e-1] by step |
+| `rangeBy(s, e)` | [s, ..., e-1] |
 
 ### either.js (124 lines)
 

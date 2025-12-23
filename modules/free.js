@@ -27,21 +27,46 @@ const $free = (dependencies = {}) => {
         isFunctor(command) || raise(new Error(`liftF: expected a functor`));
         return isPure(command) || isImpure(command) ? command : impure(command.map(pure));
     };
-    const runSync = runner => program => {
-        let step = program;
-        while (isImpure(step)) {
-            step = runner(step.functor);
-            if (isPure(step) && (isPure(step.value) || isImpure(step.value))) step = step.value;
-        }
-        return isPure(step) ? step.value : step;
+    const stackSafe = (runner, f, onReentry = f) => {
+        let active = false;
+        return (...args) => {
+            if (active) return onReentry(...args);
+            active = true;
+            try {
+                const result = runner(f(...args));
+                // Handle Async Promise (for runAsync)
+                if (result instanceof Promise || (result && typeof result.then === 'function')) {
+                    return result.finally(() => { active = false; });
+                }
+                active = false;
+                return result;
+            } catch (e) {
+                active = false;
+                throw e;
+            }
+        };
     };
-    const runAsync = runner => async program => {
-        let step = program;
-        while (isImpure(step)) {
-            step = await runner(step.functor);
-            if (isPure(step) && (isPure(step.value) || isImpure(step.value))) step = step.value;
-        }
-        return isPure(step) ? step.value : step;
+    const runSync = runner => (target) => {
+        const execute = program => {
+            let step = program;
+            while (isImpure(step)) {
+                step = runner(step.functor);
+                if (isPure(step) && (isPure(step.value) || isImpure(step.value))) step = step.value;
+            }
+            return isPure(step) ? step.value : step;
+        };
+        return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
+    };
+    const runAsync = runner => (target) => {
+        const execute = async program => {
+            let step = program;
+            while (isImpure(step)) {
+                step = await runner(step.functor);
+                if (isPure(step) && (isPure(step.value) || isImpure(step.value))) step = step.value;
+            }
+            return isPure(step) ? step.value : step;
+        };
+        return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
     };
     class Thunk {
         [Symbol.toStringTag] = 'Thunk';
@@ -55,19 +80,7 @@ const $free = (dependencies = {}) => {
     }
     const done = value => pure(value);
     const suspend = f => liftF(new Thunk(f));
-    const stackSafe = (runner, f, onReentry = f) => {
-        let active = false;
-        return (...args) => {
-            if (active) return onReentry(...args);
-            active = true;
-            try { return runner(f(...args)); }
-            finally { active = false; }
-        };
-    };
-    const trampoline = program => {
-        assertFunction('trampoline', 'a function', program);
-        return stackSafe(runSync(thunk => thunk.run()), program);
-    };
+    const trampoline = runSync(thunk => thunk.run());
     return {
         pure,
         impure,
@@ -79,6 +92,7 @@ const $free = (dependencies = {}) => {
         trampoline,
         done,
         suspend,
+        stackSafe, // 필요할 경우 직접 쓸 수 있도록 노출 유지
     };
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = $free;
