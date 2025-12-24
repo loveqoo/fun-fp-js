@@ -1,27 +1,7 @@
 const $func = require('../modules/func.js');
-const f = $func();
+const { fp: f } = $func();
 
-const test = (name, callback) => {
-    try {
-        callback();
-        console.log(`✅ [PASS] ${name}`);
-    } catch (e) {
-        console.error(`❌ [FAIL] ${name}`);
-        console.error(`   Error: ${e.message}`);
-    }
-};
-
-const assert = (condition, message) => {
-    if (!condition) throw new Error(message || 'Assertion failed');
-};
-
-const assertEquals = (actual, expected, message) => {
-    const a = JSON.stringify(actual);
-    const e = JSON.stringify(expected);
-    if (a !== e) {
-        throw new Error(`${message || 'Value mismatch'}\n      Expected: ${e}\n      Actual:   ${a}`);
-    }
-};
+const { test, assert, assertEquals } = require('./utils.js');
 console.log('🚀 Starting modules/func.js tests...\n');
 const add2_1 = (a, b) => a + b;
 const add2_2 = ([a, b]) => a + b;
@@ -284,7 +264,7 @@ test('assertFunction - validation', () => {
 test('runCatch - error handling', () => {
     const errorF = () => { throw new Error('Catch me'); };
     let caught = false;
-    const handled = f.runCatch(errorF, (e) => {
+    const handled = f.catch(errorF, (e) => {
         caught = true;
         return 'handled';
     });

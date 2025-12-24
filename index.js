@@ -30,22 +30,6 @@ const funFpJs = (options = {}) => {
     const extra = $extra({ $func: func, $either: either });
 
     return {
-        // Core functional utilities
-        func,
-
-        // Either monad for error handling
-        either,
-
-        // Monoid/Group for algebraic structures
-        monoid,
-
-        // Free Monad for trampolining
-        free,
-
-        // Extra utilities (template, etc.)
-        extra,
-
-        // Convenience: spread commonly used functions at top level
         ...func,
         ...either,
         ...monoid,

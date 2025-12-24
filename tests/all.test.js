@@ -1,28 +1,31 @@
-const funFpJs = require('./all_in_one.js');
-const fp = funFpJs({ log: () => { } }); // Disable logs for testing
+const funFpJs = require('../all_in_one.js');
+const $fp = funFpJs({ log: () => { } }); // Disable logs for testing
+
+const { fp: core, either, monoid, free, extra } = $fp;
 
 const {
-    pipe, compose, curry, partial, flip, negate, once, runCatch, runOrDefault,
-    predicate, tap, also, useOrLift, useArrayOrLift, range, rangeBy,
-    left, right, attempt, from, fromNullable, validate, validateAll,
-    sequence, pipeK, traverse, traverseAll,
-    number, string, boolean, array, object, fold, concat, invert, power,
-    done, suspend, trampoline, template, Types
-} = fp;
+    identity, constant, pipe, compose, curry, partial, flip, negate, once, catch: runCatch, runOrDefault,
+    predicate, tap, also, useOrLift, useArrayOrLift, range, rangeBy, Types
+} = core;
 
-const assert = (name, actual, expected) => {
-    const pass = JSON.stringify(actual) === JSON.stringify(expected);
-    console.log(`${pass ? '✅' : '❌'} ${name}`);
-    if (!pass) {
-        console.log(`   Expected: ${JSON.stringify(expected)}`);
-        console.log(`   Actual:   ${JSON.stringify(actual)}`);
-    }
-};
+const {
+    left, right, catch: eitherCatch, from, fromNullable, validate, validateAll,
+    sequence, pipeK, traverse, traverseAll
+} = either;
+
+const {
+    number, string, boolean, array, object, fold, concat, invert, power
+} = monoid;
+
+const { done, suspend, trampoline } = free;
+const { template } = extra;
+
+const { logAssert: assert } = require('./utils.js');
 
 console.log('\n--- 1. Func Module Tests ---');
 
-assert('identity', fp.identity(5), 5);
-assert('constant', fp.constant(10)(), 10);
+assert('identity', identity(5), 5);
+assert('constant', core.constant(10)(), 10);
 
 const add1 = x => x + 1;
 const double = x => x * 2;
@@ -108,10 +111,10 @@ assert('template (falsy 0)', template('Count: {{val}}', { val: 0 }), 'Count: 0')
 
 console.log('\n--- 6. Type Class Protocol Tests ---');
 
-assert('isFunctor (Right)', fp.isFunctor(right(5)), true);
-assert('isMonad (Right)', fp.isMonad(right(5)), true);
-assert('isApplicative (Right)', fp.isApplicative(right(5)), true);
-assert('isFunctor (Pure)', fp.isFunctor(done(5)), true);
+assert('isFunctor (Right)', core.isFunctor(right(5)), true);
+assert('isMonad (Right)', core.isMonad(right(5)), true);
+assert('isApplicative (Right)', core.isApplicative(right(5)), true);
+assert('isFunctor (Pure)', core.isFunctor(done(5)), true);
 
 console.log('\n--- Final Summary ---');
 console.log('Tests complete.');

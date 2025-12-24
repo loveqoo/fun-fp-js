@@ -2,7 +2,7 @@
 
 A lightweight, dependency-free functional programming library for JavaScript.
 
-**~360 lines** of pure functional goodness.
+**~450 lines** of pure functional goodness.
 
 ## Features
 
@@ -13,22 +13,27 @@ A lightweight, dependency-free functional programming library for JavaScript.
 - 📝 **Template Engine** - Safe, nested object string interpolation
 - 🏷️ **Type Protocol** - Symbol-based type class markers
 - 📦 **Zero Dependencies** - Pure JavaScript
-- 🪶 **Lightweight** - ~360 lines total
+- 🪶 **Lightweight** - ~450 lines total
 
 ## Installation
 
 ```javascript
-const fp = require('./index.js')();
+const lib = require('./index.js')();
+
+// The library is organized into namespaces:
+const { fp, either, monoid, free, extra } = lib;
 
 // Or with custom logger
-const fp = require('./index.js')({ log: myLogger });
+const libWithLog = require('./index.js')({ log: myLogger });
 ```
 
 ## Quick Start
 
 ```javascript
-const fp = require('./index.js')();
-const { pipe, right, left, done, suspend, trampoline } = fp;
+const { fp, either, free } = require('./index.js')();
+const { pipe } = fp;
+const { right, left } = either;
+const { done, suspend, trampoline } = free;
 
 // Safe division with Either
 const safeDivide = (a, b) => 
@@ -55,19 +60,21 @@ factorial(100000);  // No stack overflow!
 
 ## Modules
 
-### 1. `func` - Functional Core (124 lines)
+### 1. `func` - Functional Core (~170 lines)
 
 #### Types Protocol
 
 Symbol-based type class markers for Functor, Applicative, and Monad.
 
 ```javascript
+const lib = require('./index.js')();
+const { fp, either } = lib;
 const { Types, isFunctor, isApplicative, isMonad } = fp;
 
 // Check type classes
-isFunctor(right(5));     // true - has map + Symbol
-isApplicative(right(5)); // true - has map, ap + Symbols
-isMonad(right(5));       // true - has map, flatMap + Symbols
+isFunctor(either.right(5));     // true - has map + Symbol
+isApplicative(either.right(5)); // true - has map, ap + Symbols
+isMonad(either.right(5));       // true - has map, flatMap + Symbols
 
 // Custom type with protocol
 class MyFunctor {
@@ -79,6 +86,8 @@ class MyFunctor {
 #### Basic Functions
 
 ```javascript
+const lib = require('./index.js')();
+const { fp } = lib;
 const { identity, constant, tuple, raise } = fp;
 
 identity(5);           // 5
@@ -90,6 +99,8 @@ raise(new Error('x')); // throws Error
 #### Function Composition
 
 ```javascript
+const lib = require('./index.js')();
+const { fp } = lib;
 const { pipe, compose } = fp;
 
 // pipe: left to right
@@ -105,6 +116,8 @@ compose(add1, double)(5);  // 11 = (5 * 2) + 1
 Transform how functions receive arguments.
 
 ```javascript
+const lib = require('./index.js')();
+const { fp } = lib;
 const { apply, unapply, apply2, unapply2 } = fp;
 
 const add3 = (a, b, c) => a + b + c;
@@ -124,6 +137,8 @@ unapply2(([a, b]) => a + b)(1, 2); // 3
 #### Currying & Partial Application
 
 ```javascript
+const lib = require('./index.js')();
+const { fp } = lib;
 const { curry, curry2, uncurry, uncurry2, partial } = fp;
 
 const add = (a, b, c) => a + b + c;
@@ -148,6 +163,8 @@ add10(5, 3);             // 18
 #### Higher-Order Functions
 
 ```javascript
+const lib = require('./index.js')();
+const { fp } = lib;
 const { flip, flip2, flipC, negate, once } = fp;
 
 // flip: reverse all arguments
@@ -167,26 +184,35 @@ const isEven = x => x % 2 === 0;
 const isOdd = negate(isEven);
 isOdd(3);                // true
 
-// once: execute only once
-const init = once(() => console.log('initialized'));
-init(); // logs 'initialized'
-init(); // nothing
+// once: execute only once (retries if the function throws an error)
+const init = once(() => {
+    if (Math.random() > 0.5) throw new Error('fail');
+    console.log('initialized');
+});
+init(); // if successful, marks as called
+init(); // will not run again if previous call succeeded
 ```
 
 #### Error Handling
 
 ```javascript
-const { runCatch, predicate } = fp;
+const lib = require('./index.js')();
+const { fp } = lib;
+const { catch: runCatch, predicate } = fp;
 
-// runCatch: wrap function with try-catch
+// catch: wrap function with try-catch
 const safeJsonParse = runCatch(JSON.parse, err => ({}));
 safeJsonParse('{"a":1}');  // { a: 1 }
 safeJsonParse('invalid');  // {}
 
-// predicate: safe boolean check (supports multiple args)
+// predicate: safe boolean check (variadic, defensive against async)
 const isPositive = predicate(x => x > 0);
 isPositive(5);             // true
 isPositive('not number');  // false (doesn't throw)
+
+// protection: blocks async functions to prevent logic bugs
+const p = predicate(async () => true, false);
+p(); // false (returns fallback and logs warning instead of Boolean(Promise))
 
 const isSumEven = predicate((a, b) => (a + b) % 2 === 0);
 isSumEven(1, 3);           // true
@@ -195,7 +221,9 @@ isSumEven(1, 3);           // true
 #### Side Effects
 
 ```javascript
-const { tap, also, capture, useOrLift } = fp;
+const lib = require('./index.js')();
+const { fp, either, monoid } = lib;
+const { tap, also, into, capture, useOrLift, pipe, range } = fp;
 
 // tap: execute side effects, return original value
 const result = pipe(
@@ -205,11 +233,20 @@ const result = pipe(
 )(5);
 // result: 11
 
-// also: flipC(tap) - value first, then functions (short for tap)
-also(5)(
-    x => console.log('value:', x),
-    x => saveToDb(x)
-); // returns 5
+// also: data-first tap (variadic) - execute effects, return original
+const user = { id: 1, name: 'Test' }; // Example user object
+also(user)(
+    u => console.log('Saving:', u.id),
+    u => console.log('Tracking analytics for:', u.name)
+); // returns user
+
+// into: data-first pipe (variadic) - transform value
+const resultInto = into(5)(
+    fp.range,                   // [0, 1, 2, 3, 4]
+    list => list.map(x => x * 2),
+    x => monoid.fold(monoid.number.sum)(x).getOrElse(0)
+);
+// result: 20
 
 // capture: bind arguments early
 const logWithUser = capture('System', 'UserA')(console.log);
@@ -224,6 +261,8 @@ ensureArray([1]);          // [1]
 #### Utilities
 
 ```javascript
+const lib = require('./index.js')();
+const { fp } = lib;
 const { converge, useArrayOrLift, range, rangeBy, runOrDefault } = fp;
 
 // converge: apply multiple functions, combine results
@@ -241,17 +280,15 @@ range(3);             // [0, 1, 2]
 rangeBy(2, 5);        // [2, 3, 4]
 
 // useArrayOrLift: ensure value is array
-useArrayOrLift([1, 2]); // [1, 2]
 useArrayOrLift(5);      // [5]
 
 // runOrDefault: run function or return fallback
 runOrDefault('N/A')(() => { throw Error(); }); // 'N/A'
-runOrDefault('N/A')(() => 'Success');         // 'Success'
 ```
 
 ---
 
-### 2. `either` - Error Handling Monad (124 lines)
+### 2. `either` - Error Handling Monad (~120 lines)
 
 Either represents a value that can be one of two types:
 - `Right(value)` - Success
@@ -260,15 +297,17 @@ Either represents a value that can be one of two types:
 #### Creating Either
 
 ```javascript
-const { left, right, attempt, from, fromNullable } = fp;
+const lib = require('./index.js')();
+const { either } = lib;
+const { left, right, catch: eitherCatch, from, fromNullable } = either;
 
 // Direct creation
 right(10);           // Right(10)
 left('error');       // Left([Error: error])
 
 // From function (catches errors)
-attempt(JSON.parse)('{"a":1}');    // Right({ a: 1 })
-attempt(JSON.parse)('invalid');    // Left([SyntaxError])
+eitherCatch(JSON.parse)('{"a":1}');    // Right({ a: 1 })
+eitherCatch(JSON.parse)('invalid');    // Left([SyntaxError])
 
 // From value
 from(5);             // Right(5)
@@ -279,6 +318,10 @@ fromNullable(null);  // Left([Error])
 #### Functor: map & mapLeft
 
 ```javascript
+const lib = require('./index.js')();
+const { either } = lib;
+const { right, left } = either;
+
 right(5)
     .map(x => x * 2)     // Right(10)
     .map(x => x + 1);    // Right(11)
@@ -293,6 +336,10 @@ left('error')
 Chain operations that might fail — just like Scala's for-comprehension:
 
 ```javascript
+const lib = require('./index.js')();
+const { either } = lib;
+const { right, left } = either;
+
 // Define safe operations
 const safeDivide = (a, b) => 
     b === 0 ? left('Division by zero') : right(a / b);
@@ -304,13 +351,13 @@ const safeToString = x =>
     right(`Result: ${x}`);
 
 // Chain them beautifully
-right(10)
+either.right(10)
     .flatMap(x => safeDivide(x, 2))    // Right(5)
     .flatMap(x => safeDouble(x))        // Right(10)
     .flatMap(x => safeToString(x));     // Right('Result: 10')
 
 // If any step fails, the chain short-circuits
-right(10)
+either.right(10)
     .flatMap(x => safeDivide(x, 0))    // Left([Error: Division by zero])
     .flatMap(x => safeDouble(x))        // skipped
     .flatMap(x => safeToString(x));     // skipped
@@ -319,6 +366,10 @@ right(10)
 #### Applicative: ap (Validation Pattern)
 
 ```javascript
+const lib = require('./index.js')();
+const { either } = lib;
+const { right, left } = either;
+
 // Accumulate ALL errors instead of failing fast
 const validateName = name =>
     name?.length > 0 ? right(name) : left('Name required');
@@ -341,6 +392,10 @@ right(createUser)
 #### fold & getOrElse
 
 ```javascript
+const lib = require('./index.js')();
+const { either } = lib;
+const { right, left } = either;
+
 // fold: extract value with handlers
 right(10).fold(
     errors => `Error: ${errors.join(', ')}`,
@@ -357,10 +412,12 @@ left('err').getOrElse(0);  // 0
 Compose Either-returning functions — Scala for-comprehension style!
 
 ```javascript
-const { pipeK, attempt } = fp;
+const lib = require('./index.js')();
+const { either } = lib;
+const { pipeK, catch: eitherCatch, right, left } = either;
 
 // Define your safe operations
-const safeParse = attempt(JSON.parse);
+const safeParse = eitherCatch(JSON.parse);
 
 const getUser = obj => 
     obj.user ? right(obj.user) : left('No user');
@@ -410,21 +467,19 @@ pipeK(
 #### Traversable: traverse & traverseAll
 
 ```javascript
-const { traverse, traverseAll } = fp;
+const lib = require('./index.js')();
+const { either } = lib;
 
 // Define a validation function
 const validatePositive = x => 
-    x > 0 ? right(x) : left(`${x} is not positive`);
+    x > 0 ? either.right(x) : either.left(`${x} is not positive`);
 
 // traverse: fail-fast (stops at first error)
-traverse(validatePositive)([1, 2, 3]);
+either.traverse(validatePositive)([1, 2, 3]);
 // Right([1, 2, 3])
 
-traverse(validatePositive)([1, -2, 3]);
-// Left(['-2 is not positive'])
-
 // traverseAll: collect ALL errors
-traverseAll(validatePositive)([1, -2, -3]);
+either.traverseAll(validatePositive)([1, -2, -3]);
 // Left(['-2 is not positive', '-3 is not positive'])
 ```
 
@@ -439,7 +494,7 @@ This library distinguishes between **Operational Errors** and **Developer Errors
 
 ---
 
-### 3. `monoid` - Algebraic Structures (91 lines)
+### 3. `monoid` - Algebraic Structures (~90 lines)
 
 Monoid: A type with a binary operation (`concat`) and identity element (`empty`).
 
@@ -452,7 +507,8 @@ concat(a, concat(b, c)) === concat(concat(a, b), c)
 #### Built-in Monoids (by type)
 
 ```javascript
-const M = fp.monoid;
+const lib = require('./index.js')();
+const { monoid: M } = lib;
 
 // Number
 M.fold(M.number.sum)([1, 2, 3, 4]);      // Right(10)
@@ -489,6 +545,9 @@ pipeline.map(f => f(5));  // Right(12)
 #### foldMap: map + fold
 
 ```javascript
+const lib = require('./index.js')();
+const { monoid: M } = lib;
+
 // Sum lengths of strings
 M.fold(M.number.sum, s => s.length)(['hello', 'world']);
 // Right(10)
@@ -501,6 +560,9 @@ M.fold(M.boolean.all, x => x > 0)([1, 2, 3]);
 #### Groups (Monoid + invert)
 
 ```javascript
+const lib = require('./index.js')();
+const { monoid: M } = lib;
+
 // sum, product, xor have inverse operations
 M.invert(M.number.sum)(5);      // Right(-5)
 M.invert(M.number.product)(5);  // Right(0.2)
@@ -513,13 +575,16 @@ M.invert(M.number.max)(5);      // Left(TypeError)
 #### power: Repeat n times
 
 ```javascript
+const lib = require('./index.js')();
+const { monoid: M } = lib;
+
 M.power(M.number.sum)(3, 4);      // Right(12) = 3+3+3+3
 M.power(M.string.concat)('a', 3); // Right('aaa')
 ```
 
 ---
 
-### 4. `free` - Free Monad & Trampoline (73 lines)
+### 4. `free` - Free Monad & Trampoline (~90 lines)
 
 Free Monad represents computation as data, enabling:
 - **Trampolining** - Stack-safe recursion
@@ -535,19 +600,25 @@ Impure(functor) // More computation to do
 #### Basic Usage
 
 ```javascript
-const { pure, liftF, runSync } = fp;
+const lib = require('./index.js')();
+const { free } = lib;
+const { pure, liftF, runSync } = free;
 
 // pure: wrap a value
 pure(5);  // Pure(5)
 
 // liftF: lift a Functor into Free
-liftF(someFunctor);  // Impure(Functor<Pure>)
+// Example:
+// const myFunctor = { map: f => f(10), run: () => 10 };
+// liftF(myFunctor); // Impure(myFunctor)
 ```
 
 #### Trampoline: Stack-Safe Recursion
 
 ```javascript
-const { done, suspend, trampoline } = fp;
+const lib = require('./index.js')();
+const { free } = lib;
+const { done, suspend, trampoline } = free;
 
 // done: computation finished (= pure)
 // suspend: more computation (uses Thunk internally)
@@ -568,6 +639,10 @@ factorial(100000);  // Works! No stack overflow!
 #### Fibonacci (Tail Recursive)
 
 ```javascript
+const lib = require('./index.js')();
+const { free } = lib;
+const { done, suspend, trampoline } = free;
+
 const fib = trampoline((n, a = 0, b = 1) =>
     n <= 0
         ? done(a)
@@ -582,65 +657,63 @@ fib(1000); // Works!
 #### Custom Runner (Interpreter Pattern)
 
 ```javascript
-const { runSync, runAsync, isImpure } = fp;
+const lib = require('./index.js')();
+const { free } = lib;
+const { runSync, runAsync, isImpure } = free;
 
 // runSync: synchronous execution with custom runner
-const myRunner = functor => functor.run();
-runSync(myRunner)(program);
+// Example:
+// const myRunner = functor => functor.run();
+// runSync(myRunner)(program);
 
 // stackSafe: Re-entrancy guard for infinite recursion
-const safeFn = stackSafe(myRunner, originalFn);
+// const safeFn = stackSafe(myRunner, originalFn);
 ```
 
 #### Trampoline & StackSafe
 
-The `trampoline` function uses a `stackSafe` guard internally to prevent stack overflow even when recursive functions are wrapped in decorators.
+The `trampoline` function uses a `stackSafe` guard internally.
 
 ```javascript
-const { stackSafe, runSync, trampoline } = fp;
+const lib = require('./index.js')();
+const { free } = lib;
+const { stackSafe, runSync, trampoline } = free;
 
 // Manual stack safety guard
-const safeRecursive = stackSafe(
-    runSync(thunk => thunk.run()), // runner
-    program                        // original function
-)(program);
+// const safeRecursive = stackSafe(
+//     runSync(thunk => thunk.run()), // runner
+//     program                        // original function
+// )(program);
 ```
 
 ---
 
-### 5. `extra` - Practical Utilities (13 lines)
+### 5. `extra` - Practical Utilities (~15 lines)
 
 Practical tools built using the base functional modules.
 
 #### template: Safe String Interpolation
 
-Uses `Either` internally to safely navigate nested objects and provide fallbacks.
+Uses `Either` internally to safely navigate nested objects.
 
 ```javascript
-const { template } = fp;
+const lib = require('./index.js')();
+const { extra } = lib;
+const { template } = extra;
 
 const data = {
     user: {
         name: 'Anthony',
         settings: { theme: 'dark' }
-    },
-    items: ['apple']
+    }
 };
 
-// 1. Simple & Nested keys
+// Simple & Nested keys
 template('Hello, {{user.name}}!', data); 
 // 'Hello, Anthony!'
 
-template('Mode: {{user.settings.theme}}', data);
-// 'Mode: dark'
-
-// 2. Falsy value support (0, false, "")
-template('Value: {{val}}', { val: 0 }); 
-// 'Value: 0'
-
-// 3. Safe fallback (returns original tag if path is broken)
-template('Missing: {{user.profile.age}}', data);
-// 'Missing: {{user.profile.age}}'
+// Whitespace resilience
+template('Hello, {{  user.name  }}!', data); // 'Hello, Anthony!'
 ```
 
 ---
@@ -650,7 +723,9 @@ template('Missing: {{user.profile.age}}', data);
 ### Safe API Call
 
 ```javascript
-const { attempt, right, left } = fp;
+const lib = require('./index.js')();
+const { either } = lib;
+const { catch: eitherCatch, right, left } = either;
 
 const fetchUser = async (id) => {
     try {
@@ -671,7 +746,9 @@ result
 ### Form Validation
 
 ```javascript
-const { right, validate } = fp;
+const lib = require('./index.js')();
+const { either } = lib;
+const { right, validate } = either;
 
 const validateEmail = validate(
     email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
@@ -695,10 +772,13 @@ validateForm({ email: 'bad', password: '123' });
 ### Data Pipeline
 
 ```javascript
-const { pipe, attempt, right, left } = fp;
+const lib = require('./index.js')();
+const { fp, either } = lib;
+const { pipe } = fp;
+const { catch: eitherCatch, right, left } = either;
 
 const processData = pipe(
-    attempt(JSON.parse),
+    eitherCatch(JSON.parse),
     either => either.flatMap(data => 
         data.items ? right(data.items) : left('No items')
     ),
@@ -714,7 +794,8 @@ processData('{"items":[{"name":"A","active":true}]}');
 ### Aggregating Results
 
 ```javascript
-const M = fp.monoid;
+const lib = require('./index.js')();
+const { monoid: M } = lib;
 
 const orders = [
     { product: 'A', qty: 2, price: 10 },
@@ -735,7 +816,9 @@ M.fold(M.boolean.all, o => o.qty > 0)(orders);  // Right(true)
 ### Stack-Safe Tree Traversal
 
 ```javascript
-const { done, suspend, trampoline } = fp;
+const lib = require('./index.js')();
+const { free } = lib;
+const { done, suspend, trampoline } = free;
 
 const sumTree = trampoline(function sum(node, acc = 0) {
     if (!node) return done(acc);
@@ -753,60 +836,61 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 
 ## API Reference
 
-### func.js (120 lines)
+### func.js (~170 lines)
 
 | Function | Description |
 |----------|-------------|
-| `Types` | Symbol-based type markers (Functor, Applicative, Monad) |
-| `isFunctor(x)` | Check if x is a Functor |
-| `isApplicative(x)` | Check if x is an Applicative |
-| `isMonad(x)` | Check if x is a Monad |
-| `identity(x)` | Returns x |
-| `constant(x)` | Returns () => x |
-| `tuple(...args)` | Returns arguments as an array |
-| `raise(e)` | Throws e |
-| `pipe(...fs)` | Left-to-right composition |
-| `compose(...fs)` | Right-to-left composition |
-| `apply(f)` | multiple args -> array input |
-| `apply2(f)` | binary multiple args -> array input |
-| `unapply(f)` | array input -> multiple args |
-| `unapply2(f)` | binary array input -> multiple args |
-| `curry(f, arity?)` | Curry a function |
-| `curry2(f)` | specialized binary curry |
-| `uncurry(f)` | uncurry a curried function |
-| `uncurry2(f)` | specialized binary uncurry |
-| `partial(f, ...args)` | Partial application |
-| `flip(f)` | Reverse all arguments |
-| `flip2(f)` | Swap first two arguments |
-| `flipC(f)` | Swap first two curried arguments |
-| `negate(f)` | Invert predicate |
-| `once(f)` | Execute only once |
-| `runCatch(f, onError?)` | Wrap with try-catch |
-| `runOrDefault(fallback)(f)`| Run f or return fallback |
-| `predicate(f, fallback?)` | Safe boolean check (variadic) |
-| `tap(...fs)` | Side effects, return original |
-| `also(x)(...fs)` | Side effects (x first), return x |
-| `capture(...args)(f)` | bind arguments early |
-| `useOrLift(check, lift)` | conditional lift |
-| `useArrayOrLift(x)` | Ensure x is array |
-| `range(n)` | [0, 1, ..., n-1] |
-| `rangeBy(s, e)` | [s, ..., e-1] |
+| `fp.Types` | Symbol-based type markers (Functor, Applicative, Monad) |
+| `fp.isFunctor(x)` | Check if x is a Functor |
+| `fp.isApplicative(x)` | Check if x is an Applicative |
+| `fp.isMonad(x)` | Check if x is a Monad |
+| `fp.identity(x)` | Returns x |
+| `fp.constant(x)` | Returns () => x |
+| `fp.tuple(...args)` | Returns arguments as an array |
+| `fp.raise(e)` | Throws e |
+| `fp.pipe(...fs)` | Left-to-right composition |
+| `fp.compose(...fs)` | Right-to-left composition |
+| `fp.apply(f)` | multiple args -> array input |
+| `fp.apply2(f)` | binary multiple args -> array input |
+| `fp.unapply(f)` | array input -> multiple args |
+| `fp.unapply2(f)` | binary array input -> multiple args |
+| `fp.curry(f, arity?)` | Curry a function |
+| `fp.curry2(f)` | specialized binary curry |
+| `fp.uncurry(f)` | uncurry a curried function |
+| `fp.uncurry2(f)` | specialized binary uncurry |
+| `fp.partial(f, ...args)` | Partial application |
+| `fp.flip(f)` | Reverse all arguments |
+| `fp.flip2(f)` | Swap first two arguments |
+| `fp.flipC(f)` | Swap first two curried arguments |
+| `fp.negate(f)` | Invert predicate |
+| `fp.once(f)` | Execute only once (retries on error) |
+| `fp.catch(f, onError?)` | Wrap with try-catch |
+| `fp.runOrDefault(fallback)(f)`| Run f or return fallback |
+| `fp.predicate(f, fallback?)` | Safe boolean check (async protected) |
+| `fp.tap(...fs)` | Side effects, return original |
+| `fp.also(x)(...fs)` | Variadic side effects (x first) |
+| `fp.into(x)(...fs)` | Variadic transformation (x first) |
+| `fp.capture(...args)(f)` | bind arguments early |
+| `fp.useOrLift(check, lift)` | conditional lift |
+| `fp.useArrayOrLift(x)` | Ensure x is array |
+| `fp.range(n)` | [0, 1, ..., n-1] |
+| `fp.rangeBy(s, e)` | [s, ..., e-1] |
 
-### either.js (124 lines)
+### either.js (~120 lines)
 
 | Function/Method | Description |
 |-----------------|-------------|
-| `left(e)` | Create Left (normalized Error array) |
-| `right(x)` | Create Right (success) |
-| `attempt(f)` | Wrap function → Either |
-| `from(x)` | Value → Either |
-| `fromNullable(x)` | null/undefined → Left |
-| `validate(cond, err)` | Create validator |
-| `validateAll(list)` | Accumulate errors |
-| `sequence(list)` | Fail-fast sequence |
-| `pipeK(...fs)` | Kleisli composition |
-| `traverse(f)(list)` | Apply f to each, fail-fast |
-| `traverseAll(f)(list)` | Apply f to each, collect errors |
+| `either.left(e)` | Create Left (normalized Error array) |
+| `either.right(x)` | Create Right (success) |
+| `either.catch(f)` | Wrap function → Either |
+| `either.from(x)` | Value → Either |
+| `either.fromNullable(x)` | null/undefined → Left |
+| `either.validate(cond, err)` | Create validator |
+| `either.validateAll(list)` | Accumulate errors |
+| `either.sequence(list)` | Fail-fast sequence |
+| `either.pipeK(...fs)` | Kleisli composition |
+| `either.traverse(f)(list)` | Apply f to each, fail-fast |
+| `either.traverseAll(f)(list)` | Apply f to each, collect errors |
 | `.map(f)` | Transform Right value |
 | `.mapLeft(f)` | Transform Left value |
 | `.flatMap(f)` | Chain Either-returning function |
@@ -815,46 +899,40 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `.ap(either)` | Apply with error accumulation |
 | `.getOrElse(default)` | Get value or default |
 
-### monoid.js (91 lines)
+### monoid.js (~90 lines)
 
 | Function | Description |
 |----------|-------------|
-| `monoid(check, concat, empty)` | Create Monoid |
-| `group(check, concat, empty, invert)` | Create Group |
-| `isMonoid(obj)` | Check if Monoid |
-| `fold(M, mapFn?)(list)` | Fold list with Monoid |
-| `concat(M)(a, b)` | Combine two values |
-| `invert(M)(value)` | Get inverse (Group only) |
-| `power(M)(value, n)` | Repeat n times |
-| `number.{sum,product,max,min}` | Number monoids/groups |
-| `string.concat` | String monoid |
-| `boolean.{all,any,xor}` | Boolean monoids/groups |
-| `array.concat` | Array monoid |
-| `object.merge` | Object monoid |
-| `function.endo` | Function composition monoid |
-| `any.{first,last}` | First/last value monoids |
+| `monoid.fold(M, mapFn?)(list)` | Fold list with Monoid |
+| `monoid.concat(M)(a, b)` | Combine two values |
+| `monoid.invert(M)(value)` | Get inverse (Group only) |
+| `monoid.power(M)(value, n)` | Repeat n times |
+| `monoid.number.{sum,product,max,min}` | Number monoids/groups |
+| `monoid.string.concat` | String monoid |
+| `monoid.boolean.{all,any,xor}` | Boolean monoids/groups |
+| `monoid.array.concat` | Array monoid |
+| `monoid.object.merge` | Object monoid |
+| `monoid.function.endo` | Function composition monoid |
+| `monoid.any.{first,last}` | First/last value monoids |
 
-### free.js (73 lines)
+### free.js (~90 lines)
 
 | Function | Description |
 |----------|-------------|
-| `pure(value)` | Wrap value in Pure |
-| `impure(functor)` | Wrap functor in Impure |
-| `isPure(x)` | Check if Pure |
-| `isImpure(x)` | Check if Impure |
-| `liftF(functor)` | Lift Functor into Free |
-| `runSync(runner)(program)` | Run synchronously (with smart unboxing) |
-| `runAsync(runner)(program)` | Run asynchronously (with smart unboxing) |
-| `stackSafe(runner, f, onReentry?)` | Re-entrancy guard for stack safety |
-| `done(value)` | Trampoline: finished (= pure) |
-| `suspend(fn)` | Trampoline: continue (uses liftF + Thunk) |
-| `trampoline(program)` | Compile to stack-safe executable function |
+| `free.pure(value)` | Wrap value in Pure |
+| `free.impure(functor)` | Wrap functor in Impure |
+| `free.liftF(functor)` | Lift Functor into Free |
+| `free.runSync(runner)(program)` | Run synchronously |
+| `free.runAsync(runner)(program)` | Run asynchronously |
+| `free.done(value)` | Trampoline: finished (= pure) |
+| `free.suspend(fn)` | Trampoline: continue |
+| `free.trampoline(p)` | Create stack-safe function |
 
-### extra.js (13 lines)
+### extra.js (~15 lines)
 
 | Function | Description |
 |----------|-------------|
-| `template(msg, data)` | Safe nested interpolation using Either |
+| `extra.template(msg, data)` | Safe nested interpolation |
 
 ---
 

@@ -1,13 +1,15 @@
 const $extra = (dependencies = {}) => {
-    const { identity } = dependencies.$func;
-    const { fromNullable } = dependencies.$either;
+    const { fp } = dependencies.$func;
+    const { either } = dependencies.$either;
     const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
         (match, key) => key.split('.').reduce((acc, prop) =>
-            acc.flatMap(obj => fromNullable(obj[prop])),
-            fromNullable(data)
-        ).fold(_ => match, identity));
+            acc.flatMap(obj => either.fromNullable(obj[prop.trim()])),
+            either.fromNullable(data)
+        ).fold(_ => match, fp.identity));
     return {
-        template
+        extra: {
+            template,
+        },
     };
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = $extra;

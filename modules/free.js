@@ -1,20 +1,22 @@
 const $free = (dependencies = {}) => {
-    const { isFunctor, assertFunction, raise, Types, compose } = dependencies.$func;
+    const { fp } = dependencies.$func;
     class Pure {
-        [Symbol.toStringTag] = 'Pure';
-        [Types.Functor] = true;
-        [Types.Monad] = true;
-        constructor(value) { this.value = value; }
+        constructor(value) {
+            this.value = value;
+            this[Symbol.toStringTag] = 'Pure';
+            this[fp.Types.Functor] = true;
+            this[fp.Types.Monad] = true;
+        }
         map(f) { return new Pure(f(this.value)); }
         flatMap(f) { return f(this.value); }
     }
     class Impure {
-        [Symbol.toStringTag] = 'Impure';
-        [Types.Functor] = true;
-        [Types.Monad] = true;
         constructor(functor) {
-            isFunctor(functor) || raise(new Error(`impure: expected a functor`));
+            fp.isFunctor(functor) || fp.raise(new Error(`impure: expected a functor`));
             this.functor = functor;
+            this[Symbol.toStringTag] = 'Impure';
+            this[fp.Types.Functor] = true;
+            this[fp.Types.Monad] = true;
         }
         map(f) { return new Impure(this.functor.map(free => free.map(f))); }
         flatMap(f) { return new Impure(this.functor.map(free => free.flatMap(f))); }
@@ -24,7 +26,7 @@ const $free = (dependencies = {}) => {
     const isPure = x => x instanceof Pure;
     const isImpure = x => x instanceof Impure;
     const liftF = command => {
-        isFunctor(command) || raise(new Error(`liftF: expected a functor`));
+        fp.isFunctor(command) || fp.raise(new Error(`liftF: expected a functor`));
         return isPure(command) || isImpure(command) ? command : impure(command.map(pure));
     };
     const stackSafe = (runner, f, onReentry = f) => {
@@ -46,7 +48,7 @@ const $free = (dependencies = {}) => {
             }
         };
     };
-    const runSync = runner => (target) => {
+    const runSync = runner => target => {
         const execute = program => {
             let step = program;
             while (isImpure(step)) {
@@ -57,7 +59,7 @@ const $free = (dependencies = {}) => {
         };
         return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
     };
-    const runAsync = runner => (target) => {
+    const runAsync = runner => target => {
         const execute = async program => {
             let step = program;
             while (isImpure(step)) {
@@ -69,30 +71,23 @@ const $free = (dependencies = {}) => {
         return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
     };
     class Thunk {
-        [Symbol.toStringTag] = 'Thunk';
-        [Types.Functor] = true;
         constructor(f) {
-            assertFunction('Thunk', 'a function', f);
+            fp.assertFunction('Thunk', 'a function', f);
             this.f = f;
+            this[Symbol.toStringTag] = 'Thunk';
+            this[fp.Types.Functor] = true;
         }
-        map(g) { return new Thunk(compose(g, this.f)); }
+        map(g) { return new Thunk(fp.compose(g, this.f)); }
         run() { return this.f(); }
     }
     const done = value => pure(value);
     const suspend = f => liftF(new Thunk(f));
     const trampoline = runSync(thunk => thunk.run());
     return {
-        pure,
-        impure,
-        isPure,
-        isImpure,
-        liftF,
-        runSync,
-        runAsync,
-        trampoline,
-        done,
-        suspend,
-        stackSafe, // 필요할 경우 직접 쓸 수 있도록 노출 유지
+        free: {
+            pure, impure, isPure, isImpure, liftF,
+            runSync, runAsync, trampoline, done, suspend,
+        },
     };
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = $free;

@@ -41,7 +41,12 @@ const $func = (dependencies = {}) => {
     };
     const apply2 = f => {
         assertFunction('apply2', 'a function', f);
-        return ([a, b]) => f(a, b);
+        return args => {
+            if (!Array.isArray(args) || args.length !== 2) {
+                raise(new TypeError(`apply2: expected an array of exactly 2 arguments, but got ${Array.isArray(args) ? args.length : typeof args}`));
+            }
+            return f(args[0], args[1]);
+        };
     };
     const unapply = f => {
         assertFunction('unapply', 'a function', f);
@@ -84,7 +89,17 @@ const $func = (dependencies = {}) => {
         assertFunction('partial', 'a function', f);
         return (...next) => f(...args, ...next);
     };
-    const predicate = (f, fallbackValue = false) => isFunction(f) ? (...args) => Boolean(runCatch(f, _ => fallbackValue)(...args)) : (..._) => Boolean(fallbackValue);
+    const predicate = (f, fallbackValue = false) => {
+        if (!isFunction(f)) return (..._) => Boolean(fallbackValue);
+        return (...args) => {
+            const result = runCatch(f, _ => fallbackValue)(...args);
+            if (result instanceof Promise || (result && typeof result.then === 'function')) {
+                log(new TypeError('predicate: Async functions (Promises) are not supported in sync predicate.'));
+                return Boolean(fallbackValue);
+            }
+            return Boolean(result);
+        };
+    };
     const negate = f => {
         assertFunction('negate', 'a function', f);
         return (...args) => !f(...args);
@@ -112,8 +127,9 @@ const $func = (dependencies = {}) => {
         let called = false, result;
         return (...args) => {
             if (!called) {
+                const val = f(...args);
+                result = val;
                 called = true;
-                result = f(...args);
             }
             return result;
         };
@@ -133,7 +149,8 @@ const $func = (dependencies = {}) => {
             return x;
         };
     };
-    const also = flipC(tap);
+    const also = x => (...fs) => tap(...fs)(x);
+    const into = x => (...fs) => pipe(...fs)(x);
     const useOrLift = (check, lift) => {
         assertFunction('useOrLift', 'check to be a function', check);
         assertFunction('useOrLift', 'lift to be a function', lift);
@@ -143,45 +160,14 @@ const $func = (dependencies = {}) => {
     const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
     const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
     return {
-        Types,
-        raise,
-        isFunction,
-        isPlainObject,
-        assertFunction,
-        hasFunctions,
-        isFunctor,
-        isApplicative,
-        isMonad,
-        identity,
-        constant,
-        tuple,
-        apply,
-        unapply,
-        apply2,
-        unapply2,
-        curry,
-        uncurry,
-        curry2,
-        uncurry2,
-        partial,
-        predicate,
-        negate,
-        flip,
-        flip2,
-        flipC,
-        pipe,
-        compose,
-        once,
-        converge,
-        runCatch,
-        runOrDefault,
-        capture,
-        tap,
-        also,
-        useOrLift,
-        useArrayOrLift,
-        range,
-        rangeBy,
+        fp: {
+            Types, raise, isFunction, isPlainObject, assertFunction, hasFunctions,
+            isFunctor, isApplicative, isMonad, identity, constant, tuple,
+            apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
+            partial, predicate, negate, flip, flip2, flipC,
+            pipe, compose, once, converge, catch: runCatch, runOrDefault, capture,
+            tap, also, into, useOrLift, useArrayOrLift, range, rangeBy,
+        },
     };
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = $func;

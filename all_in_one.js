@@ -41,7 +41,12 @@ const funFpJs = (dependencies = {}) => {
     };
     const apply2 = f => {
         assertFunction('apply2', 'a function', f);
-        return ([a, b]) => f(a, b);
+        return args => {
+            if (!Array.isArray(args) || args.length !== 2) {
+                raise(new TypeError(`apply2: expected an array of exactly 2 arguments, but got ${Array.isArray(args) ? args.length : typeof args}`));
+            }
+            return f(args[0], args[1]);
+        };
     };
     const unapply = f => {
         assertFunction('unapply', 'a function', f);
@@ -84,7 +89,17 @@ const funFpJs = (dependencies = {}) => {
         assertFunction('partial', 'a function', f);
         return (...next) => f(...args, ...next);
     };
-    const predicate = (f, fallbackValue = false) => isFunction(f) ? (...args) => Boolean(runCatch(f, _ => fallbackValue)(...args)) : (..._) => Boolean(fallbackValue);
+    const predicate = (f, fallbackValue = false) => {
+        if (!isFunction(f)) return (..._) => Boolean(fallbackValue);
+        return (...args) => {
+            const result = runCatch(f, _ => fallbackValue)(...args);
+            if (result instanceof Promise || (result && typeof result.then === 'function')) {
+                log(new TypeError('predicate: Async functions (Promises) are not supported in sync predicate.'));
+                return Boolean(fallbackValue);
+            }
+            return Boolean(result);
+        };
+    };
     const negate = f => {
         assertFunction('negate', 'a function', f);
         return (...args) => !f(...args);
@@ -112,8 +127,9 @@ const funFpJs = (dependencies = {}) => {
         let called = false, result;
         return (...args) => {
             if (!called) {
+                const val = f(...args);
+                result = val;
                 called = true;
-                result = f(...args);
             }
             return result;
         };
@@ -133,7 +149,8 @@ const funFpJs = (dependencies = {}) => {
             return x;
         };
     };
-    const also = flipC(tap);
+    const also = x => (...fs) => tap(...fs)(x);
+    const into = x => (...fs) => pipe(...fs)(x);
     const useOrLift = (check, lift) => {
         assertFunction('useOrLift', 'check to be a function', check);
         assertFunction('useOrLift', 'lift to be a function', lift);
@@ -143,12 +160,12 @@ const funFpJs = (dependencies = {}) => {
     const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
     const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
     class Left {
-        [Symbol.toStringTag] = 'Left';
-        [Types.Functor] = true;
-        [Types.Applicative] = true;
-        [Types.Monad] = true;
         constructor(value) {
             this.value = value;
+            this[Symbol.toStringTag] = 'Left';
+            this[Types.Functor] = true;
+            this[Types.Applicative] = true;
+            this[Types.Monad] = true;
         }
         map() { return this; }
         mapLeft(f) { return compose(left, runCatch(f, identity))(this.value); }
@@ -170,14 +187,14 @@ const funFpJs = (dependencies = {}) => {
         }
     }
     class Right {
-        [Symbol.toStringTag] = 'Right';
-        [Types.Functor] = true;
-        [Types.Applicative] = true;
-        [Types.Monad] = true;
         constructor(value) {
             this.value = value;
+            this[Symbol.toStringTag] = 'Right';
+            this[Types.Functor] = true;
+            this[Types.Applicative] = true;
+            this[Types.Monad] = true;
         }
-        map(f) { return attempt(f)(this.value); }
+        map(f) { return eitherCatch(f)(this.value); }
         mapLeft() { return this; }
         flatMap(f) { return runCatch(compose(checkEither, f), left)(this.value); }
         filter(f, onError = () => 'filter: predicate failed') { return predicate(f)(this.value) ? this : runCatch(compose(left, onError), left)(this.value); }
@@ -191,8 +208,8 @@ const funFpJs = (dependencies = {}) => {
          */
         ap(v) {
             if (v instanceof Left) return v;
-            if (v instanceof Right) return attempt(this.value)(v.value);
-            else return attempt(this.value)(v);
+            if (v instanceof Right) return eitherCatch(this.value)(v.value);
+            else return eitherCatch(this.value)(v);
         }
         getOrElse(_) { return this.value; }
         isLeft() { return false; }
@@ -206,9 +223,9 @@ const funFpJs = (dependencies = {}) => {
         v instanceof Error ? v : new Error(typeof v === 'string' ? v : 'Left Error', { cause: v })
     ));
     const right = x => new Right(x);
-    const attempt = f => {
-        assertFunction('attempt', 'a function', f);
-        const tryRight = compose(right, f);
+    const eitherCatch = (f, lift = right) => {
+        assertFunction('eitherCatch', 'a function', f);
+        const tryRight = compose(lift, f);
         return runCatch(tryRight, left);
     };
     const _from = (checkNull, name = 'from') => x => {
@@ -295,7 +312,7 @@ const funFpJs = (dependencies = {}) => {
             const arr = useArrayOrLift(list).map(f);
             if (arr.length === 0) return right(M.empty);
             if (!arr.every(M.check)) return left(new TypeError('fold: expected an array of values of the same type'));
-            return attempt(() => arr.reduce(M.concat, M.empty))();
+            return eitherCatch(() => arr.reduce(M.concat, M.empty))();
         };
     };
     const concat = M => {
@@ -306,7 +323,7 @@ const funFpJs = (dependencies = {}) => {
             if (!M.check(a) || !M.check(b)) {
                 return left(new TypeError('concat: expected values of the same type'));
             }
-            return attempt(() => M.concat(a, b))();
+            return eitherCatch(() => M.concat(a, b))();
         };
     };
     const invert = M => {
@@ -318,7 +335,7 @@ const funFpJs = (dependencies = {}) => {
         }
         return value => {
             if (!M.check(value)) return left(new TypeError('invert: expected a value of the same type'));
-            return attempt(() => M.invert(value))();
+            return eitherCatch(() => M.invert(value))();
         };
     };
     const power = M => {
@@ -330,24 +347,26 @@ const funFpJs = (dependencies = {}) => {
             if (typeof nth !== 'number') return left(new TypeError('power: expected a number'));
             if (nth < 0) return left(new TypeError('power: expected a non-negative number'));
             if (nth === 0) return right(M.empty);
-            return attempt(() => range(nth).reduce(acc => M.concat(acc, value), M.empty))();
+            return eitherCatch(() => range(nth).reduce(acc => M.concat(acc, value), M.empty))();
         };
     };
     class Pure {
-        [Symbol.toStringTag] = 'Pure';
-        [Types.Functor] = true;
-        [Types.Monad] = true;
-        constructor(value) { this.value = value; }
+        constructor(value) {
+            this.value = value;
+            this[Symbol.toStringTag] = 'Pure';
+            this[Types.Functor] = true;
+            this[Types.Monad] = true;
+        }
         map(f) { return new Pure(f(this.value)); }
         flatMap(f) { return f(this.value); }
     }
     class Impure {
-        [Symbol.toStringTag] = 'Impure';
-        [Types.Functor] = true;
-        [Types.Monad] = true;
         constructor(functor) {
             isFunctor(functor) || raise(new Error(`impure: expected a functor`));
             this.functor = functor;
+            this[Symbol.toStringTag] = 'Impure';
+            this[Types.Functor] = true;
+            this[Types.Monad] = true;
         }
         map(f) { return new Impure(this.functor.map(free => free.map(f))); }
         flatMap(f) { return new Impure(this.functor.map(free => free.flatMap(f))); }
@@ -379,7 +398,7 @@ const funFpJs = (dependencies = {}) => {
             }
         };
     };
-    const runSync = runner => (target) => {
+    const runSync = runner => target => {
         const execute = program => {
             let step = program;
             while (isImpure(step)) {
@@ -390,7 +409,7 @@ const funFpJs = (dependencies = {}) => {
         };
         return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
     };
-    const runAsync = runner => (target) => {
+    const runAsync = runner => target => {
         const execute = async program => {
             let step = program;
             while (isImpure(step)) {
@@ -416,23 +435,32 @@ const funFpJs = (dependencies = {}) => {
     const trampoline = runSync(thunk => thunk.run());
     const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
         (match, key) => key.split('.').reduce((acc, prop) =>
-            acc.flatMap(obj => fromNullable(obj[prop])),
+            acc.flatMap(obj => fromNullable(obj[prop.trim()])),
             fromNullable(data)
         ).fold(_ => match, identity));
     return {
-        Types, raise, isFunction, isPlainObject, assertFunction, hasFunctions,
-        isFunctor, isApplicative, isMonad,
-        identity, constant, tuple, apply, unapply, apply2, unapply2,
-        curry, uncurry, curry2, uncurry2,
-        partial, predicate, negate, flip, flip2, flipC,
-        pipe, compose, once, converge,
-        runCatch, runOrDefault, capture,
-        tap, also, useOrLift, useArrayOrLift, range, rangeBy,
-        left, right, attempt, from, fromNullable,
-        validate, validateAll, sequence, pipeK, traverse, traverseAll,
-        ...of, isMonoid, fold, concat, invert, power, pure, impure, isPure, isImpure,
-        liftF, runSync, runAsync, trampoline, done, suspend,
-        template,
+        fp: {
+            Types, raise, isFunction, isPlainObject, assertFunction, hasFunctions,
+            isFunctor, isApplicative, isMonad, identity, constant, tuple,
+            apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
+            partial, predicate, negate, flip, flip2, flipC,
+            pipe, compose, once, converge, catch: runCatch, runOrDefault, capture,
+            tap, also, into, useOrLift, useArrayOrLift, range, rangeBy,
+        },
+        either: {
+            left, right, catch: eitherCatch, from, fromNullable,
+            validate, validateAll, sequence, pipeK, traverse, traverseAll,
+        },
+        monoid: {
+            ...of, isMonoid, fold, concat, invert, power,
+        },
+        free: {
+            pure, impure, isPure, isImpure, liftF,
+            runSync, runAsync, trampoline, done, suspend,
+        },
+        extra: {
+            template,
+        },
     };
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = funFpJs;
