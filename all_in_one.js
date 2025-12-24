@@ -421,11 +421,11 @@ const funFpJs = (dependencies = {}) => {
         return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
     };
     class Thunk {
-        [Symbol.toStringTag] = 'Thunk';
-        [Types.Functor] = true;
         constructor(f) {
             assertFunction('Thunk', 'a function', f);
             this.f = f;
+            this[Symbol.toStringTag] = 'Thunk';
+            this[Types.Functor] = true;
         }
         map(g) { return new Thunk(compose(g, this.f)); }
         run() { return this.f(); }
