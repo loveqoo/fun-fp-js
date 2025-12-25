@@ -262,7 +262,7 @@ const funFpJs = (dependencies = {}) => {
     const pipeK = (...fs) => {
         if (fs.length === 0) return from;
         assertFunction('pipeK', 'all arguments to be functions', ...fs);
-        return x => fs.reduce((acc, f) => acc.flatMap(f), from(x));
+        return (x, lift = from) => fs.reduce((acc, f) => acc.flatMap(f), lift(x));
     };
     const traverse = f => {
         assertFunction('traverse', 'a function', f);
