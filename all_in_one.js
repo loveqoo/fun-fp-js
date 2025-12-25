@@ -17,7 +17,7 @@ const funFpJs = (dependencies = {}) => {
     const isFunction = f => typeof f === 'function';
     const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
     const assertFunction = (name, expected) => (...fs) => {
-        const invalids = fs.map((f, i) => [i, f]).filter(([_, f]) => !isFunction(f)).map(([i, f]) => `argument ${i} is ${typeof f}`);
+        const invalids = fs.map((f, i) => [i, f]).filter(([_, f]) => !isFunction(f)).map(([i, f]) => `argument ${i} is ${typeOf(f)}`);
         if (invalids.length > 0) raise(new TypeError(`${name}: expected ${expected}, but ${invalids.join(', ')}`));
         return fs; // array
     };
