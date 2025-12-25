@@ -1,5 +1,8 @@
 const $free = (dependencies = {}) => {
     const { core } = dependencies.$core;
+    const assertFunctions = {
+        'Thunk': core.assertFunction('Thunk', 'a function'),
+    };
     class Pure {
         constructor(value) {
             this.value = value;
@@ -72,8 +75,7 @@ const $free = (dependencies = {}) => {
     };
     class Thunk {
         constructor(f) {
-            core.assertFunction('Thunk', 'a function', f);
-            this.f = f;
+            this.f = assertFunctions['Thunk'](f)[0];
             this[Symbol.toStringTag] = 'Thunk';
             this[core.Types.Functor] = true;
         }

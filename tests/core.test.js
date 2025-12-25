@@ -181,6 +181,47 @@ test('isFunction & isPlainObject', () => {
     assert(!core.isPlainObject(new Date()), 'Instance should not be plain object');
 });
 
+test('typeOf', () => {
+    // Primitives
+    assertEquals(core.typeOf(undefined), 'undefined');
+    assertEquals(core.typeOf(true), 'boolean');
+    assertEquals(core.typeOf(false), 'boolean');
+    assertEquals(core.typeOf(42), 'number');
+    assertEquals(core.typeOf(3.14), 'number');
+    assertEquals(core.typeOf(NaN), 'number');
+    assertEquals(core.typeOf(Infinity), 'number');
+    assertEquals(core.typeOf('hello'), 'string');
+    assertEquals(core.typeOf(''), 'string');
+    assertEquals(core.typeOf(Symbol('test')), 'symbol');
+    assertEquals(core.typeOf(() => { }), 'function');
+    assertEquals(core.typeOf(function () { }), 'function');
+
+    // null
+    assertEquals(core.typeOf(null), 'null');
+
+    // Objects - constructor.name 방식
+    assertEquals(core.typeOf({}), 'Object');
+    assertEquals(core.typeOf({ a: 1 }), 'Object');
+    assertEquals(core.typeOf([]), 'Array');
+    assertEquals(core.typeOf([1, 2, 3]), 'Array');
+    assertEquals(core.typeOf(new Set()), 'Set');
+    assertEquals(core.typeOf(new Map()), 'Map');
+    assertEquals(core.typeOf(new WeakSet()), 'WeakSet');
+    assertEquals(core.typeOf(new WeakMap()), 'WeakMap');
+    assertEquals(core.typeOf(new Date()), 'Date');
+    assertEquals(core.typeOf(/regex/), 'RegExp');
+    assertEquals(core.typeOf(new Error('test')), 'Error');
+    assertEquals(core.typeOf(new TypeError('test')), 'TypeError');
+    assertEquals(core.typeOf(Promise.resolve()), 'Promise');
+
+    // Custom class
+    class MyClass { }
+    assertEquals(core.typeOf(new MyClass()), 'MyClass');
+
+    // Object.create(null) - no constructor
+    assertEquals(core.typeOf(Object.create(null)), 'object');
+});
+
 test('Monad type checks (isFunctor, isApplicative, isMonad)', () => {
     const functor = {
         map: x => x,
@@ -253,7 +294,7 @@ test('rangeBy - start >= end', () => {
 
 test('assertFunction - validation', () => {
     try {
-        core.assertFunction('testFunc', 'a function', 42);
+        core.assertFunction('testFunc', 'a function')(42);
         assert(false, 'Should have thrown TypeError');
     } catch (e) {
         assert(e instanceof TypeError, 'Expected TypeError');

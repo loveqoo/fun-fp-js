@@ -2,20 +2,63 @@ const funFpJs = (dependencies = {}) => {
     const log = typeof dependencies.log === 'function' ? dependencies.log : console.log;
     const Types = { Functor: Symbol.for('fun-fp-js/Functor'), Applicative: Symbol.for('fun-fp-js/Applicative'), Monad: Symbol.for('fun-fp-js/Monad') };
     const raise = e => { throw e; };
+    const typeOf = a => {
+        switch (typeof a) {
+            case 'undefined': return 'undefined';
+            case 'boolean': return 'boolean';
+            case 'number': return 'number';
+            case 'string': return 'string';
+            case 'symbol': return 'symbol';
+            case 'function': return 'function';
+            case 'object': return a === null ? 'null' : (a.constructor?.name || 'object')
+            default: return 'unknown';
+        }
+    };
     const isFunction = f => typeof f === 'function';
     const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
-    const assertFunction = (name, expected, ...fs) => {
+    const assertFunction = (name, expected) => (...fs) => {
         const invalids = fs.map((f, i) => [i, f]).filter(([_, f]) => !isFunction(f)).map(([i, f]) => `argument ${i} is ${typeof f}`);
         if (invalids.length > 0) raise(new TypeError(`${name}: expected ${expected}, but ${invalids.join(', ')}`));
-        return fs;
+        return fs; // array
     };
-    const hasFunctions = (extracts, check = _ => true) => {
-        assertFunction('hasFunctions', 'extracts to be functions', ...extracts);
-        return obj => obj && extracts.every(extract => isFunction(extract(obj))) && check(obj);
+    const assertFunctions = {
+        'hasFunction': assertFunction('hasFunction', 'extracts to be functions'),
+        'runCatch0': assertFunction('runCatch', 'a function'),
+        'runCatch1': assertFunction('runCatch', 'onError to be a function'),
+        'apply': assertFunction('apply', 'a function'),
+        'apply2': assertFunction('apply2', 'a function'),
+        'unapply': assertFunction('unapply', 'a function'),
+        'unapply2': assertFunction('unapply2', 'a function'),
+        'curry': assertFunction('curry', 'a function'),
+        'curry2': assertFunction('curry2', 'a function'),
+        'uncurry': assertFunction('uncurry', 'a function'),
+        'uncurry2': assertFunction('uncurry2', 'a function'),
+        'partial': assertFunction('partial', 'a function'),
+        'predicate': assertFunction('predicate', 'a function'),
+        'negate': assertFunction('negate', 'a function'),
+        'flip': assertFunction('flip', 'a function'),
+        'flip2': assertFunction('flip2', 'a function'),
+        'flipC': assertFunction('flipC', 'a function'),
+        'pipe': assertFunction('pipe', 'all arguments to be functions'),
+        'once': assertFunction('once', 'a function'),
+        'converge0': assertFunction('converge', 'a function'),
+        'converge1': assertFunction('converge', 'all branch arguments to be functions'),
+        'tap': assertFunction('tap', 'all arguments to be functions'),
+        'useOrLift0': assertFunction('useOrLift', 'check to be a function'),
+        'useOrLift1': assertFunction('useOrLift', 'lift to be a function'),
+        'fold': assertFunction('fold', 'a function'),
+        'eitherCatch': assertFunction('eitherCatch', 'a function'),
+        'validate0': assertFunction('validate', 'condition to be a function'),
+        'validate1': assertFunction('onError to be a function'),
+        'pipeK': assertFunction('pipeK', 'all arguments to be functions'),
+        'traverse': assertFunction('traverse', 'a function'),
+        'traverseAll': assertFunction('traverseAll', 'a function'),
+        'Thunk': assertFunction('Thunk', 'a function'),
     };
+    const hasFunctions = (extracts, check = _ => true) => obj => obj && assertFunctions['hasFunction'](...extracts).every(extract => isFunction(extract(obj))) && check(obj);
     const runCatch = (f, onError = e => log(e)) => {
-        assertFunction('runCatch', 'a function', f);
-        assertFunction('runCatch', 'onError to be a function', onError);
+        assertFunctions['runCatch0'](f);
+        assertFunctions['runCatch1'](onError);
         return (...args) => {
             try {
                 return f(...args);
@@ -31,7 +74,7 @@ const funFpJs = (dependencies = {}) => {
     const constant = x => () => x;
     const tuple = (...args) => args;
     const apply = f => {
-        assertFunction('apply', 'a function', f);
+        assertFunctions['apply'](f);
         return args => {
             if (!Array.isArray(args)) {
                 raise(new TypeError(`apply: expected an array of arguments, but got ${typeof args}`));
@@ -40,7 +83,7 @@ const funFpJs = (dependencies = {}) => {
         };
     };
     const apply2 = f => {
-        assertFunction('apply2', 'a function', f);
+        assertFunctions['apply2'](f);
         return args => {
             if (!Array.isArray(args) || args.length !== 2) {
                 raise(new TypeError(`apply2: expected an array of exactly 2 arguments, but got ${Array.isArray(args) ? args.length : typeof args}`));
@@ -49,25 +92,25 @@ const funFpJs = (dependencies = {}) => {
         };
     };
     const unapply = f => {
-        assertFunction('unapply', 'a function', f);
+        assertFunctions['unapply'](f);
         return (...args) => f(args);
     };
     const unapply2 = f => {
-        assertFunction('unapply2', 'a function', f);
+        assertFunctions['unapply2'](f);
         return (a, b) => f([a, b]);
     };
     const curry = (f, arity = f.length) => {
-        assertFunction('curry', 'a function', f);
+        assertFunctions['curry'](f);
         return function _curry(...args) {
             return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
         };
     };
     const curry2 = f => {
-        assertFunction('curry2', 'a function', f);
+        assertFunctions['curry2'](f);
         return a => b => f(a, b);
     };
     const uncurry = f => {
-        assertFunction('uncurry', 'a function', f);
+        assertFunctions['uncurry'](f);
         return (...args) => args.reduce((acc, arg, i) => {
             if (!isFunction(acc)) {
                 raise(new TypeError(`uncurry: expected a curried function (function returning functions), but got ${typeof acc} before applying argument ${i}`));
@@ -76,7 +119,7 @@ const funFpJs = (dependencies = {}) => {
         }, f);
     };
     const uncurry2 = f => {
-        assertFunction('uncurry2', 'a function', f);
+        assertFunctions['uncurry2'](f);
         return (a, b) => {
             const next = f(a);
             if (!isFunction(next)) {
@@ -86,11 +129,11 @@ const funFpJs = (dependencies = {}) => {
         };
     };
     const partial = (f, ...args) => {
-        assertFunction('partial', 'a function', f);
+        assertFunctions['partial'](f);
         return (...next) => f(...args, ...next);
     };
     const predicate = (f, fallbackValue = false) => {
-        if (!isFunction(f)) return (..._) => Boolean(fallbackValue);
+        assertFunctions['predicate'](f);
         return (...args) => {
             const result = runCatch(f, _ => fallbackValue)(...args);
             if (result instanceof Promise || (result && typeof result.then === 'function')) {
@@ -101,29 +144,29 @@ const funFpJs = (dependencies = {}) => {
         };
     };
     const negate = f => {
-        assertFunction('negate', 'a function', f);
+        assertFunctions['negate'](f);
         return (...args) => !f(...args);
     };
     const flip = f => {
-        assertFunction('flip', 'a function', f);
+        assertFunctions['flip'](f);
         return (...args) => f(...args.slice().reverse());
     };
     const flip2 = f => {
-        assertFunction('flip2', 'a function', f);
+        assertFunctions['flip2'](f);
         return (a, b, ...args) => f(b, a, ...args);
     };
     const flipC = f => {
-        assertFunction('flipC', 'a function', f);
+        assertFunctions['flipC'](f);
         return a => b => f(b)(a);
     };
     const pipe = (...fs) => {
         if (fs.length === 0) return identity;
-        assertFunction('pipe', 'all arguments to be functions', ...fs);
+        assertFunctions['pipe'](...fs);
         return x => fs.reduce((acc, f) => f(acc), x);
     };
     const compose = (...fs) => pipe(...fs.slice().reverse());
     const once = f => {
-        assertFunction('once', 'a function', f);
+        assertFunctions['once'](f);
         let called = false, result;
         return (...args) => {
             if (!called) {
@@ -135,14 +178,14 @@ const funFpJs = (dependencies = {}) => {
         };
     };
     const converge = (f, ...branches) => {
-        assertFunction('converge', 'a function', f);
-        assertFunction('converge', 'all branch arguments to be functions', ...branches);
+        assertFunctions['converge0'](f);
+        assertFunctions['converge1'](...branches);
         return (...args) => f(...branches.map(branch => branch(...args)));
     };
     const runOrDefault = fallbackValue => g => isFunction(g) ? runCatch(g, _ => fallbackValue)() : fallbackValue;
     const capture = (...args) => (f, onError = e => log(e)) => runCatch(f, onError)(...args);
     const tap = (...fs) => {
-        assertFunction('tap', 'all arguments to be functions', ...fs);
+        assertFunctions['tap'](...fs);
         return x => {
             const runAgainstX = f => runCatch(f)(x);
             fs.forEach(runAgainstX);
@@ -152,8 +195,8 @@ const funFpJs = (dependencies = {}) => {
     const also = x => (...fs) => tap(...fs)(x);
     const into = x => (...fs) => pipe(...fs)(x);
     const useOrLift = (check, lift) => {
-        assertFunction('useOrLift', 'check to be a function', check);
-        assertFunction('useOrLift', 'lift to be a function', lift);
+        assertFunctions['useOrLift0'](check);
+        assertFunctions['useOrLift1'](lift);
         return x => predicate(check)(x) ? x : lift(x);
     };
     const useArrayOrLift = useOrLift(Array.isArray, Array.of);
@@ -171,20 +214,12 @@ const funFpJs = (dependencies = {}) => {
         mapLeft(f) { return compose(left, runCatch(f, identity))(this.value); }
         flatMap() { return this; }
         filter() { return this; }
-        fold(onLeft, _) {
-            assertFunction('fold', 'a function', onLeft);
-            return onLeft(this.value);
-        }
-        ap(v) {
-            return (v instanceof Left && hasConcat(this.value) && hasConcat(v.value)) ? left(this.value.concat(v.value)) : this;
-        }
+        fold(onLeft, _) { return assertFunctions['fold'](onLeft)[0](this.value); }
+        ap(v) { return (v instanceof Left && hasConcat(this.value) && hasConcat(v.value)) ? left(this.value.concat(v.value)) : this; }
         getOrElse(v) { return v; }
         isLeft() { return true; }
         isRight() { return false; }
-        tapLeft(f) {
-            runCatch(f)(this.value);
-            return this;
-        }
+        tapLeft(f) { runCatch(f)(this.value); return this; }
     }
     class Right {
         constructor(value) {
@@ -198,10 +233,7 @@ const funFpJs = (dependencies = {}) => {
         mapLeft() { return this; }
         flatMap(f) { return runCatch(compose(checkEither, f), left)(this.value); }
         filter(f, onError = () => 'filter: predicate failed') { return predicate(f)(this.value) ? this : runCatch(compose(left, onError), left)(this.value); }
-        fold(_, onRight) {
-            assertFunction('fold', 'a function', onRight);
-            return onRight(this.value);
-        }
+        fold(_, onRight) { return assertFunctions['fold'](onRight)[0](this.value); }
         /**
          * Apply the function wrapped in Right to another Either.
          * Throws TypeError if this.value is not a function (Developer Error).
@@ -223,11 +255,7 @@ const funFpJs = (dependencies = {}) => {
         v instanceof Error ? v : new Error(typeof v === 'string' ? v : 'Left Error', { cause: v })
     ));
     const right = x => new Right(x);
-    const eitherCatch = (f, lift = right) => {
-        assertFunction('eitherCatch', 'a function', f);
-        const tryRight = compose(lift, f);
-        return runCatch(tryRight, left);
-    };
+    const eitherCatch = (f, lift = right) => runCatch(compose(lift, assertFunctions['eitherCatch'](f)[0]), left);
     const _from = (checkNull, name = 'from') => x => {
         if (checkNull && (x === null || x === undefined)) return left(new Error(`${name}: expected a value, got ${x}`));
         if (x instanceof Left || x instanceof Right) return x;
@@ -236,8 +264,8 @@ const funFpJs = (dependencies = {}) => {
     const from = _from(false);
     const fromNullable = _from(true, 'fromNullable');
     const validate = (condition, onError) => {
-        assertFunction('validate', 'condition to be a function', condition);
-        assertFunction('validate', 'onError to be a function', onError);
+        assertFunctions['validate0'](condition);
+        assertFunctions['validate1'](onError);
         return x => predicate(condition)(x) ? right(x) : runCatch(compose(left, onError), left)(x);
     };
     const validateAll = list => useArrayOrLift(list).reduce((acc, x) => {
@@ -261,15 +289,15 @@ const funFpJs = (dependencies = {}) => {
     };
     const pipeK = (...fs) => {
         if (fs.length === 0) return from;
-        assertFunction('pipeK', 'all arguments to be functions', ...fs);
+        assertFunctions['pipeK'](...fs);
         return (x, lift = from) => fs.reduce((acc, f) => acc.flatMap(f), lift(x));
     };
     const traverse = f => {
-        assertFunction('traverse', 'a function', f);
+        assertFunctions['traverse'](f);
         return list => sequence(useArrayOrLift(list).map(f));
     };
     const traverseAll = f => {
-        assertFunction('traverseAll', 'a function', f);
+        assertFunctions['traverseAll'](f);
         return list => validateAll(useArrayOrLift(list).map(f));
     };
     const monoid = (check, concat, empty) => ({ check, concat, empty });
@@ -422,8 +450,7 @@ const funFpJs = (dependencies = {}) => {
     };
     class Thunk {
         constructor(f) {
-            assertFunction('Thunk', 'a function', f);
-            this.f = f;
+            this.f = assertFunctions['Thunk'](f)[0];
             this[Symbol.toStringTag] = 'Thunk';
             this[Types.Functor] = true;
         }
@@ -440,7 +467,7 @@ const funFpJs = (dependencies = {}) => {
         ).fold(_ => match, identity));
     return {
         core: {
-            Types, raise, isFunction, isPlainObject, assertFunction, hasFunctions,
+            Types, raise, typeOf, isFunction, isPlainObject, assertFunction, hasFunctions,
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
             partial, predicate, negate, flip, flip2, flipC,

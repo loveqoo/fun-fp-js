@@ -88,12 +88,31 @@ class MyFunctor {
 ```javascript
 const lib = require('./index.js')();
 const { core } = lib;
-const { identity, constant, tuple, raise } = core;
+const { identity, constant, tuple, raise, typeOf } = core;
 
 identity(5);           // 5
 constant(10)();        // 10
 tuple(1, 2, 3);        // [1, 2, 3]
 raise(new Error('x')); // throws Error
+
+// typeOf: enhanced typeof with constructor names
+typeOf(undefined);     // 'undefined'
+typeOf(null);          // 'null'
+typeOf(42);            // 'number'
+typeOf('hello');       // 'string'
+typeOf(() => {});      // 'function'
+typeOf([1, 2, 3]);     // 'Array'
+typeOf({ a: 1 });      // 'Object'
+typeOf(new Set());     // 'Set'
+typeOf(new Map());     // 'Map'
+typeOf(new Date());    // 'Date'
+typeOf(/regex/);       // 'RegExp'
+typeOf(new Error());   // 'Error'
+typeOf(Promise.resolve()); // 'Promise'
+
+// Custom classes work too
+class MyClass {}
+typeOf(new MyClass()); // 'MyClass'
 ```
 
 #### Function Composition
