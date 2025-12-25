@@ -20,22 +20,31 @@ const $extra = require('./modules/extra.js');
  * @returns {Object} The FP library with func, either, monoid, and free modules
  */
 const funFpJs = (options = {}) => {
-    const log = typeof options.log === 'function' ? options.log : console.log;
-
-    // Initialize modules with dependencies
-    const core = $core({ log });
-    const either = $either({ $core: core });
-    const monoid = $monoid({ $core: core, $either: either });
-    const free = $free({ $core: core });
-    const extra = $extra({ $core: core, $either: either });
-
-    return {
-        ...core,
-        ...either,
-        ...monoid,
-        ...free,
-        ...extra,
+    const context = {
+        log: typeof options.log === 'function' ? options.log : console.log
     };
+
+    // Define modules with explicit dependency list
+    const modules = [
+        { key: '$core', factory: $core, deps: ['log'] },
+        { key: '$either', factory: $either, deps: ['$core'] },
+        { key: '$monoid', factory: $monoid, deps: ['$core', '$either'] },
+        { key: '$free', factory: $free, deps: ['$core'] },
+        { key: '$extra', factory: $extra, deps: ['$core', '$either'] }
+    ];
+
+    // Build the library context with strictly filtered dependency injection
+    return modules.reduce((acc, { key, factory, deps }) => {
+        // Only pick specified dependencies from the accumulated context
+        const dependencies = deps.reduce((d, k) => ({ ...d, [k]: acc[k] }), {});
+        const result = factory(dependencies);
+
+        return {
+            ...acc,
+            [key]: result, // Stored for next modules' dependencies
+            ...result      // Exposed to the user (core, either, etc.)
+        };
+    }, context);
 };
 
 // Export factory function
