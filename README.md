@@ -21,7 +21,7 @@ A lightweight, dependency-free functional programming library for JavaScript.
 const lib = require('./index.js')();
 
 // The library is organized into namespaces:
-const { fp, either, monoid, free, extra } = lib;
+const { core, either, monoid, free, extra } = lib;
 
 // Or with custom logger
 const libWithLog = require('./index.js')({ log: myLogger });
@@ -30,8 +30,8 @@ const libWithLog = require('./index.js')({ log: myLogger });
 ## Quick Start
 
 ```javascript
-const { fp, either, free } = require('./index.js')();
-const { pipe } = fp;
+const { core, either, free } = require('./index.js')();
+const { pipe } = core;
 const { right, left } = either;
 const { done, suspend, trampoline } = free;
 
@@ -60,7 +60,7 @@ factorial(100000);  // No stack overflow!
 
 ## Modules
 
-### 1. `func` - Functional Core (~170 lines)
+### 1. `core` - Functional Core (~170 lines)
 
 #### Types Protocol
 
@@ -68,8 +68,8 @@ Symbol-based type class markers for Functor, Applicative, and Monad.
 
 ```javascript
 const lib = require('./index.js')();
-const { fp, either } = lib;
-const { Types, isFunctor, isApplicative, isMonad } = fp;
+const { core, either } = lib;
+const { Types, isFunctor, isApplicative, isMonad } = core;
 
 // Check type classes
 isFunctor(either.right(5));     // true - has map + Symbol
@@ -87,8 +87,8 @@ class MyFunctor {
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { identity, constant, tuple, raise } = fp;
+const { core } = lib;
+const { identity, constant, tuple, raise } = core;
 
 identity(5);           // 5
 constant(10)();        // 10
@@ -100,8 +100,8 @@ raise(new Error('x')); // throws Error
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { pipe, compose } = fp;
+const { core } = lib;
+const { pipe, compose } = core;
 
 // pipe: left to right
 const add1 = x => x + 1;
@@ -117,8 +117,8 @@ Transform how functions receive arguments.
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { apply, unapply, apply2, unapply2 } = fp;
+const { core } = lib;
+const { apply, unapply, apply2, unapply2 } = core;
 
 const add3 = (a, b, c) => a + b + c;
 const addList = ([a, b, c]) => a + b + c;
@@ -138,8 +138,8 @@ unapply2(([a, b]) => a + b)(1, 2); // 3
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { curry, curry2, uncurry, uncurry2, partial } = fp;
+const { core } = lib;
+const { curry, curry2, uncurry, uncurry2, partial } = core;
 
 const add = (a, b, c) => a + b + c;
 const addCurried = a => b => c => a + b + c;
@@ -164,8 +164,8 @@ add10(5, 3);             // 18
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { flip, flip2, flipC, negate, once } = fp;
+const { core } = lib;
+const { flip, flip2, flipC, negate, once } = core;
 
 // flip: reverse all arguments
 const sub = (a, b, c) => a - b - c;
@@ -197,8 +197,8 @@ init(); // will not run again if previous call succeeded
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { catch: runCatch, predicate } = fp;
+const { core } = lib;
+const { catch: runCatch, predicate } = core;
 
 // catch: wrap function with try-catch
 const safeJsonParse = runCatch(JSON.parse, err => ({}));
@@ -222,8 +222,8 @@ isSumEven(1, 3);           // true
 
 ```javascript
 const lib = require('./index.js')();
-const { fp, either, monoid } = lib;
-const { tap, also, into, capture, useOrLift, pipe, range } = fp;
+const { core, either, monoid } = lib;
+const { tap, also, into, capture, useOrLift, pipe, range } = core;
 
 // tap: execute side effects, return original value
 const result = pipe(
@@ -242,7 +242,7 @@ also(user)(
 
 // into: data-first pipe (variadic) - transform value
 const resultInto = into(5)(
-    fp.range,                   // [0, 1, 2, 3, 4]
+    core.range,                   // [0, 1, 2, 3, 4]
     list => list.map(x => x * 2),
     x => monoid.fold(monoid.number.sum)(x).getOrElse(0)
 );
@@ -262,8 +262,8 @@ ensureArray([1]);          // [1]
 
 ```javascript
 const lib = require('./index.js')();
-const { fp } = lib;
-const { converge, useArrayOrLift, range, rangeBy, runOrDefault } = fp;
+const { core } = lib;
+const { converge, useArrayOrLift, range, rangeBy, runOrDefault } = core;
 
 // converge: apply multiple functions, combine results
 const avg = converge(
@@ -773,8 +773,8 @@ validateForm({ email: 'bad', password: '123' });
 
 ```javascript
 const lib = require('./index.js')();
-const { fp, either } = lib;
-const { pipe } = fp;
+const { core, either } = lib;
+const { pipe } = core;
 const { catch: eitherCatch, right, left } = either;
 
 const processData = pipe(
@@ -836,45 +836,45 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 
 ## API Reference
 
-### func.js (~170 lines)
+### core.js (~170 lines)
 
 | Function | Description |
 |----------|-------------|
-| `fp.Types` | Symbol-based type markers (Functor, Applicative, Monad) |
-| `fp.isFunctor(x)` | Check if x is a Functor |
-| `fp.isApplicative(x)` | Check if x is an Applicative |
-| `fp.isMonad(x)` | Check if x is a Monad |
-| `fp.identity(x)` | Returns x |
-| `fp.constant(x)` | Returns () => x |
-| `fp.tuple(...args)` | Returns arguments as an array |
-| `fp.raise(e)` | Throws e |
-| `fp.pipe(...fs)` | Left-to-right composition |
-| `fp.compose(...fs)` | Right-to-left composition |
-| `fp.apply(f)` | multiple args -> array input |
-| `fp.apply2(f)` | binary multiple args -> array input |
-| `fp.unapply(f)` | array input -> multiple args |
-| `fp.unapply2(f)` | binary array input -> multiple args |
-| `fp.curry(f, arity?)` | Curry a function |
-| `fp.curry2(f)` | specialized binary curry |
-| `fp.uncurry(f)` | uncurry a curried function |
-| `fp.uncurry2(f)` | specialized binary uncurry |
-| `fp.partial(f, ...args)` | Partial application |
-| `fp.flip(f)` | Reverse all arguments |
-| `fp.flip2(f)` | Swap first two arguments |
-| `fp.flipC(f)` | Swap first two curried arguments |
-| `fp.negate(f)` | Invert predicate |
-| `fp.once(f)` | Execute only once (retries on error) |
-| `fp.catch(f, onError?)` | Wrap with try-catch |
-| `fp.runOrDefault(fallback)(f)`| Run f or return fallback |
-| `fp.predicate(f, fallback?)` | Safe boolean check (async protected) |
-| `fp.tap(...fs)` | Side effects, return original |
-| `fp.also(x)(...fs)` | Variadic side effects (x first) |
-| `fp.into(x)(...fs)` | Variadic transformation (x first) |
-| `fp.capture(...args)(f)` | bind arguments early |
-| `fp.useOrLift(check, lift)` | conditional lift |
-| `fp.useArrayOrLift(x)` | Ensure x is array |
-| `fp.range(n)` | [0, 1, ..., n-1] |
-| `fp.rangeBy(s, e)` | [s, ..., e-1] |
+| `core.Types` | Symbol-based type markers (Functor, Applicative, Monad) |
+| `core.isFunctor(x)` | Check if x is a Functor |
+| `core.isApplicative(x)` | Check if x is an Applicative |
+| `core.isMonad(x)` | Check if x is a Monad |
+| `core.identity(x)` | Returns x |
+| `core.constant(x)` | Returns () => x |
+| `core.tuple(...args)` | Returns arguments as an array |
+| `core.raise(e)` | Throws e |
+| `core.pipe(...fs)` | Left-to-right composition |
+| `core.compose(...fs)` | Right-to-left composition |
+| `core.apply(f)` | multiple args -> array input |
+| `core.apply2(f)` | binary multiple args -> array input |
+| `core.unapply(f)` | array input -> multiple args |
+| `core.unapply2(f)` | binary array input -> multiple args |
+| `core.curry(f, arity?)` | Curry a function |
+| `core.curry2(f)` | specialized binary curry |
+| `core.uncurry(f)` | uncurry a curried function |
+| `core.uncurry2(f)` | specialized binary uncurry |
+| `core.partial(f, ...args)` | Partial application |
+| `core.flip(f)` | Reverse all arguments |
+| `core.flip2(f)` | Swap first two arguments |
+| `core.flipC(f)` | Swap first two curried arguments |
+| `core.negate(f)` | Invert predicate |
+| `core.once(f)` | Execute only once (retries on error) |
+| `core.catch(f, onError?)` | Wrap with try-catch |
+| `core.runOrDefault(fallback)(f)`| Run f or return fallback |
+| `core.predicate(f, fallback?)` | Safe boolean check (async protected) |
+| `core.tap(...fs)` | Side effects, return original |
+| `core.also(x)(...fs)` | Variadic side effects (x first) |
+| `core.into(x)(...fs)` | Variadic transformation (x first) |
+| `core.capture(...args)(f)` | bind arguments early |
+| `core.useOrLift(check, lift)` | conditional lift |
+| `core.useArrayOrLift(x)` | Ensure x is array |
+| `core.range(n)` | [0, 1, ..., n-1] |
+| `core.rangeBy(s, e)` | [s, ..., e-1] |
 
 ### either.js (~120 lines)
 
@@ -939,7 +939,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 ## Architecture
 
 ```
-                    func.js (Types Protocol)
+                    core.js (Types Protocol)
                            │
    ┌──────────────┬────────┴────────┬──────────────┐
    │              │                 │              │

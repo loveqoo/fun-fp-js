@@ -1,11 +1,11 @@
-const $func = require('../modules/func.js');
+const $core = require('../modules/core.js');
 const { assertEquals } = require('./utils.js');
-const { fp: f } = $func({ log: () => { } });
+const { core } = $core({ log: () => { } });
 
 console.log('Testing predicate with async functions...');
 
 const asyncTrue = async () => true;
-const p = f.predicate(asyncTrue, false);
+const p = core.predicate(asyncTrue, false);
 
 const result = p();
 console.log('Result for async predicate:', result);

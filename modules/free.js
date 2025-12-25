@@ -1,22 +1,22 @@
 const $free = (dependencies = {}) => {
-    const { fp } = dependencies.$func;
+    const { core } = dependencies.$core;
     class Pure {
         constructor(value) {
             this.value = value;
             this[Symbol.toStringTag] = 'Pure';
-            this[fp.Types.Functor] = true;
-            this[fp.Types.Monad] = true;
+            this[core.Types.Functor] = true;
+            this[core.Types.Monad] = true;
         }
         map(f) { return new Pure(f(this.value)); }
         flatMap(f) { return f(this.value); }
     }
     class Impure {
         constructor(functor) {
-            fp.isFunctor(functor) || fp.raise(new Error(`impure: expected a functor`));
+            core.isFunctor(functor) || core.raise(new Error(`impure: expected a functor`));
             this.functor = functor;
             this[Symbol.toStringTag] = 'Impure';
-            this[fp.Types.Functor] = true;
-            this[fp.Types.Monad] = true;
+            this[core.Types.Functor] = true;
+            this[core.Types.Monad] = true;
         }
         map(f) { return new Impure(this.functor.map(free => free.map(f))); }
         flatMap(f) { return new Impure(this.functor.map(free => free.flatMap(f))); }
@@ -26,7 +26,7 @@ const $free = (dependencies = {}) => {
     const isPure = x => x instanceof Pure;
     const isImpure = x => x instanceof Impure;
     const liftF = command => {
-        fp.isFunctor(command) || fp.raise(new Error(`liftF: expected a functor`));
+        core.isFunctor(command) || core.raise(new Error(`liftF: expected a functor`));
         return isPure(command) || isImpure(command) ? command : impure(command.map(pure));
     };
     const stackSafe = (runner, f, onReentry = f) => {
@@ -72,12 +72,12 @@ const $free = (dependencies = {}) => {
     };
     class Thunk {
         constructor(f) {
-            fp.assertFunction('Thunk', 'a function', f);
+            core.assertFunction('Thunk', 'a function', f);
             this.f = f;
             this[Symbol.toStringTag] = 'Thunk';
-            this[fp.Types.Functor] = true;
+            this[core.Types.Functor] = true;
         }
-        map(g) { return new Thunk(fp.compose(g, this.f)); }
+        map(g) { return new Thunk(core.compose(g, this.f)); }
         run() { return this.f(); }
     }
     const done = value => pure(value);

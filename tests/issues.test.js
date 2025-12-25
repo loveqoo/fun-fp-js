@@ -1,5 +1,5 @@
-const $func = require('../modules/func.js');
-const { fp: f } = $func();
+const $core = require('../modules/core.js');
+const { core } = $core();
 
 const { assert, assertEquals } = require('./utils.js');
 
@@ -8,7 +8,7 @@ console.log('Starting reproduction tests...');
 // 1. once should not cache result if it throws
 try {
     let count = 0;
-    const onceF = f.once(() => {
+    const onceF = core.once(() => {
         count++;
         if (count === 1) throw new Error('First fail');
         return 'Success';
@@ -38,7 +38,7 @@ try {
 try {
     console.log('Testing apply2 strictness...');
     const add = (a, b) => a + b;
-    const applied = f.apply2(add);
+    const applied = core.apply2(add);
 
     try {
         applied([1, 2, 3]);

@@ -1,5 +1,5 @@
 const $monoid = (dependencies = {}) => {
-    const { fp } = dependencies.$func;
+    const { core } = dependencies.$core;
     const { either } = dependencies.$either;
     const monoid = (check, concat, empty) => ({ check, concat, empty });
     const group = (check, concat, empty, invert) => ({ check, concat, empty, invert });
@@ -22,23 +22,23 @@ const $monoid = (dependencies = {}) => {
             concat: monoid(a => Array.isArray(a), (a, b) => a.concat(b), []),
         },
         object: {
-            merge: monoid(fp.isPlainObject, (a, b) => ({ ...a, ...b }), {}),
+            merge: monoid(core.isPlainObject, (a, b) => ({ ...a, ...b }), {}),
         },
         function: {
-            endo: monoid(fp.isFunction, fp.compose, fp.identity),
+            endo: monoid(core.isFunction, core.compose, core.identity),
         },
         any: {
             first: monoid(_ => true, (a, _) => a, null),
             last: monoid(_ => true, (_, b) => b, null),
         },
     };
-    const isMonoid = obj => obj && fp.isFunction(obj.check) && fp.isFunction(obj.concat) && 'empty' in obj;
-    const fold = (M, f = fp.identity) => {
+    const isMonoid = obj => obj && core.isFunction(obj.check) && core.isFunction(obj.concat) && 'empty' in obj;
+    const fold = (M, f = core.identity) => {
         if (!isMonoid(M)) {
             return () => either.left(new TypeError('fold: expected a monoid'));
         }
         return list => {
-            const arr = fp.useArrayOrLift(list).map(f);
+            const arr = core.useArrayOrLift(list).map(f);
             if (arr.length === 0) return either.right(M.empty);
             if (!arr.every(M.check)) return either.left(new TypeError('fold: expected an array of values of the same type'));
             return either.catch(() => arr.reduce(M.concat, M.empty))();
@@ -76,7 +76,7 @@ const $monoid = (dependencies = {}) => {
             if (typeof nth !== 'number') return either.left(new TypeError('power: expected a number'));
             if (nth < 0) return either.left(new TypeError('power: expected a non-negative number'));
             if (nth === 0) return either.right(M.empty);
-            return either.catch(() => fp.range(nth).reduce(acc => M.concat(acc, value), M.empty))();
+            return either.catch(() => core.range(nth).reduce(acc => M.concat(acc, value), M.empty))();
         };
     };
     return {

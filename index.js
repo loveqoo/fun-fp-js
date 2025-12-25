@@ -7,7 +7,7 @@
  * const fp = require('fun-fp-js')({ log: myLogger });
  */
 
-const $func = require('./modules/func.js');
+const $core = require('./modules/core.js');
 const $either = require('./modules/either.js');
 const $monoid = require('./modules/monoid.js');
 const $free = require('./modules/free.js');
@@ -23,14 +23,14 @@ const funFpJs = (options = {}) => {
     const log = typeof options.log === 'function' ? options.log : console.log;
 
     // Initialize modules with dependencies
-    const func = $func({ log });
-    const either = $either({ $func: func });
-    const monoid = $monoid({ $func: func, $either: either });
-    const free = $free({ $func: func });
-    const extra = $extra({ $func: func, $either: either });
+    const core = $core({ log });
+    const either = $either({ $core: core });
+    const monoid = $monoid({ $core: core, $either: either });
+    const free = $free({ $core: core });
+    const extra = $extra({ $core: core, $either: either });
 
     return {
-        ...func,
+        ...core,
         ...either,
         ...monoid,
         ...free,

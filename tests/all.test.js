@@ -1,7 +1,7 @@
 const funFpJs = require('../all_in_one.js');
 const $fp = funFpJs({ log: () => { } }); // Disable logs for testing
 
-const { fp: core, either, monoid, free, extra } = $fp;
+const { core, either, monoid, free, extra } = $fp;
 
 const {
     identity, constant, pipe, compose, curry, partial, flip, negate, once, catch: runCatch, runOrDefault,

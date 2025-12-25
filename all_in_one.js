@@ -439,7 +439,7 @@ const funFpJs = (dependencies = {}) => {
             fromNullable(data)
         ).fold(_ => match, identity));
     return {
-        fp: {
+        core: {
             Types, raise, isFunction, isPlainObject, assertFunction, hasFunctions,
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,

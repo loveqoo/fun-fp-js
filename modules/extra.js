@@ -1,11 +1,11 @@
 const $extra = (dependencies = {}) => {
-    const { fp } = dependencies.$func;
+    const { core } = dependencies.$core;
     const { either } = dependencies.$either;
     const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
         (match, key) => key.split('.').reduce((acc, prop) =>
             acc.flatMap(obj => either.fromNullable(obj[prop.trim()])),
             either.fromNullable(data)
-        ).fold(_ => match, fp.identity));
+        ).fold(_ => match, core.identity));
     return {
         extra: {
             template,

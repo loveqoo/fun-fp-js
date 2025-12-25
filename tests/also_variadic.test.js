@@ -1,6 +1,6 @@
-const $func = require('../modules/func.js');
+const $core = require('../modules/core.js');
 const { assertEquals } = require('./utils.js');
-const { fp: f } = $func({ log: () => { } });
+const { core } = $core({ log: () => { } });
 
 console.log('Testing "also" with multiple function arguments...');
 
@@ -13,7 +13,7 @@ const spy2 = () => { count2++; };
 const data = { val: 42 };
 
 // Now variadic also: x => (...fs) => tap(...fs)(x)
-const result = f.also(data)(spy1, spy2);
+const result = core.also(data)(spy1, spy2);
 
 console.log('  Count 1:', count1);
 console.log('  Count 2:', count2);

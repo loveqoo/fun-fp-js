@@ -1,4 +1,4 @@
-const $func = (dependencies = {}) => {
+const $core = (dependencies = {}) => {
     const log = typeof dependencies.log === 'function' ? dependencies.log : console.log;
     const Types = { Functor: Symbol.for('fun-fp-js/Functor'), Applicative: Symbol.for('fun-fp-js/Applicative'), Monad: Symbol.for('fun-fp-js/Monad') };
     const raise = e => { throw e; };
@@ -160,7 +160,7 @@ const $func = (dependencies = {}) => {
     const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
     const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
     return {
-        fp: {
+        core: {
             Types, raise, isFunction, isPlainObject, assertFunction, hasFunctions,
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
@@ -170,4 +170,4 @@ const $func = (dependencies = {}) => {
         },
     };
 };
-if (typeof module !== 'undefined' && module.exports) module.exports = $func;
+if (typeof module !== 'undefined' && module.exports) module.exports = $core;
