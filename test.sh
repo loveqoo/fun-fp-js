@@ -12,7 +12,14 @@ TESTS_DIR="./tests"
 FAILED=0
 PASSED=0
 
-echo -e "${BOLD}${BLUE}🚀 Starting Functional JS Library Test Suite${NC}\n"
+# Support custom all_in_one.js location via argument or environment variable
+# Usage: ./test.sh [path/to/all_in_one.js]
+# Or: ALL_IN_ONE=path/to/all_in_one.js ./test.sh
+ALL_IN_ONE="${1:-${ALL_IN_ONE:-./all_in_one.js}}"
+export ALL_IN_ONE
+
+echo -e "${BOLD}${BLUE}🚀 Starting Functional JS Library Test Suite${NC}"
+echo -e "   Using: ${YELLOW}$ALL_IN_ONE${NC}\n"
 
 # Check if tests directory exists
 if [ ! -d "$TESTS_DIR" ]; then

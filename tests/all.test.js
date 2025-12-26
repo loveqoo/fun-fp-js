@@ -1,4 +1,6 @@
-const funFpJs = require('../all_in_one.js');
+// Use ALL_IN_ONE env var for custom path, default to ../all_in_one.js
+const ALL_IN_ONE_PATH = process.env.ALL_IN_ONE || '../all_in_one.js';
+const funFpJs = require(ALL_IN_ONE_PATH);
 const $fp = funFpJs({ log: () => { } }); // Disable logs for testing
 
 const { core, either, monoid, free, extra } = $fp;
