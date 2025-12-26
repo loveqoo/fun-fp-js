@@ -10,7 +10,7 @@ const $core = (dependencies = {}) => {
             case 'string': return 'string';
             case 'symbol': return 'symbol';
             case 'function': return 'function';
-            case 'object': return a === null ? 'null' : (a.constructor?.name || 'object')
+            case 'object': return a === null ? 'null' : ((a.constructor && a.constructor.name) || 'object')
             default: return 'unknown';
         }
     };
@@ -156,7 +156,9 @@ const $core = (dependencies = {}) => {
         assertFunctions['pipe'](...fs);
         return x => fs.reduce((acc, f) => f(acc), x);
     };
+    const pipe2 = (f, g) => pipe(f, g);
     const compose = (...fs) => pipe(...fs.slice().reverse());
+    const compose2 = (f, g) => compose(f, g);
     const once = f => {
         assertFunctions['once'](f);
         let called = false, result;
@@ -200,7 +202,7 @@ const $core = (dependencies = {}) => {
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
             partial, predicate, negate, flip, flip2, flipC,
-            pipe, compose, once, converge, catch: runCatch, runOrDefault, capture,
+            pipe, pipe2, compose, compose2, once, converge, catch: runCatch, runOrDefault, capture,
             tap, also, into, useOrLift, useArrayOrLift, range, rangeBy,
         },
     };

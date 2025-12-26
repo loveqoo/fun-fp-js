@@ -25,10 +25,10 @@ const $monoid = (dependencies = {}) => {
             merge: monoid(core.isPlainObject, (a, b) => ({ ...a, ...b }), {}),
         },
         function: {
-            endo: monoid(core.isFunction, core.compose, core.identity),
+            endo: monoid(core.isFunction, core.compose2, core.identity),
         },
         any: {
-            first: monoid(_ => true, (a, _) => a, null),
+            first: monoid(_ => true, (a, b) => a === null ? b : a, null),
             last: monoid(_ => true, (_, b) => b, null),
         },
     };

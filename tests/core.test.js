@@ -317,3 +317,169 @@ test('useArrayOrLift - non-array', () => {
     assertEquals(core.useArrayOrLift(42), [42]);
     assertEquals(core.useArrayOrLift([1, 2]), [1, 2]);
 });
+
+// === Tests migrated from also_variadic.test.js ===
+test('also - variadic (multiple side effect functions)', () => {
+    let count1 = 0;
+    let count2 = 0;
+    const spy1 = () => { count1++; };
+    const spy2 = () => { count2++; };
+    const data = { val: 42 };
+
+    const result = core.also(data)(spy1, spy2);
+    assertEquals(count1, 1, 'First side effect should execute');
+    assertEquals(count2, 1, 'Second side effect should execute');
+    assertEquals(result.val, 42, 'Original data should be returned');
+});
+
+// === Tests migrated from issues.test.js ===
+test('once - retry on failure', () => {
+    let count = 0;
+    const onceF = core.once(() => {
+        count++;
+        if (count === 1) throw new Error('First fail');
+        return 'Success';
+    });
+
+    // First call fails
+    try { onceF(); } catch (e) { /* expected */ }
+    assertEquals(count, 1, 'Should have been called once');
+
+    // Second call succeeds (retry allowed)
+    const result = onceF();
+    assertEquals(result, 'Success');
+    assertEquals(count, 2, 'Should have been called twice');
+
+    // Third call uses cached success
+    const thirdResult = onceF();
+    assertEquals(thirdResult, 'Success');
+    assertEquals(count, 2, 'Should not call again after success');
+});
+
+test('apply2 - strictness (exactly 2 args)', () => {
+    const add = (a, b) => a + b;
+    const applied = core.apply2(add);
+
+    // Should work with 2 elements
+    assertEquals(applied([1, 2]), 3);
+
+    // Should throw for 3 elements
+    try {
+        applied([1, 2, 3]);
+        assert(false, 'Should throw for 3 elements');
+    } catch (e) {
+        assert(e instanceof TypeError);
+    }
+
+    // Should throw for 1 element
+    try {
+        applied([1]);
+        assert(false, 'Should throw for 1 element');
+    } catch (e) {
+        assert(e instanceof TypeError);
+    }
+});
+
+// === Tests migrated from predicate_async.test.js ===
+test('predicate - async function protection', () => {
+    const asyncTrue = async () => true;
+    const p = core.predicate(asyncTrue, false);
+
+    const result = p();
+    // Should return fallback instead of Boolean(Promise) === true
+    assertEquals(result, false, 'Async predicate should return fallback');
+});
+
+// === Additional tests for missing functions ===
+test('raise - throws error', () => {
+    try {
+        core.raise(new Error('test error'));
+        assert(false, 'Should have thrown');
+    } catch (e) {
+        assertEquals(e.message, 'test error');
+    }
+});
+
+test('raise - throws TypeError', () => {
+    try {
+        core.raise(new TypeError('type error'));
+        assert(false, 'Should have thrown');
+    } catch (e) {
+        assert(e instanceof TypeError);
+    }
+});
+
+test('hasFunctions - checks function properties', () => {
+    const hasMap = core.hasFunctions([obj => obj.map]);
+
+    assert(hasMap([1, 2, 3]), 'Array has map');
+    assert(!hasMap({}), 'Empty object has no map');
+    assert(!hasMap(null), 'null has no map');
+    assert(!hasMap(undefined), 'undefined has no map');
+});
+
+test('hasFunctions - with custom check', () => {
+    const isArrayLike = core.hasFunctions(
+        [obj => obj.map, obj => obj.filter],
+        obj => Array.isArray(obj)
+    );
+
+    assert(isArrayLike([1, 2, 3]), 'Array is array-like');
+    assert(!isArrayLike({ map: x => x, filter: x => x }), 'Object with map/filter but not array');
+});
+
+test('pipe2 - composes two functions left-to-right', () => {
+    const add1 = x => x + 1;
+    const double = x => x * 2;
+
+    const fn = core.pipe2(add1, double);
+    assertEquals(fn(5), 12); // (5 + 1) * 2
+});
+
+test('compose2 - composes two functions right-to-left', () => {
+    const add1 = x => x + 1;
+    const double = x => x * 2;
+
+    const fn = core.compose2(add1, double);
+    assertEquals(fn(5), 11); // add1(double(5)) = 5*2 + 1
+});
+
+test('pipe2 vs compose2 - opposite order', () => {
+    const add1 = x => x + 1;
+    const double = x => x * 2;
+
+    // pipe2: left to right
+    assertEquals(core.pipe2(add1, double)(5), 12); // (5+1)*2
+
+    // compose2: right to left  
+    assertEquals(core.compose2(add1, double)(5), 11); // (5*2)+1
+});
+
+test('into - data-first pipe', () => {
+    const result = core.into(5)(
+        x => x + 1,
+        x => x * 2
+    );
+    assertEquals(result, 12); // (5 + 1) * 2
+});
+
+test('into - with multiple transformations', () => {
+    const result = core.into([1, 2, 3, 4, 5])(
+        arr => arr.filter(x => x % 2 === 1),
+        arr => arr.map(x => x * 2),
+        arr => arr.reduce((a, b) => a + b, 0)
+    );
+    assertEquals(result, 18); // [1,3,5] -> [2,6,10] -> 18
+});
+
+test('into - empty pipeline returns identity', () => {
+    assertEquals(core.into(42)(), 42);
+});
+
+test('Types - symbols are unique', () => {
+    assert(typeof core.Types.Functor === 'symbol');
+    assert(typeof core.Types.Applicative === 'symbol');
+    assert(typeof core.Types.Monad === 'symbol');
+    assert(core.Types.Functor !== core.Types.Applicative);
+    assert(core.Types.Applicative !== core.Types.Monad);
+});
