@@ -707,13 +707,60 @@ const { stackSafe, runSync, trampoline } = free;
 
 ---
 
-### 5. `extra` - Practical Utilities (~15 lines)
+### 5. `extra` - Practical Utilities (~20 lines)
 
 Practical tools built using the base functional modules.
 
+#### path: Safe Object Property Access
+
+Navigate nested objects safely, returning `Either` for error handling.
+
+```javascript
+const lib = require('./index.js')();
+const { extra } = lib;
+const { path } = extra;
+
+const data = {
+    user: {
+        name: 'Anthony',
+        address: { city: 'Seoul' }
+    }
+};
+
+// Single key
+path('name')({ name: 'Bob' });
+// Right('Bob')
+
+// Nested access with dot notation
+path('user.address.city')(data);
+// Right('Seoul')
+
+// Missing key returns Left
+path('user.phone')(data);
+// Left([Error])
+
+// Null-safe
+path('name')(null);
+// Left([Error])
+
+// Falsy values (0, false, '') are preserved
+path('count')({ count: 0 });
+// Right(0)
+
+// Whitespace around dots is trimmed
+path(' user . name ')(data);
+// Right('Anthony')
+
+// Chain with Either operations
+path('user.age')(data)
+    .filter(age => age >= 18, () => 'Too young')
+    .map(age => `Adult: ${age}`)
+    .fold(console.error, console.log);
+```
+
 #### template: Safe String Interpolation
 
-Uses `Either` internally to safely navigate nested objects.
+Uses `path` internally to safely navigate nested objects.
 
 ```javascript
 const lib = require('./index.js')();

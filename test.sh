@@ -16,6 +16,8 @@ PASSED=0
 # Usage: ./test.sh [path/to/all_in_one.js]
 # Or: ALL_IN_ONE=path/to/all_in_one.js ./test.sh
 ALL_IN_ONE="${1:-${ALL_IN_ONE:-./all_in_one.js}}"
+# Convert to absolute path for tests running in subdirectories
+ALL_IN_ONE="$(cd "$(dirname "$ALL_IN_ONE")" && pwd)/$(basename "$ALL_IN_ONE")"
 export ALL_IN_ONE
 
 echo -e "${BOLD}${BLUE}🚀 Starting Functional JS Library Test Suite${NC}"

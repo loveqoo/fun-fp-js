@@ -321,7 +321,7 @@ function build() {
     'use strict';
     var funFpJs = function(dependencies) {
         dependencies = dependencies || {};
-        var log = typeof dependencies.log === 'function' ? dependencies.log : console.log;
+        var log = dependencies.enableLog === false ? function(){} : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
 `;
 
     // Build RETURN_STATEMENT dynamically from module exports

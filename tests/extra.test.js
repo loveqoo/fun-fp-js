@@ -4,6 +4,55 @@ const { extra } = lib;
 const { test, assert, assertEquals } = require('./utils.js');
 console.log('🚀 Starting modules/extra.js tests...\n');
 
+// === path ===
+test('path - dot notation', () => {
+    const data = { user: { address: { city: 'Seoul' } } };
+    const result = extra.path('user.address.city')(data);
+    assert(result.isRight(), 'should be Right');
+    assertEquals(result.getOrElse(null), 'Seoul');
+});
+
+test('path - single key', () => {
+    const result = extra.path('name')({ name: 'Bob' });
+    assert(result.isRight(), 'should be Right');
+    assertEquals(result.getOrElse(null), 'Bob');
+});
+
+test('path - missing intermediate key returns Left', () => {
+    const data = { user: {} };
+    const result = extra.path('user.address.city')(data);
+    assert(result.isLeft(), 'should be Left');
+});
+
+test('path - with spaces around dots', () => {
+    const data = { user: { name: 'Charlie' } };
+    const result = extra.path(' user . name ')(data);
+    assert(result.isRight(), 'should be Right');
+    assertEquals(result.getOrElse(null), 'Charlie');
+});
+
+test('path - missing key returns Left', () => {
+    const result = extra.path('user.missing')({ user: {} });
+    assert(result.isLeft(), 'should be Left');
+});
+
+test('path - null data returns Left', () => {
+    const result = extra.path('name')(null);
+    assert(result.isLeft(), 'should be Left');
+});
+
+test('path - falsy value 0', () => {
+    const result = extra.path('count')({ count: 0 });
+    assert(result.isRight(), 'should be Right');
+    assertEquals(result.getOrElse(null), 0);
+});
+
+test('path - falsy value false', () => {
+    const result = extra.path('flag')({ flag: false });
+    assert(result.isRight(), 'should be Right');
+    assertEquals(result.getOrElse(null), false);
+});
+
 // === Basic template ===
 test('template - simple key', () => {
     const result = extra.template('Hello, {{name}}!', { name: 'World' });

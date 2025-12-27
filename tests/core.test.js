@@ -1,5 +1,5 @@
 const $core = require('../modules/core.js');
-const { core } = $core();
+const { core } = $core({ enableLog: false });
 
 const { test, assert, assertEquals } = require('./utils.js');
 console.log('🚀 Starting modules/core.js tests...\n');
