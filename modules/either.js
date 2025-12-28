@@ -1,13 +1,13 @@
 const $either = (dependencies = {}) => {
     const { core } = dependencies.$core;
     const assertFunctions = {
-        'fold': core.assertFunction('fold', 'a function'),
-        'eitherCatch': core.assertFunction('eitherCatch', 'a function'),
-        'validate0': core.assertFunction('validate', 'condition to be a function'),
-        'validate1': core.assertFunction('onError to be a function'),
-        'pipeK': core.assertFunction('pipeK', 'all arguments to be functions'),
-        'traverse': core.assertFunction('traverse', 'a function'),
-        'traverseAll': core.assertFunction('traverseAll', 'a function'),
+        'either_fold': core.assertFunction('Either.fold', 'a function'),
+        'either_catch': core.assertFunction('either.catch', 'a function'),
+        'either_validate_condition': core.assertFunction('either.validate', 'condition to be a function'),
+        'either_validate_on_error': core.assertFunction('either.validate', 'onError to be a function'),
+        'either_pipe_k': core.assertFunction('either.pipeK', 'all arguments to be functions'),
+        'either_traverse': core.assertFunction('either.traverse', 'a function'),
+        'either_traverse_all': core.assertFunction('either.traverseAll', 'a function'),
     };
     class Left {
         constructor(value) {
@@ -21,7 +21,7 @@ const $either = (dependencies = {}) => {
         mapLeft(f) { return core.compose(left, core.catch(f, core.identity))(this.value); }
         flatMap() { return this; }
         filter() { return this; }
-        fold(onLeft, _) { return assertFunctions['fold'](onLeft)[0](this.value); }
+        fold(onLeft, _) { return assertFunctions['either_fold'](onLeft)[0](this.value); }
         ap(v) { return (v instanceof Left && hasConcat(this.value) && hasConcat(v.value)) ? left(this.value.concat(v.value)) : this; }
         getOrElse(v) { return v; }
         isLeft() { return true; }
@@ -40,7 +40,7 @@ const $either = (dependencies = {}) => {
         mapLeft() { return this; }
         flatMap(f) { return core.catch(core.compose(checkEither, f), left)(this.value); }
         filter(f, onError = () => 'filter: core.predicate failed') { return core.predicate(f)(this.value) ? this : core.catch(core.compose(left, onError), left)(this.value); }
-        fold(_, onRight) { return assertFunctions['fold'](onRight)[0](this.value); }
+        fold(_, onRight) { return assertFunctions['either_fold'](onRight)[0](this.value); }
         /**
          * Apply the function wrapped in Right to another Either.
          * Throws TypeError if this.value is not a function (Developer Error).
@@ -62,7 +62,7 @@ const $either = (dependencies = {}) => {
         v instanceof Error ? v : new Error(typeof v === 'string' ? v : 'Left Error', { cause: v })
     ));
     const right = x => new Right(x);
-    const eitherCatch = (f, lift = right) => core.catch(core.compose(lift, assertFunctions['eitherCatch'](f)[0]), left);
+    const eitherCatch = (f, lift = right) => core.catch(core.compose(lift, assertFunctions['either_catch'](f)[0]), left);
     const _from = (checkNull, name = 'from') => x => {
         if (checkNull && (x === null || x === undefined)) return left(new Error(`${name}: expected a value, got ${x}`));
         if (x instanceof Left || x instanceof Right) return x;
@@ -71,8 +71,8 @@ const $either = (dependencies = {}) => {
     const from = _from(false);
     const fromNullable = _from(true, 'fromNullable');
     const validate = (condition, onError) => {
-        assertFunctions['validate0'](condition);
-        assertFunctions['validate1'](onError);
+        assertFunctions['either_validate_condition'](condition);
+        assertFunctions['either_validate_on_error'](onError);
         return x => core.predicate(condition)(x) ? right(x) : core.catch(core.compose(left, onError), left)(x);
     };
     const validateAll = list => core.useArrayOrLift(list).reduce((acc, x) => {
@@ -96,15 +96,15 @@ const $either = (dependencies = {}) => {
     };
     const pipeK = (...fs) => {
         if (fs.length === 0) return from;
-        assertFunctions['pipeK'](...fs);
+        assertFunctions['either_pipe_k'](...fs);
         return (x, lift = from) => fs.reduce((acc, f) => acc.flatMap(f), lift(x));
     };
     const traverse = f => {
-        assertFunctions['traverse'](f);
+        assertFunctions['either_traverse'](f);
         return list => sequence(core.useArrayOrLift(list).map(f));
     };
     const traverseAll = f => {
-        assertFunctions['traverseAll'](f);
+        assertFunctions['either_traverse_all'](f);
         return list => validateAll(core.useArrayOrLift(list).map(f));
     };
     return {

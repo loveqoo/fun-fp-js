@@ -159,14 +159,16 @@ const $core = (dependencies = {}) => {
     const pipe2 = (f, g) => pipe(f, g);
     const compose = (...fs) => pipe(...fs.slice().reverse());
     const compose2 = (f, g) => compose(f, g);
-    const once = f => {
+    const once = (f, option = {}) => {
         assertFunctions['once'](f);
-        let called = false, result;
+        const state = option.state || { called: false };
+        const defaultValue = option.defaultValue;
+        let result = defaultValue;
         return (...args) => {
-            if (!called) {
-                const val = f(...args);
+            if (!state.called) {
+                const val = f(...args);  // 예외 발생 시 called가 true가 되지 않음
                 result = val;
-                called = true;
+                state.called = true;
             }
             return result;
         };

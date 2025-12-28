@@ -8,12 +8,13 @@ A lightweight, dependency-free functional programming library for JavaScript.
 
 - 🎯 **Functional Core** - `pipe`, `compose`, `curry`, and more
 - 🛡️ **Either Monad** - Safe error handling without try-catch
+- ⏳ **Task Monad** - Lazy asynchronous operations (async Either)
 - 🔢 **Monoid/Group** - Algebraic structures for composable operations
 - 🔄 **Free Monad & Stack-Safe Engine** - Computation as data + re-entrancy protection
 - 📝 **Template Engine** - Safe, nested object string interpolation
 - 🏷️ **Type Protocol** - Symbol-based type class markers
 - 📦 **Zero Dependencies** - Pure JavaScript
-- 🪶 **Lightweight** - ~450 lines total
+- 🪶 **Lightweight** - ~500 lines total
 
 ## Installation
 
@@ -21,7 +22,7 @@ A lightweight, dependency-free functional programming library for JavaScript.
 const lib = require('./index.js')();
 
 // The library is organized into namespaces:
-const { core, either, monoid, free, extra } = lib;
+const { core, either, task, monoid, free, extra } = lib;
 
 // Or with custom logger
 const libWithLog = require('./index.js')({ log: myLogger });
@@ -707,7 +708,160 @@ const { stackSafe, runSync, trampoline } = free;
 
 ---
 
-### 5. `extra` - Practical Utilities (~20 lines)
+### 5. `task` - Lazy Async Monad (~120 lines)
+
+Task represents a lazy asynchronous computation - like a Promise, but:
+- **Lazy**: Nothing runs until `.run()` is called
+- **Error Accumulation**: Like Either, errors are arrays for validation patterns
+- **Pure**: Same input always produces same output (referential transparency)
+
+#### Creating Tasks
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+// Direct creation
+task.resolved(42);              // Task that resolves to 42
+task.rejected('error');         // Task that rejects with error
+
+// From existing value
+task.of(100);                   // Same as resolved
+
+// From Promise-returning function
+const fetchUser = task.fromPromise(id => fetch(`/api/users/${id}`).then(r => r.json()));
+fetchUser(1).run(console.error, console.log);
+
+// From Either
+task.fromEither(either.right(10)); // Task resolving to 10
+```
+
+#### Running Tasks
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+// Tasks are lazy - must call run() to execute
+task.resolved(42).run(
+    errors => console.error('Failed:', errors),
+    value => console.log('Success:', value)
+);
+// Logs: "Success: 42"
+
+// Convert to Promise
+const result = await task.resolved(42).toPromise();
+// result: 42
+
+// Convert to Either (via callback)
+task.resolved(42).toEither(e => console.log(e));
+// Logs: Right(42)
+```
+
+#### Functor: map
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+task.resolved(5)
+    .map(x => x * 2)
+    .map(x => x + 1)
+    .run(console.error, console.log);
+// Logs: 11
+```
+
+#### Monad: flatMap
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+const fetchUser = id => task.resolved({ id, name: 'John' });
+const fetchPosts = user => task.resolved([{ title: 'Hello', author: user.name }]);
+
+task.resolved(1)
+    .flatMap(fetchUser)
+    .flatMap(fetchPosts)
+    .run(console.error, console.log);
+// Logs: [{ title: 'Hello', author: 'John' }]
+```
+
+#### Applicative: ap (Parallel with Error Accumulation)
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+const validateName = name => 
+    name?.length > 0 ? task.resolved(name) : task.rejected('Name required');
+
+const validateAge = age => 
+    age > 0 ? task.resolved(age) : task.rejected('Age must be positive');
+
+const createUser = name => age => ({ name, age });
+
+task.resolved(createUser)
+    .ap(validateName(''))
+    .ap(validateAge(-1))
+    .run(
+        errors => console.log('Errors:', errors.length), // 2 errors
+        user => console.log('User:', user)
+    );
+```
+
+#### fold: Transform Both Paths
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+task.rejected('oops')
+    .fold(
+        errors => 'Recovered: ' + errors[0].message,
+        value => 'Success: ' + value
+    )
+    .run(console.error, console.log);
+// Logs: "Recovered: oops"
+```
+
+#### Combinators: all, race, sequence, traverse
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+// all: Run in parallel, collect all results (or accumulate errors)
+task.all([
+    task.resolved(1),
+    task.resolved(2),
+    task.resolved(3)
+]).run(console.error, console.log);
+// Logs: [1, 2, 3]
+
+// race: First to complete wins
+task.race([
+    task.resolved('fast'),
+    task.resolved('slow')
+]).run(console.error, console.log);
+// Logs: "fast"
+
+// sequence: Run in order
+task.sequence([
+    task.resolved(1),
+    task.resolved(2)
+]).run(console.error, console.log);
+// Logs: [1, 2]
+
+// traverse: Map then sequence
+task.traverse(x => task.resolved(x * 2))([1, 2, 3])
+    .run(console.error, console.log);
+// Logs: [2, 4, 6]
+```
+
+---
+
+### 6. `extra` - Practical Utilities (~20 lines)
 
 Practical tools built using the base functional modules.
 
@@ -994,6 +1148,28 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `free.suspend(fn)` | Trampoline: continue |
 | `free.trampoline(p)` | Create stack-safe function |
 
+### task.js (~120 lines)
+
+| Function/Method | Description |
+|-----------------|-------------|
+| `task.resolved(x)` | Create resolved Task |
+| `task.rejected(e)` | Create rejected Task (Error array) |
+| `task.of(x)` | Same as resolved |
+| `task.fromPromise(fn)` | Wrap Promise-returning function |
+| `task.fromEither(e)` | Convert Either to Task |
+| `task.all(tasks)` | Run in parallel, collect results |
+| `task.race(tasks)` | First to complete wins |
+| `task.sequence(tasks)` | Run in order |
+| `task.traverse(f)(list)` | Map then sequence |
+| `.map(f)` | Transform resolved value |
+| `.mapRejected(f)` | Transform rejected errors |
+| `.flatMap(f)` | Chain Task-returning function |
+| `.ap(task)` | Apply with error accumulation |
+| `.fold(onRejected, onResolved)` | Transform both paths |
+| `.run(onRejected, onResolved)` | Execute the Task |
+| `.toPromise()` | Convert to Promise |
+| `.toEither(callback)` | Convert to Either via callback |
+
 ### extra.js (~15 lines)
 
 | Function | Description |
@@ -1009,10 +1185,13 @@ const sumTree = trampoline(function sum(node, acc = 0) {
                            │
    ┌──────────────┬────────┴────────┬──────────────┐
    │              │                 │              │
-either.js     monoid.js          free.js        extra.js
- (Error)      (Algebra)          (Free)        (Utils)
+either.js     monoid.js          free.js        task.js
+ (Error)      (Algebra)          (Free)         (Async)
    │              │                 │              │
    └──────────────┴────────┬────────┴──────────────┘
+                           │
+                      extra.js
+                       (Utils)
                            │
                       index.js
                     (Entry Point)
@@ -1023,6 +1202,7 @@ either.js     monoid.js          free.js        extra.js
 | Type | Functor | Applicative | Monad |
 |------|---------|-------------|-------|
 | Left/Right | ✅ | ✅ | ✅ |
+| Task | ✅ | ✅ | ✅ |
 | Pure/Impure | ✅ | - | ✅ |
 | Thunk | ✅ | - | - |
 

@@ -13,6 +13,7 @@ This document serves as a context provider for AI agents to quickly understand t
     - `either.js`: `Either` (Left/Right) Monad for error handling and validation.
     - `monoid.js`: Monoid and Group implementations (Sum, Product, Any, All, etc.).
     - `free.js`: Free Monad and Trampoline for stack-safe recursion.
+    - `task.js`: `Task` Monad for lazy asynchronous operations (like async Either).
     - `extra.js`: High-level utilities like `path` and `template` engine.
 - `/tests`: Unified test suite.
     - `*.test.js`: Functional tests divided by feature.
@@ -29,6 +30,7 @@ This document serves as a context provider for AI agents to quickly understand t
 4. **Stack Safety**: Recursive operations are handled via `trampoline` and `Free` monad to prevent `RangeError`.
 5. **YAGNI (You Aren't Gonna Need It)**: State, Reader 등 추가 모나드는 실제로 필요할 때만 추가. 현재 `pipe`, `compose`, `converge` 등이 Reader의 역할을 충분히 수행.
 6. **Left는 항상 Error 배열**: Validation 패턴과 통합을 위해 모든 Left 값은 Error 배열로 정규화.
+7. **assertFunctions 키는 snake_case**: 빌드 시 네임스페이스 치환 충돌 방지. 예) `'either_fold'`, `'task_map'`, `'task_flat_map'`.
 
 ## 🔧 Build System
 - **빌드 명령**: `node build.js`
@@ -46,7 +48,12 @@ This document serves as a context provider for AI agents to quickly understand t
 - **테스트만 실행**: `./test.sh` (빌드 없이 `/modules` 기반 테스트)
 - **`test.sh`는 `all_in_one.js`를 절대 경로로 변환**하여 테스트 하위 디렉토리에서도 올바르게 참조.
 
-## 🔄 Current State (as of 2025-12-27)
+## 🔄 Current State (as of 2025-12-29)
+- **Task 모듈 추가**: `task.resolved`, `task.rejected`, `task.fromPromise` 등 lazy 비동기 작업 지원.
+- **Task.run**: `fork` 대신 `run`으로 명명. `task.resolved(42).run(onError, onSuccess)`.
+- **Task computation 검증**: `computation.length !== 2`이면 TypeError 발생.
+- **assertFunctions 키 snake_case 통일**: `'either_fold'`, `'task_map'`, `'task_flat_map'` 등 소문자와 밑줄만 사용.
+- **core.once 개선**: `option.state` 공유로 여러 함수 간 상태 공유 가능 (Task.race에서 활용).
 - **`enableLog` 옵션 추가**: `funFpJs({ enableLog: false })`로 내부 경고 로그 비활성화 가능.
 - **`path` 함수 추가 (extra 모듈)**: 문자열 경로로 객체에 안전하게 접근 (`path('user.name')(data)` → `Either`).
 - **Template Engine**: `path`를 내부적으로 사용하여 중첩 경로 지원.
