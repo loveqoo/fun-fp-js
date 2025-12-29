@@ -2,7 +2,7 @@
 
 A lightweight, dependency-free functional programming library for JavaScript.
 
-**~450 lines** of pure functional goodness.
+**~800 lines** of pure functional goodness.
 
 ## Features
 
@@ -14,7 +14,7 @@ A lightweight, dependency-free functional programming library for JavaScript.
 - 📝 **Template Engine** - Safe, nested object string interpolation
 - 🏷️ **Type Protocol** - Symbol-based type class markers
 - 📦 **Zero Dependencies** - Pure JavaScript
-- 🪶 **Lightweight** - ~500 lines total
+- 🪶 **Lightweight** - ~800 lines total
 
 ## Installation
 
