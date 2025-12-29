@@ -57,25 +57,25 @@ const $task = (dependencies = {}) => {
         }
         ap(taskValue) {
             return new Task((reject, resolve) => {
-                let fn = null, val = null, fnDone = false, valDone = false;
+                let f = null, a = null, fDone = false, aDone = false;
                 let errors = [];
 
                 const tryResolve = () => {
-                    if (fnDone && valDone) {
+                    if (fDone && aDone) {
                         errors.length > 0
                             ? reject(errors)
-                            : core.catch(() => resolve(fn(val)), rejectWith(reject))();
+                            : core.catch(() => resolve(f(a)), rejectWith(reject))();
                     }
                 };
 
                 this.computation(
-                    errs => { errors = errors.concat(errs); fnDone = true; tryResolve(); },
-                    f => { fn = f; fnDone = true; tryResolve(); }
+                    errs => { errors = errors.concat(errs); fDone = true; tryResolve(); },
+                    fn => { f = fn; fDone = true; tryResolve(); }
                 );
 
                 taskValue.computation(
-                    errs => { errors = errors.concat(errs); valDone = true; tryResolve(); },
-                    x => { val = x; valDone = true; tryResolve(); }
+                    errs => { errors = errors.concat(errs); aDone = true; tryResolve(); },
+                    x => { a = x; aDone = true; tryResolve(); }
                 );
             });
         }
