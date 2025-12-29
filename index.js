@@ -14,6 +14,8 @@ const $free = require('./modules/free.js');
 const $extra = require('./modules/extra.js');
 const $task = require('./modules/task.js');
 
+const cache = new Map();
+
 /**
  * Factory function to create the FP library instance
  * @param {Object} options - Configuration options
@@ -21,6 +23,9 @@ const $task = require('./modules/task.js');
  * @returns {Object} The FP library with func, either, monoid, and free modules
  */
 const funFpJs = (options = {}) => {
+    const key = JSON.stringify(options, (k, v) => typeof v === 'function' ? v.toString() : v);
+    if (cache.has(key)) return cache.get(key);
+
     const context = {
         log: typeof options.log === 'function' ? options.log : console.log
     };
@@ -36,7 +41,7 @@ const funFpJs = (options = {}) => {
     ];
 
     // Build the library context with strictly filtered dependency injection
-    return modules.reduce((acc, { key, factory, deps }) => {
+    const instance = modules.reduce((acc, { key, factory, deps }) => {
         // Only pick specified dependencies from the accumulated context
         const dependencies = deps.reduce((d, k) => ({ ...d, [k]: acc[k] }), {});
         const result = factory(dependencies);
@@ -47,6 +52,9 @@ const funFpJs = (options = {}) => {
             ...result      // Exposed to the user (core, either, etc.)
         };
     }, context);
+
+    cache.set(key, instance);
+    return instance;
 };
 
 // Export factory function

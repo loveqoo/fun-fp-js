@@ -326,8 +326,12 @@ function build() {
     }
 })(typeof self !== 'undefined' ? self : this, function() {
     'use strict';
+    var cache = new Map();
     var funFpJs = function(dependencies) {
         dependencies = dependencies || {};
+        var key = JSON.stringify(dependencies, function(k, v) { return typeof v === 'function' ? v.toString() : v; });
+        if (cache.has(key)) return cache.get(key);
+
         var log = dependencies.enableLog === false ? function(){} : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
 `;
 
@@ -352,9 +356,11 @@ function build() {
     }).filter(Boolean);
 
     const RETURN_STATEMENT = `
-        return {
+        var instance = {
 ${returnParts.join('\n')}
         };
+        cache.set(key, instance);
+        return instance;
     };
     return funFpJs;
 });

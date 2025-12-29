@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-29 23:51:59 (Asia/Seoul)
+ * Built: 2025-12-30 00:08:34 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -24,8 +24,12 @@
     }
 })(typeof self !== 'undefined' ? self : this, function() {
     'use strict';
+    var cache = new Map();
     var funFpJs = function(dependencies) {
         dependencies = dependencies || {};
+        var key = JSON.stringify(dependencies, function(k, v) { return typeof v === 'function' ? v.toString() : v; });
+        if (cache.has(key)) return cache.get(key);
+
         var log = dependencies.enableLog === false ? function(){} : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
 
         // ========== CORE ==========
@@ -733,7 +737,7 @@
                 return (x) => fs.reduce((acc, f) => acc.flatMap(f), Task.resolved(x));
             }
         }
-        return {
+        var instance = {
             core: {
                 Types, raise, typeOf, isFunction, isPlainObject, assertFunction, hasFunctions,
                 isFunctor, isApplicative, isMonad, identity, constant, tuple,
@@ -795,6 +799,8 @@
                 pipeK: Task.pipeK,
             },
         };
+        cache.set(key, instance);
+        return instance;
     };
     return funFpJs;
 });
