@@ -8,17 +8,17 @@ const $free = (dependencies = {}) => {
         return (...args) => {
             if (active) return onReentry(...args);
             active = true;
-            try {
-                const result = runner(f(...args));
-                if (result instanceof Promise || (result && typeof result.then === 'function')) {
-                    return result.finally(() => { active = false; });
-                }
-                active = false;
-                return result;
-            } catch (e) {
-                active = false;
-                throw e;
-            }
+            return core.catch(
+                () => {
+                    const result = runner(f(...args));
+                    if (result instanceof Promise || (result && typeof result.then === 'function')) {
+                        return result.finally(() => { active = false; });
+                    }
+                    active = false;
+                    return result;
+                },
+                e => { active = false; throw e; }
+            )();
         };
     };
     class Free {

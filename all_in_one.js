@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-29 17:29:23 (Asia/Seoul)
+ * Built: 2025-12-29 17:38:25 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -453,17 +453,17 @@
             return (...args) => {
                 if (active) return onReentry(...args);
                 active = true;
-                try {
-                    const result = runner(f(...args));
-                    if (result instanceof Promise || (result && typeof result.then === 'function')) {
-                        return result.finally(() => { active = false; });
-                    }
-                    active = false;
-                    return result;
-                } catch (e) {
-                    active = false;
-                    throw e;
-                }
+                return runCatch(
+                    () => {
+                        const result = runner(f(...args));
+                        if (result instanceof Promise || (result && typeof result.then === 'function')) {
+                            return result.finally(() => { active = false; });
+                        }
+                        active = false;
+                        return result;
+                    },
+                    e => { active = false; throw e; }
+                )();
             };
         };
         class Free {
