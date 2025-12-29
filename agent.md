@@ -18,9 +18,9 @@ This document serves as a context provider for AI agents to quickly understand t
 - `/tests`: Unified test suite.
     - `*.test.js`: Functional tests divided by feature.
     - `utils.js`: Shared test utilities (`test`, `assert`, `assertEquals`, `logAssert`).
-- `all_in_one.js`: A consolidated, single-file UMD build of the entire library.
+- `all_in_one.cjs`: A consolidated, single-file UMD build of the entire library.
 - `index.js`: Entry point that initializes the library (uses `/modules` directly).
-- `build.js`: Build script that consolidates modules into `all_in_one.js`.
+- `build.js`: Build script that consolidates modules into `all_in_one.cjs`.
 - `test.sh`: Bash script runner that auto-detects and executes all `*.test.js` files.
 
 ## 🛠 Technical Principles
@@ -40,13 +40,13 @@ This document serves as a context provider for AI agents to quickly understand t
   3. 네임스페이스 치환 (`core.xxx` → `xxx`)
   4. UMD 래핑 + 빌드 타임스탬프
   5. **자동 테스트 실행** (`test.sh` 호출)
-  6. 테스트 성공 시 `all_in_one.js`로 복사, 실패 시 빌드 중단
+  6. 테스트 성공 시 `all_in_one.cjs`로 복사, 실패 시 빌드 중단
 
 - **중요**: `build.js`의 `UMD_HEADER` 템플릿과 `modules/core.js`의 초기화 코드가 동기화 필요.
   예) `enableLog` 옵션은 `UMD_HEADER`에도 반영해야 함.
 
 - **테스트만 실행**: `./test.sh` (빌드 없이 `/modules` 기반 테스트)
-- **`test.sh`는 `all_in_one.js`를 절대 경로로 변환**하여 테스트 하위 디렉토리에서도 올바르게 참조.
+- **`test.sh`는 `all_in_one.cjs`를 절대 경로로 변환**하여 테스트 하위 디렉토리에서도 올바르게 참조.
 
 ## 🔄 Current State (as of 2025-12-29)
 - **Class-based Static Methods**: `Either`, `Free`, `Task` 클래스에 static 메소드 추가 (Promise 패턴과 유사).

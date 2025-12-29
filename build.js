@@ -17,7 +17,7 @@ const path = require('path');
 const MODULES_DIR = path.join(__dirname, 'modules');
 const BUILD_DIR = path.join(__dirname, 'build');
 const PARTS_DIR = path.join(BUILD_DIR, 'parts');
-const OUTPUT_FILE = path.join(BUILD_DIR, 'all_in_one.js');
+const OUTPUT_FILE = path.join(BUILD_DIR, 'all_in_one.cjs');
 
 // Module order (dependencies first)
 const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'extra', 'task'];
@@ -229,7 +229,7 @@ function generateAssertFunctions(allAsserts) {
  * Main build function
  */
 function build() {
-    console.log('🔧 Building all_in_one.js...\n');
+    console.log('🔧 Building all_in_one.cjs...\n');
 
     // Create directories
     if (!fs.existsSync(BUILD_DIR)) fs.mkdirSync(BUILD_DIR);
@@ -360,7 +360,7 @@ ${returnParts.join('\n')}
 });
 
 // ESM interop: allow default import in ES Modules
-// Usage: import funFpJs from './all_in_one.js';
+// Usage: import funFpJs from './all_in_one.cjs';
 if (typeof module !== 'undefined' && module.exports) {
     module.exports.default = module.exports;
 }
@@ -399,7 +399,7 @@ function runTests() {
  * Copy built file to root
  */
 function copyToRoot() {
-    const ROOT_FILE = path.join(__dirname, 'all_in_one.js');
+    const ROOT_FILE = path.join(__dirname, 'all_in_one.cjs');
     fs.copyFileSync(OUTPUT_FILE, ROOT_FILE);
     console.log(`\n📋 Copied to: ${ROOT_FILE}`);
 }

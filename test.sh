@@ -12,10 +12,10 @@ TESTS_DIR="./tests"
 FAILED=0
 PASSED=0
 
-# Support custom all_in_one.js location via argument or environment variable
-# Usage: ./test.sh [path/to/all_in_one.js]
-# Or: ALL_IN_ONE=path/to/all_in_one.js ./test.sh
-ALL_IN_ONE="${1:-${ALL_IN_ONE:-./all_in_one.js}}"
+# Support custom all_in_one.cjs location via argument or environment variable
+# Usage: ./test.sh [path/to/all_in_one.cjs]
+# Or: ALL_IN_ONE=path/to/all_in_one.cjs ./test.sh
+ALL_IN_ONE="${1:-${ALL_IN_ONE:-./all_in_one.cjs}}"
 # Convert to absolute path for tests running in subdirectories
 ALL_IN_ONE="$(cd "$(dirname "$ALL_IN_ONE")" && pwd)/$(basename "$ALL_IN_ONE")"
 export ALL_IN_ONE
