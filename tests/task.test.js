@@ -207,6 +207,76 @@ test('Task.toEither: 실패 시 Left', () => {
     assert(result.isLeft(), 'should be Left');
 });
 
+// ===================== fromPromise =====================
+
+test('task.fromPromise: Promise 성공 → resolved', async () => {
+    const fetchData = task.fromPromise(() => Promise.resolve(42));
+    let result = null;
+    fetchData().run(
+        err => { throw new Error('should not reject'); },
+        val => { result = val; }
+    );
+    // 비동기이므로 약간의 대기
+    await new Promise(r => setTimeout(r, 10));
+    assertEquals(result, 42);
+});
+
+test('task.fromPromise: Promise 실패 → rejected', async () => {
+    const fetchData = task.fromPromise(() => Promise.reject(new Error('fetch failed')));
+    let errors = null;
+    fetchData().run(
+        errs => { errors = errs; },
+        val => { throw new Error('should not resolve'); }
+    );
+    await new Promise(r => setTimeout(r, 10));
+    assert(Array.isArray(errors), 'should be error array');
+    assert(errors[0].message === 'fetch failed', 'should preserve error message');
+});
+
+test('task.fromPromise: 인자 전달', async () => {
+    const multiply = task.fromPromise((a, b) => Promise.resolve(a * b));
+    let result = null;
+    multiply(3, 4).run(
+        err => { throw new Error('should not reject'); },
+        val => { result = val; }
+    );
+    await new Promise(r => setTimeout(r, 10));
+    assertEquals(result, 12);
+});
+
+// ===================== toPromise =====================
+
+test('Task.toPromise: 성공 시 Promise resolve', async () => {
+    const result = await task.resolved(42).toPromise();
+    assertEquals(result, 42);
+});
+
+test('Task.toPromise: 실패 시 AggregateError로 reject', async () => {
+    try {
+        await task.rejected('error').toPromise();
+        assert(false, 'should have rejected');
+    } catch (err) {
+        assert(err instanceof AggregateError, 'should be AggregateError');
+        assertEquals(err.message, 'Task rejected');
+        assert(Array.isArray(err.errors), 'should have errors array');
+        assert(err.errors[0] instanceof Error, 'errors should contain Error instances');
+    }
+});
+
+test('Task.toPromise: 다중 에러 시 모든 에러 포함', async () => {
+    // ap로 에러 누적 후 toPromise
+    const taskFn = task.rejected('error1');
+    const taskVal = task.rejected('error2');
+
+    try {
+        await taskFn.ap(taskVal).toPromise();
+        assert(false, 'should have rejected');
+    } catch (err) {
+        assert(err instanceof AggregateError, 'should be AggregateError');
+        assertEquals(err.errors.length, 2, 'should contain both errors');
+    }
+});
+
 // ===================== all =====================
 
 test('task.all: 모든 Task 성공 시 결과 배열', () => {

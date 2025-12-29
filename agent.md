@@ -49,6 +49,16 @@ This document serves as a context provider for AI agents to quickly understand t
 - **`test.sh`는 `all_in_one.js`를 절대 경로로 변환**하여 테스트 하위 디렉토리에서도 올바르게 참조.
 
 ## 🔄 Current State (as of 2025-12-29)
+- **Class-based Static Methods**: `Either`, `Free`, `Task` 클래스에 static 메소드 추가 (Promise 패턴과 유사).
+  - `Either.of()`, `Either.left()`, `Either.right()`, `Either.from()`, `Either.fromNullable()`, `Either.catch()` 등
+  - `Free.of()`, `Free.pure()`, `Free.impure()`, `Free.isPure()`, `Free.isImpure()`, `Free.liftF()`, `Free.runSync()`, `Free.runAsync()`
+  - `Task.of()`, `Task.resolved()`, `Task.rejected()`, `Task.create()`, `Task.fromPromise()`, `Task.fromEither()`, `Task.all()`, `Task.race()`, `Task.sequence()`, `Task.traverse()`
+  - `Thunk.of()`, `Thunk.done()`, `Thunk.suspend()`
+- **Backward Compatibility**: 기존 함수형 API (`either.left`, `either.right` 등)는 static 메소드의 alias로 유지.
+- **빌드 시 네임스페이스 치환 규칙 변경**: `either.xxx` → `Either.xxx` (클래스 static 메소드로 변환).
+- **모듈 내부 헬퍼 함수 이름 충돌 방지**: 각 모듈별 고유 접두사 사용.
+  - `either.js`: `normalizeToError`, `toEitherErrorArray`
+  - `task.js`: `normalizeTaskError`, `toTaskErrorArray`
 - **Task 모듈 추가**: `task.resolved`, `task.rejected`, `task.fromPromise` 등 lazy 비동기 작업 지원.
 - **Task.run**: `fork` 대신 `run`으로 명명. `task.resolved(42).run(onError, onSuccess)`.
 - **Task computation 검증**: `computation.length !== 2`이면 TypeError 발생.

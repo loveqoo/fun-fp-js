@@ -26,7 +26,7 @@ const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'extra', 'task'];
 // Format: { 'namespace.function': 'replacement' }
 const SPECIAL_REPLACEMENTS = {
     'core.catch': 'runCatch',      // catch is reserved
-    'either.catch': 'eitherCatch', // naming conflict
+    'either.catch': 'Either.catch', // Either class static method
 };
 
 /**
@@ -205,8 +205,8 @@ function applyReplacements(body) {
     // core.xxx → xxx (except already handled special cases)
     result = result.replace(/\bcore\.(\w+)\b/g, '$1');
 
-    // either.xxx → xxx
-    result = result.replace(/\beither\.(\w+)\b/g, '$1');
+    // either.xxx → Either.xxx (class static methods)
+    result = result.replace(/\beither\.(\w+)\b/g, 'Either.$1');
 
     return result;
 }
