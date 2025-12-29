@@ -176,7 +176,7 @@ const $task = (dependencies = {}) => {
         }
         static traverse(f) { return list => Task.sequence(core.useArrayOrLift(list).map(f)); }
         static pipeK(...fs) {
-            fs.forEach(f => assertFunctions.task_pipe_k(f));
+            fs.forEach(f => assertFunctions['task_pipe_k'](f));
             if (fs.length === 0) return Task.resolved;
             return (x) => fs.reduce((acc, f) => acc.flatMap(f), Task.resolved(x));
         }
