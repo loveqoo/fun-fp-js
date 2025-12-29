@@ -617,22 +617,6 @@ Pure(value)     // Computation finished with value
 Impure(functor) // More computation to do
 ```
 
-#### Basic Usage
-
-```javascript
-const lib = require('./index.js')();
-const { free } = lib;
-const { pure, liftF, runSync } = free;
-
-// pure: wrap a value
-pure(5);  // Pure(5)
-
-// liftF: lift a Functor into Free
-// Example:
-// const myFunctor = { map: f => f(10), run: () => 10 };
-// liftF(myFunctor); // Impure(myFunctor)
-```
-
 #### Trampoline: Stack-Safe Recursion
 
 ```javascript
@@ -640,7 +624,7 @@ const lib = require('./index.js')();
 const { free } = lib;
 const { done, suspend, trampoline } = free;
 
-// done: computation finished (= pure)
+// done: computation finished
 // suspend: more computation (uses Thunk internally)
 
 // Define recursive function
@@ -672,38 +656,6 @@ const fib = trampoline((n, a = 0, b = 1) =>
 fib(10);   // 55
 fib(50);   // 12586269025
 fib(1000); // Works!
-```
-
-#### Custom Runner (Interpreter Pattern)
-
-```javascript
-const lib = require('./index.js')();
-const { free } = lib;
-const { runSync, runAsync, isImpure } = free;
-
-// runSync: synchronous execution with custom runner
-// Example:
-// const myRunner = functor => functor.run();
-// runSync(myRunner)(program);
-
-// stackSafe: Re-entrancy guard for infinite recursion
-// const safeFn = stackSafe(myRunner, originalFn);
-```
-
-#### Trampoline & StackSafe
-
-The `trampoline` function uses a `stackSafe` guard internally.
-
-```javascript
-const lib = require('./index.js')();
-const { free } = lib;
-const { stackSafe, runSync, trampoline } = free;
-
-// Manual stack safety guard
-// const safeRecursive = stackSafe(
-//     runSync(thunk => thunk.run()), // runner
-//     program                        // original function
-// )(program);
 ```
 
 ---
