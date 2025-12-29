@@ -52,7 +52,7 @@ This document serves as a context provider for AI agents to quickly understand t
 - **Class-based Static Methods**: `Either`, `Free`, `Task` 클래스에 static 메소드 추가 (Promise 패턴과 유사).
   - `Either.of()`, `Either.left()`, `Either.right()`, `Either.from()`, `Either.fromNullable()`, `Either.catch()` 등
   - `Free.of()`, `Free.pure()`, `Free.impure()`, `Free.isPure()`, `Free.isImpure()`, `Free.liftF()`, `Free.runSync()`, `Free.runAsync()`
-  - `Task.of()`, `Task.resolved()`, `Task.rejected()`, `Task.create()`, `Task.fromPromise()`, `Task.fromEither()`, `Task.all()`, `Task.race()`, `Task.sequence()`, `Task.traverse()`
+  - `Task.of()`, `Task.resolved()`, `Task.rejected()`, `Task.create()`, `Task.fromPromise()`, `Task.fromEither()`, `Task.all()`, `Task.race()`, `Task.sequence()`, `Task.traverse()`, `Task.pipeK()`
   - `Thunk.of()`, `Thunk.done()`, `Thunk.suspend()`
 - **Backward Compatibility**: 기존 함수형 API (`either.left`, `either.right` 등)는 static 메소드의 alias로 유지.
 - **빌드 시 네임스페이스 치환 규칙 변경**: `either.xxx` → `Either.xxx` (클래스 static 메소드로 변환).

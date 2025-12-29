@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-29 17:38:25 (Asia/Seoul)
+ * Built: 2025-12-29 22:32:30 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -90,6 +90,7 @@
             'task_flat_map': assertFunction('Task.flatMap', 'a function returning Task'),
             'task_run': assertFunction('Task.run', 'reject and resolve to be functions'),
             'task_from_promise': assertFunction('Task.fromPromise', 'a function returning Promise'),
+            'task_pipe_k': assertFunction('Task.pipeK', 'all arguments to be functions'),
         };
         const hasFunctions = (extracts, check = _ => true) => obj => obj && assertFunctions['hasFunction'](...extracts).every(extract => isFunction(extract(obj))) && check(obj);
         const runCatch = (f, onError = e => log(e)) => {
@@ -726,6 +727,11 @@
                 );
             }
             static traverse(f) { return list => Task.sequence(useArrayOrLift(list).map(f)); }
+            static pipeK(...fs) {
+                fs.forEach(f => assertFunctions.task_pipe_k(f));
+                if (fs.length === 0) return Task.resolved;
+                return (x) => fs.reduce((acc, f) => acc.flatMap(f), Task.resolved(x));
+            }
         }
         return {
             core: {
@@ -786,6 +792,7 @@
                 race: Task.race,
                 sequence: Task.sequence,
                 traverse: Task.traverse,
+                pipeK: Task.pipeK,
             },
         };
     };

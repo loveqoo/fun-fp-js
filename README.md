@@ -859,6 +859,40 @@ task.traverse(x => task.resolved(x * 2))([1, 2, 3])
 // Logs: [2, 4, 6]
 ```
 
+#### pipeK: Kleisli Composition
+
+Compose Task-returning functions — same pattern as `Either.pipeK`.
+
+```javascript
+const lib = require('./index.js')();
+const { task } = lib;
+
+const fetchUser = id => task.resolved({ id, name: 'John', profile: { avatar: 'pic.jpg' } });
+const getProfile = user => task.resolved(user.profile);
+const getAvatar = profile => task.resolved(profile.avatar);
+
+// Compose them elegantly
+const getAvatarById = task.pipeK(fetchUser, getProfile, getAvatar);
+
+getAvatarById(1).run(
+    errors => console.error('Failed:', errors),
+    avatar => console.log('Avatar:', avatar)
+);
+// Logs: "Avatar: pic.jpg"
+
+// Short-circuits on first failure
+const getAvatarSafe = task.pipeK(
+    id => id > 0 ? task.resolved({ id }) : task.rejected('Invalid ID'),
+    user => task.resolved(user.profile || null),
+    profile => profile?.avatar ? task.resolved(profile.avatar) : task.rejected('No avatar')
+);
+
+getAvatarSafe(-1).run(
+    errors => console.log('Errors:', errors.length), // 1
+    avatar => console.log(avatar)
+);
+```
+
 ---
 
 ### 6. `extra` - Practical Utilities (~20 lines)
@@ -1161,6 +1195,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `task.race(tasks)` | First to complete wins |
 | `task.sequence(tasks)` | Run in order |
 | `task.traverse(f)(list)` | Map then sequence |
+| `task.pipeK(...fs)` | Kleisli composition |
 | `.map(f)` | Transform resolved value |
 | `.mapRejected(f)` | Transform rejected errors |
 | `.flatMap(f)` | Chain Task-returning function |

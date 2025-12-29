@@ -363,6 +363,62 @@ test('task.traverse: 배열에 함수 적용 후 sequence', () => {
     assertEquals(JSON.stringify(result), '[2,4,6]');
 });
 
+// ===================== pipeK =====================
+
+test('task.pipeK - Task 반환 함수들을 Kleisli 합성', () => {
+    const parse = str => task.resolved(JSON.parse(str));
+    const getUser = data => task.resolved(data.user);
+    const getName = user => task.resolved(user.name);
+
+    const pipeline = task.pipeK(parse, getUser, getName);
+    let result = null;
+    pipeline('{"user":{"name":"Alice"}}').run(
+        err => { throw new Error('should not reject'); },
+        val => { result = val; }
+    );
+    assertEquals(result, 'Alice');
+});
+
+test('task.pipeK - 빈 함수 배열은 Task.resolved 반환', () => {
+    const pipeline = task.pipeK();
+    let result = null;
+    pipeline(42).run(
+        err => { throw new Error('should not reject'); },
+        val => { result = val; }
+    );
+    assertEquals(result, 42);
+});
+
+test('task.pipeK - 중간에 실패 시 단락 평가', () => {
+    const parse = str => {
+        try {
+            return task.resolved(JSON.parse(str));
+        } catch (e) {
+            return task.rejected(e);
+        }
+    };
+    const getUser = data => task.resolved(data.user);
+
+    const pipeline = task.pipeK(parse, getUser);
+    let errors = null;
+    pipeline('invalid json').run(
+        errs => { errors = errs; },
+        val => { throw new Error('should not resolve'); }
+    );
+    assert(errors !== null, 'should have errors');
+    assert(errors.length > 0, 'errors should not be empty');
+});
+
+test('task.pipeK - 함수가 아닌 인자 전달 시 에러', () => {
+    try {
+        task.pipeK(x => task.resolved(x), 'not a function');
+        assert(false, 'should have thrown');
+    } catch (e) {
+        assert(e instanceof TypeError);
+        assert(e.message.includes('Task.pipeK'));
+    }
+});
+
 // ===================== Lazy 특성 확인 =====================
 
 test('Task는 run 전까지 실행되지 않음 (lazy)', () => {

@@ -8,6 +8,7 @@ const $task = (dependencies = {}) => {
         'task_flat_map': core.assertFunction('Task.flatMap', 'a function returning Task'),
         'task_run': core.assertFunction('Task.run', 'reject and resolve to be functions'),
         'task_from_promise': core.assertFunction('Task.fromPromise', 'a function returning Promise'),
+        'task_pipe_k': core.assertFunction('Task.pipeK', 'all arguments to be functions'),
     };
     const normalizeTaskError = e => e instanceof Error ? e : new Error(String(e));
     const toTaskErrorArray = e => core.useArrayOrLift(e).map(normalizeTaskError);
@@ -174,6 +175,11 @@ const $task = (dependencies = {}) => {
             );
         }
         static traverse(f) { return list => Task.sequence(core.useArrayOrLift(list).map(f)); }
+        static pipeK(...fs) {
+            fs.forEach(f => assertFunctions.task_pipe_k(f));
+            if (fs.length === 0) return Task.resolved;
+            return (x) => fs.reduce((acc, f) => acc.flatMap(f), Task.resolved(x));
+        }
     }
     return {
         task: {
@@ -188,6 +194,7 @@ const $task = (dependencies = {}) => {
             race: Task.race,
             sequence: Task.sequence,
             traverse: Task.traverse,
+            pipeK: Task.pipeK,
         },
     };
 };
