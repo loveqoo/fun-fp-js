@@ -16,6 +16,21 @@ const $core = (dependencies = {}) => {
     };
     const isFunction = f => typeof f === 'function';
     const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
+    const isIterable = a => a != null && typeof a[Symbol.iterator] === 'function';
+    const toIterator = function* (iterable) {
+        if (iterable == null) return;
+        if (isIterable(iterable)) {
+            yield* iterable;
+        } else if (isPlainObject(iterable)) {
+            for (const key in iterable) {
+                if (Object.prototype.hasOwnProperty.call(iterable, key)) {
+                    yield iterable[key];
+                }
+            }
+        } else {
+            yield iterable;
+        }
+    };
     const assertFunction = (name, expected) => (...fs) => {
         const invalids = fs.map((f, i) => [i, f]).filter(([_, f]) => !isFunction(f)).map(([i, f]) => `argument ${i} is ${typeOf(f)}`);
         if (invalids.length > 0) raise(new TypeError(`${name}: expected ${expected}, but ${invalids.join(', ')}`));
@@ -200,7 +215,7 @@ const $core = (dependencies = {}) => {
     const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
     return {
         core: {
-            Types, raise, typeOf, isFunction, isPlainObject, assertFunction, hasFunctions,
+            Types, raise, typeOf, isFunction, isPlainObject, isIterable, toIterator, assertFunction, hasFunctions,
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
             partial, predicate, negate, flip, flip2, flipC,

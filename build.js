@@ -20,7 +20,7 @@ const PARTS_DIR = path.join(BUILD_DIR, 'parts');
 const OUTPUT_FILE = path.join(BUILD_DIR, 'all_in_one.cjs');
 
 // Module order (dependencies first)
-const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'extra', 'task'];
+const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'transducer', 'extra', 'task'];
 
 // Special case replacements (reserved words or naming conflicts)
 // Format: { 'namespace.function': 'replacement' }
@@ -145,6 +145,7 @@ function parseModule(content, moduleName) {
         const line = lines[bodyStart].trim();
         if (line.startsWith('const { core }') ||
             line.startsWith('const { either }') ||
+            line.startsWith('const { free }') ||
             line.startsWith('const log =') ||
             line === '') {
             bodyStart++;
@@ -207,6 +208,18 @@ function applyReplacements(body) {
 
     // either.xxx → Either.xxx (class static methods)
     result = result.replace(/\beither\.(\w+)\b/g, 'Either.$1');
+
+    // free.xxx → Free.xxx (class static methods, Free.pure, Free.of etc)
+    // Careful: free.Free -> Free.Free? No, free.Free refers to the class Free.
+    // In free.js: return { free: { Free, ... } }
+    // So "free.Free" means the Free class.
+    // In all_in_one, Free is the class name in scope.
+    // So free.Free -> Free.
+    result = result.replace(/\bfree\.Free\b/g, 'Free');
+
+    // free.xxx -> Free.xxx (for other static methods if accessed via free module object)
+    // But since we use free.Free.isPure, replacing free.Free -> Free covers it (Free.isPure).
+    result = result.replace(/\bfree\.(\w+)\b/g, 'Free.$1');
 
     return result;
 }

@@ -6,6 +6,8 @@ This document serves as a context provider for AI agents to quickly understand t
 **Fun-FP-JS** is a robust, production-grade JavaScript functional programming library. It focuses on providing core FP utilities, algebraic data types (Monads, Monoids), and safe execution patterns (Trampolining, Error handling) with a strong preference for **point-free style** and **lazy evaluation**.
 
 **Key Philosophy**: TypeScript를 사용하지 않는 이유는 빌드 없이 바로 사용할 수 있는 접근성을 중시하기 때문. 런타임 타입 안전성은 `assertFunction`과 Symbol 기반 타입 태깅으로 확보.
+**Language Preference**: 모든 계획(Plan)과 문서는 **한국어**로 작성한다.
+
 
 ## 📂 Folder Structure
 - `/modules`: Core logic separated by domain.
@@ -14,6 +16,7 @@ This document serves as a context provider for AI agents to quickly understand t
     - `monoid.js`: Monoid and Group implementations (Sum, Product, Any, All, etc.).
     - `free.js`: Free Monad and Trampoline for stack-safe recursion.
     - `task.js`: `Task` Monad for lazy asynchronous operations (like async Either).
+    - `transducer.js`: Efficient data processing (map/filter/take) without intermediate arrays.
     - `extra.js`: High-level utilities like `path` and `template` engine.
 - `/tests`: Unified test suite.
     - `*.test.js`: Functional tests divided by feature.
@@ -70,6 +73,11 @@ This document serves as a context provider for AI agents to quickly understand t
 - **Unified Testing**: 모든 테스트는 `/tests/*.test.js`로 통합.
 - **Retry Mechanism**: `once` utility correctly handles failures, allowing retry on exception while caching only successful results.
 - **Strict Validation**: `apply2` and similar utilities enforce strict argument counting.
+- **Transducers**: `transducer.js` added for efficient data processing.
+  - Implemented as a **Class** (`Transducer`) acting as both namespace and `Reduced` signal.
+  - **No external dependency** on `free` module (self-contained).
+  - Supports `Iterator` protocol for infinite stream processing.
+  - Export pattern: `{ transducer: { Transducer, map, filter, ... } }`.
 
 ## 📝 Guidelines for Future Tasks
 - **빌드 전 테스트**: `./test.sh`로 먼저 확인 후 `node build.js` 실행.

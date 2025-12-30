@@ -847,7 +847,90 @@ getAvatarSafe(-1).run(
 
 ---
 
-### 6. `extra` - Practical Utilities (~20 lines)
+### 6. `transducer` - Efficient Data Processing (~70 lines)
+
+Transducers allow you to compose data transformations (`map`, `filter`, `take`) independently of the data source, processing elements one by one without creating intermediate arrays.
+
+#### Core Concept
+
+Traditional chaining creates an intermediate array for each step:
+`[1..1000000] .map(...) .filter(...) .take(5)` -> creates 3 huge arrays.
+
+Transducers do it in **one pass**, and stop early:
+`[1..1000000] -> xform -> result` (stops after 5 items).
+
+#### Basic Usage
+
+```javascript
+const lib = require('./index.js')();
+const { transducer, monoid, core } = lib;
+const { map, filter, take, into } = transducer;
+const { compose, range } = core;
+
+// 1. Define transformation
+const xform = compose(
+    filter(x => x % 2 === 0), // Keep evens
+    map(x => x * 10),         // Multiply by 10
+    take(3)                   // Take first 3
+);
+
+// 2. Run with 'into' (Source -> Transformation -> Collection)
+const data = range(10); // [0, 1, 2, ..., 9]
+const result = into(monoid.array.concat, xform, data);
+
+// Execution trace:
+// 0 -> even? yes -> *10 = 0  -> take 1 (0)   -> push [0]
+// 1 -> even? no
+// 2 -> even? yes -> *10 = 20 -> take 2 (20)  -> push [0, 20]
+// 3 -> even? no
+// 4 -> even? yes -> *10 = 40 -> take 3 (40)  -> push [0, 40] -> DONE (Early Termination)
+
+console.log(result); // [0, 20, 40]
+```
+
+#### Infinite Streams
+
+Transducers + Iterators = ❤️
+
+```javascript
+function* infinite() {
+    let i = 0;
+    while(true) yield i++;
+}
+
+const res = into(
+    monoid.array.concat,
+    take(5),
+    infinite()
+);
+// [0, 1, 2, 3, 4]
+```
+
+#### Custom Monoids
+
+You can transduce into *any* Monoid, not just arrays.
+
+```javascript
+// Sum of first 5 numbers
+const sum = into(
+    monoid.number.sum, // Fold with Sum Monoid
+    take(5),
+    infinite()
+);
+// 10 (0+1+2+3+4)
+
+// Build a string
+const str = into(
+    monoid.string.concat,
+    compose(map(x => x + '-'), take(3)),
+    ['a', 'b', 'c', 'd']
+);
+// "a-b-c-"
+```
+
+---
+
+### 7. `extra` - Practical Utilities (~20 lines)
 
 Practical tools built using the base functional modules.
 
@@ -1156,6 +1239,17 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `.run(onRejected, onResolved)` | Execute the Task |
 | `.toPromise()` | Convert to Promise |
 | `.toEither(callback)` | Convert to Either via callback |
+
+### transducer.js (~70 lines)
+
+| Method (Static) | Description |
+|-----------------|-------------|
+| `Transducer.map(f)` | Transform values |
+| `Transducer.filter(p)` | Filter values |
+| `Transducer.take(n)` | Take first n values (Reduced) |
+| `Transducer.into(M, xform, data)` | Transduce data into Monoid M |
+| `Transducer.transduce(...)` | Low-level execution |
+| `Transducer.reduced(val)` | Signal early termination |
 
 ### extra.js (~15 lines)
 

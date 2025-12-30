@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-30 00:08:34 (Asia/Seoul)
+ * Built: 2025-12-31 00:50:53 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -49,6 +49,21 @@
         };
         const isFunction = f => typeof f === 'function';
         const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
+        const isIterable = a => a != null && typeof a[Symbol.iterator] === 'function';
+        const toIterator = function* (iterable) {
+            if (iterable == null) return;
+            if (isIterable(iterable)) {
+                yield* iterable;
+            } else if (isPlainObject(iterable)) {
+                for (const key in iterable) {
+                    if (Object.prototype.hasOwnProperty.call(iterable, key)) {
+                        yield iterable[key];
+                    }
+                }
+            } else {
+                yield iterable;
+            }
+        };
         const assertFunction = (name, expected) => (...fs) => {
             const invalids = fs.map((f, i) => [i, f]).filter(([_, f]) => !isFunction(f)).map(([i, f]) => `argument ${i} is ${typeOf(f)}`);
             if (invalids.length > 0) raise(new TypeError(`${name}: expected ${expected}, but ${invalids.join(', ')}`));
@@ -88,6 +103,10 @@
             'either_traverse': assertFunction('either.traverse', 'a function'),
             'either_traverse_all': assertFunction('either.traverseAll', 'a function'),
             'thunk': assertFunction('Thunk', 'a function'),
+            'transducer_map': assertFunction('Transducer.map', 'a function'),
+            'transducer_filter': assertFunction('Transducer.filter', 'a function'),
+            'transducer_transformer': assertFunction('Transducer.transduce', 'transformer (xform) to be a function'),
+            'transducer_reducer': assertFunction('Transducer.transduce', 'reducer (rf) to be a function'),
             'task': assertFunction('Task', 'a computation function (reject, resolve) => ...'),
             'task_map': assertFunction('Task.map', 'a function'),
             'task_map_rejected': assertFunction('Task.mapRejected', 'a function'),
@@ -537,8 +556,8 @@
                 this[Types.Functor] = true;
                 this[Types.Monad] = true;
             }
-            map(f) { return new Impure(this.functor.map(free => free.map(f))); }
-            flatMap(f) { return new Impure(this.functor.map(free => free.flatMap(f))); }
+            map(f) { return new Impure(this.functor.map(free => Free.map(f))); }
+            flatMap(f) { return new Impure(this.functor.map(free => Free.flatMap(f))); }
         }
         class Thunk {
             constructor(f) {
@@ -554,14 +573,74 @@
         }
         const trampoline = Free.runSync(thunk => thunk.run());
 
+        // ========== TRANSDUCER ==========
+
+        class Transducer {
+            constructor(value) {
+                this.value = value;
+            }
+            static reduced(value) {
+                return new Transducer(value);
+            }
+            static isReduced(value) {
+                return value instanceof Transducer;
+            }
+            static map(f) {
+                assertFunctions['transducer_map'](f);
+                return reducer => (acc, val) => reducer(acc, f(val));
+            }
+            static filter(p) {
+                assertFunctions['transducer_filter'](p);
+                return reducer => (acc, val) => p(val) ? reducer(acc, val) : acc;
+            }
+            static take(n) {
+                return reducer => {
+                    let count = 0;
+                    return (acc, val) => {
+                        if (count < n) {
+                            count++;
+                            const nextAcc = reducer(acc, val);
+                            if (Transducer.isReduced(nextAcc)) {
+                                return nextAcc;
+                            }
+                            if (count === n) {
+                                return Transducer.reduced(nextAcc);
+                            }
+                            return nextAcc;
+                        }
+                        return Transducer.reduced(acc);
+                    };
+                };
+            }
+            static transduce(transformer, reducer, init, input) {
+                assertFunctions['transducer_transformer'](transformer);
+                assertFunctions['transducer_reducer'](reducer);
+
+                const transformation = transformer(reducer);
+                let acc = init;
+
+                for (const value of toIterator(input)) {
+                    acc = transformation(acc, value);
+                    if (Transducer.isReduced(acc)) {
+                        acc = acc.value;
+                        break;
+                    }
+                }
+                return acc;
+            }
+            static into(monoid, transformer, input) {
+                if (!monoid || typeof monoid.concat !== 'function' || !('empty' in monoid)) {
+                    throw new TypeError('Transducer.into: expected a Monoid as the first argument');
+                }
+                return Transducer.transduce(transformer, monoid.concat, monoid.empty, input);
+            }
+        }
+
         // ========== EXTRA ==========
-        // path('user.address.city')(obj) => Either - 문자열 경로로 중첩 속성 접근
         const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
             (acc, key) => acc.flatMap(obj => Either.fromNullable(obj[key])),
             Either.fromNullable(data)
         );
-
-        // template: path를 재사용
         const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
             (match, keyStr) => path(keyStr)(data).fold(_ => match, identity));
 
@@ -739,7 +818,7 @@
         }
         var instance = {
             core: {
-                Types, raise, typeOf, isFunction, isPlainObject, assertFunction, hasFunctions,
+                Types, raise, typeOf, isFunction, isPlainObject, isIterable, toIterator, assertFunction, hasFunctions,
                 isFunctor, isApplicative, isMonad, identity, constant, tuple,
                 apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
                 partial, predicate, negate, flip, flip2, flipC,
@@ -779,6 +858,14 @@
                 done: Thunk.done,
                 suspend: Thunk.suspend,
                 trampoline,
+            },
+            transducer: {
+                Transducer,
+                map: Transducer.map,
+                filter: Transducer.filter,
+                take: Transducer.take,
+                transduce: Transducer.transduce,
+                into: Transducer.into,
             },
             extra: {
                 path,

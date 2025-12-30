@@ -483,3 +483,24 @@ test('Types - symbols are unique', () => {
     assert(core.Types.Functor !== core.Types.Applicative);
     assert(core.Types.Applicative !== core.Types.Monad);
 });
+
+test('toIterator - normalizes input', () => {
+    // Case 1: Iterable (Array)
+    const arrIter = core.toIterator([1, 2]);
+    assertEquals([...arrIter], [1, 2]);
+
+    // Case 2: Object
+    const objIter = core.toIterator({ a: 1 });
+    assertEquals([...objIter], [1]);
+
+    // Case 3: Primitive (Number) - Fallback
+    const numIter = core.toIterator(123);
+    assertEquals([...numIter], [123]);
+
+    // Case 4: Null/Undefined
+    const nullIter = core.toIterator(null);
+    assertEquals([...nullIter], []);
+
+    const undefinedIter = core.toIterator(undefined);
+    assertEquals([...undefinedIter], []);
+});
