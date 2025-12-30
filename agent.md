@@ -48,7 +48,8 @@ This document serves as a context provider for AI agents to quickly understand t
 - **테스트만 실행**: `./test.sh` (빌드 없이 `/modules` 기반 테스트)
 - **`test.sh`는 `all_in_one.cjs`를 절대 경로로 변환**하여 테스트 하위 디렉토리에서도 올바르게 참조.
 
-## 🔄 Current State (as of 2025-12-29)
+## 🔄 Current State (as of 2025-12-30)
+- **`flipCV` 추가**: variadic curried 함수의 인자 순서를 뒤집는 함수. `pipe`, `compose` 같은 가변인자 커링 함수에 유용.
 - **Class-based Static Methods**: `Either`, `Free`, `Task` 클래스에 static 메소드 추가 (Promise 패턴과 유사).
   - `Either.of()`, `Either.left()`, `Either.right()`, `Either.from()`, `Either.fromNullable()`, `Either.catch()` 등
   - `Free.of()`, `Free.pure()`, `Free.impure()`, `Free.isPure()`, `Free.isImpure()`, `Free.liftF()`, `Free.runSync()`, `Free.runAsync()`
