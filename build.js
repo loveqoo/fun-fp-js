@@ -326,11 +326,11 @@ function build() {
     }
 })(typeof self !== 'undefined' ? self : this, function() {
     'use strict';
-    var cache = new Map();
-    var funFpJs = function(dependencies) {
+    var cachedInstance = null;
+    var funFpJs = function(dependencies, cacheable) {
+        if (cacheable === undefined) cacheable = true;
+        if (cacheable && cachedInstance) return cachedInstance;
         dependencies = dependencies || {};
-        var key = JSON.stringify(dependencies, function(k, v) { return typeof v === 'function' ? v.toString() : v; });
-        if (cache.has(key)) return cache.get(key);
 
         var log = dependencies.enableLog === false ? function(){} : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
 `;
@@ -359,7 +359,7 @@ function build() {
         var instance = {
 ${returnParts.join('\n')}
         };
-        cache.set(key, instance);
+        if (cacheable) cachedInstance = instance;
         return instance;
     };
     return funFpJs;
