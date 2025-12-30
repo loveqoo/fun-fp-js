@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-30 16:41:21 (Asia/Seoul)
+ * Built: 2025-12-30 16:53:56 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -242,8 +242,8 @@
                 return x;
             };
         };
-        const also = x => (...fs) => tap(...fs)(x);
-        const into = x => (...fs) => pipe(...fs)(x);
+        const also = flipCV(tap);
+        const into = flipCV(pipe);
         const useOrLift = (check, lift) => {
             assertFunctions['useOrLift0'](check);
             assertFunctions['useOrLift1'](lift);

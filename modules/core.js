@@ -193,8 +193,8 @@ const $core = (dependencies = {}) => {
             return x;
         };
     };
-    const also = x => (...fs) => tap(...fs)(x);
-    const into = x => (...fs) => pipe(...fs)(x);
+    const also = flipCV(tap);
+    const into = flipCV(pipe);
     const useOrLift = (check, lift) => {
         assertFunctions['useOrLift0'](check);
         assertFunctions['useOrLift1'](lift);
