@@ -54,6 +54,7 @@ const $core = (dependencies = {}) => {
         'flip': assertFunction('flip', 'a function'),
         'flip2': assertFunction('flip2', 'a function'),
         'flipC': assertFunction('flipC', 'a function'),
+        'flipCV': assertFunction('flipCV', 'a function'),
         'pipe': assertFunction('pipe', 'all arguments to be functions'),
         'once': assertFunction('once', 'a function'),
         'converge0': assertFunction('converge', 'a function'),
@@ -166,6 +167,10 @@ const $core = (dependencies = {}) => {
         assertFunctions['flipC'](f);
         return a => b => f(b)(a);
     };
+    const flipCV = f => {
+        assertFunctions['flipCV'](f);
+        return (...as) => (...bs) => f(...bs)(...as);
+    };
     const pipe = (...fs) => {
         if (fs.length === 0) return identity;
         assertFunctions['pipe'](...fs);
@@ -203,8 +208,8 @@ const $core = (dependencies = {}) => {
             return x;
         };
     };
-    const also = x => (...fs) => tap(...fs)(x);
-    const into = x => (...fs) => pipe(...fs)(x);
+    const also = flipCV(tap);
+    const into = flipCV(pipe);
     const useOrLift = (check, lift) => {
         assertFunctions['useOrLift0'](check);
         assertFunctions['useOrLift1'](lift);
@@ -218,7 +223,7 @@ const $core = (dependencies = {}) => {
             Types, raise, typeOf, isFunction, isPlainObject, isIterable, toIterator, assertFunction, hasFunctions,
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
-            partial, predicate, negate, flip, flip2, flipC,
+            partial, predicate, negate, flip, flip2, flipC, flipCV,
             pipe, pipe2, compose, compose2, once, converge, catch: runCatch, runOrDefault, capture,
             tap, also, into, useOrLift, useArrayOrLift, range, rangeBy,
         },

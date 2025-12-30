@@ -185,7 +185,7 @@ add10(5, 3);             // 18
 ```javascript
 const lib = require('./index.js')();
 const { core } = lib;
-const { flip, flip2, flipC, negate, once } = core;
+const { flip, flip2, flipC, flipCV, negate, once } = core;
 
 // flip: reverse all arguments
 const sub = (a, b, c) => a - b - c;
@@ -198,6 +198,10 @@ flip2(minus)(1, 10);     // 9 = 10 - 1
 // flipC: swap first two arguments of a curried function
 const curriedMinus = a => b => a - b;
 flipC(curriedMinus)(1)(10); // 9 = 10 - 1
+
+// flipCV: swap variadic curried function arguments
+const f = (...xs) => (...ys) => [...xs, ...ys];
+flipCV(f)(1, 2)(3, 4, 5); // [3, 4, 5, 1, 2]
 
 // negate: invert predicate
 const isEven = x => x % 2 === 0;
@@ -1151,6 +1155,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `core.flip(f)` | Reverse all arguments |
 | `core.flip2(f)` | Swap first two arguments |
 | `core.flipC(f)` | Swap first two curried arguments |
+| `core.flipCV(f)` | Swap variadic curried function arguments |
 | `core.negate(f)` | Invert predicate |
 | `core.once(f)` | Execute only once (retries on error) |
 | `core.catch(f, onError?)` | Wrap with try-catch |
