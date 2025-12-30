@@ -1072,6 +1072,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `core.flip(f)` | Reverse all arguments |
 | `core.flip2(f)` | Swap first two arguments |
 | `core.flipC(f)` | Swap first two curried arguments |
+| `core.flipCV(f)` | Swap variadic curried function arguments |
 | `core.negate(f)` | Invert predicate |
 | `core.once(f)` | Execute only once (retries on error) |
 | `core.catch(f, onError?)` | Wrap with try-catch |
