@@ -36,9 +36,20 @@ const logAssert = (name, actual, expected) => {
     }
 };
 
+const assertThrows = (fn, desc) => {
+    try {
+        fn();
+        throw new Error(`Expected '${desc}' to throw, but it did not.`);
+    } catch (e) {
+        if (e.message.startsWith('Expected')) throw e;
+        // Success: it threw an error as expected
+    }
+};
+
 module.exports = {
     assert,
     assertEquals,
     test,
-    logAssert
+    logAssert,
+    assertThrows
 };

@@ -1,7 +1,7 @@
 const $core = require('../modules/core.js');
 const { core } = $core({ enableLog: false });
 
-const { test, assert, assertEquals } = require('./utils.js');
+const { test, assert, assertEquals, assertThrows } = require('./utils.js');
 console.log('🚀 Starting modules/core.js tests...\n');
 const add2_1 = (a, b) => a + b;
 const add2_2 = ([a, b]) => a + b;
@@ -563,19 +563,17 @@ test('transducer - take with early termination', () => {
 });
 
 test('transducer - Boundary Checks (Error handling)', () => {
-    const assertThrows = (fn, desc) => {
-        try {
-            fn();
-            throw new Error(`Expected '${desc}' to throw, but it did not.`);
-        } catch (e) {
-            if (e.message.startsWith('Expected')) throw e;
-            // Success: it threw an error as expected
-        }
-    };
 
     assertThrows(() => transduce(null), 'transduce(null)');
     assertThrows(() => transduce(() => { })(null), 'transduce(fn)(null)');
     assertThrows(() => transduce(() => { })(() => { })(null)(123), 'transduce(fn)(fn)(acc)(123)');
     assertThrows(() => map(null), 'map(null)');
     assertThrows(() => filter(null), 'filter(null)');
+
+    // take count validation
+    assertThrows(() => take(0), 'take(0)');
+    assertThrows(() => take(-1), 'take(-1)');
+    assertThrows(() => take(1.5), 'take(1.5)');
+    assertThrows(() => take('1'), 'take("1")');
+    assertThrows(() => take(null), 'take(null)');
 });

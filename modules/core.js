@@ -256,15 +256,20 @@ const $core = (dependencies = {}) => {
             assertFunctions['transducer_filter'](p);
             return reducer => (acc, val) => p(val) ? reducer(acc, val) : acc;
         };
-        const take = count => reducer => {
-            let taken = 0;
-            return (accumulator, value) => {
-                if (taken < count) {
-                    taken++;
-                    const result = reducer(accumulator, value);
-                    return taken === count ? Reduced.of(result) : result;
-                }
-                return Reduced.of(accumulator);
+        const take = count => {
+            if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
+                raise(new TypeError(`transducer.take: expected a positive integer (>= 1), but got ${count}`));
+            }
+            return reducer => {
+                let taken = 0;
+                return (accumulator, value) => {
+                    if (taken < count) {
+                        taken++;
+                        const result = reducer(accumulator, value);
+                        return taken === count ? Reduced.of(result) : result;
+                    }
+                    return Reduced.of(accumulator);
+                };
             };
         };
         return {
