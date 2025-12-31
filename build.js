@@ -32,13 +32,16 @@ const SPECIAL_REPLACEMENTS = {
 /**
  * Extract the return statement content from a module
  * Returns the inner content of the module's export (e.g., "core: { ... }")
+ * 
+ * Note: Search from the END of file to find the module's actual export return,
+ * not internal returns (e.g., IIFE returns like transducer in core.js)
  */
 function extractReturnStatement(content, moduleName) {
     const lines = content.split('\n');
 
-    // Find "return {" line
+    // Find "return {" line from the END (to skip internal IIFE returns)
     let startIdx = -1;
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = lines.length - 1; i >= 0; i--) {
         if (lines[i].trim().startsWith('return {')) {
             startIdx = i;
             break;

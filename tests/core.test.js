@@ -504,3 +504,78 @@ test('toIterator - normalizes input', () => {
     const undefinedIter = core.toIterator(undefined);
     assertEquals([...undefinedIter], []);
 });
+
+// === Tests migrated from pure_transducer.test.js ===
+console.log('\n🔀 Starting Transducer tests...');
+
+const { compose, pipe, transducer } = core;
+const { map, filter, take, transduce } = transducer;
+
+// 기본 Reducer: 배열에 push
+const pushReducer = (acc, x) => {
+    acc.push(x);
+    return acc;
+};
+
+test('transducer - compose map -> filter (Standard Order)', () => {
+    // 1. x + 1
+    // 2. 짝수만 (map 결과에 대해)
+    // compose(map, filter)는 실행 시 filter(map(reducer))가 되어
+    // 데이터는 map -> filter 순서로 흐름
+    const xf = compose(
+        map(x => x + 1),
+        filter(x => x % 2 === 0)
+    );
+
+    const data = [1, 2, 3, 4, 5];
+    // [2, 3, 4, 5, 6] -> [2, 4, 6]
+    const result = transduce(xf)(pushReducer)([])(data);
+
+    assertEquals(result, [2, 4, 6]);
+});
+
+test('transducer - pipe map -> filter (Reverse Order)', () => {
+    // pipe(map, filter)는 실행 시 map(filter(reducer))가 되어
+    // 데이터는 filter -> map 순서로 흐름
+    const xf = pipe(
+        map(x => x + 1),
+        filter(x => x % 2 === 0)
+    );
+
+    const data = [1, 2, 3, 4, 5];
+    // filter: [2, 4] -> map: [3, 5]
+    const result = transduce(xf)(pushReducer)([])(data);
+
+    assertEquals(result, [3, 5]);
+});
+
+test('transducer - take with early termination', () => {
+    const xf = compose(
+        map(x => x * 10),
+        take(2)
+    );
+
+    const data = [1, 2, 3, 4, 5];
+    // [10, 20] 하고 종료
+    const result = transduce(xf)(pushReducer)([])(data);
+
+    assertEquals(result, [10, 20]);
+});
+
+test('transducer - Boundary Checks (Error handling)', () => {
+    const assertThrows = (fn, desc) => {
+        try {
+            fn();
+            throw new Error(`Expected '${desc}' to throw, but it did not.`);
+        } catch (e) {
+            if (e.message.startsWith('Expected')) throw e;
+            // Success: it threw an error as expected
+        }
+    };
+
+    assertThrows(() => transduce(null), 'transduce(null)');
+    assertThrows(() => transduce(() => { })(null), 'transduce(fn)(null)');
+    assertThrows(() => transduce(() => { })(() => { })(null)(123), 'transduce(fn)(fn)(acc)(123)');
+    assertThrows(() => map(null), 'map(null)');
+    assertThrows(() => filter(null), 'filter(null)');
+});

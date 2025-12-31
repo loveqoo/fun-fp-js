@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-31 16:16:18 (Asia/Seoul)
+ * Built: 2025-12-31 18:18:59 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -91,6 +91,10 @@
             'tap': assertFunction('tap', 'all arguments to be functions'),
             'useOrLift0': assertFunction('useOrLift', 'check to be a function'),
             'useOrLift1': assertFunction('useOrLift', 'lift to be a function'),
+            'transducer_map': assertFunction('transducer.map', 'a function'),
+            'transducer_filter': assertFunction('transducer.filter', 'a function'),
+            'transduce_transducer': assertFunction('transduce', 'transducer to be a function'),
+            'transduce_reducer': assertFunction('transduce', 'reducer to be a function'),
             'either_fold': assertFunction('Either.fold', 'a function'),
             'either_catch': assertFunction('either.catch', 'a function'),
             'either_validate_condition': assertFunction('either.validate', 'condition to be a function'),
@@ -262,6 +266,63 @@
         const useArrayOrLift = useOrLift(Array.isArray, Array.of);
         const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
         const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
+        const { transducer } = (() => {
+            class Reduced {
+                constructor(value) { this.value = value; }
+                static of(value) { return new Reduced(value); }
+                static isReduced(value) { return value instanceof Reduced; }
+            }
+            const transduce = transducer => {
+                assertFunctions['transduce_transducer'](transducer);
+                return reducer => {
+                    assertFunctions['transduce_reducer'](reducer);
+                    return initialValue => collection => {
+                        if (!isIterable(collection)) {
+                            raise(new TypeError(`transduce: expected an iterable, but got ${typeof collection}`));
+                        }
+                        const transformedReducer = transducer(reducer);
+                        let accumulator = initialValue;
+                        for (const item of collection) {
+                            accumulator = transformedReducer(accumulator, item);
+                            if (Reduced.isReduced(accumulator)) {
+                                return accumulator.value;
+                            }
+                        }
+                        return accumulator;
+                    };
+                };
+            };
+            const map = f => {
+                assertFunctions['transducer_map'](f);
+                return reducer => (acc, val) => reducer(acc, f(val));
+            };
+            const filter = p => {
+                assertFunctions['transducer_filter'](p);
+                return reducer => (acc, val) => p(val) ? reducer(acc, val) : acc;
+            };
+            const take = count => reducer => {
+                let taken = 0;
+                return (accumulator, value) => {
+                    if (taken < count) {
+                        taken++;
+                        const result = reducer(accumulator, value);
+                        return taken === count ? Reduced.of(result) : result;
+                    }
+                    return Reduced.of(accumulator);
+                };
+            };
+            return {
+                transducer: {
+                    Reduced,
+                    of: Reduced.of,
+                    isReduced: Reduced.isReduced,
+                    transduce,
+                    map,
+                    filter,
+                    take,
+                },
+            };
+        })();
 
         // ========== EITHER ==========
         const hasConcat = hasFunctions([obj => obj.concat]);
@@ -801,7 +862,7 @@
                 apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
                 partial, predicate, negate, flip, flip2, flipC, flipCV,
                 pipe, pipe2, compose, compose2, once, converge, catch: runCatch, runOrDefault, capture,
-                tap, also, into, useOrLift, useArrayOrLift, range, rangeBy,
+                tap, also, into, useOrLift, useArrayOrLift, range, rangeBy, transducer,
             },
             either: {
                 Either,

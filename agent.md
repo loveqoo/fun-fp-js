@@ -73,7 +73,11 @@ This document serves as a context provider for AI agents to quickly understand t
 - **Template Engine**: `path`를 내부적으로 사용하여 중첩 경로 지원.
 - **Unified Testing**: 모든 테스트는 `/tests/*.test.js`로 통합.
 - **Retry Mechanism**: `once` utility correctly handles failures, allowing retry on exception while caching only successful results.
-- **Strict Validation**: `apply2` and similar utilities enforce strict argument counting.
+- **Point-free Transducers**: Implemented in `core.js` (`core.transducer`).
+  - No separate module or class needed.
+  - Functions: `map`, `filter`, `take`, `transduce`.
+  - **Composition**: Use `compose(map(f), filter(p))` for Left-to-Right data flow.
+  - Pure function composition style.
 - **Monoid 클래스 리팩터링**: `Monoid`/`Group` 클래스 기반으로 전환.
   - `Group extends Monoid`
   - 인스턴스 메서드: `M.fold(list)`, `M.concat(a, b)`, `M.power(value, n)`, `M.invert(value)` (Group만)

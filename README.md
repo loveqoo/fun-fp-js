@@ -1071,7 +1071,27 @@ template('Hello, {{  user.name  }}!', data); // 'Hello, Anthony!'
 
 ---
 
-## Real-World Examples
+### Transducers (Point-free)
+
+Efficient data processing pipeline without intermediate arrays.
+**Note**: Use `compose` to chain transducers. It executes in Left-to-Right order for data processing.
+
+```javascript
+const { compose, transducer: { map, filter, take, transduce } } = func;
+
+// 1. Define Pipeline (Left -> Right execution)
+const transducer = compose(
+    map(x => x + 1),        // Step 1: Add 1
+    filter(x => x % 2 === 0), // Step 2: Keep evens
+    take(2)                 // Step 3: Take first 2
+);
+
+// 2. Execute
+const result = transduce(transducer)((acc, x) => (acc.push(x), acc))([])([1, 2, 3, 4, 5]);
+// [ (1+1)=2, (3+1)=4 ] -> Result: [2, 4]
+```
+
+#### Real World Examples
 
 ### Safe API Call
 
@@ -1149,6 +1169,11 @@ processData('{"items":[{"name":"A","active":true}]}');
 ```javascript
 const lib = require('./index.js')();
 const { monoid: M } = lib;
+| `core.transducer` | Object | Transducer utilities |
+| `transducer.map(f)` | Function | Transducer map |
+| `transducer.filter(p)` | Function | Transducer filter |
+| `transducer.transduce` | Function | Execute transducer |
+| `transducer.take(n)` | Function | Take first n items |
 
 const orders = [
     { product: 'A', qty: 2, price: 10 },
@@ -1348,6 +1373,7 @@ either.js     monoid.js          free.js        task.js
 | Task | ✅ | ✅ | ✅ |
 | Pure/Impure | ✅ | - | ✅ |
 | Thunk | ✅ | - | - |
+| Transducer | ✅ | - | - |
 
 
 ---
