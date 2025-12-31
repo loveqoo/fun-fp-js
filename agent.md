@@ -74,11 +74,12 @@ This document serves as a context provider for AI agents to quickly understand t
 - **Unified Testing**: 모든 테스트는 `/tests/*.test.js`로 통합.
 - **Retry Mechanism**: `once` utility correctly handles failures, allowing retry on exception while caching only successful results.
 - **Strict Validation**: `apply2` and similar utilities enforce strict argument counting.
-- **Transducers**: `transducer.js` added for efficient data processing.
-  - Implemented as a **Class** (`Transducer`) acting as both namespace and `Reduced` signal.
-  - **No external dependency** on `free` module (self-contained).
-  - Supports `Iterator` protocol for infinite stream processing.
-  - Export pattern: `{ transducer: { Transducer, map, filter, ... } }`.
+- **Transducers**: `transducer.js` refactored with **chainable fluent API**.
+  - Usage: `from(iterable).map(f).filter(p).take(n).collect()`
+  - **Functor + Monad**: Supports `map`, `flatMap`
+  - Terminal methods: `collect()`, `fold(M)`, `sum()`, `join()`, `count()`, `first()`, `reduce()`
+  - Depends on `$core` and `$monoid` (for `fold`)
+  - Export pattern: `{ transducer: { from, Transducer } }`
 
 ## 📝 Guidelines for Future Tasks
 - **빌드 전 테스트**: `./test.sh`로 먼저 확인 후 `node build.js` 실행.

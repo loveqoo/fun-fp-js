@@ -39,7 +39,8 @@ const funFpJs = (options = {}) => {
         { key: '$free', factory: $free, deps: ['$core'] },
         { key: '$extra', factory: $extra, deps: ['$core', '$either'] },
         { key: '$task', factory: $task, deps: ['$core', '$either'] },
-        { key: '$transducer', factory: $transducer, deps: ['$core'] }
+        { key: '$transducer', factory: $transducer, deps: ['$core', '$monoid'] }
+
     ];
 
     // Build the library context with strictly filtered dependency injection

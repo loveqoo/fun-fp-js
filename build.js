@@ -146,6 +146,7 @@ function parseModule(content, moduleName) {
         if (line.startsWith('const { core }') ||
             line.startsWith('const { either }') ||
             line.startsWith('const { free }') ||
+            line.startsWith('const { monoid }') ||
             line.startsWith('const log =') ||
             line === '') {
             bodyStart++;
@@ -220,6 +221,10 @@ function applyReplacements(body) {
     // free.xxx -> Free.xxx (for other static methods if accessed via free module object)
     // But since we use free.Free.isPure, replacing free.Free -> Free covers it (Free.isPure).
     result = result.replace(/\bfree\.(\w+)\b/g, 'Free.$1');
+
+    // monoid.xxx -> xxx (transducer uses monoid.fold, monoid.concat, etc.)
+    // In all_in_one, fold/concat/etc are already defined in the same scope from monoid.js
+    result = result.replace(/\bmonoid\.(\w+)\b/g, '$1');
 
     return result;
 }

@@ -21,6 +21,9 @@ const $monoid = (dependencies = {}) => {
         array: {
             concat: monoid(a => Array.isArray(a), (a, b) => a.concat(b), []),
         },
+        set: {
+            union: monoid(a => a instanceof Set, (a, b) => new Set([...a, ...b]), new Set()),
+        },
         object: {
             merge: monoid(core.isPlainObject, (a, b) => ({ ...a, ...b }), {}),
         },

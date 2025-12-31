@@ -851,85 +851,145 @@ getAvatarSafe(-1).run(
 
 ---
 
-### 6. `transducer` - Efficient Data Processing (~70 lines)
+### 6. `transducer` - Chainable Lazy Data Processing (~130 lines)
 
-Transducers allow you to compose data transformations (`map`, `filter`, `take`) independently of the data source, processing elements one by one without creating intermediate arrays.
-
-#### Core Concept
-
-Traditional chaining creates an intermediate array for each step:
-`[1..1000000] .map(...) .filter(...) .take(5)` -> creates 3 huge arrays.
-
-Transducers do it in **one pass**, and stop early:
-`[1..1000000] -> xform -> result` (stops after 5 items).
+Transducer provides a fluent, chainable API for efficient data processing. Like `Array.prototype.map/filter`, but:
+- **Lazy**: Nothing runs until a terminal method is called
+- **Efficient**: One-pass processing, no intermediate arrays
+- **Early termination**: `take()` stops processing immediately
+- **Functor + Monad**: Supports `map` and `flatMap`
 
 #### Basic Usage
 
 ```javascript
 const lib = require('./index.js')();
-const { transducer, monoid, core } = lib;
-const { map, filter, take, into } = transducer;
-const { compose, range } = core;
+const { transducer } = lib;
+const { from } = transducer;
 
-// 1. Define transformation
-const xform = compose(
-    filter(x => x % 2 === 0), // Keep evens
-    map(x => x * 10),         // Multiply by 10
-    take(3)                   // Take first 3
-);
+// Chainable API
+from([1, 2, 3, 4, 5])
+    .filter(x => x % 2 === 0)
+    .map(x => x * 10)
+    .collect();
+// [20, 40]
 
-// 2. Run with 'into' (Source -> Transformation -> Collection)
-const data = range(10); // [0, 1, 2, ..., 9]
-const result = into(monoid.array.concat, xform, data);
+// With early termination
+from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    .filter(x => x % 2 === 0)
+    .map(x => x * 10)
+    .take(2)
+    .collect();
+// [20, 40] — stops after 2 items!
+```
 
-// Execution trace:
-// 0 -> even? yes -> *10 = 0  -> take 1 (0)   -> push [0]
-// 1 -> even? no
-// 2 -> even? yes -> *10 = 20 -> take 2 (20)  -> push [0, 20]
-// 3 -> even? no
-// 4 -> even? yes -> *10 = 40 -> take 3 (40)  -> push [0, 40] -> DONE (Early Termination)
+#### Terminal Methods
 
-console.log(result); // [0, 20, 40]
+```javascript
+const lib = require('./index.js')();
+const { transducer } = lib;
+const { from } = transducer;
+
+// collect() — to array
+from([1, 2, 3]).map(x => x * 2).collect();  // [2, 4, 6]
+
+// sum() — numeric sum
+from([1, 2, 3, 4, 5]).sum();  // 15
+
+// join() — to string
+from(['a', 'b', 'c']).join('-');  // 'a-b-c'
+
+// count() — count elements
+from([1, 2, 3, 4, 5]).filter(x => x > 2).count();  // 3
+
+// first() — first element
+from([1, 2, 3]).first();  // 1
+
+// reduce() — custom reducer
+from([1, 2, 3, 4]).reduce((acc, x) => acc * x, 1);  // 24
+```
+
+#### fold with Monoid
+
+Collect results using any Monoid — arrays, numbers, strings, or even Sets.
+
+```javascript
+const lib = require('./index.js')();
+const { transducer, monoid } = lib;
+const { from } = transducer;
+
+// Sum with Monoid
+from([1, 2, 3, 4, 5]).fold(monoid.number.sum);
+// Right(15)
+
+// String concat
+from(['a', 'b', 'c']).fold(monoid.string.concat);
+// Right('abc')
+
+// Flatten nested arrays
+from([[1, 2], [3, 4], [5]]).fold(monoid.array.concat);
+// Right([1, 2, 3, 4, 5])
+
+// Collect to Set (with mapper)
+from([1, 2, 3, 2, 1]).fold(monoid.set.union, x => new Set([x]));
+// Right(Set {1, 2, 3})
+```
+
+#### flatMap — Monad
+
+```javascript
+const lib = require('./index.js')();
+const { transducer } = lib;
+const { from } = transducer;
+
+// Flatten nested arrays
+from([[1, 2], [3, 4], [5]])
+    .flatMap(arr => arr)
+    .collect();
+// [1, 2, 3, 4, 5]
+
+// Expand each element
+from([1, 2, 3])
+    .flatMap(x => [x, x * 10])
+    .collect();
+// [1, 10, 2, 20, 3, 30]
+
+// Chain with filter and take
+from([1, 2, 3])
+    .flatMap(x => [x, x * 10])
+    .filter(x => x > 5)
+    .take(2)
+    .collect();
+// [10, 20]
 ```
 
 #### Infinite Streams
 
-Transducers + Iterators = ❤️
+Transducers work beautifully with generators — `take()` ensures early termination.
 
 ```javascript
+const lib = require('./index.js')();
+const { transducer } = lib;
+const { from } = transducer;
+
 function* infinite() {
     let i = 0;
-    while(true) yield i++;
+    while (true) yield i++;
 }
 
-const res = into(
-    monoid.array.concat,
-    take(5),
-    infinite()
-);
+// Take first 5
+from(infinite()).take(5).collect();
 // [0, 1, 2, 3, 4]
-```
 
-#### Custom Monoids
+// Filter evens, take 5
+from(infinite())
+    .filter(x => x % 2 === 0)
+    .take(5)
+    .collect();
+// [0, 2, 4, 6, 8]
 
-You can transduce into *any* Monoid, not just arrays.
-
-```javascript
-// Sum of first 5 numbers
-const sum = into(
-    monoid.number.sum, // Fold with Sum Monoid
-    take(5),
-    infinite()
-);
-// 10 (0+1+2+3+4)
-
-// Build a string
-const str = into(
-    monoid.string.concat,
-    compose(map(x => x + '-'), take(3)),
-    ['a', 'b', 'c', 'd']
-);
-// "a-b-c-"
+// Sum first 100 numbers
+from(infinite()).take(100).sum();
+// 4950
 ```
 
 ---
@@ -1205,6 +1265,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `monoid.string.concat` | String monoid |
 | `monoid.boolean.{all,any,xor}` | Boolean monoids/groups |
 | `monoid.array.concat` | Array monoid |
+| `monoid.set.union` | Set union monoid |
 | `monoid.object.merge` | Object monoid |
 | `monoid.function.endo` | Function composition monoid |
 | `monoid.any.{first,last}` | First/last value monoids |
@@ -1245,16 +1306,24 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `.toPromise()` | Convert to Promise |
 | `.toEither(callback)` | Convert to Either via callback |
 
-### transducer.js (~70 lines)
+### transducer.js (~130 lines)
 
-| Method (Static) | Description |
+| Function/Method | Description |
 |-----------------|-------------|
-| `Transducer.map(f)` | Transform values |
-| `Transducer.filter(p)` | Filter values |
-| `Transducer.take(n)` | Take first n values (Reduced) |
-| `Transducer.into(M, xform, data)` | Transduce data into Monoid M |
-| `Transducer.transduce(...)` | Low-level execution |
-| `Transducer.reduced(val)` | Signal early termination |
+| `from(iterable)` | Create Transducer from iterable |
+| `.map(f)` | Transform values (Functor) |
+| `.flatMap(f)` | Flatten and transform (Monad) |
+| `.filter(p)` | Filter by predicate |
+| `.take(n)` | Take first n (early termination) |
+| `.drop(n)` | Skip first n |
+| `.collect()` | Terminal: to array |
+| `.fold(M, f?)` | Terminal: fold with Monoid |
+| `.sum()` | Terminal: numeric sum |
+| `.join(sep)` | Terminal: join as string |
+| `.count()` | Terminal: count elements |
+| `.first()` | Terminal: first element |
+| `.reduce(f, init)` | Terminal: custom reducer |
+| `.forEach(f)` | Terminal: side effects |
 
 ### extra.js (~15 lines)
 
