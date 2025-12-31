@@ -1253,14 +1253,19 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `.ap(either)` | Apply with error accumulation |
 | `.getOrElse(default)` | Get value or default |
 
-### monoid.js (~90 lines)
+### monoid.js (~130 lines)
 
 | Function | Description |
 |----------|-------------|
-| `monoid.fold(M, mapFn?)(list)` | Fold list with Monoid |
-| `monoid.concat(M)(a, b)` | Combine two values |
-| `monoid.invert(M)(value)` | Get inverse (Group only) |
-| `monoid.power(M)(value, n)` | Repeat n times |
+| `monoid.Monoid` | Monoid class (check, concat, empty) |
+| `monoid.Group` | Group class extends Monoid (+ invert) |
+| `M.fold(list, f?)` | Instance: fold list with Monoid |
+| `M.concat(a, b)` | Instance: combine two values → Either |
+| `M.power(value, n)` | Instance: repeat n times → Either |
+| `M.invert(value)` | Instance (Group only): get inverse → Either |
+| `Monoid.isMonoid(x)` | Static: check if x is Monoid |
+| `Group.isGroup(x)` | Static: check if x is Group |
+| `Monoid.fold(M, f?)(list)` | Static: fold list with Monoid |
 | `monoid.number.{sum,product,max,min}` | Number monoids/groups |
 | `monoid.string.concat` | String monoid |
 | `monoid.boolean.{all,any,xor}` | Boolean monoids/groups |
@@ -1318,7 +1323,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `.drop(n)` | Skip first n |
 | `.collect()` | Terminal: to array |
 | `.fold(M, f?)` | Terminal: fold with Monoid |
-| `.sum()` | Terminal: numeric sum |
+| `.sum(M?)` | Terminal: sum with Monoid (default: number.sum) |
 | `.join(sep)` | Terminal: join as string |
 | `.count()` | Terminal: count elements |
 | `.first()` | Terminal: first element |
@@ -1343,6 +1348,9 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 either.js     monoid.js          free.js        task.js
  (Error)      (Algebra)          (Free)         (Async)
    │              │                 │              │
+   │        transducer.js           │              │
+   │          (Process)             │              │
+   │              │                 │              │
    └──────────────┴────────┬────────┴──────────────┘
                            │
                       extra.js
@@ -1360,6 +1368,7 @@ either.js     monoid.js          free.js        task.js
 | Task | ✅ | ✅ | ✅ |
 | Pure/Impure | ✅ | - | ✅ |
 | Thunk | ✅ | - | - |
+| Transducer | ✅ | - | ✅ |
 
 ---
 

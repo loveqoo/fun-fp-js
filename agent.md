@@ -51,7 +51,7 @@ This document serves as a context provider for AI agents to quickly understand t
 - **테스트만 실행**: `./test.sh` (빌드 없이 `/modules` 기반 테스트)
 - **`test.sh`는 `all_in_one.cjs`를 절대 경로로 변환**하여 테스트 하위 디렉토리에서도 올바르게 참조.
 
-## 🔄 Current State (as of 2025-12-30)
+## 🔄 Current State (as of 2025-12-31)
 - **`flipCV` 추가**: variadic curried 함수의 인자 순서를 뒤집는 함수. `pipe`, `compose` 같은 가변인자 커링 함수에 유용.
 - **Class-based Static Methods**: `Either`, `Free`, `Task` 클래스에 static 메소드 추가 (Promise 패턴과 유사).
   - `Either.of()`, `Either.left()`, `Either.right()`, `Either.from()`, `Either.fromNullable()`, `Either.catch()` 등
@@ -77,9 +77,15 @@ This document serves as a context provider for AI agents to quickly understand t
 - **Transducers**: `transducer.js` refactored with **chainable fluent API**.
   - Usage: `from(iterable).map(f).filter(p).take(n).collect()`
   - **Functor + Monad**: Supports `map`, `flatMap`
-  - Terminal methods: `collect()`, `fold(M)`, `sum()`, `join()`, `count()`, `first()`, `reduce()`
-  - Depends on `$core` and `$monoid` (for `fold`)
+  - Terminal methods: `collect()`, `fold(M)`, `sum(M?)`, `join()`, `count()`, `first()`, `reduce()`
+  - `sum(M)` accepts optional Monoid (default: `monoid.number.sum`)
+  - Depends on `$core` and `$monoid` (for `fold`, `sum`)
   - Export pattern: `{ transducer: { from, Transducer } }`
+- **Monoid 클래스 리팩터링**: `Monoid`/`Group` 클래스 기반으로 전환.
+  - `Group extends Monoid`
+  - 인스턴스 메서드: `M.fold(list)`, `M.concat(a, b)`, `M.power(value, n)`, `M.invert(value)` (Group만)
+  - Static 메서드: `Monoid.isMonoid`, `Monoid.fold`, `Monoid.concat`, `Monoid.power`, `Group.isGroup`, `Group.invert`
+  - 기존 함수형 API (`monoid.fold(M)(list)`)는 static 메서드 alias로 유지
 
 ## 📝 Guidelines for Future Tasks
 - **빌드 전 테스트**: `./test.sh`로 먼저 확인 후 `node build.js` 실행.

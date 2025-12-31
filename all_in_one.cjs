@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-31 12:05:16 (Asia/Seoul)
+ * Built: 2025-12-31 14:22:38 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -11,15 +11,11 @@
  */
 (function(root, factory) {
     if (typeof module !== 'undefined' && module.exports) {
-        // CommonJS
         module.exports = factory();
-        // ESM interop: allow "import funFpJs from '...'" 
         module.exports.default = module.exports;
     } else if (typeof define === 'function' && define.amd) {
-        // AMD
         define([], factory);
     } else {
-        // Browser globals
         root.funFpJs = factory();
     }
 })(typeof self !== 'undefined' ? self : this, function() {
@@ -29,7 +25,6 @@
         if (cacheable === undefined) cacheable = true;
         if (cacheable && cachedInstance) return cachedInstance;
         dependencies = dependencies || {};
-
         var log = dependencies.enableLog === false ? function(){} : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
 
         // ========== CORE ==========
@@ -396,86 +391,128 @@
         }
 
         // ========== MONOID ==========
-        const monoid = (check, concat, empty) => ({ check, concat, empty });
-        const group = (check, concat, empty, invert) => ({ check, concat, empty, invert });
-        const of = {
-            number: {
-                sum: group(a => typeof a === 'number', (a, b) => a + b, 0, a => -a),
-                product: group(a => typeof a === 'number', (a, b) => a * b, 1, a => 1 / a),
-                max: monoid(a => typeof a === 'number', (a, b) => Math.max(a, b), -Infinity),
-                min: monoid(a => typeof a === 'number', (a, b) => Math.min(a, b), Infinity),
-            },
-            string: {
-                concat: monoid(a => typeof a === 'string', (a, b) => a + b, ""),
-            },
-            boolean: {
-                any: monoid(a => typeof a === 'boolean', (a, b) => a || b, false),
-                all: monoid(a => typeof a === 'boolean', (a, b) => a && b, true),
-                xor: group(a => typeof a === 'boolean', (a, b) => a !== b, false, a => a),
-            },
-            array: {
-                concat: monoid(a => Array.isArray(a), (a, b) => a.concat(b), []),
-            },
-            set: {
-                union: monoid(a => a instanceof Set, (a, b) => new Set([...a, ...b]), new Set()),
-            },
-            object: {
-                merge: monoid(isPlainObject, (a, b) => ({ ...a, ...b }), {}),
-            },
-            function: {
-                endo: monoid(isFunction, compose2, identity),
-            },
-            any: {
-                first: monoid(_ => true, (a, b) => a === null ? b : a, null),
-                last: monoid(_ => true, (_, b) => b, null),
-            },
-        };
-        const isMonoid = obj => obj && isFunction(obj.check) && isFunction(obj.concat) && 'empty' in obj;
-        const fold = (M, f = identity) => {
-            if (!isMonoid(M)) {
-                return () => Either.left(new TypeError('fold: expected a monoid'));
+        class Monoid {
+            constructor(check, concatFn, empty) {
+                this.check = check;
+                this._concat = concatFn;
+                this.empty = empty;
             }
-            return list => {
+
+            fold(list, f = identity) {
                 const arr = useArrayOrLift(list).map(f);
-                if (arr.length === 0) return Either.right(M.empty);
-                if (!arr.every(M.check)) return Either.left(new TypeError('fold: expected an array of values of the same type'));
-                return Either.catch(() => arr.reduce(M.concat, M.empty))();
-            };
-        };
-        const concat = M => {
-            if (!isMonoid(M)) {
-                return () => Either.left(new TypeError('concat: expected a monoid'));
+                if (arr.length === 0) return Either.right(this.empty);
+                if (!arr.every(this.check)) {
+                    return Either.left(new TypeError('fold: expected an array of values of the same type'));
+                }
+                return Either.catch(() => arr.reduce(this._concat, this.empty))();
             }
-            return (a, b) => {
-                if (!M.check(a) || !M.check(b)) {
+
+            concat(a, b) {
+                if (!this.check(a) || !this.check(b)) {
                     return Either.left(new TypeError('concat: expected values of the same type'));
                 }
-                return Either.catch(() => M.concat(a, b))();
-            };
-        };
-        const invert = M => {
-            if (!isMonoid(M)) {
-                return () => Either.left(new TypeError('invert: expected a monoid'));
+                return Either.catch(() => this._concat(a, b))();
             }
-            if (!('invert' in M)) {
-                return () => Either.left(new TypeError('invert: expected a monoid with an invert function'));
+
+            power(value, nth) {
+                if (!this.check(value)) {
+                    return Either.left(new TypeError('power: expected a value of the same type'));
+                }
+                if (typeof nth !== 'number') {
+                    return Either.left(new TypeError('power: expected a number'));
+                }
+                if (nth < 0) {
+                    return Either.left(new TypeError('power: expected a non-negative number'));
+                }
+                if (nth === 0) return Either.right(this.empty);
+                return Either.catch(() => range(nth).reduce(acc => this._concat(acc, value), this.empty))();
             }
-            return value => {
-                if (!M.check(value)) return Either.left(new TypeError('invert: expected a value of the same type'));
-                return Either.catch(() => M.invert(value))();
-            };
-        };
-        const power = M => {
-            if (!isMonoid(M)) {
-                return () => Either.left(new TypeError('power: expected a monoid'));
+
+            static isMonoid(obj) {
+                return obj instanceof Monoid;
             }
-            return (value, nth) => {
-                if (!M.check(value)) return Either.left(new TypeError('power: expected a value of the same type'));
-                if (typeof nth !== 'number') return Either.left(new TypeError('power: expected a number'));
-                if (nth < 0) return Either.left(new TypeError('power: expected a non-negative number'));
-                if (nth === 0) return Either.right(M.empty);
-                return Either.catch(() => range(nth).reduce(acc => M.concat(acc, value), M.empty))();
-            };
+
+            static fold(M, f = identity) {
+                if (!Monoid.isMonoid(M)) {
+                    return () => Either.left(new TypeError('fold: expected a monoid'));
+                }
+                return list => M.fold(list, f);
+            }
+
+            static concat(M) {
+                if (!Monoid.isMonoid(M)) {
+                    return () => Either.left(new TypeError('concat: expected a monoid'));
+                }
+                return (a, b) => M.concat(a, b);
+            }
+
+            static power(M) {
+                if (!Monoid.isMonoid(M)) {
+                    return () => Either.left(new TypeError('power: expected a monoid'));
+                }
+                return (value, nth) => M.power(value, nth);
+            }
+        }
+
+        class Group extends Monoid {
+            constructor(check, concatFn, empty, invertFn) {
+                super(check, concatFn, empty);
+                this._invert = invertFn;
+            }
+
+            invert(value) {
+                if (!this.check(value)) {
+                    return Either.left(new TypeError('invert: expected a value of the same type'));
+                }
+                return Either.catch(() => this._invert(value))();
+            }
+
+            static isGroup(obj) {
+                return obj instanceof Group;
+            }
+
+            static invert(M) {
+                if (!Monoid.isMonoid(M)) {
+                    return () => Either.left(new TypeError('invert: expected a monoid'));
+                }
+                if (!Group.isGroup(M)) {
+                    return () => Either.left(new TypeError('invert: expected a monoid with an invert function'));
+                }
+                return value => M.invert(value);
+            }
+        }
+
+        const of = {
+            number: {
+                sum: new Group(a => typeof a === 'number', (a, b) => a + b, 0, a => -a),
+                product: new Group(a => typeof a === 'number', (a, b) => a * b, 1, a => 1 / a),
+                max: new Monoid(a => typeof a === 'number', (a, b) => Math.max(a, b), -Infinity),
+                min: new Monoid(a => typeof a === 'number', (a, b) => Math.min(a, b), Infinity),
+            },
+            string: {
+                concat: new Monoid(a => typeof a === 'string', (a, b) => a + b, ""),
+            },
+            boolean: {
+                any: new Monoid(a => typeof a === 'boolean', (a, b) => a || b, false),
+                all: new Monoid(a => typeof a === 'boolean', (a, b) => a && b, true),
+                xor: new Group(a => typeof a === 'boolean', (a, b) => a !== b, false, a => a),
+            },
+            array: {
+                concat: new Monoid(a => Array.isArray(a), (a, b) => a.concat(b), []),
+            },
+            set: {
+                union: new Monoid(a => a instanceof Set, (a, b) => new Set([...a, ...b]), new Set()),
+            },
+            object: {
+                merge: new Monoid(isPlainObject, (a, b) => ({ ...a, ...b }), {}),
+            },
+            function: {
+                endo: new Monoid(isFunction, compose2, identity),
+            },
+            any: {
+                first: new Monoid(_ => true, (a, b) => a === null ? b : a, null),
+                last: new Monoid(_ => true, (_, b) => b, null),
+            },
         };
 
         // ========== FREE ==========
@@ -581,13 +618,9 @@
         const trampoline = Free.runSync(thunk => thunk.run());
 
         // ========== TRANSDUCER ==========
-
         class Reduced {
-            constructor(value) {
-                this.value = value;
-            }
+            constructor(value) { this.value = value; }
         }
-
         class Transducer {
             constructor(source, transformers = []) {
                 if (!isIterable(source)) {
@@ -598,25 +631,14 @@
                 this[Types.Functor] = true;
                 this[Types.Monad] = true;
             }
-
-            static reduced(value) {
-                return new Reduced(value);
-            }
-
-            static isReduced(value) {
-                return value instanceof Reduced;
-            }
-
-            append(transformer) {
-                return new Transducer(this.source, [...this.transformers, transformer]);
-            }
-
+            static reduced(value) { return new Reduced(value); }
+            static isReduced(value) { return value instanceof Reduced; }
+            append(transformer) { return new Transducer(this.source, [...this.transformers, transformer]); }
             map(f) {
                 assertFunctions['transducer_map'](f);
                 const transformer = step => (acc, val) => step(acc, f(val));
                 return this.append(transformer);
             }
-
             flatMap(f) {
                 assertFunctions['transducer_flat_map'](f);
                 const transformer = step => (acc, val) => {
@@ -629,13 +651,11 @@
                 };
                 return this.append(transformer);
             }
-
             filter(predicate) {
                 assertFunctions['transducer_filter'](predicate);
                 const transformer = step => (acc, val) => predicate(val) ? step(acc, val) : acc;
                 return this.append(transformer);
             }
-
             take(count) {
                 let taken = 0;
                 const transformer = step => (acc, val) => {
@@ -647,7 +667,6 @@
                 };
                 return this.append(transformer);
             }
-
             drop(count) {
                 let dropped = 0;
                 const transformer = step => (acc, val) => {
@@ -656,7 +675,6 @@
                 };
                 return this.append(transformer);
             }
-
             reduce(reducer, initial) {
                 const composed = compose(...this.transformers);
                 const step = composed(reducer);
@@ -667,19 +685,9 @@
                 }
                 return acc;
             }
-
-            collect() {
-                return this.reduce((arr, val) => { arr.push(val); return arr; }, []);
-            }
-
-            fold(M, f = identity) {
-                return fold(M, f)(this.collect());
-            }
-
-            sum() {
-                return this.reduce((total, val) => total + val, 0);
-            }
-
+            collect() { return this.reduce((arr, val) => { arr.push(val); return arr; }, []); }
+            fold(M, f = identity) { return fold(M, f)(this.collect()); }
+            sum(M = number.sum) { return this.reduce((a, b) => M.concat(a, b).getOrElse(M.empty), M.empty); }
             join(separator = '') {
                 const result = this.reduce(
                     (str, val) => str === null ? String(val) : str + separator + val,
@@ -687,20 +695,10 @@
                 );
                 return result ?? '';
             }
-
-            count() {
-                return this.reduce(n => n + 1, 0);
-            }
-
-            first() {
-                return this.take(1).reduce((_, val) => val, undefined);
-            }
-
-            forEach(f) {
-                this.reduce((_, val) => { f(val); }, undefined);
-            }
+            count() { return this.reduce(n => n + 1, 0); }
+            first() { return this.take(1).reduce((_, val) => val, undefined); }
+            forEach(f) { this.reduce((_, val) => { f(val); }, undefined); }
         }
-
         const from = source => new Transducer(source);
 
         // ========== EXTRA ==========
@@ -909,7 +907,13 @@
                 checkEither: Either.checkEither,
             },
             monoid: {
-                ...of, isMonoid, fold, concat, invert, power,
+                Monoid, Group, ...of,
+                isMonoid: Monoid.isMonoid,
+                isGroup: Group.isGroup,
+                fold: Monoid.fold,
+                concat: Monoid.concat,
+                power: Monoid.power,
+                invert: Group.invert,
             },
             free: {
                 Free,

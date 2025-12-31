@@ -331,15 +331,11 @@ function build() {
  */
 (function(root, factory) {
     if (typeof module !== 'undefined' && module.exports) {
-        // CommonJS
         module.exports = factory();
-        // ESM interop: allow "import funFpJs from '...'" 
         module.exports.default = module.exports;
     } else if (typeof define === 'function' && define.amd) {
-        // AMD
         define([], factory);
     } else {
-        // Browser globals
         root.funFpJs = factory();
     }
 })(typeof self !== 'undefined' ? self : this, function() {
@@ -349,7 +345,6 @@ function build() {
         if (cacheable === undefined) cacheable = true;
         if (cacheable && cachedInstance) return cachedInstance;
         dependencies = dependencies || {};
-
         var log = dependencies.enableLog === false ? function(){} : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
 `;
 
