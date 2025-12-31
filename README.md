@@ -2,7 +2,7 @@
 
 A lightweight, dependency-free functional programming library for JavaScript.
 
-**~800 lines** of pure functional goodness.
+**~850 lines** of pure functional goodness.
 
 ## Features
 
@@ -14,7 +14,7 @@ A lightweight, dependency-free functional programming library for JavaScript.
 - 📝 **Template Engine** - Safe, nested object string interpolation
 - 🏷️ **Type Protocol** - Symbol-based type class markers
 - 📦 **Zero Dependencies** - Pure JavaScript
-- 🪶 **Lightweight** - ~800 lines total
+- 🪶 **Lightweight** - ~850 lines total
 
 ## Installation
 
@@ -61,7 +61,7 @@ factorial(100000);  // No stack overflow!
 
 ## Modules
 
-### 1. `core` - Functional Core (~170 lines)
+### 1. `core` - Functional Core (~270 lines)
 
 #### Types Protocol
 
@@ -1074,20 +1074,22 @@ template('Hello, {{  user.name  }}!', data); // 'Hello, Anthony!'
 ### Transducers (Point-free)
 
 Efficient data processing pipeline without intermediate arrays.
+Transducers are located in `core.transducer`.
 **Note**: Use `compose` to chain transducers. It executes in Left-to-Right order for data processing.
 
 ```javascript
-const { compose, transducer: { map, filter, take, transduce } } = func;
+const { core } = require('./index.js')();
+const { compose, transducer: { map, filter, take, transduce } } = core;
 
 // 1. Define Pipeline (Left -> Right execution)
-const transducer = compose(
+const xform = compose(
     map(x => x + 1),        // Step 1: Add 1
     filter(x => x % 2 === 0), // Step 2: Keep evens
     take(2)                 // Step 3: Take first 2
 );
 
 // 2. Execute
-const result = transduce(transducer)((acc, x) => (acc.push(x), acc))([])([1, 2, 3, 4, 5]);
+const result = transduce(xform)((acc, x) => (acc.push(x), acc))([])([1, 2, 3, 4, 5]);
 // [ (1+1)=2, (3+1)=4 ] -> Result: [2, 4]
 ```
 
@@ -1169,11 +1171,7 @@ processData('{"items":[{"name":"A","active":true}]}');
 ```javascript
 const lib = require('./index.js')();
 const { monoid: M } = lib;
-| `core.transducer` | Object | Transducer utilities |
-| `transducer.map(f)` | Function | Transducer map |
-| `transducer.filter(p)` | Function | Transducer filter |
-| `transducer.transduce` | Function | Execute transducer |
-| `transducer.take(n)` | Function | Take first n items |
+
 
 const orders = [
     { product: 'A', qty: 2, price: 10 },
@@ -1214,7 +1212,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 
 ## API Reference
 
-### core.js (~170 lines)
+### core.js (~270 lines, includes transducer)
 
 | Function | Description |
 |----------|-------------|
@@ -1254,6 +1252,10 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `core.useArrayOrLift(x)` | Ensure x is array |
 | `core.range(n)` | [0, 1, ..., n-1] |
 | `core.rangeBy(s, e)` | [s, ..., e-1] |
+| `core.transducer.map(f)` | Point-free transducer map |
+| `core.transducer.filter(p)` | Point-free transducer filter |
+| `core.transducer.take(n)` | Point-free transducer take (early termination) |
+| `core.transducer.transduce(xf)(reducer)(init)(coll)` | Execute transducer |
 
 ### either.js (~120 lines)
 
@@ -1373,7 +1375,6 @@ either.js     monoid.js          free.js        task.js
 | Task | ✅ | ✅ | ✅ |
 | Pure/Impure | ✅ | - | ✅ |
 | Thunk | ✅ | - | - |
-| Transducer | ✅ | - | - |
 
 
 ---

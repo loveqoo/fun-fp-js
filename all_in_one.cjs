@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-31 22:35:30 (Asia/Seoul)
+ * Built: 2025-12-31 22:46:41 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
