@@ -7,12 +7,8 @@ const $extra = (dependencies = {}) => {
     );
     const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
         (match, keyStr) => path(keyStr)(data).fold(_ => match, core.identity));
-
     return {
-        extra: {
-            path,
-            template,
-        },
+        extra: { path, template },
     };
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = $extra;

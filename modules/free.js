@@ -105,19 +105,11 @@ const $free = (dependencies = {}) => {
     const trampoline = Free.runSync(thunk => thunk.run());
     return {
         free: {
-            Free,
-            Thunk,
-            of: Free.of,
-            pure: Free.pure,
-            impure: Free.impure,
-            isPure: Free.isPure,
-            isImpure: Free.isImpure,
-            liftF: Free.liftF,
-            runSync: Free.runSync,
-            runAsync: Free.runAsync,
-            done: Thunk.done,
-            suspend: Thunk.suspend,
-            trampoline,
+            Free, Thunk,
+            of: Free.of, pure: Free.pure, impure: Free.impure,
+            isPure: Free.isPure, isImpure: Free.isImpure,
+            liftF: Free.liftF, runSync: Free.runSync, runAsync: Free.runAsync,
+            done: Thunk.done, suspend: Thunk.suspend, trampoline,
         },
     };
 };

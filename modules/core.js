@@ -103,24 +103,15 @@ const $core = (dependencies = {}) => {
             return f(args[0], args[1]);
         };
     };
-    const unapply = f => {
-        assertFunctions['unapply'](f);
-        return (...args) => f(args);
-    };
-    const unapply2 = f => {
-        assertFunctions['unapply2'](f);
-        return (a, b) => f([a, b]);
-    };
+    const unapply = f => (assertFunctions['unapply'](f), (...args) => f(args));
+    const unapply2 = f => (assertFunctions['unapply2'](f), (a, b) => f([a, b]));
     const curry = (f, arity = f.length) => {
         assertFunctions['curry'](f);
         return function _curry(...args) {
             return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
         };
     };
-    const curry2 = f => {
-        assertFunctions['curry2'](f);
-        return a => b => f(a, b);
-    };
+    const curry2 = f => (assertFunctions['curry2'](f), a => b => f(a, b));
     const uncurry = f => {
         assertFunctions['uncurry'](f);
         return (...args) => args.reduce((acc, arg, i) => {
@@ -140,10 +131,7 @@ const $core = (dependencies = {}) => {
             return next(b);
         };
     };
-    const partial = (f, ...args) => {
-        assertFunctions['partial'](f);
-        return (...next) => f(...args, ...next);
-    };
+    const partial = (f, ...args) => (assertFunctions['partial'](f), (...next) => f(...args, ...next));
     const predicate = (f, fallbackValue = false) => {
         assertFunctions['predicate'](f);
         return (...args) => {
@@ -155,26 +143,11 @@ const $core = (dependencies = {}) => {
             return Boolean(result);
         };
     };
-    const negate = f => {
-        assertFunctions['negate'](f);
-        return (...args) => !f(...args);
-    };
-    const flip = f => {
-        assertFunctions['flip'](f);
-        return (...args) => f(...args.slice().reverse());
-    };
-    const flip2 = f => {
-        assertFunctions['flip2'](f);
-        return (a, b, ...args) => f(b, a, ...args);
-    };
-    const flipC = f => {
-        assertFunctions['flipC'](f);
-        return a => b => f(b)(a);
-    };
-    const flipCV = f => {
-        assertFunctions['flipCV'](f);
-        return (...as) => (...bs) => f(...bs)(...as);
-    };
+    const negate = f => (assertFunctions['negate'](f), (...args) => !f(...args));
+    const flip = f => (assertFunctions['flip'](f), (...args) => f(...args.slice().reverse()));
+    const flip2 = f => (assertFunctions['flip2'](f), (a, b, ...args) => f(b, a, ...args));
+    const flipC = f => (assertFunctions['flipC'](f), a => b => f(b)(a));
+    const flipCV = f => (assertFunctions['flipCV'](f), (...as) => (...bs) => f(...bs)(...as));
     const pipe = (...fs) => {
         if (fs.length === 0) return identity;
         assertFunctions['pipe'](...fs);
@@ -274,13 +247,8 @@ const $core = (dependencies = {}) => {
         };
         return {
             transducer: {
-                Reduced,
-                of: Reduced.of,
-                isReduced: Reduced.isReduced,
-                transduce,
-                map,
-                filter,
-                take,
+                Reduced, of: Reduced.of, isReduced: Reduced.isReduced,
+                transduce, map, filter, take,
             },
         };
     })();

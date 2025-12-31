@@ -60,7 +60,6 @@ const $task = (dependencies = {}) => {
             return new Task((reject, resolve) => {
                 let f = null, a = null, fDone = false, aDone = false;
                 let errors = [];
-
                 const tryResolve = () => {
                     if (fDone && aDone) {
                         errors.length > 0
@@ -68,12 +67,10 @@ const $task = (dependencies = {}) => {
                             : core.catch(() => resolve(f(a)), rejectWith(reject))();
                     }
                 };
-
                 this.computation(
                     errs => { errors = errors.concat(errs); fDone = true; tryResolve(); },
                     fn => { f = fn; fDone = true; tryResolve(); }
                 );
-
                 taskValue.computation(
                     errs => { errors = errors.concat(errs); aDone = true; tryResolve(); },
                     x => { a = x; aDone = true; tryResolve(); }
@@ -102,10 +99,7 @@ const $task = (dependencies = {}) => {
             });
         }
         toEither(callback) {
-            this.run(
-                core.compose(callback, either.left),
-                core.compose(callback, either.right)
-            );
+            this.run(core.compose(callback, either.left), core.compose(callback, either.right));
         }
         static of(x) { return new Task((_, resolve) => resolve(x)); }
         static resolved(x) { return Task.of(x); }
@@ -135,18 +129,15 @@ const $task = (dependencies = {}) => {
             return new Task((reject, resolve) => {
                 const list = core.useArrayOrLift(tasks);
                 if (list.length === 0) return resolve([]);
-
                 const results = [];
                 const errors = [];
                 let completed = 0;
-
                 const onComplete = () => {
                     if (completed === list.length) {
                         const flatErrors = errors.flat().filter(Boolean);
                         flatErrors.length > 0 ? reject(flatErrors) : resolve(results);
                     }
                 };
-
                 list.forEach((t, i) => {
                     t.computation(
                         errs => { errors[i] = errs; completed++; onComplete(); },
@@ -159,7 +150,6 @@ const $task = (dependencies = {}) => {
             return new Task((reject, resolve) => {
                 const list = core.useArrayOrLift(tasks);
                 if (list.length === 0) return reject([new Error('race: empty task list')]);
-
                 const shared = { called: false };
                 const onceReject = core.once(reject, { state: shared });
                 const onceResolve = core.once(resolve, { state: shared });
@@ -183,17 +173,10 @@ const $task = (dependencies = {}) => {
     }
     return {
         task: {
-            Task,
-            of: Task.of,
-            resolved: Task.resolved,
-            rejected: Task.rejected,
-            create: Task.create,
-            fromPromise: Task.fromPromise,
-            fromEither: Task.fromEither,
-            all: Task.all,
-            race: Task.race,
-            sequence: Task.sequence,
-            traverse: Task.traverse,
+            Task, of: Task.of,
+            resolved: Task.resolved, rejected: Task.rejected, create: Task.create,
+            fromPromise: Task.fromPromise, fromEither: Task.fromEither,
+            all: Task.all, race: Task.race, sequence: Task.sequence, traverse: Task.traverse,
             pipeK: Task.pipeK,
         },
     };

@@ -8,7 +8,6 @@ const $monoid = (dependencies = {}) => {
             this._concat = concatFn;
             this.empty = empty;
         }
-
         fold(list, f = core.identity) {
             const arr = core.useArrayOrLift(list).map(f);
             if (arr.length === 0) return either.right(this.empty);
@@ -17,14 +16,12 @@ const $monoid = (dependencies = {}) => {
             }
             return either.catch(() => arr.reduce(this._concat, this.empty))();
         }
-
         concat(a, b) {
             if (!this.check(a) || !this.check(b)) {
                 return either.left(new TypeError('concat: expected values of the same type'));
             }
             return either.catch(() => this._concat(a, b))();
         }
-
         power(value, nth) {
             if (!this.check(value)) {
                 return either.left(new TypeError('power: expected a value of the same type'));
@@ -38,25 +35,19 @@ const $monoid = (dependencies = {}) => {
             if (nth === 0) return either.right(this.empty);
             return either.catch(() => core.range(nth).reduce(acc => this._concat(acc, value), this.empty))();
         }
-
-        static isMonoid(obj) {
-            return obj instanceof Monoid;
-        }
-
+        static isMonoid(obj) { return obj instanceof Monoid; }
         static fold(M, f = core.identity) {
             if (!Monoid.isMonoid(M)) {
                 return () => either.left(new TypeError('fold: expected a monoid'));
             }
             return list => M.fold(list, f);
         }
-
         static concat(M) {
             if (!Monoid.isMonoid(M)) {
                 return () => either.left(new TypeError('concat: expected a monoid'));
             }
             return (a, b) => M.concat(a, b);
         }
-
         static power(M) {
             if (!Monoid.isMonoid(M)) {
                 return () => either.left(new TypeError('power: expected a monoid'));
@@ -64,24 +55,18 @@ const $monoid = (dependencies = {}) => {
             return (value, nth) => M.power(value, nth);
         }
     }
-
     class Group extends Monoid {
         constructor(check, concatFn, empty, invertFn) {
             super(check, concatFn, empty);
             this._invert = invertFn;
         }
-
         invert(value) {
             if (!this.check(value)) {
                 return either.left(new TypeError('invert: expected a value of the same type'));
             }
             return either.catch(() => this._invert(value))();
         }
-
-        static isGroup(obj) {
-            return obj instanceof Group;
-        }
-
+        static isGroup(obj) { return obj instanceof Group; }
         static invert(M) {
             if (!Monoid.isMonoid(M)) {
                 return () => either.left(new TypeError('invert: expected a monoid'));
@@ -92,7 +77,6 @@ const $monoid = (dependencies = {}) => {
             return value => M.invert(value);
         }
     }
-
     const of = {
         number: {
             sum: new Group(a => typeof a === 'number', (a, b) => a + b, 0, a => -a),
@@ -129,12 +113,8 @@ const $monoid = (dependencies = {}) => {
     return {
         monoid: {
             Monoid, Group, ...of,
-            isMonoid: Monoid.isMonoid,
-            isGroup: Group.isGroup,
-            fold: Monoid.fold,
-            concat: Monoid.concat,
-            power: Monoid.power,
-            invert: Group.invert,
+            isMonoid: Monoid.isMonoid, isGroup: Group.isGroup,
+            fold: Monoid.fold, concat: Monoid.concat, power: Monoid.power, invert: Group.invert,
         },
     };
 };

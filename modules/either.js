@@ -13,15 +13,9 @@ const $either = (dependencies = {}) => {
     const normalizeToError = e => e instanceof Error ? e : new Error(typeof e === 'string' ? e : 'Left Error', { cause: e });
     const toEitherErrorArray = e => core.useArrayOrLift(e).map(normalizeToError);
     class Either {
-        static of(x) {
-            return new Right(x);
-        }
-        static right(x) {
-            return new Right(x);
-        }
-        static left(e) {
-            return new Left(toEitherErrorArray(e));
-        }
+        static of(x) { return new Right(x); }
+        static right(x) { return new Right(x); }
+        static left(e) { return new Left(toEitherErrorArray(e)); }
         static from(x) {
             if (x instanceof Left || x instanceof Right) return x;
             return Either.right(x);
@@ -133,19 +127,10 @@ const $either = (dependencies = {}) => {
     }
     return {
         either: {
-            Either,
-            left: Either.left,
-            right: Either.right,
-            of: Either.of,
-            catch: Either.catch,
-            from: Either.from,
-            fromNullable: Either.fromNullable,
-            validate: Either.validate,
-            validateAll: Either.validateAll,
-            sequence: Either.sequence,
-            pipeK: Either.pipeK,
-            traverse: Either.traverse,
-            traverseAll: Either.traverseAll,
+            Either, left: Either.left, right: Either.right, of: Either.of,
+            catch: Either.catch, from: Either.from, fromNullable: Either.fromNullable,
+            validate: Either.validate, validateAll: Either.validateAll, sequence: Either.sequence,
+            pipeK: Either.pipeK, traverse: Either.traverse, traverseAll: Either.traverseAll,
             checkEither: Either.checkEither,
         },
     };

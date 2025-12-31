@@ -2,7 +2,7 @@
  * Fun FP JS - A Lightweight Functional Programming Library
  * UMD (Universal Module Definition) + ESM build
  * 
- * Built: 2025-12-31 18:31:29 (Asia/Seoul)
+ * Built: 2025-12-31 22:35:30 (Asia/Seoul)
  * 
  * Supports: CommonJS, AMD, Browser globals, ES Modules
  * 
@@ -147,24 +147,15 @@
                 return f(args[0], args[1]);
             };
         };
-        const unapply = f => {
-            assertFunctions['unapply'](f);
-            return (...args) => f(args);
-        };
-        const unapply2 = f => {
-            assertFunctions['unapply2'](f);
-            return (a, b) => f([a, b]);
-        };
+        const unapply = f => (assertFunctions['unapply'](f), (...args) => f(args));
+        const unapply2 = f => (assertFunctions['unapply2'](f), (a, b) => f([a, b]));
         const curry = (f, arity = f.length) => {
             assertFunctions['curry'](f);
             return function _curry(...args) {
                 return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
             };
         };
-        const curry2 = f => {
-            assertFunctions['curry2'](f);
-            return a => b => f(a, b);
-        };
+        const curry2 = f => (assertFunctions['curry2'](f), a => b => f(a, b));
         const uncurry = f => {
             assertFunctions['uncurry'](f);
             return (...args) => args.reduce((acc, arg, i) => {
@@ -184,10 +175,7 @@
                 return next(b);
             };
         };
-        const partial = (f, ...args) => {
-            assertFunctions['partial'](f);
-            return (...next) => f(...args, ...next);
-        };
+        const partial = (f, ...args) => (assertFunctions['partial'](f), (...next) => f(...args, ...next));
         const predicate = (f, fallbackValue = false) => {
             assertFunctions['predicate'](f);
             return (...args) => {
@@ -199,26 +187,11 @@
                 return Boolean(result);
             };
         };
-        const negate = f => {
-            assertFunctions['negate'](f);
-            return (...args) => !f(...args);
-        };
-        const flip = f => {
-            assertFunctions['flip'](f);
-            return (...args) => f(...args.slice().reverse());
-        };
-        const flip2 = f => {
-            assertFunctions['flip2'](f);
-            return (a, b, ...args) => f(b, a, ...args);
-        };
-        const flipC = f => {
-            assertFunctions['flipC'](f);
-            return a => b => f(b)(a);
-        };
-        const flipCV = f => {
-            assertFunctions['flipCV'](f);
-            return (...as) => (...bs) => f(...bs)(...as);
-        };
+        const negate = f => (assertFunctions['negate'](f), (...args) => !f(...args));
+        const flip = f => (assertFunctions['flip'](f), (...args) => f(...args.slice().reverse()));
+        const flip2 = f => (assertFunctions['flip2'](f), (a, b, ...args) => f(b, a, ...args));
+        const flipC = f => (assertFunctions['flipC'](f), a => b => f(b)(a));
+        const flipCV = f => (assertFunctions['flipCV'](f), (...as) => (...bs) => f(...bs)(...as));
         const pipe = (...fs) => {
             if (fs.length === 0) return identity;
             assertFunctions['pipe'](...fs);
@@ -318,13 +291,8 @@
             };
             return {
                 transducer: {
-                    Reduced,
-                    of: Reduced.of,
-                    isReduced: Reduced.isReduced,
-                    transduce,
-                    map,
-                    filter,
-                    take,
+                    Reduced, of: Reduced.of, isReduced: Reduced.isReduced,
+                    transduce, map, filter, take,
                 },
             };
         })();
@@ -334,15 +302,9 @@
         const normalizeToError = e => e instanceof Error ? e : new Error(typeof e === 'string' ? e : 'Left Error', { cause: e });
         const toEitherErrorArray = e => useArrayOrLift(e).map(normalizeToError);
         class Either {
-            static of(x) {
-                return new Right(x);
-            }
-            static right(x) {
-                return new Right(x);
-            }
-            static left(e) {
-                return new Left(toEitherErrorArray(e));
-            }
+            static of(x) { return new Right(x); }
+            static right(x) { return new Right(x); }
+            static left(e) { return new Left(toEitherErrorArray(e)); }
             static from(x) {
                 if (x instanceof Left || x instanceof Right) return x;
                 return Either.right(x);
@@ -460,7 +422,6 @@
                 this._concat = concatFn;
                 this.empty = empty;
             }
-
             fold(list, f = identity) {
                 const arr = useArrayOrLift(list).map(f);
                 if (arr.length === 0) return Either.right(this.empty);
@@ -469,14 +430,12 @@
                 }
                 return Either.catch(() => arr.reduce(this._concat, this.empty))();
             }
-
             concat(a, b) {
                 if (!this.check(a) || !this.check(b)) {
                     return Either.left(new TypeError('concat: expected values of the same type'));
                 }
                 return Either.catch(() => this._concat(a, b))();
             }
-
             power(value, nth) {
                 if (!this.check(value)) {
                     return Either.left(new TypeError('power: expected a value of the same type'));
@@ -490,25 +449,19 @@
                 if (nth === 0) return Either.right(this.empty);
                 return Either.catch(() => range(nth).reduce(acc => this._concat(acc, value), this.empty))();
             }
-
-            static isMonoid(obj) {
-                return obj instanceof Monoid;
-            }
-
+            static isMonoid(obj) { return obj instanceof Monoid; }
             static fold(M, f = identity) {
                 if (!Monoid.isMonoid(M)) {
                     return () => Either.left(new TypeError('fold: expected a monoid'));
                 }
                 return list => M.fold(list, f);
             }
-
             static concat(M) {
                 if (!Monoid.isMonoid(M)) {
                     return () => Either.left(new TypeError('concat: expected a monoid'));
                 }
                 return (a, b) => M.concat(a, b);
             }
-
             static power(M) {
                 if (!Monoid.isMonoid(M)) {
                     return () => Either.left(new TypeError('power: expected a monoid'));
@@ -516,24 +469,18 @@
                 return (value, nth) => M.power(value, nth);
             }
         }
-
         class Group extends Monoid {
             constructor(check, concatFn, empty, invertFn) {
                 super(check, concatFn, empty);
                 this._invert = invertFn;
             }
-
             invert(value) {
                 if (!this.check(value)) {
                     return Either.left(new TypeError('invert: expected a value of the same type'));
                 }
                 return Either.catch(() => this._invert(value))();
             }
-
-            static isGroup(obj) {
-                return obj instanceof Group;
-            }
-
+            static isGroup(obj) { return obj instanceof Group; }
             static invert(M) {
                 if (!Monoid.isMonoid(M)) {
                     return () => Either.left(new TypeError('invert: expected a monoid'));
@@ -544,7 +491,6 @@
                 return value => M.invert(value);
             }
         }
-
         const of = {
             number: {
                 sum: new Group(a => typeof a === 'number', (a, b) => a + b, 0, a => -a),
@@ -739,7 +685,6 @@
                 return new Task((reject, resolve) => {
                     let f = null, a = null, fDone = false, aDone = false;
                     let errors = [];
-
                     const tryResolve = () => {
                         if (fDone && aDone) {
                             errors.length > 0
@@ -747,12 +692,10 @@
                                 : runCatch(() => resolve(f(a)), rejectWith(reject))();
                         }
                     };
-
                     this.computation(
                         errs => { errors = errors.concat(errs); fDone = true; tryResolve(); },
                         fn => { f = fn; fDone = true; tryResolve(); }
                     );
-
                     taskValue.computation(
                         errs => { errors = errors.concat(errs); aDone = true; tryResolve(); },
                         x => { a = x; aDone = true; tryResolve(); }
@@ -781,10 +724,7 @@
                 });
             }
             toEither(callback) {
-                this.run(
-                    compose(callback, Either.left),
-                    compose(callback, Either.right)
-                );
+                this.run(compose(callback, Either.left), compose(callback, Either.right));
             }
             static of(x) { return new Task((_, resolve) => resolve(x)); }
             static resolved(x) { return Task.of(x); }
@@ -814,18 +754,15 @@
                 return new Task((reject, resolve) => {
                     const list = useArrayOrLift(tasks);
                     if (list.length === 0) return resolve([]);
-
                     const results = [];
                     const errors = [];
                     let completed = 0;
-
                     const onComplete = () => {
                         if (completed === list.length) {
                             const flatErrors = errors.flat().filter(Boolean);
                             flatErrors.length > 0 ? reject(flatErrors) : resolve(results);
                         }
                     };
-
                     list.forEach((t, i) => {
                         t.computation(
                             errs => { errors[i] = errs; completed++; onComplete(); },
@@ -838,7 +775,6 @@
                 return new Task((reject, resolve) => {
                     const list = useArrayOrLift(tasks);
                     if (list.length === 0) return reject([new Error('race: empty task list')]);
-
                     const shared = { called: false };
                     const onceReject = once(reject, { state: shared });
                     const onceResolve = once(resolve, { state: shared });
@@ -870,61 +806,30 @@
                 tap, also, into, useOrLift, useArrayOrLift, range, rangeBy, transducer,
             },
             either: {
-                Either,
-                left: Either.left,
-                right: Either.right,
-                of: Either.of,
-                catch: Either.catch,
-                from: Either.from,
-                fromNullable: Either.fromNullable,
-                validate: Either.validate,
-                validateAll: Either.validateAll,
-                sequence: Either.sequence,
-                pipeK: Either.pipeK,
-                traverse: Either.traverse,
-                traverseAll: Either.traverseAll,
+                Either, left: Either.left, right: Either.right, of: Either.of,
+                catch: Either.catch, from: Either.from, fromNullable: Either.fromNullable,
+                validate: Either.validate, validateAll: Either.validateAll, sequence: Either.sequence,
+                pipeK: Either.pipeK, traverse: Either.traverse, traverseAll: Either.traverseAll,
                 checkEither: Either.checkEither,
             },
             monoid: {
                 Monoid, Group, ...of,
-                isMonoid: Monoid.isMonoid,
-                isGroup: Group.isGroup,
-                fold: Monoid.fold,
-                concat: Monoid.concat,
-                power: Monoid.power,
-                invert: Group.invert,
+                isMonoid: Monoid.isMonoid, isGroup: Group.isGroup,
+                fold: Monoid.fold, concat: Monoid.concat, power: Monoid.power, invert: Group.invert,
             },
             free: {
-                Free,
-                Thunk,
-                of: Free.of,
-                pure: Free.pure,
-                impure: Free.impure,
-                isPure: Free.isPure,
-                isImpure: Free.isImpure,
-                liftF: Free.liftF,
-                runSync: Free.runSync,
-                runAsync: Free.runAsync,
-                done: Thunk.done,
-                suspend: Thunk.suspend,
-                trampoline,
+                Free, Thunk,
+                of: Free.of, pure: Free.pure, impure: Free.impure,
+                isPure: Free.isPure, isImpure: Free.isImpure,
+                liftF: Free.liftF, runSync: Free.runSync, runAsync: Free.runAsync,
+                done: Thunk.done, suspend: Thunk.suspend, trampoline,
             },
-            extra: {
-                path,
-                template,
-            },
+            extra: { path, template },
             task: {
-                Task,
-                of: Task.of,
-                resolved: Task.resolved,
-                rejected: Task.rejected,
-                create: Task.create,
-                fromPromise: Task.fromPromise,
-                fromEither: Task.fromEither,
-                all: Task.all,
-                race: Task.race,
-                sequence: Task.sequence,
-                traverse: Task.traverse,
+                Task, of: Task.of,
+                resolved: Task.resolved, rejected: Task.rejected, create: Task.create,
+                fromPromise: Task.fromPromise, fromEither: Task.fromEither,
+                all: Task.all, race: Task.race, sequence: Task.sequence, traverse: Task.traverse,
                 pipeK: Task.pipeK,
             },
         };
