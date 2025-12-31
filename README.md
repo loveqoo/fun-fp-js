@@ -1311,24 +1311,7 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 | `.toPromise()` | Convert to Promise |
 | `.toEither(callback)` | Convert to Either via callback |
 
-### transducer.js (~130 lines)
 
-| Function/Method | Description |
-|-----------------|-------------|
-| `from(iterable)` | Create Transducer from iterable |
-| `.map(f)` | Transform values (Functor) |
-| `.flatMap(f)` | Flatten and transform (Monad) |
-| `.filter(p)` | Filter by predicate |
-| `.take(n)` | Take first n (early termination) |
-| `.drop(n)` | Skip first n |
-| `.collect()` | Terminal: to array |
-| `.fold(M, f?)` | Terminal: fold with Monoid |
-| `.sum(M?)` | Terminal: sum with Monoid (default: number.sum) |
-| `.join(sep)` | Terminal: join as string |
-| `.count()` | Terminal: count elements |
-| `.first()` | Terminal: first element |
-| `.reduce(f, init)` | Terminal: custom reducer |
-| `.forEach(f)` | Terminal: side effects |
 
 ### extra.js (~15 lines)
 
@@ -1348,9 +1331,6 @@ const sumTree = trampoline(function sum(node, acc = 0) {
 either.js     monoid.js          free.js        task.js
  (Error)      (Algebra)          (Free)         (Async)
    │              │                 │              │
-   │        transducer.js           │              │
-   │          (Process)             │              │
-   │              │                 │              │
    └──────────────┴────────┬────────┴──────────────┘
                            │
                       extra.js
@@ -1368,7 +1348,7 @@ either.js     monoid.js          free.js        task.js
 | Task | ✅ | ✅ | ✅ |
 | Pure/Impure | ✅ | - | ✅ |
 | Thunk | ✅ | - | - |
-| Transducer | ✅ | - | ✅ |
+
 
 ---
 

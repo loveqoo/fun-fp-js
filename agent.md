@@ -16,7 +16,7 @@ This document serves as a context provider for AI agents to quickly understand t
     - `monoid.js`: Monoid and Group implementations (Sum, Product, Any, All, etc.).
     - `free.js`: Free Monad and Trampoline for stack-safe recursion.
     - `task.js`: `Task` Monad for lazy asynchronous operations (like async Either).
-    - `transducer.js`: Efficient data processing (map/filter/take) without intermediate arrays.
+    - `task.js`: `Task` Monad for lazy asynchronous operations (like async Either).
     - `extra.js`: High-level utilities like `path` and `template` engine.
 - `/tests`: Unified test suite.
     - `*.test.js`: Functional tests divided by feature.
@@ -74,13 +74,6 @@ This document serves as a context provider for AI agents to quickly understand t
 - **Unified Testing**: 모든 테스트는 `/tests/*.test.js`로 통합.
 - **Retry Mechanism**: `once` utility correctly handles failures, allowing retry on exception while caching only successful results.
 - **Strict Validation**: `apply2` and similar utilities enforce strict argument counting.
-- **Transducers**: `transducer.js` refactored with **chainable fluent API**.
-  - Usage: `from(iterable).map(f).filter(p).take(n).collect()`
-  - **Functor + Monad**: Supports `map`, `flatMap`
-  - Terminal methods: `collect()`, `fold(M)`, `sum(M?)`, `join()`, `count()`, `first()`, `reduce()`
-  - `sum(M)` accepts optional Monoid (default: `monoid.number.sum`)
-  - Depends on `$core` and `$monoid` (for `fold`, `sum`)
-  - Export pattern: `{ transducer: { from, Transducer } }`
 - **Monoid 클래스 리팩터링**: `Monoid`/`Group` 클래스 기반으로 전환.
   - `Group extends Monoid`
   - 인스턴스 메서드: `M.fold(list)`, `M.concat(a, b)`, `M.power(value, n)`, `M.invert(value)` (Group만)

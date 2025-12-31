@@ -20,7 +20,7 @@ const PARTS_DIR = path.join(BUILD_DIR, 'parts');
 const OUTPUT_FILE = path.join(BUILD_DIR, 'all_in_one.cjs');
 
 // Module order (dependencies first)
-const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'transducer', 'extra', 'task'];
+const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'extra', 'task'];
 
 // Special case replacements (reserved words or naming conflicts)
 // Format: { 'namespace.function': 'replacement' }

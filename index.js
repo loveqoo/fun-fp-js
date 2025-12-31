@@ -13,7 +13,6 @@ const $monoid = require('./modules/monoid.js');
 const $free = require('./modules/free.js');
 const $extra = require('./modules/extra.js');
 const $task = require('./modules/task.js');
-const $transducer = require('./modules/transducer.js');
 
 const cache = new Map();
 
@@ -38,9 +37,7 @@ const funFpJs = (options = {}) => {
         { key: '$monoid', factory: $monoid, deps: ['$core', '$either'] },
         { key: '$free', factory: $free, deps: ['$core'] },
         { key: '$extra', factory: $extra, deps: ['$core', '$either'] },
-        { key: '$task', factory: $task, deps: ['$core', '$either'] },
-        { key: '$transducer', factory: $transducer, deps: ['$core', '$monoid'] }
-
+        { key: '$task', factory: $task, deps: ['$core', '$either'] }
     ];
 
     // Build the library context with strictly filtered dependency injection
