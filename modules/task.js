@@ -20,19 +20,13 @@ const $task = (dependencies = {}) => {
         map(f) {
             expectedFunctions['core:a-function']('Task.map:f')(f);
             return new Task((reject, resolve) => {
-                this.computation(
-                    reject,
-                    core.catch(core.compose(resolve, f), rejectWith(reject))
-                );
+                this.computation(reject, core.catch(core.compose(resolve, f), rejectWith(reject)));
             });
         }
         mapRejected(f) {
             expectedFunctions['core:a-function']('Task.mapRejected:f')(f);
             return new Task((reject, resolve) => {
-                this.computation(
-                    core.compose(reject, errs => errs.map(core.catch(f, core.identity))),
-                    resolve
-                );
+                this.computation(core.compose(reject, errs => errs.map(core.catch(f, core.identity))), resolve);
             });
         }
         flatMap(f) {
@@ -74,6 +68,8 @@ const $task = (dependencies = {}) => {
             });
         }
         fold(onRejected, onResolved) {
+            expectedFunctions['core:a-function']('Task.fold:onRejected')(onRejected);
+            expectedFunctions['core:a-function']('Task.fold:onResolved')(onResolved);
             return new Task((reject, resolve) => {
                 this.computation(
                     core.catch(core.compose(resolve, onRejected), rejectWith(reject)),
@@ -88,10 +84,7 @@ const $task = (dependencies = {}) => {
         }
         toPromise() {
             return new Promise((resolve, reject) => {
-                this.computation(
-                    errs => reject(new AggregateError(errs, 'Task rejected')),
-                    resolve
-                );
+                this.computation(errs => reject(new AggregateError(errs, 'Task rejected')), resolve);
             });
         }
         toEither(callback) {
@@ -111,11 +104,7 @@ const $task = (dependencies = {}) => {
         }
         static fromPromise(promiseFn) {
             expectedFunctions['a-function-returning-promise']('Task.fromPromise:promiseFn')(promiseFn);
-            return (...args) => new Task((reject, resolve) => {
-                promiseFn(...args)
-                    .then(resolve)
-                    .catch(rejectWith(reject));
-            });
+            return (...args) => new Task((reject, resolve) => promiseFn(...args).then(resolve).catch(rejectWith(reject)));
         }
         static fromEither(e) {
             either.checkEither(e);
@@ -142,14 +131,13 @@ const $task = (dependencies = {}) => {
                 });
             });
         }
-        static race(tasks) { // Promise.allSettled
+        static race(tasks) { // TODO: Promise.allSettled
             return new Task((reject, resolve) => {
                 const list = core.useArrayOrLift(tasks);
                 if (list.length === 0) return reject([new Error('race: empty task list')]);
                 const shared = { called: false };
                 const onceReject = core.once(reject, { state: shared });
                 const onceResolve = core.once(resolve, { state: shared });
-
                 list.forEach(t => t.computation(onceReject, onceResolve));
             });
         }

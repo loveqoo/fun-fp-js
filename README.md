@@ -2,7 +2,7 @@
 
 A lightweight, dependency-free functional programming library for JavaScript.
 
-**~806 lines** of pure functional goodness.
+**~795 lines** of pure functional goodness.
 
 ## Features
 
@@ -422,7 +422,7 @@ fib(1000); // Works!
 
 ---
 
-### 5. `task` - Lazy Async Monad (~181 lines)
+### 5. `task` - Lazy Async Monad (~170 lines)
 
 Task represents a lazy asynchronous computation - like a Promise, but:
 - **Lazy**: Nothing runs until `.run()` is called
