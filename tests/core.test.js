@@ -292,9 +292,9 @@ test('rangeBy - start >= end', () => {
     assertEquals(core.rangeBy(10, 5), []);
 });
 
-test('assertFunction - validation', () => {
+test('expectedFunction - validation', () => {
     try {
-        core.assertFunction('testFunc', 'a function')(42);
+        core.expectedFunction('a function')('testFunc')(42);
         assert(false, 'Should have thrown TypeError');
     } catch (e) {
         assert(e instanceof TypeError, 'Expected TypeError');

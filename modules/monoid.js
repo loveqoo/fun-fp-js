@@ -1,7 +1,7 @@
 const $monoid = (dependencies = {}) => {
     const { core } = dependencies.$core;
     const { either } = dependencies.$either;
-
+    // @build-start
     class Monoid {
         constructor(check, concatFn, empty) {
             this.check = check;
@@ -112,8 +112,7 @@ const $monoid = (dependencies = {}) => {
 
     return {
         monoid: {
-            Monoid, Group, ...of,
-            isMonoid: Monoid.isMonoid, isGroup: Group.isGroup,
+            Monoid, Group, ...of, isMonoid: Monoid.isMonoid, isGroup: Group.isGroup,
             fold: Monoid.fold, concat: Monoid.concat, power: Monoid.power, invert: Group.invert,
         },
     };

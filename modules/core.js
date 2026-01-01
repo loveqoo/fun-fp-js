@@ -1,5 +1,7 @@
 const $core = (dependencies = {}) => {
-    const log = dependencies.enableLog === false ? () => { } : (typeof dependencies.log === 'function' ? dependencies.log : console.log);
+    // @build-start
+    const isFunction = f => typeof f === 'function';
+    const log = dependencies.enableLog === false ? () => { } : (isFunction(dependencies.log) ? dependencies.log : console.log);
     const Types = { Functor: Symbol.for('fun-fp-js/Functor'), Applicative: Symbol.for('fun-fp-js/Applicative'), Monad: Symbol.for('fun-fp-js/Monad') };
     const raise = e => { throw e; };
     const typeOf = a => {
@@ -14,7 +16,6 @@ const $core = (dependencies = {}) => {
             default: return 'unknown';
         }
     };
-    const isFunction = f => typeof f === 'function';
     const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
     const isIterable = a => a != null && typeof a[Symbol.iterator] === 'function';
     const toIterator = function* (iterable) {
@@ -31,46 +32,28 @@ const $core = (dependencies = {}) => {
             yield iterable;
         }
     };
-    const assertFunction = (name, expected) => (...fs) => {
+    const expectedFunction = expected => name => (...fs) => {
         const invalids = fs.map((f, i) => [i, f]).filter(([_, f]) => !isFunction(f)).map(([i, f]) => `argument ${i} is ${typeOf(f)}`);
         if (invalids.length > 0) raise(new TypeError(`${name}: expected ${expected}, but ${invalids.join(', ')}`));
         return fs; // array
     };
-    const assertFunctions = {
-        'hasFunction': assertFunction('hasFunction', 'extracts to be functions'),
-        'runCatch0': assertFunction('runCatch', 'a function'),
-        'runCatch1': assertFunction('runCatch', 'onError to be a function'),
-        'apply': assertFunction('apply', 'a function'),
-        'apply2': assertFunction('apply2', 'a function'),
-        'unapply': assertFunction('unapply', 'a function'),
-        'unapply2': assertFunction('unapply2', 'a function'),
-        'curry': assertFunction('curry', 'a function'),
-        'curry2': assertFunction('curry2', 'a function'),
-        'uncurry': assertFunction('uncurry', 'a function'),
-        'uncurry2': assertFunction('uncurry2', 'a function'),
-        'partial': assertFunction('partial', 'a function'),
-        'predicate': assertFunction('predicate', 'a function'),
-        'negate': assertFunction('negate', 'a function'),
-        'flip': assertFunction('flip', 'a function'),
-        'flip2': assertFunction('flip2', 'a function'),
-        'flipC': assertFunction('flipC', 'a function'),
-        'flipCV': assertFunction('flipCV', 'a function'),
-        'pipe': assertFunction('pipe', 'all arguments to be functions'),
-        'once': assertFunction('once', 'a function'),
-        'converge0': assertFunction('converge', 'a function'),
-        'converge1': assertFunction('converge', 'all branch arguments to be functions'),
-        'tap': assertFunction('tap', 'all arguments to be functions'),
-        'useOrLift0': assertFunction('useOrLift', 'check to be a function'),
-        'useOrLift1': assertFunction('useOrLift', 'lift to be a function'),
-        'transducer_map': assertFunction('transducer.map', 'a function'),
-        'transducer_filter': assertFunction('transducer.filter', 'a function'),
-        'transduce_transducer': assertFunction('transduce', 'transducer to be a function'),
-        'transduce_reducer': assertFunction('transduce', 'reducer to be a function'),
+    const expectedFunctions = {
+        'core:a-function': expectedFunction('a function'),
+        'core:extracts-to-be-functions': expectedFunction('extracts to be functions'),
+        'core:on-error-to-be-a-function': expectedFunction('onError to be a function'),
+        'core:all-arguments-to-be-functions': expectedFunction('all arguments to be functions'),
+        'core:all-branch-arguments-to-be-functions': expectedFunction('all branch arguments to be functions'),
+        'core:check-to-be-a-function': expectedFunction('check to be a function'),
+        'core:lift-to-be-a-function': expectedFunction('lift to be a function'),
+        'core:transducer-to-be-a-function': expectedFunction('transducer to be a function'),
+        'core:reducer-to-be-a-function': expectedFunction('reducer to be a function'),
     };
-    const hasFunctions = (extracts, check = _ => true) => obj => obj && assertFunctions['hasFunction'](...extracts).every(extract => isFunction(extract(obj))) && check(obj);
+    const hasFunctions = (extracts, check = _ => true) => obj => obj
+        && expectedFunctions['core:extracts-to-be-functions']('hasFunction')(...extracts).every(extract => isFunction(extract(obj)))
+        && check(obj);
     const runCatch = (f, onError = e => log(e)) => {
-        assertFunctions['runCatch0'](f);
-        assertFunctions['runCatch1'](onError);
+        expectedFunctions['core:a-function']('runCatch:f')(f);
+        expectedFunctions['core:on-error-to-be-a-function']('runCatch:onError')(onError);
         return (...args) => {
             try {
                 return f(...args);
@@ -86,54 +69,54 @@ const $core = (dependencies = {}) => {
     const constant = x => () => x;
     const tuple = (...args) => args;
     const apply = f => {
-        assertFunctions['apply'](f);
+        expectedFunctions['core:a-function']('apply')(f);
         return args => {
             if (!Array.isArray(args)) {
-                raise(new TypeError(`apply: expected an array of arguments, but got ${typeof args}`));
+                raise(new TypeError(`apply: expected an array of arguments, but got ${typeOf(args)}`));
             }
             return f(...args);
         };
     };
     const apply2 = f => {
-        assertFunctions['apply2'](f);
+        expectedFunctions['core:a-function']('apply2')(f);
         return args => {
             if (!Array.isArray(args) || args.length !== 2) {
-                raise(new TypeError(`apply2: expected an array of exactly 2 arguments, but got ${Array.isArray(args) ? args.length : typeof args}`));
+                raise(new TypeError(`apply2: expected an array of exactly 2 arguments, but got ${Array.isArray(args) ? args.length : typeOf(args)}`));
             }
             return f(args[0], args[1]);
         };
     };
-    const unapply = f => (assertFunctions['unapply'](f), (...args) => f(args));
-    const unapply2 = f => (assertFunctions['unapply2'](f), (a, b) => f([a, b]));
+    const unapply = f => (expectedFunctions['core:a-function']('unapply')(f), (...args) => f(args));
+    const unapply2 = f => (expectedFunctions['core:a-function']('unapply2')(f), (a, b) => f([a, b]));
     const curry = (f, arity = f.length) => {
-        assertFunctions['curry'](f);
+        expectedFunctions['core:a-function']('curry')(f);
         return function _curry(...args) {
             return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
         };
     };
-    const curry2 = f => (assertFunctions['curry2'](f), a => b => f(a, b));
+    const curry2 = f => (expectedFunctions['core:a-function']('curry2')(f), a => b => f(a, b));
     const uncurry = f => {
-        assertFunctions['uncurry'](f);
+        expectedFunctions['core:a-function']('uncurry')(f);
         return (...args) => args.reduce((acc, arg, i) => {
             if (!isFunction(acc)) {
-                raise(new TypeError(`uncurry: expected a curried function (function returning functions), but got ${typeof acc} before applying argument ${i}`));
+                raise(new TypeError(`uncurry: expected a curried function (function returning functions), but got ${typeOf(acc)} before applying argument ${i}`));
             }
             return acc(arg);
         }, f);
     };
     const uncurry2 = f => {
-        assertFunctions['uncurry2'](f);
+        expectedFunctions['core:a-function']('uncurry2')(f);
         return (a, b) => {
             const next = f(a);
             if (!isFunction(next)) {
-                raise(new TypeError(`uncurry2: expected a curried function (function returning a function), but got ${typeof next}`));
+                raise(new TypeError(`uncurry2: expected a curried function (function returning a function), but got ${typeOf(next)}`));
             }
             return next(b);
         };
     };
-    const partial = (f, ...args) => (assertFunctions['partial'](f), (...next) => f(...args, ...next));
+    const partial = (f, ...args) => (expectedFunctions['core:a-function']('partial')(f), (...next) => f(...args, ...next));
     const predicate = (f, fallbackValue = false) => {
-        assertFunctions['predicate'](f);
+        expectedFunctions['core:a-function']('predicate')(f);
         return (...args) => {
             const result = runCatch(f, _ => fallbackValue)(...args);
             if (result instanceof Promise || (result && typeof result.then === 'function')) {
@@ -143,21 +126,21 @@ const $core = (dependencies = {}) => {
             return Boolean(result);
         };
     };
-    const negate = f => (assertFunctions['negate'](f), (...args) => !f(...args));
-    const flip = f => (assertFunctions['flip'](f), (...args) => f(...args.slice().reverse()));
-    const flip2 = f => (assertFunctions['flip2'](f), (a, b, ...args) => f(b, a, ...args));
-    const flipC = f => (assertFunctions['flipC'](f), a => b => f(b)(a));
-    const flipCV = f => (assertFunctions['flipCV'](f), (...as) => (...bs) => f(...bs)(...as));
+    const negate = f => (expectedFunctions['core:a-function']('negate')(f), (...args) => !f(...args));
+    const flip = f => (expectedFunctions['core:a-function']('flip')(f), (...args) => f(...args.slice().reverse()));
+    const flip2 = f => (expectedFunctions['core:a-function']('flip2')(f), (a, b, ...args) => f(b, a, ...args));
+    const flipC = f => (expectedFunctions['core:a-function']('flipC')(f), a => b => f(b)(a));
+    const flipCV = f => (expectedFunctions['core:a-function']('flipCV')(f), (...as) => (...bs) => f(...bs)(...as));
     const pipe = (...fs) => {
         if (fs.length === 0) return identity;
-        assertFunctions['pipe'](...fs);
+        expectedFunctions['core:all-arguments-to-be-functions']('pipe')(...fs);
         return x => fs.reduce((acc, f) => f(acc), x);
     };
     const pipe2 = (f, g) => pipe(f, g);
     const compose = (...fs) => pipe(...fs.slice().reverse());
     const compose2 = (f, g) => compose(f, g);
     const once = (f, option = {}) => {
-        assertFunctions['once'](f);
+        expectedFunctions['core:a-function']('once')(f);
         const state = option.state || { called: false };
         const defaultValue = option.defaultValue;
         let result = defaultValue;
@@ -171,14 +154,14 @@ const $core = (dependencies = {}) => {
         };
     };
     const converge = (f, ...branches) => {
-        assertFunctions['converge0'](f);
-        assertFunctions['converge1'](...branches);
+        expectedFunctions['core:a-function']('converge:f')(f);
+        expectedFunctions['core:all-branch-arguments-to-be-functions']('converge:branches')(...branches);
         return (...args) => f(...branches.map(branch => branch(...args)));
     };
     const runOrDefault = fallbackValue => g => isFunction(g) ? runCatch(g, _ => fallbackValue)() : fallbackValue;
     const capture = (...args) => (f, onError = e => log(e)) => runCatch(f, onError)(...args);
     const tap = (...fs) => {
-        assertFunctions['tap'](...fs);
+        expectedFunctions['core:all-arguments-to-be-functions']('tap')(...fs);
         return x => {
             const runAgainstX = f => runCatch(f)(x);
             fs.forEach(runAgainstX);
@@ -188,8 +171,8 @@ const $core = (dependencies = {}) => {
     const also = flipCV(tap);
     const into = flipCV(pipe);
     const useOrLift = (check, lift) => {
-        assertFunctions['useOrLift0'](check);
-        assertFunctions['useOrLift1'](lift);
+        expectedFunctions['core:check-to-be-a-function']('useOrLift:check')(check);
+        expectedFunctions['core:lift-to-be-a-function']('useOrLift:lift')(lift);
         return x => predicate(check)(x) ? x : lift(x);
     };
     const useArrayOrLift = useOrLift(Array.isArray, Array.of);
@@ -202,9 +185,9 @@ const $core = (dependencies = {}) => {
             static isReduced(value) { return value instanceof Reduced; }
         }
         const transduce = transducer => {
-            assertFunctions['transduce_transducer'](transducer);
+            expectedFunctions['core:transducer-to-be-a-function']('transducer.transduce:transducer')(transducer);
             return reducer => {
-                assertFunctions['transduce_reducer'](reducer);
+                expectedFunctions['core:reducer-to-be-a-function']('transducer.transduce:reducer')(reducer);
                 return initialValue => collection => {
                     if (!isIterable(collection)) {
                         raise(new TypeError(`transduce: expected an iterable, but got ${typeof collection}`));
@@ -221,14 +204,8 @@ const $core = (dependencies = {}) => {
                 };
             };
         };
-        const map = f => {
-            assertFunctions['transducer_map'](f);
-            return reducer => (acc, val) => reducer(acc, f(val));
-        };
-        const filter = p => {
-            assertFunctions['transducer_filter'](p);
-            return reducer => (acc, val) => p(val) ? reducer(acc, val) : acc;
-        };
+        const map = f => (expectedFunctions['core:a-function']('transducer.map')(f), reducer => (acc, val) => reducer(acc, f(val)));
+        const filter = p => (expectedFunctions['core:a-function']('transducer.filter')(p), reducer => (acc, val) => p(val) ? reducer(acc, val) : acc);
         const take = count => {
             if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
                 raise(new TypeError(`transducer.take: expected a positive integer (>= 1), but got ${count}`));
@@ -247,14 +224,13 @@ const $core = (dependencies = {}) => {
         };
         return {
             transducer: {
-                Reduced, of: Reduced.of, isReduced: Reduced.isReduced,
-                transduce, map, filter, take,
+                Reduced, of: Reduced.of, isReduced: Reduced.isReduced, transduce, map, filter, take,
             },
         };
     })();
     return {
         core: {
-            Types, raise, typeOf, isFunction, isPlainObject, isIterable, toIterator, assertFunction, hasFunctions,
+            Types, raise, typeOf, isFunction, isPlainObject, isIterable, toIterator, expectedFunction, expectedFunctions, hasFunctions,
             isFunctor, isApplicative, isMonad, identity, constant, tuple,
             apply, unapply, apply2, unapply2, curry, uncurry, curry2, uncurry2,
             partial, predicate, negate, flip, flip2, flipC, flipCV,

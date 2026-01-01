@@ -1,34 +1,34 @@
 # Fun FP JS
 
-A lightweight, dependency-free functional programming library for JavaScript.
+JavaScript를 위한 가볍고 의존성 없는 함수형 프로그래밍 라이브러리.
 
-**~806 lines** of pure functional goodness.
+**~806 줄**의 순수 함수형 코드.
 
-## Features
+## 특징
 
-- 🎯 **Functional Core** - `pipe`, `compose`, `curry`, and more
-- 🛡️ **Either Monad** - Safe error handling without try-catch
-- ⏳ **Task Monad** - Lazy asynchronous operations (async Either)
-- 🔢 **Monoid/Group** - Algebraic structures for composable operations
-- 🔄 **Free Monad & Trampoline** - Stack-safe recursion
-- 🔀 **Transducers** - Efficient data processing pipelines
-- 📝 **Template Engine** - Safe, nested object string interpolation
-- 🏷️ **Type Protocol** - Symbol-based type class markers
-- 📦 **Zero Dependencies** - Pure JavaScript
+- 🎯 **함수형 코어** - `pipe`, `compose`, `curry` 등
+- 🛡️ **Either 모나드** - try-catch 없이 안전한 에러 처리
+- ⏳ **Task 모나드** - 지연 비동기 연산 (async Either)
+- 🔢 **Monoid/Group** - 합성 가능한 대수 구조
+- 🔄 **Free 모나드 & Trampoline** - 스택 안전 재귀
+- 🔀 **Transducers** - 효율적인 데이터 처리 파이프라인
+- 📝 **템플릿 엔진** - 안전한 중첩 객체 문자열 보간
+- 🏷️ **타입 프로토콜** - Symbol 기반 타입 클래스 마커
+- 📦 **의존성 제로** - 순수 JavaScript
 
-## Installation
+## 설치
 
 ```javascript
 const lib = require('./index.js')();
 
-// The library is organized into namespaces:
+// 라이브러리는 네임스페이스로 구성됨:
 const { core, either, task, monoid, free, extra } = lib;
 
-// Or with custom logger
+// 커스텀 로거와 함께 사용
 const libWithLog = require('./index.js')({ log: myLogger });
 ```
 
-## Quick Start
+## 빠른 시작
 
 ```javascript
 const { core, either, free } = require('./index.js')();
@@ -36,11 +36,11 @@ const { pipe } = core;
 const { right, left } = either;
 const { done, suspend, trampoline } = free;
 
-// Safe division with Either
+// Either를 사용한 안전한 나눗셈
 const safeDivide = (a, b) => 
-    b === 0 ? left('Division by zero') : right(a / b);
+    b === 0 ? left('0으로 나눌 수 없음') : right(a / b);
 
-// Compose operations
+// 연산 합성
 const result = right(10)
     .flatMap(x => safeDivide(x, 2))
     .map(x => x * 3)
@@ -48,43 +48,43 @@ const result = right(10)
 
 console.log(result); // 15
 
-// Trampoline (stack-safe recursion)
+// Trampoline (스택 안전 재귀)
 const factorial = trampoline((n, acc = 1) =>
     n <= 1 ? done(acc) : suspend(() => factorial(n - 1, n * acc))
 );
 
 factorial(10);      // 3628800
-factorial(100000);  // No stack overflow!
+factorial(100000);  // 스택 오버플로 없음!
 ```
 
 ---
 
-## Modules
+## 모듈
 
-### 1. `core` - Functional Core (~242 lines)
+### 1. `core` - 함수형 코어 (~242 줄)
 
-#### Types Protocol
+#### 타입 프로토콜
 
-Symbol-based type class markers for Functor, Applicative, and Monad.
+Functor, Applicative, Monad를 위한 Symbol 기반 타입 클래스 마커.
 
 ```javascript
 const lib = require('./index.js')();
 const { core, either } = lib;
 const { Types, isFunctor, isApplicative, isMonad } = core;
 
-// Check type classes
+// 타입 클래스 확인
 isFunctor(either.right(5));     // true
 isApplicative(either.right(5)); // true
 isMonad(either.right(5));       // true
 
-// Custom type with protocol
+// 프로토콜을 사용한 커스텀 타입
 class MyFunctor {
     [Types.Functor] = true;
     map(f) { /* ... */ }
 }
 ```
 
-#### Basic Functions
+#### 기본 함수
 
 ```javascript
 const lib = require('./index.js')();
@@ -94,9 +94,9 @@ const { identity, constant, tuple, raise, typeOf } = core;
 identity(5);           // 5
 constant(10)();        // 10
 tuple(1, 2, 3);        // [1, 2, 3]
-raise(new Error('x')); // throws Error
+raise(new Error('x')); // Error 던짐
 
-// typeOf: enhanced typeof with constructor names
+// typeOf: 생성자 이름을 포함한 향상된 typeof
 typeOf(undefined);     // 'undefined'
 typeOf(null);          // 'null'
 typeOf(42);            // 'number'
@@ -105,7 +105,7 @@ typeOf(new Set());     // 'Set'
 typeOf(new Date());    // 'Date'
 ```
 
-#### Function Composition
+#### 함수 합성
 
 ```javascript
 const lib = require('./index.js')();
@@ -119,7 +119,7 @@ pipe(add1, double)(5);     // 12 = (5 + 1) * 2
 compose(add1, double)(5);  // 11 = (5 * 2) + 1
 ```
 
-#### Currying & Partial Application
+#### 커링 & 부분 적용
 
 ```javascript
 const lib = require('./index.js')();
@@ -138,72 +138,72 @@ uncurry2(a => b => a + b)(1, 2);  // 3
 partial(add, 10)(5, 3);           // 18
 ```
 
-#### Higher-Order Functions
+#### 고차 함수
 
 ```javascript
 const lib = require('./index.js')();
 const { core } = lib;
 const { flip, flip2, flipC, flipCV, negate, once } = core;
 
-// flip: reverse all arguments
+// flip: 모든 인자 순서 뒤집기
 const sub = (a, b, c) => a - b - c;
 flip(sub)(1, 2, 10);     // 7 = 10 - 2 - 1
 
-// flip2: swap first two arguments
+// flip2: 첫 두 인자 교환
 const minus = (a, b) => a - b;
 flip2(minus)(1, 10);     // 9 = 10 - 1
 
-// negate: invert predicate
+// negate: 술어 반전
 const isEven = x => x % 2 === 0;
 const isOdd = negate(isEven);
 isOdd(3);                // true
 
-// once: execute only once
-const init = once(() => console.log('initialized'));
-init(); init(); // logs once
+// once: 한 번만 실행
+const init = once(() => console.log('초기화됨'));
+init(); init(); // 한 번만 로그
 ```
 
-#### Error Handling
+#### 에러 처리
 
 ```javascript
 const lib = require('./index.js')();
 const { core } = lib;
 const { catch: runCatch, predicate } = core;
 
-// catch: wrap function with try-catch
+// catch: try-catch로 함수 감싸기
 const safeJsonParse = runCatch(JSON.parse, err => ({}));
 safeJsonParse('{"a":1}');  // { a: 1 }
 safeJsonParse('invalid');  // {}
 
-// predicate: safe boolean check
+// predicate: 안전한 불리언 검사
 const isPositive = predicate(x => x > 0);
 isPositive(5);             // true
-isPositive('not number');  // false (doesn't throw)
+isPositive('숫자 아님');    // false (예외 던지지 않음)
 ```
 
-#### Side Effects
+#### 부수 효과
 
 ```javascript
 const lib = require('./index.js')();
 const { core, monoid } = lib;
 const { tap, also, into, pipe, range } = core;
 
-// tap: execute side effects, return original
+// tap: 부수 효과 실행 후 원래 값 반환
 const result = pipe(
     x => x * 2,
-    tap(console.log),  // logs 10
+    tap(console.log),  // 10 로그
     x => x + 1
 )(5);
 // result: 11
 
-// also: data-first tap
+// also: 데이터 우선 tap
 const user = { id: 1, name: 'Test' };
 also(user)(
-    u => console.log('Saving:', u.id),
-    u => console.log('Tracking:', u.name)
-); // returns user
+    u => console.log('저장 중:', u.id),
+    u => console.log('추적 중:', u.name)
+); // user 반환
 
-// into: data-first pipe
+// into: 데이터 우선 pipe
 into(5)(
     range,                   // [0, 1, 2, 3, 4]
     list => list.map(x => x * 2),
@@ -213,7 +213,7 @@ into(5)(
 
 #### Transducers (Point-free)
 
-Efficient data processing pipeline without intermediate arrays.
+중간 배열 없이 효율적인 데이터 처리 파이프라인.
 
 ```javascript
 const { core } = require('./index.js')();
@@ -221,9 +221,9 @@ const { compose, transducer: { map, filter, take, transduce } } = core;
 
 // transducer 정의 (compose로 Left→Right 데이터 흐름)
 const transducer = compose(
-    map(x => x + 1),         // Step 1: Add 1
-    filter(x => x % 2 === 0), // Step 2: Keep evens
-    take(2)                  // Step 3: Take first 2
+    map(x => x + 1),         // Step 1: 1 더하기
+    filter(x => x % 2 === 0), // Step 2: 짝수만 유지
+    take(2)                  // Step 3: 2개만 취함
 );
 
 // 실행: transduce(transducer)(reducer)(initialValue)(collection)
@@ -232,18 +232,18 @@ const initialValue = [];
 const collection = [1, 2, 3, 4, 5];
 
 const result = transduce(transducer)(reducer)(initialValue)(collection);
-// [2, 4] — (1+1)=2✓, (2+1)=3✗, (3+1)=4✓, stops after 2
+// [2, 4] — (1+1)=2✓, (2+1)=3✗, (3+1)=4✓, 2개 후 중단
 ```
 
 ---
 
-### 2. `either` - Error Handling Monad (~132 lines)
+### 2. `either` - 에러 처리 모나드 (~132 줄)
 
-Either represents a value that can be one of two types:
-- `Right(value)` - Success
-- `Left(errors)` - Failure (normalized to Error objects in an array)
+Either는 두 가지 타입 중 하나의 값을 나타냅니다:
+- `Right(value)` - 성공
+- `Left(errors)` - 실패 (Error 객체 배열로 정규화됨)
 
-#### Creating Either
+#### Either 생성
 
 ```javascript
 const lib = require('./index.js')();
@@ -251,7 +251,7 @@ const { either } = lib;
 const { left, right, catch: eitherCatch, from, fromNullable } = either;
 
 right(10);           // Right(10)
-left('error');       // Left([Error: error])
+left('에러');        // Left([Error: 에러])
 
 eitherCatch(JSON.parse)('{"a":1}');    // Right({ a: 1 })
 eitherCatch(JSON.parse)('invalid');    // Left([SyntaxError])
@@ -270,17 +270,17 @@ const { right, left } = either;
 // map
 right(5).map(x => x * 2);     // Right(10)
 
-// flatMap (chain operations that might fail)
+// flatMap (실패할 수 있는 연산 체이닝)
 const safeDivide = (a, b) => 
-    b === 0 ? left('Division by zero') : right(a / b);
+    b === 0 ? left('0으로 나눌 수 없음') : right(a / b);
 
 right(10)
     .flatMap(x => safeDivide(x, 2))  // Right(5)
     .flatMap(x => safeDivide(x, 0))  // Left([Error])
-    .map(x => x * 2);                // skipped
+    .map(x => x * 2);                // 건너뜀
 ```
 
-#### Applicative (Validation Pattern)
+#### Applicative (검증 패턴)
 
 ```javascript
 const lib = require('./index.js')();
@@ -288,21 +288,21 @@ const { either } = lib;
 const { right, left } = either;
 
 const validateName = name =>
-    name?.length > 0 ? right(name) : left('Name required');
+    name?.length > 0 ? right(name) : left('이름 필수');
 
 const validateAge = age =>
-    age > 0 ? right(age) : left('Age must be positive');
+    age > 0 ? right(age) : left('나이는 양수여야 함');
 
 const createUser = name => age => ({ name, age });
 
-// Accumulate ALL errors
+// 모든 에러 누적
 right(createUser)
     .ap(validateName(''))
     .ap(validateAge(-1));
-// Left(['Name required', 'Age must be positive'])
+// Left(['이름 필수', '나이는 양수여야 함'])
 ```
 
-#### pipeK: Kleisli Composition
+#### pipeK: Kleisli 합성
 
 ```javascript
 const lib = require('./index.js')();
@@ -310,8 +310,8 @@ const { either } = lib;
 const { pipeK, catch: eitherCatch, right, left } = either;
 
 const safeParse = eitherCatch(JSON.parse);
-const getUser = obj => obj.user ? right(obj.user) : left('No user');
-const getProfile = user => user.profile ? right(user.profile) : left('No profile');
+const getUser = obj => obj.user ? right(obj.user) : left('유저 없음');
+const getProfile = user => user.profile ? right(user.profile) : left('프로필 없음');
 
 const getProfileFromJson = pipeK(safeParse, getUser, getProfile);
 
@@ -319,7 +319,7 @@ getProfileFromJson('{"user":{"profile":{"name":"A"}}}');
 // Right({ name: 'A' })
 
 getProfileFromJson('{"user":{}}');
-// Left(['No profile'])
+// Left(['프로필 없음'])
 ```
 
 #### traverse & traverseAll
@@ -329,35 +329,35 @@ const lib = require('./index.js')();
 const { either } = lib;
 
 const validatePositive = x => 
-    x > 0 ? either.right(x) : either.left(`${x} is not positive`);
+    x > 0 ? either.right(x) : either.left(`${x}는 양수가 아님`);
 
-// traverse: fail-fast
+// traverse: 빠른 실패
 either.traverse(validatePositive)([1, -2, 3]);
-// Left(['-2 is not positive'])
+// Left(['-2는 양수가 아님'])
 
-// traverseAll: collect ALL errors
+// traverseAll: 모든 에러 수집
 either.traverseAll(validatePositive)([1, -2, -3]);
-// Left(['-2 is not positive', '-3 is not positive'])
+// Left(['-2는 양수가 아님', '-3는 양수가 아님'])
 ```
 
 ---
 
-### 3. `monoid` - Algebraic Structures (~120 lines)
+### 3. `monoid` - 대수 구조 (~120 줄)
 
-Monoid: A type with a binary operation (`concat`) and identity element (`empty`).
+Monoid: 이항 연산(`concat`)과 항등원(`empty`)을 가진 타입.
 
-#### Built-in Monoids
+#### 내장 Monoid
 
 ```javascript
 const lib = require('./index.js')();
 const { monoid: M } = lib;
 
-// Number
+// 숫자
 M.fold(M.number.sum)([1, 2, 3, 4]);      // Right(10)
 M.fold(M.number.product)([1, 2, 3, 4]);  // Right(24)
 M.fold(M.number.max)([1, 5, 3]);         // Right(5)
 
-// String, Boolean, Array, Object
+// 문자열, 불리언, 배열, 객체
 M.fold(M.string.concat)(['a', 'b', 'c']); // Right('abc')
 M.fold(M.boolean.all)([true, true]);      // Right(true)
 M.fold(M.array.concat)([[1], [2], [3]]);  // Right([1, 2, 3])
@@ -378,22 +378,22 @@ const { monoid: M } = lib;
 M.fold(M.number.sum, s => s.length)(['hello', 'world']);
 // Right(10)
 
-// Groups have inverse
+// Group은 역원을 가짐
 M.invert(M.number.sum)(5);      // Right(-5)
 M.invert(M.number.product)(5);  // Right(0.2)
 
-// power: repeat n times
+// power: n번 반복
 M.power(M.number.sum)(3, 4);      // Right(12) = 3+3+3+3
 M.power(M.string.concat)('a', 3); // Right('aaa')
 ```
 
 ---
 
-### 4. `free` - Free Monad & Trampoline (~90 lines)
+### 4. `free` - Free 모나드 & Trampoline (~115 줄)
 
-Free Monad represents computation as data, enabling stack-safe recursion.
+Free 모나드는 계산을 데이터로 표현하여 스택 안전 재귀를 가능하게 합니다.
 
-#### Trampoline: Stack-Safe Recursion
+#### Trampoline: 스택 안전 재귀
 
 ```javascript
 const lib = require('./index.js')();
@@ -407,9 +407,9 @@ const factorial = trampoline((n, acc = 1) =>
 );
 
 factorial(5);       // 120
-factorial(100000);  // Works! No stack overflow!
+factorial(100000);  // 동작함! 스택 오버플로 없음!
 
-// Fibonacci
+// 피보나치
 const fib = trampoline((n, a = 0, b = 1) =>
     n <= 0
         ? done(a)
@@ -417,35 +417,35 @@ const fib = trampoline((n, a = 0, b = 1) =>
 );
 
 fib(50);   // 12586269025
-fib(1000); // Works!
+fib(1000); // 동작함!
 ```
 
 ---
 
-### 5. `task` - Lazy Async Monad (~181 lines)
+### 5. `task` - 지연 비동기 모나드 (~181 줄)
 
-Task represents a lazy asynchronous computation - like a Promise, but:
-- **Lazy**: Nothing runs until `.run()` is called
-- **Error Accumulation**: Like Either, errors are arrays
-- **Pure**: Same input always produces same output
+Task는 지연 비동기 계산을 나타냅니다. Promise와 비슷하지만:
+- **지연**: `.run()` 호출 전까지 실행되지 않음
+- **에러 누적**: Either처럼 에러는 배열
+- **순수**: 동일 입력은 항상 동일 출력 (참조 투명성)
 
-#### Creating & Running Tasks
+#### Task 생성 & 실행
 
 ```javascript
 const lib = require('./index.js')();
 const { task, either } = lib;
 
-task.resolved(42);              // Task that resolves to 42
-task.rejected('error');         // Task that rejects
-task.fromEither(either.right(10)); // From Either
+task.resolved(42);              // 42로 해결되는 Task
+task.rejected('에러');          // 거부되는 Task
+task.fromEither(either.right(10)); // Either에서 변환
 
-// Must call run() to execute
+// 실행하려면 run() 호출 필수
 task.resolved(42).run(
-    errors => console.error('Failed:', errors),
-    value => console.log('Success:', value)
+    errors => console.error('실패:', errors),
+    value => console.log('성공:', value)
 );
 
-// Convert to Promise
+// Promise로 변환
 const result = await task.resolved(42).toPromise();
 ```
 
@@ -459,39 +459,39 @@ task.resolved(5)
     .map(x => x * 2)
     .flatMap(x => task.resolved(x + 1))
     .run(console.error, console.log);
-// Logs: 11
+// 로그: 11
 ```
 
-#### Combinators
+#### 결합자
 
 ```javascript
 const lib = require('./index.js')();
 const { task } = lib;
 
-// all: parallel execution
+// all: 병렬 실행
 task.all([task.resolved(1), task.resolved(2), task.resolved(3)])
     .run(console.error, console.log);
-// Logs: [1, 2, 3]
+// 로그: [1, 2, 3]
 
-// race: first to complete
-task.race([task.resolved('fast'), task.resolved('slow')])
+// race: 먼저 완료되는 것이 승리
+task.race([task.resolved('빠름'), task.resolved('느림')])
     .run(console.error, console.log);
-// Logs: 'fast'
+// 로그: '빠름'
 
-// pipeK: Kleisli composition
+// pipeK: Kleisli 합성
 const fetchUser = id => task.resolved({ id, name: 'John' });
 const getProfile = user => task.resolved({ avatar: 'pic.jpg' });
 
 const getAvatar = task.pipeK(fetchUser, getProfile);
 getAvatar(1).run(console.error, console.log);
-// Logs: { avatar: 'pic.jpg' }
+// 로그: { avatar: 'pic.jpg' }
 ```
 
 ---
 
-### 6. `extra` - Practical Utilities (~15 lines)
+### 6. `extra` - 실용 유틸리티 (~15 줄)
 
-#### path: Safe Object Property Access
+#### path: 안전한 객체 속성 접근
 
 ```javascript
 const lib = require('./index.js')();
@@ -506,7 +506,7 @@ path('user.phone')(data);          // Left([Error])
 path('name')(null);                // Left([Error])
 ```
 
-#### template: Safe String Interpolation
+#### template: 안전한 문자열 보간
 
 ```javascript
 const lib = require('./index.js')();
@@ -515,18 +515,18 @@ const { template } = extra;
 
 const data = { user: { name: 'Anthony' } };
 
-template('Hello, {{user.name}}!', data); 
-// 'Hello, Anthony!'
+template('안녕, {{user.name}}!', data); 
+// '안녕, Anthony!'
 
-template('Hello, {{ user.name }}!', data); // whitespace tolerant
-// 'Hello, Anthony!'
+template('안녕, {{ user.name }}!', data); // 공백 허용
+// '안녕, Anthony!'
 ```
 
 ---
 
-## Real World Examples
+## 실제 사용 예제
 
-### Safe API Call
+### 안전한 API 호출
 
 ```javascript
 const lib = require('./index.js')();
@@ -536,7 +536,7 @@ const { right, left } = either;
 const fetchUser = async (id) => {
     try {
         const response = await fetch(`/api/users/${id}`);
-        if (!response.ok) return left('Not found');
+        if (!response.ok) return left('찾을 수 없음');
         return right(await response.json());
     } catch (e) {
         return left(e.message);
@@ -544,10 +544,10 @@ const fetchUser = async (id) => {
 };
 
 const result = await fetchUser(1);
-result.map(user => user.name).getOrElse('Unknown');
+result.map(user => user.name).getOrElse('알 수 없음');
 ```
 
-### Form Validation
+### 폼 검증
 
 ```javascript
 const lib = require('./index.js')();
@@ -556,12 +556,12 @@ const { right, validate } = either;
 
 const validateEmail = validate(
     email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-    () => 'Invalid email'
+    () => '잘못된 이메일'
 );
 
 const validatePassword = validate(
     pwd => pwd.length >= 8,
-    () => 'Password must be 8+ characters'
+    () => '비밀번호는 8자 이상이어야 함'
 );
 
 const validateForm = form =>
@@ -570,10 +570,10 @@ const validateForm = form =>
         .ap(validatePassword(form.password).map(() => ({})));
 
 validateForm({ email: 'bad', password: '123' });
-// Left(['Invalid email', 'Password must be 8+ characters'])
+// Left(['잘못된 이메일', '비밀번호는 8자 이상이어야 함'])
 ```
 
-### Data Pipeline
+### 데이터 파이프라인
 
 ```javascript
 const lib = require('./index.js')();
@@ -583,7 +583,7 @@ const { catch: eitherCatch, right, left } = either;
 
 const processData = pipe(
     eitherCatch(JSON.parse),
-    e => e.flatMap(data => data.items ? right(data.items) : left('No items')),
+    e => e.flatMap(data => data.items ? right(data.items) : left('항목 없음')),
     e => e.map(items => items.filter(x => x.active)),
     e => e.map(items => items.map(x => x.name)),
     e => e.getOrElse([])
@@ -593,7 +593,7 @@ processData('{"items":[{"name":"A","active":true}]}');
 // ['A']
 ```
 
-### Aggregating Results with Monoid
+### Monoid로 결과 집계
 
 ```javascript
 const lib = require('./index.js')();
@@ -612,95 +612,95 @@ M.fold(M.boolean.all, o => o.qty > 0)(orders);      // Right(true)
 
 ---
 
-## API Reference
+## API 레퍼런스
 
-### core (~270 lines)
+### core (~242 줄)
 
-| Function | Description |
-|----------|-------------|
-| `Types` | Symbol-based type markers |
-| `isFunctor(x)`, `isApplicative(x)`, `isMonad(x)` | Type checks |
-| `identity(x)`, `constant(x)`, `tuple(...args)`, `raise(e)` | Basic utilities |
-| `pipe(...fs)`, `compose(...fs)` | Function composition |
-| `curry(f)`, `uncurry(f)`, `partial(f, ...args)` | Currying |
-| `flip(f)`, `flip2(f)`, `flipC(f)`, `negate(f)` | Function transformers |
-| `once(f)`, `catch(f, onError)`, `predicate(f)` | Safety utilities |
-| `tap(...fs)`, `also(x)(...fs)`, `into(x)(...fs)` | Side effects |
+| 함수 | 설명 |
+|------|------|
+| `Types` | Symbol 기반 타입 마커 |
+| `isFunctor(x)`, `isApplicative(x)`, `isMonad(x)` | 타입 검사 |
+| `identity(x)`, `constant(x)`, `tuple(...args)`, `raise(e)` | 기본 유틸리티 |
+| `pipe(...fs)`, `compose(...fs)` | 함수 합성 |
+| `curry(f)`, `uncurry(f)`, `partial(f, ...args)` | 커링 |
+| `flip(f)`, `flip2(f)`, `flipC(f)`, `negate(f)` | 함수 변환 |
+| `once(f)`, `catch(f, onError)`, `predicate(f)` | 안전 유틸리티 |
+| `tap(...fs)`, `also(x)(...fs)`, `into(x)(...fs)` | 부수 효과 |
 | `transducer.{map, filter, take, transduce}` | Point-free transducers |
 
-### either (~120 lines)
+### either (~132 줄)
 
-| Function/Method | Description |
-|-----------------|-------------|
-| `left(e)`, `right(x)` | Create Either |
-| `catch(f)`, `from(x)`, `fromNullable(x)` | Safe creation |
-| `validate(cond, err)`, `validateAll(list)` | Validation |
-| `pipeK(...fs)` | Kleisli composition |
+| 함수/메서드 | 설명 |
+|-------------|------|
+| `left(e)`, `right(x)` | Either 생성 |
+| `catch(f)`, `from(x)`, `fromNullable(x)` | 안전한 생성 |
+| `validate(cond, err)`, `validateAll(list)` | 검증 |
+| `pipeK(...fs)` | Kleisli 합성 |
 | `traverse(f)(list)`, `traverseAll(f)(list)` | Traversable |
-| `.map(f)`, `.flatMap(f)`, `.ap(e)` | Transformations |
-| `.fold(onLeft, onRight)`, `.getOrElse(default)` | Extraction |
+| `.map(f)`, `.flatMap(f)`, `.ap(e)` | 변환 |
+| `.fold(onLeft, onRight)`, `.getOrElse(default)` | 추출 |
 
-### monoid (~90 lines)
+### monoid (~120 줄)
 
-| Function | Description |
-|----------|-------------|
-| `fold(M, f?)(list)` | Fold with Monoid |
-| `concat(M)(a, b)` | Combine two values |
-| `invert(M)(value)` | Get inverse (Groups only) |
-| `power(M)(value, n)` | Repeat n times |
-| `number.{sum,product,max,min}` | Number monoids |
-| `string.concat`, `boolean.{all,any,xor}` | Other monoids |
-| `array.concat`, `object.merge` | Collection monoids |
+| 함수 | 설명 |
+|------|------|
+| `fold(M, f?)(list)` | Monoid로 fold |
+| `concat(M)(a, b)` | 두 값 결합 |
+| `invert(M)(value)` | 역원 구하기 (Group만) |
+| `power(M)(value, n)` | n번 반복 |
+| `number.{sum,product,max,min}` | 숫자 monoid |
+| `string.concat`, `boolean.{all,any,xor}` | 기타 monoid |
+| `array.concat`, `object.merge` | 컬렉션 monoid |
 
-### free (~90 lines)
+### free (~115 줄)
 
-| Function | Description |
-|----------|-------------|
-| `pure(value)`, `impure(functor)` | Create Free |
-| `done(value)`, `suspend(fn)` | Trampoline helpers |
-| `trampoline(f)` | Create stack-safe function |
-| `runSync(runner)(program)` | Run synchronously |
+| 함수 | 설명 |
+|------|------|
+| `pure(value)`, `impure(functor)` | Free 생성 |
+| `done(value)`, `suspend(fn)` | Trampoline 헬퍼 |
+| `trampoline(f)` | 스택 안전 함수 생성 |
+| `runSync(runner)(program)` | 동기 실행 |
 
-### task (~120 lines)
+### task (~181 줄)
 
-| Function/Method | Description |
-|-----------------|-------------|
-| `resolved(x)`, `rejected(e)`, `of(x)` | Create Task |
-| `fromPromise(fn)`, `fromEither(e)` | Conversions |
-| `all(tasks)`, `race(tasks)`, `sequence(tasks)` | Combinators |
-| `pipeK(...fs)` | Kleisli composition |
-| `.map(f)`, `.flatMap(f)`, `.ap(t)` | Transformations |
-| `.run(onRejected, onResolved)` | Execute Task |
-| `.toPromise()`, `.toEither(callback)` | Conversions |
+| 함수/메서드 | 설명 |
+|-------------|------|
+| `resolved(x)`, `rejected(e)`, `of(x)` | Task 생성 |
+| `fromPromise(fn)`, `fromEither(e)` | 변환 |
+| `all(tasks)`, `race(tasks)`, `sequence(tasks)` | 결합자 |
+| `pipeK(...fs)` | Kleisli 합성 |
+| `.map(f)`, `.flatMap(f)`, `.ap(t)` | 변환 |
+| `.run(onRejected, onResolved)` | Task 실행 |
+| `.toPromise()`, `.toEither(callback)` | 변환 |
 
-### extra (~20 lines)
+### extra (~15 줄)
 
-| Function | Description |
-|----------|-------------|
-| `path(keyStr)(data)` | Safe nested property access |
-| `template(msg, data)` | Safe string interpolation |
+| 함수 | 설명 |
+|------|------|
+| `path(keyStr)(data)` | 안전한 중첩 속성 접근 |
+| `template(msg, data)` | 안전한 문자열 보간 |
 
 ---
 
-## Architecture
+## 아키텍처
 
 ```
-                    core.js (Types Protocol)
+                    core.js (타입 프로토콜)
                            │
    ┌──────────────┬────────┴────────┬──────────────┐
    │              │                 │              │
 either.js     monoid.js          free.js        task.js
- (Error)      (Algebra)          (Free)         (Async)
+ (에러)       (대수)             (Free)         (비동기)
    │              │                 │              │
    └──────────────┴────────┬────────┴──────────────┘
                            │
                       extra.js
-                       (Utils)
+                       (유틸)
 ```
 
-## Type Class Support
+## 타입 클래스 지원
 
-| Type | Functor | Applicative | Monad |
+| 타입 | Functor | Applicative | Monad |
 |------|---------|-------------|-------|
 | Either | ✅ | ✅ | ✅ |
 | Task | ✅ | ✅ | ✅ |
@@ -708,16 +708,16 @@ either.js     monoid.js          free.js        task.js
 
 ---
 
-## Philosophy
+## 철학
 
-1. **Simplicity** - Small, focused functions
-2. **Safety** - Errors as values, not exceptions
-3. **Composition** - Build complex from simple
-4. **Immutability** - No mutation, always new values
-5. **Protocol** - Symbol-based type class markers
+1. **단순함** - 작고 집중된 함수
+2. **안전** - 예외가 아닌 값으로서의 에러
+3. **합성** - 단순한 것으로 복잡한 것 구축
+4. **불변성** - 변경 없음, 항상 새로운 값
+5. **프로토콜** - Symbol 기반 타입 클래스 마커
 
 ---
 
-## License
+## 라이선스
 
 MIT

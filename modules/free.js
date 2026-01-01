@@ -1,8 +1,7 @@
 const $free = (dependencies = {}) => {
     const { core } = dependencies.$core;
-    const assertFunctions = {
-        'thunk': core.assertFunction('Thunk', 'a function'),
-    };
+    const { expectedFunctions } = core;
+    // @build-start
     const stackSafe = (runner, f, onReentry = f) => {
         let active = false;
         return (...args) => {
@@ -92,7 +91,7 @@ const $free = (dependencies = {}) => {
     }
     class Thunk {
         constructor(f) {
-            this.f = assertFunctions['thunk'](f)[0];
+            this.f = expectedFunctions['core:a-function']('Thunk:f')(f)[0];
             this[Symbol.toStringTag] = 'Thunk';
             this[core.Types.Functor] = true;
         }

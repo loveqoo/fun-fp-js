@@ -1,6 +1,7 @@
 const $extra = (dependencies = {}) => {
     const { core } = dependencies.$core;
     const { either } = dependencies.$either;
+    // @build-start
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
         (acc, key) => acc.flatMap(obj => either.fromNullable(obj[key])),
         either.fromNullable(data)
