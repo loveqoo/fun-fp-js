@@ -22,10 +22,12 @@ const $core = (() => {
     class NumberSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x, y), 'number'); } }
     class StringSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x, y), 'string'); } }
     class BooleanSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x, y), 'boolean'); } }
+    class DateSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x.getTime(), y.getTime()), 'Date'); } }
     Setoid.types = {
         number: new NumberSetoid(),
         string: new StringSetoid(),
         boolean: new BooleanSetoid(),
+        date: new DateSetoid(),
     };
     Setoid.equals = (a, b, typeName = typeOf(a)) => {
         return isSameType(a, b) ? (Setoid.types[typeName] ? Setoid.types[typeName].equals(a, b) : Setoid.op(a, b)) : false;
