@@ -23,12 +23,11 @@ const $core = (() => {
     class StringSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x, y), 'string'); } }
     class BooleanSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x, y), 'boolean'); } }
     class DateSetoid extends Setoid { constructor() { super((x, y) => Setoid.op(x.getTime(), y.getTime()), 'Date'); } }
-    Setoid.types = {
-        number: new NumberSetoid(),
-        string: new StringSetoid(),
-        boolean: new BooleanSetoid(),
-        date: new DateSetoid(),
-    };
+    Setoid.types = {};
+    Setoid.types.number = new NumberSetoid();
+    Setoid.types.string = new StringSetoid();
+    Setoid.types.boolean = new BooleanSetoid();
+    Setoid.types.date = new DateSetoid();
     Setoid.equals = (a, b, typeName = typeOf(a)) => {
         return isSameType(a, b) ? (Setoid.types[typeName] ? Setoid.types[typeName].equals(a, b) : Setoid.op(a, b)) : false;
     };
@@ -38,12 +37,11 @@ const $core = (() => {
     class StringOrd extends Ord { constructor() { super((x, y) => Ord.op(x, y), 'string'); } }
     class StringLengthOrd extends Ord { constructor() { super((x, y) => Ord.op(x.length, y.length), 'string'); } }
     class StringLocaleOrd extends Ord { constructor() { super((x, y) => Ord.op(x.localeCompare(y), 0), 'string'); } }
-    Ord.types = {
-        number: new NumberOrd(),
-        string: new StringOrd(),
-        stringLength: new StringLengthOrd(),
-        stringLocale: new StringLocaleOrd(),
-    };
+    Ord.types = {};
+    Ord.types.number = new NumberOrd();
+    Ord.types.string = new StringOrd();
+    Ord.types.stringLength = new StringLengthOrd();
+    Ord.types.stringLocale = new StringLocaleOrd();
     Ord.lte = (a, b, typeName = typeOf(a)) => {
         return isSameType(a, b) ? (Ord.types[typeName] ? Ord.types[typeName].lte(a, b) : Ord.op(a, b)) : false;
     };
@@ -55,15 +53,14 @@ const $core = (() => {
     class StringSemigroup extends Semigroup { constructor() { super((x, y) => x + y, 'string'); } }
     class BooleanAllSemigroup extends Semigroup { constructor() { super((x, y) => x && y, 'boolean'); } }
     class BooleanAnySemigroup extends Semigroup { constructor() { super((x, y) => x || y, 'boolean'); } }
-    Semigroup.types = {
-        number: new NumberSumSemigroup(),
-        string: new StringSemigroup(),
-        boolean: new BooleanAllSemigroup(),
-        numberProduct: new NumberProductSemigroup(),
-        numberMax: new NumberMaxSemigroup(),
-        numberMin: new NumberMinSemigroup(),
-        booleanAny: new BooleanAnySemigroup(),
-    };
+    Semigroup.types = {};
+    Semigroup.types.number = new NumberSumSemigroup();
+    Semigroup.types.string = new StringSemigroup();
+    Semigroup.types.boolean = new BooleanAllSemigroup();
+    Semigroup.types.numberProduct = new NumberProductSemigroup();
+    Semigroup.types.numberMax = new NumberMaxSemigroup();
+    Semigroup.types.numberMin = new NumberMinSemigroup();
+    Semigroup.types.booleanAny = new BooleanAnySemigroup();
     Semigroup.types.numberSum = Semigroup.types.number;
     Semigroup.types.booleanAll = Semigroup.types.boolean;
     Semigroup.concat = (a, b, typeName = typeOf(a)) => {
