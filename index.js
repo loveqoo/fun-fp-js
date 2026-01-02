@@ -7,12 +7,12 @@
  * const fp = require('fun-fp-js')({ log: myLogger });
  */
 
-const $core = require('./modules/core.js');
-const $either = require('./modules/either.js');
-const $monoid = require('./modules/monoid.js');
-const $free = require('./modules/free.js');
-const $extra = require('./modules/extra.js');
-const $task = require('./modules/task.js');
+const $core = require('./v2_modules/core.js');
+const $either = require('./v2_modules/either.js');
+const $monoid = require('./v2_modules/monoid.js');
+const $free = require('./v2_modules/free.js');
+const $extra = require('./v2_modules/extra.js');
+const $task = require('./v2_modules/task.js');
 
 const cache = new Map();
 

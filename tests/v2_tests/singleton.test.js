@@ -1,5 +1,5 @@
 
-const { test, assert } = require('./utils');
+const { test, assert } = require('../utils');
 const ALL_IN_ONE_PATH = process.env.ALL_IN_ONE || '../all_in_one.cjs';
 
 console.log('🚀 Starting Singleton Pattern tests...');

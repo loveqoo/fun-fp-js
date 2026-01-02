@@ -1,5 +1,5 @@
-const funFpJs = require('../index.js');
-const { test, assert, assertEquals } = require('./utils.js');
+const funFpJs = require('../../index.js');
+const { test, assert, assertEquals } = require('../utils.js');
 const { task, either } = funFpJs();
 
 console.log('🚀 Starting modules/task.js tests...\n');

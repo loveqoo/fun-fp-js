@@ -12,10 +12,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const MODULES_DIR = path.join(__dirname, 'modules');
-const BUILD_DIR = path.join(__dirname, 'build');
+const MODULES_DIR = path.join(__dirname, 'v2_modules');
+const BUILD_DIR = path.join(__dirname, 'v2_build');
 const PARTS_DIR = path.join(BUILD_DIR, 'parts');
-const OUTPUT_FILE = path.join(BUILD_DIR, 'all_in_one.cjs');
+const OUTPUT_FILE = path.join(BUILD_DIR, 'all_in_one_v2.cjs');
 
 // 모듈 순서 (의존성 순서대로)
 const MODULE_ORDER = ['core', 'either', 'monoid', 'free', 'extra', 'task'];
@@ -131,7 +131,7 @@ function applyReplacements(body) {
 }
 
 function build() {
-    console.log('🔧 Building all_in_one.cjs...\n');
+    console.log('🔧 Building all_in_one_v2.cjs...\n');
 
     if (!fs.existsSync(BUILD_DIR)) fs.mkdirSync(BUILD_DIR);
     if (!fs.existsSync(PARTS_DIR)) fs.mkdirSync(PARTS_DIR);
@@ -249,7 +249,7 @@ function runTests() {
 }
 
 function copyToRoot() {
-    const ROOT_FILE = path.join(__dirname, 'all_in_one.cjs');
+    const ROOT_FILE = path.join(__dirname, 'all_in_one_v2.cjs');
     fs.copyFileSync(OUTPUT_FILE, ROOT_FILE);
     console.log(`\n📋 Copied to: ${ROOT_FILE}`);
 }

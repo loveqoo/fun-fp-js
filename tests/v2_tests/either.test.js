@@ -1,7 +1,7 @@
-const lib = require('../index.js')();
+const lib = require('../../index.js')();
 const { either, core } = lib;
 
-const { test, assert, assertEquals } = require('./utils.js');
+const { test, assert, assertEquals } = require('../utils.js');
 console.log('🚀 Starting modules/either.js tests...\n');
 
 // === Basic Creation ===

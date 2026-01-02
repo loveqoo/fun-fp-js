@@ -22,7 +22,7 @@ const {
 const { done, suspend, trampoline } = free;
 const { template } = extra;
 
-const { logAssert: assert } = require('./utils.js');
+const { logAssert: assert } = require('../utils.js');
 
 console.log('\n--- 1. Func Module Tests ---');
 

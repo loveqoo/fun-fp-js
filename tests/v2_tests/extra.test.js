@@ -1,7 +1,7 @@
-const lib = require('../index.js')();
+const lib = require('../../index.js')();
 const { extra } = lib;
 
-const { test, assert, assertEquals } = require('./utils.js');
+const { test, assert, assertEquals } = require('../utils.js');
 console.log('🚀 Starting modules/extra.js tests...\n');
 
 // === path ===

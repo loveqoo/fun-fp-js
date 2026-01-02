@@ -1,7 +1,7 @@
-const $core = require('../modules/core.js');
+const $core = require('../../v2_modules/core.js');
 const { core } = $core({ enableLog: false });
 
-const { test, assert, assertEquals, assertThrows } = require('./utils.js');
+const { test, assert, assertEquals, assertThrows } = require('../utils.js');
 console.log('🚀 Starting modules/core.js tests...\n');
 const add2_1 = (a, b) => a + b;
 const add2_2 = ([a, b]) => a + b;
