@@ -8,7 +8,8 @@ const {
     NumberMinSemigroup,
     StringSemigroup,
     BooleanAllSemigroup,
-    BooleanAnySemigroup
+    BooleanAnySemigroup,
+    ArraySemigroup
 } = $core;
 
 console.log('🚀 Starting Semigroup tests...\n');
@@ -76,63 +77,75 @@ test('BooleanAnySemigroup.concat - logical OR', () => {
     assertEquals(BooleanAnySemigroup.concat(true, true), true);
 });
 
-// ========== Semigroup.concat (auto type detection) ==========
-console.log('\n📦 Semigroup.concat (auto detection)...');
+// ========== ArraySemigroup ==========
+console.log('\n📦 ArraySemigroup...');
 
-test('Semigroup.concat - auto detect number (default: sum)', () => {
-    assertEquals(Semigroup.concat(1, 2), 3);
+test('ArraySemigroup.concat - concatenates arrays', () => {
+    assertEquals(ArraySemigroup.concat([1, 2], [3, 4]), [1, 2, 3, 4]);
+    assertEquals(ArraySemigroup.concat([], [1]), [1]);
+    assertEquals(ArraySemigroup.concat(['a'], ['b']), ['a', 'b']);
 });
 
-test('Semigroup.concat - auto detect string', () => {
-    assertEquals(Semigroup.concat('a', 'b'), 'ab');
+// ========== Semigroup.of (API) ==========
+console.log('\n📦 Semigroup.of...');
+
+test('Semigroup.of - number (default: sum)', () => {
+    assertEquals(Semigroup.of('number').concat(1, 2), 3);
 });
 
-test('Semigroup.concat - auto detect boolean (default: all)', () => {
-    assertEquals(Semigroup.concat(true, false), false);
+test('Semigroup.of - string', () => {
+    assertEquals(Semigroup.of('string').concat('a', 'b'), 'ab');
 });
 
-test('Semigroup.concat - explicit type selection', () => {
-    assertEquals(Semigroup.concat(2, 3, 'numberProduct'), 6);
-    assertEquals(Semigroup.concat(5, 10, 'numberMax'), 10);
-    assertEquals(Semigroup.concat(5, 10, 'numberMin'), 5);
-    assertEquals(Semigroup.concat(false, true, 'booleanAny'), true);
+test('Semigroup.of - boolean (default: all)', () => {
+    assertEquals(Semigroup.of('boolean').concat(true, false), false);
+});
+
+test('Semigroup.of - explicit type selection', () => {
+    assertEquals(Semigroup.of('NumberProductSemigroup').concat(2, 3), 6);
+    assertEquals(Semigroup.of('NumberMaxSemigroup').concat(5, 10), 10);
+    assertEquals(Semigroup.of('NumberMinSemigroup').concat(5, 10), 5);
+    assertEquals(Semigroup.of('BooleanAnySemigroup').concat(false, true), true);
 });
 
 // ========== Error handling ==========
 console.log('\n📦 Error handling...');
 
-test('Semigroup.concat - throws on type mismatch', () => {
-    assertThrows(() => Semigroup.concat(1, '1'), 'type mismatch');
+test('Semigroup.of - throws on type mismatch', () => {
+    assertThrows(() => Semigroup.of('number').concat(1, '1'), 'type mismatch');
 });
 
-test('Semigroup.concat - throws on unsupported type', () => {
-    assertThrows(() => Semigroup.concat({}, {}), 'unsupported type');
+test('Semigroup.of - throws on unsupported key', () => {
+    assertThrows(() => Semigroup.of('unsupported_type'), 'unsupported key');
 });
 
 // ========== Semigroup Laws ==========
 console.log('\n📦 Semigroup Laws...');
 
 test('Semigroup Law: Associativity - concat(concat(a,b),c) = concat(a,concat(b,c))', () => {
+    const sg = Semigroup.of('number');
     const a = 1, b = 2, c = 3;
     assertEquals(
-        Semigroup.concat(Semigroup.concat(a, b), c),
-        Semigroup.concat(a, Semigroup.concat(b, c))
+        sg.concat(sg.concat(a, b), c),
+        sg.concat(a, sg.concat(b, c))
     );
 });
 
 test('Semigroup Law: Associativity - string', () => {
+    const sg = Semigroup.of('string');
     const a = 'x', b = 'y', c = 'z';
     assertEquals(
-        Semigroup.concat(Semigroup.concat(a, b), c),
-        Semigroup.concat(a, Semigroup.concat(b, c))
+        sg.concat(sg.concat(a, b), c),
+        sg.concat(a, sg.concat(b, c))
     );
 });
 
 test('Semigroup Law: Associativity - boolean (all)', () => {
+    const sg = Semigroup.of('boolean');
     const a = true, b = true, c = false;
     assertEquals(
-        Semigroup.concat(Semigroup.concat(a, b), c),
-        Semigroup.concat(a, Semigroup.concat(b, c))
+        sg.concat(sg.concat(a, b), c),
+        sg.concat(a, sg.concat(b, c))
     );
 });
 
@@ -145,8 +158,8 @@ test('Custom Semigroup - can add to types', () => {
             super((a, b) => [...a, ...b], 'Array');
         }
     }
-    Semigroup.types.array = new ArrayConcatSemigroup();
-    assertEquals(Semigroup.concat([1, 2], [3, 4], 'array'), [1, 2, 3, 4]);
+    Semigroup.types.custom_array = new ArrayConcatSemigroup();
+    assertEquals(Semigroup.of('custom_array').concat([1, 2], [3, 4]), [1, 2, 3, 4]);
 });
 
 console.log('\n✅ All Semigroup tests completed!');

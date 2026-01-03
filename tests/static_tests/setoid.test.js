@@ -1,4 +1,4 @@
-const { test, assert, assertEquals } = require('../utils.js');
+const { test, assert, assertEquals, assertThrows } = require('../utils.js');
 const $core = require('../../static_modules/core.js');
 const { Algebra, Setoid, NumberSetoid, StringSetoid, BooleanSetoid } = $core;
 const DateSetoid = Setoid.types.date;
@@ -104,47 +104,46 @@ test('DateSetoid.equals - same timestamp different objects', () => {
     assert(DateSetoid.equals(d1, d2));
 });
 
-// ========== Setoid.equals (auto type detection) ==========
-console.log('\n📦 Setoid.equals (auto detection)...');
+// ========== Setoid.of (API) ==========
+console.log('\n📦 Setoid.of...');
 
-test('Setoid.equals - auto detect number', () => {
-    assert(Setoid.equals(42, 42));
-    assert(!Setoid.equals(42, 43));
+test('Setoid.of - number', () => {
+    assert(Setoid.of('number').equals(42, 42));
+    assert(!Setoid.of('number').equals(42, 43));
 });
 
-test('Setoid.equals - auto detect string', () => {
-    assert(Setoid.equals('test', 'test'));
-    assert(!Setoid.equals('test', 'TEST'));
+test('Setoid.of - string', () => {
+    assert(Setoid.of('string').equals('test', 'test'));
+    assert(!Setoid.of('string').equals('test', 'TEST'));
 });
 
-test('Setoid.equals - auto detect boolean', () => {
-    assert(Setoid.equals(true, true));
-    assert(!Setoid.equals(true, false));
+test('Setoid.of - boolean', () => {
+    assert(Setoid.of('boolean').equals(true, true));
+    assert(!Setoid.of('boolean').equals(true, false));
 });
 
-test('Setoid.equals - different types returns false', () => {
-    assert(!Setoid.equals(1, '1'));
-    assert(!Setoid.equals(true, 1));
-    assert(!Setoid.equals(null, undefined));
+test('Setoid.of - throws on type mismatch', () => {
+    assertThrows(() => Setoid.of('number').equals(1, '1'), 'type mismatch');
 });
 
 // ========== Setoid Laws ==========
 console.log('\n📦 Setoid Laws...');
 
 test('Setoid Law: Reflexivity - a equals a', () => {
-    assert(Setoid.equals(5, 5));
-    assert(Setoid.equals('x', 'x'));
+    assert(Setoid.of('number').equals(5, 5));
+    assert(Setoid.of('string').equals('x', 'x'));
 });
 
 test('Setoid Law: Symmetry - equals(a, b) === equals(b, a)', () => {
-    assertEquals(Setoid.equals(1, 2), Setoid.equals(2, 1));
-    assertEquals(Setoid.equals('a', 'b'), Setoid.equals('b', 'a'));
+    const setoid = Setoid.of('number');
+    assertEquals(setoid.equals(1, 2), setoid.equals(2, 1));
 });
 
 test('Setoid Law: Transitivity - if a=b and b=c then a=c', () => {
+    const setoid = Setoid.of('number');
     const a = 5, b = 5, c = 5;
-    if (Setoid.equals(a, b) && Setoid.equals(b, c)) {
-        assert(Setoid.equals(a, c));
+    if (setoid.equals(a, b) && setoid.equals(b, c)) {
+        assert(setoid.equals(a, c));
     }
 });
 
@@ -157,9 +156,9 @@ test('Custom Setoid - can add to types', () => {
             super((a, b) => a.length === b.length, 'Array');
         }
     }
-    Setoid.types.arrayLength = new ArrayLengthSetoid();
-    assert(Setoid.equals([1, 2], [3, 4], 'arrayLength'));
-    assert(!Setoid.equals([1], [1, 2], 'arrayLength'));
+    Setoid.types.arraylength = new ArrayLengthSetoid();
+    assert(Setoid.of('arraylength').equals([1, 2], [3, 4]));
+    assert(!Setoid.of('arraylength').equals([1], [1, 2]));
 });
 
 console.log('\n✅ All Setoid tests completed!');

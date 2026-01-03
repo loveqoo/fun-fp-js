@@ -5,16 +5,11 @@ const $core = (dependencies = {}) => {
     const Types = { Functor: Symbol.for('fun-fp-js/Functor'), Applicative: Symbol.for('fun-fp-js/Applicative'), Monad: Symbol.for('fun-fp-js/Monad') };
     const raise = e => { throw e; };
     const typeOf = a => {
-        switch (typeof a) {
-            case 'undefined': return 'undefined';
-            case 'boolean': return 'boolean';
-            case 'number': return 'number';
-            case 'string': return 'string';
-            case 'symbol': return 'symbol';
-            case 'function': return 'function';
-            case 'object': return a === null ? 'null' : ((a.constructor && a.constructor.name) || 'object')
-            default: return 'unknown';
-        }
+        if (a === null) { return 'null'; }
+        const typeName = typeof a;
+        if (typeName !== 'object') { return typeName; }
+        if (Array.isArray(a)) { return 'Array'; }
+        return a.constructor && a.constructor.name || 'object';
     };
     const isPlainObject = a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype;
     const isIterable = a => a != null && typeof a[Symbol.iterator] === 'function';

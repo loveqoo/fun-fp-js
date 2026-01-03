@@ -1,4 +1,4 @@
-const { test, assert, assertEquals } = require('../utils.js');
+const { test, assert, assertEquals, assertThrows } = require('../utils.js');
 const $core = require('../../static_modules/core.js');
 const { Ord, NumberOrd, StringOrd, StringLengthOrd, StringLocaleOrd } = $core;
 
@@ -66,49 +66,51 @@ test('StringLocaleOrd.lte - equal', () => {
     assert(StringLocaleOrd.lte('test', 'test'));
 });
 
-// ========== Ord.lte (auto type detection) ==========
-console.log('\n📦 Ord.lte (auto detection)...');
+// ========== Ord.of (API) ==========
+console.log('\n📦 Ord.of...');
 
-test('Ord.lte - auto detect number', () => {
-    assert(Ord.lte(1, 2));
-    assert(Ord.lte(5, 5));
-    assert(!Ord.lte(10, 5));
+test('Ord.of - number', () => {
+    assert(Ord.of('number').lte(1, 2));
+    assert(Ord.of('number').lte(5, 5));
+    assert(!Ord.of('number').lte(10, 5));
 });
 
-test('Ord.lte - auto detect string', () => {
-    assert(Ord.lte('a', 'z'));
-    assert(!Ord.lte('z', 'a'));
+test('Ord.of - string', () => {
+    assert(Ord.of('string').lte('a', 'z'));
+    assert(!Ord.of('string').lte('z', 'a'));
 });
 
-test('Ord.lte - explicit type selection', () => {
-    assert(Ord.lte('ab', 'a', 'stringLength') === false);
-    assert(Ord.lte('a', 'ab', 'stringLength'));
+test('Ord.of - explicit type selection', () => {
+    assert(Ord.of('StringLengthOrd').lte('ab', 'a') === false);
+    assert(Ord.of('StringLengthOrd').lte('a', 'ab'));
 });
 
-test('Ord.lte - different types returns false', () => {
-    assert(!Ord.lte(1, '1'));
-    assert(!Ord.lte('a', 1));
+test('Ord.of - throws on type mismatch', () => {
+    assertThrows(() => Ord.of('number').lte(1, '1'), 'type mismatch');
 });
 
 // ========== Ord Laws ==========
 console.log('\n📦 Ord Laws...');
 
 test('Ord Law: Totality - lte(a, b) or lte(b, a)', () => {
+    const ord = Ord.of('number');
     const a = 3, b = 5;
-    assert(Ord.lte(a, b) || Ord.lte(b, a));
+    assert(ord.lte(a, b) || ord.lte(b, a));
 });
 
 test('Ord Law: Antisymmetry - if lte(a,b) and lte(b,a) then a=b', () => {
+    const ord = Ord.of('number');
     const a = 5, b = 5;
-    if (Ord.lte(a, b) && Ord.lte(b, a)) {
+    if (ord.lte(a, b) && ord.lte(b, a)) {
         assert(a === b);
     }
 });
 
 test('Ord Law: Transitivity - if lte(a,b) and lte(b,c) then lte(a,c)', () => {
+    const ord = Ord.of('number');
     const a = 1, b = 2, c = 3;
-    if (Ord.lte(a, b) && Ord.lte(b, c)) {
-        assert(Ord.lte(a, c));
+    if (ord.lte(a, b) && ord.lte(b, c)) {
+        assert(ord.lte(a, c));
     }
 });
 
