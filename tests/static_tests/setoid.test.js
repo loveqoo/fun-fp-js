@@ -1,6 +1,7 @@
 const { test, assert, assertEquals, assertThrows } = require('../utils.js');
-const $core = require('../../static_modules/core.js');
-const { Algebra, Setoid, NumberSetoid, StringSetoid, BooleanSetoid } = $core;
+const $core = require('../../static_modules/impl.js');
+const { Algebra, Setoid } = $core;
+const { NumberSetoid, StringSetoid, BooleanSetoid } = Setoid.types;
 const DateSetoid = Setoid.types.date;
 
 console.log('🚀 Starting Setoid tests...\n');

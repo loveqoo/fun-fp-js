@@ -1,5 +1,5 @@
 const { test, assert, assertEquals, assertThrows } = require('../utils.js');
-const $core = require('../../static_modules/core.js');
+const $core = require('../../static_modules/impl.js');
 const {
     Group,
     NumberSumGroup,
