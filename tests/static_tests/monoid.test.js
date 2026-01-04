@@ -154,12 +154,21 @@ test('Monoid Law: Left Identity - concat(empty(), a) = a', () => {
 console.log('\n📦 Extensibility...');
 
 test('Custom Monoid - can add to types', () => {
-    class CustomObjectMonoid extends Monoid {
+    const { Semigroup } = $core;
+    // 먼저 Custom Semigroup 생성
+    class CustomObjectSemigroup extends Semigroup {
         constructor() {
-            super((a, b) => ({ ...a, ...b }), () => ({}), 'object');
+            super((a, b) => ({ ...a, ...b }), 'object');
         }
     }
-    // 직접 Monoid.types에 등록 (내부적으로 register가 이미 처리하지만 수동으로 추가 확인)
+    Semigroup.types.custom_obj = new CustomObjectSemigroup();
+
+    // Monoid는 Semigroup 객체를 받음
+    class CustomObjectMonoid extends Monoid {
+        constructor() {
+            super(Semigroup.types.custom_obj, () => ({}), 'object');
+        }
+    }
     Monoid.types.custom_obj = new CustomObjectMonoid();
 
     const m = Monoid.of('custom_obj');
