@@ -1,4 +1,7 @@
-import { Semigroupoid, Category, Functor, Bifunctor, Apply, Applicative, Alt, Chain, ChainRec, Monad, Foldable, Traversable } from '../spec.js';
+import {
+    Semigroupoid, Category, Functor, Bifunctor, Apply, Applicative, Alt, Chain,
+    ChainRec, Monad, Foldable, Traversable
+} from '../spec.js';
 
 class Either {
     isLeft() { return false; }
@@ -68,12 +71,15 @@ class EitherFunctor extends Functor {
 }
 class EitherBifunctor extends Bifunctor {
     constructor() {
-        super((f, g, e) => e.isLeft() ? Either.Left(f(e.value)) : Either.Right(g(e.value)), 'Either', Bifunctor.types, 'either');
+        super((f, g, e) => e.isLeft() ? Either.Left(f(e.value)) : Either.Right(g(e.value)),
+            'Either', Bifunctor.types, 'either');
     }
 }
 class EitherApply extends Apply {
     constructor() {
-        super(Functor.types.EitherFunctor, (ef, ex) => ef.isLeft() ? ef : ex.isLeft() ? ex : Either.Right(ef.value(ex.value)), 'Either', Apply.types, 'either');
+        super(Functor.types.EitherFunctor,
+            (ef, ex) => ef.isLeft() ? ef : ex.isLeft() ? ex : Either.Right(ef.value(ex.value)),
+            'Either', Apply.types, 'either');
     }
 }
 class EitherApplicative extends Applicative {
@@ -119,5 +125,5 @@ class EitherTraversable extends Traversable {
             , 'Either', Traversable.types, 'either');
     }
 }
-(new EitherSemigroupoid(), new EitherCategory(), new EitherFunctor(), new EitherBifunctor(), new EitherApply(), new EitherApplicative(), new EitherAlt(),
-    new EitherChain(), new EitherChainRec(), new EitherMonad(), new EitherFoldable(), new EitherTraversable());
+(new EitherSemigroupoid(), new EitherCategory(), new EitherFunctor(), new EitherBifunctor(), new EitherApply(), new EitherApplicative(),
+    new EitherAlt(), new EitherChain(), new EitherChainRec(), new EitherMonad(), new EitherFoldable(), new EitherTraversable());

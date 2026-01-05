@@ -32,4 +32,5 @@ class FunctionProfunctor extends Profunctor {
     }
 }
 
-(new FunctionSemigroup(), new FunctionMonoid(), new FunctionSemigroupoid(), new FunctionCategory(), new PredicateContravariant(), new FunctionProfunctor());
+(new FunctionSemigroup(), new FunctionMonoid(), new FunctionSemigroupoid(), new FunctionCategory(), new PredicateContravariant(),
+    new FunctionProfunctor());

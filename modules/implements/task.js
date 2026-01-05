@@ -1,4 +1,7 @@
-import { Semigroupoid, Category, Functor, Apply, Applicative, Alt, Chain, ChainRec, Monad } from '../spec.js';
+import {
+    Semigroupoid, Category, Functor, Apply, Applicative, Alt, Chain,
+    ChainRec, Monad
+} from '../spec.js';
 
 class Task {
     constructor(fork) {
@@ -123,19 +126,22 @@ class TaskAlt extends Alt {
 }
 class TaskChain extends Chain {
     constructor() {
-        super(Apply.types.TaskApply, (f, task) => new Task((reject, resolve) => task.fork(reject, x => f(x).fork(reject, resolve))), 'Task', Chain.types, 'task');
+        super(Apply.types.TaskApply,
+            (f, task) => new Task((reject, resolve) => task.fork(reject, x => f(x).fork(reject, resolve))),
+            'Task', Chain.types, 'task');
     }
 }
 class TaskChainRec extends ChainRec {
     constructor() {
-        super(Chain.types.TaskChain, (f, i) => new Task((reject, resolve) => {
-            const loop = val => {
-                f(ChainRec.next, ChainRec.done, val).fork(reject, step => {
-                    step.tag === 'next' ? loop(step.value) : resolve(step.value);
-                });
-            };
-            loop(i);
-        }), 'Task', ChainRec.types, 'task');
+        super(Chain.types.TaskChain,
+            (f, i) => new Task((reject, resolve) => {
+                const loop = val => {
+                    f(ChainRec.next, ChainRec.done, val).fork(reject, step => {
+                        step.tag === 'next' ? loop(step.value) : resolve(step.value);
+                    });
+                };
+                loop(i);
+            }), 'Task', ChainRec.types, 'task');
     }
 }
 class TaskMonad extends Monad {

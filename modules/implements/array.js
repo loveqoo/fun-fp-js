@@ -1,4 +1,7 @@
-import { Semigroup, Monoid, Filterable, Functor, Bifunctor, Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable, Extend, Comonad, Traversable } from '../spec.js';
+import {
+    Semigroup, Monoid, Filterable, Functor, Bifunctor, Apply, Applicative, Alt, Plus,
+    Alternative, Chain, ChainRec, Monad, Foldable, Extend, Comonad, Traversable
+} from '../spec.js';
 import { es6 } from '../base.js';
 
 class ArraySemigroup extends Semigroup {
@@ -28,7 +31,9 @@ class TupleBifunctor extends Bifunctor {
 }
 class ArrayApply extends Apply {
     constructor() {
-        super(Functor.types.ArrayFunctor, (fs, values) => es6.array.flatMap(f => Functor.types.ArrayFunctor.map(f, values), fs), 'Array', Apply.types, 'array');
+        super(Functor.types.ArrayFunctor,
+            (fs, values) => es6.array.flatMap(f => Functor.types.ArrayFunctor.map(f, values), fs),
+            'Array', Apply.types, 'array');
     }
 }
 class ArrayApplicative extends Applicative {
@@ -81,7 +86,9 @@ class ArrayFoldable extends Foldable {
 }
 class ArrayExtend extends Extend {
     constructor() {
-        super(Functor.types.ArrayFunctor, (f, arr) => arr.map((_, i) => f(arr.slice(i))), 'Array', Extend.types, 'array');
+        super(Functor.types.ArrayFunctor,
+            (f, arr) => arr.map((_, i) => f(arr.slice(i))),
+            'Array', Extend.types, 'array');
     }
 }
 class ArrayComonad extends Comonad {
@@ -91,10 +98,13 @@ class ArrayComonad extends Comonad {
 }
 class ArrayTraversable extends Traversable {
     constructor() {
-        super(Functor.types.ArrayFunctor, Foldable.types.ArrayFoldable, (applicative, f, arr) => arr.reduce(
-            (acc, x) => applicative.ap(applicative.map(a => b => [...a, b], acc), f(x)),
-            applicative.of([])
-        ), 'Array', Traversable.types, 'array');
+        super(Functor.types.ArrayFunctor,
+            Foldable.types.ArrayFoldable,
+            (applicative, f, arr) => arr.reduce(
+                (acc, x) => applicative.ap(applicative.map(a => b => [...a, b], acc), f(x)),
+                applicative.of([])
+            ),
+            'Array', Traversable.types, 'array');
     }
 }
 

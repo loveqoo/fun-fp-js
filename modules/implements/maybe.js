@@ -1,4 +1,7 @@
-import { Semigroupoid, Category, Functor, Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Traversable } from '../spec.js';
+import {
+    Semigroupoid, Category, Functor, Apply, Applicative, Alt, Plus, Alternative,
+    Chain, ChainRec, Monad, Traversable
+} from '../spec.js';
 
 class Maybe {
     isJust() {
@@ -50,7 +53,9 @@ class MaybeFunctor extends Functor {
 }
 class MaybeApply extends Apply {
     constructor() {
-        super(Functor.types.MaybeFunctor, (mf, mx) => mf.isNothing() ? mf : mx.isNothing() ? mx : Maybe.Just(mf.value(mx.value)), 'Maybe', Apply.types, 'maybe');
+        super(Functor.types.MaybeFunctor,
+            (mf, mx) => mf.isNothing() ? mf : mx.isNothing() ? mx : Maybe.Just(mf.value(mx.value)),
+            'Maybe', Apply.types, 'maybe');
     }
 }
 class MaybeApplicative extends Applicative {
@@ -107,5 +112,6 @@ class MaybeTraversable extends Traversable {
     }
 }
 
-(new MaybeSemigroupoid(), new MaybeCategory(), new MaybeFunctor(), new MaybeApply(), new MaybeApplicative(), new MaybeAlt(), new MaybePlus(), new MaybeAlternative(),
-    new MaybeChain(), new MaybeChainRec(), new MaybeMonad(), new MaybeFoldable(), new MaybeTraversable());
+(new MaybeSemigroupoid(), new MaybeCategory(), new MaybeFunctor(), new MaybeApply(), new MaybeApplicative(), new MaybeAlt(),
+    new MaybePlus(), new MaybeAlternative(), new MaybeChain(), new MaybeChainRec(), new MaybeMonad(), new MaybeFoldable(),
+    new MaybeTraversable());
