@@ -20,7 +20,6 @@ const types = {
     },
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
-        if (expected === 'any') return true;
         const actual = types.of(val);
         return actual === expected || actual.toLowerCase() === expected.toLowerCase();
     },
@@ -33,10 +32,12 @@ const register = (target, instance, ...aliases) => {
     target[instance.constructor.name] = instance;
     for (const alias of aliases) { target[alias.toLowerCase()] = instance; }
 };
+const loadedModules = new Set();
 const load = (...modules) => {
     for (const module of modules) {
-        if (Object.keys(module).length === 0) {
+        if (!loadedModules.has(module.name)) {
             new module();
+            loadedModules.add(module.name);
         }
     }
 };
