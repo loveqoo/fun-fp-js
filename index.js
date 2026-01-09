@@ -9,6 +9,36 @@ const polyfills = {
         filter: (pred, obj) => polyfills.object.fromEntries(polyfills.object.entries(obj).filter(([k, v]) => pred(v, k)))
     }
 };
+const Symbols = {
+    Algebra: Symbol.for('fun-fp-js/Algebra'),
+    Setoid: Symbol.for('fun-fp-js/Setoid'),
+    Ord: Symbol.for('fun-fp-js/Ord'),
+    Semigroup: Symbol.for('fun-fp-js/Semigroup'),
+    Monoid: Symbol.for('fun-fp-js/Monoid'),
+    Group: Symbol.for('fun-fp-js/Group'),
+    Semigroupoid: Symbol.for('fun-fp-js/Semigroupoid'),
+    Category: Symbol.for('fun-fp-js/Category'),
+    Filterable: Symbol.for('fun-fp-js/Filterable'),
+    Functor: Symbol.for('fun-fp-js/Functor'),
+    Bifunctor: Symbol.for('fun-fp-js/Bifunctor'),
+    Contravariant: Symbol.for('fun-fp-js/Contravariant'),
+    Profunctor: Symbol.for('fun-fp-js/Profunctor'),
+    Apply: Symbol.for('fun-fp-js/Apply'),
+    Applicative: Symbol.for('fun-fp-js/Applicative'),
+    Alt: Symbol.for('fun-fp-js/Alt'),
+    Plus: Symbol.for('fun-fp-js/Plus'),
+    Alternative: Symbol.for('fun-fp-js/Alternative'),
+    Chain: Symbol.for('fun-fp-js/Chain'),
+    ChainRec: Symbol.for('fun-fp-js/ChainRec'),
+    Monad: Symbol.for('fun-fp-js/Monad'),
+    Foldable: Symbol.for('fun-fp-js/Foldable'),
+    Extend: Symbol.for('fun-fp-js/Extend'),
+    Comonad: Symbol.for('fun-fp-js/Comonad'),
+    Traversable: Symbol.for('fun-fp-js/Traversable'),
+    Maybe: Symbol.for('fun-fp-js/Maybe'),
+    Either: Symbol.for('fun-fp-js/Either'),
+    Task: Symbol.for('fun-fp-js/Task')
+};
 const types = {
     of: a => {
         if (a === null) { return 'null'; }
@@ -35,14 +65,15 @@ const register = (target, instance, ...aliases) => {
 const loadedModules = new Set();
 const load = (...modules) => {
     for (const module of modules) {
-        if (!loadedModules.has(module.name)) {
+        if (!loadedModules.has(module)) {
             new module();
-            loadedModules.add(module.name);
+            loadedModules.add(module);
         }
     }
 };
 const modules = [];
 class Algebra { constructor(type) { this.type = type; } }
+Algebra.prototype[Symbols.Algebra] = true;
 class Setoid extends Algebra {
     constructor(equals, type, registry, ...registryKeys) {
         super(type);
@@ -55,6 +86,7 @@ class Setoid extends Algebra {
     }
     equals() { raise(new Error('Setoid: equals is not implemented')); }
 }
+Setoid.prototype[Symbols.Setoid] = true;
 class Ord extends Algebra {
     constructor(lte, type, registry, ...aliases) {
         super(type);
@@ -67,6 +99,7 @@ class Ord extends Algebra {
     }
     lte() { raise(new Error('Ord: lte is not implemented')); }
 }
+Ord.prototype[Symbols.Ord] = true;
 class Semigroup extends Algebra {
     constructor(concat, type, registry, ...aliases) {
         super(type);
@@ -79,18 +112,20 @@ class Semigroup extends Algebra {
     }
     concat() { raise(new Error('Semigroup: concat is not implemented')); }
 }
+Semigroup.prototype[Symbols.Semigroup] = true;
 class Monoid extends Semigroup {
     constructor(semigroup, empty, type, registry, ...aliases) {
-        !(semigroup instanceof Semigroup) && raise(new TypeError('Monoid: argument must be a Semigroup'));
+        !(semigroup && semigroup[Symbols.Semigroup]) && raise(new TypeError('Monoid: argument must be a Semigroup'));
         super(semigroup.concat, type);
         this.empty = empty;
         registry && register(registry, this, ...aliases);
     }
     empty() { raise(new Error('Monoid: empty is not implemented')); }
 }
+Monoid.prototype[Symbols.Monoid] = true;
 class Group extends Monoid {
     constructor(monoid, invert, type, registry, ...aliases) {
-        !(monoid instanceof Monoid) && raise(new TypeError('Group: argument must be a Monoid'));
+        !(monoid && monoid[Symbols.Monoid]) && raise(new TypeError('Group: argument must be a Monoid'));
         super(monoid, monoid.empty, type);
         if (invert) {
             this.invert = a => types.check(a, this.type)
@@ -100,6 +135,7 @@ class Group extends Monoid {
     }
     invert() { raise(new Error('Group: invert is not implemented')); }
 }
+Group.prototype[Symbols.Group] = true;
 class Semigroupoid extends Algebra {
     constructor(compose, type, registry, ...registryKeys) {
         super(type);
@@ -111,15 +147,17 @@ class Semigroupoid extends Algebra {
     }
     compose() { raise(new Error('Semigroupoid: compose is not implemented')); }
 }
+Semigroupoid.prototype[Symbols.Semigroupoid] = true;
 class Category extends Semigroupoid {
     constructor(semigroupoid, id, type, registry, ...aliases) {
-        !(semigroupoid instanceof Semigroupoid) && raise(new TypeError('Category: argument must be a Semigroupoid'));
+        !(semigroupoid && semigroupoid[Symbols.Semigroupoid]) && raise(new TypeError('Category: argument must be a Semigroupoid'));
         super(semigroupoid.compose, type);
         this.id = id;
         registry && register(registry, this, ...aliases);
     }
     id() { raise(new Error('Category: id is not implemented')); }
 }
+Category.prototype[Symbols.Category] = true;
 class Filterable extends Algebra {
     constructor(filter, type, registry, ...aliases) {
         super(type);
@@ -131,6 +169,7 @@ class Filterable extends Algebra {
     }
     filter() { raise(new Error('Filterable: filter is not implemented')); }
 }
+Filterable.prototype[Symbols.Filterable] = true;
 class Functor extends Algebra {
     constructor(map, type, registry, ...aliases) {
         super(type);
@@ -142,6 +181,7 @@ class Functor extends Algebra {
     }
     map() { raise(new Error('Functor: map is not implemented')); }
 }
+Functor.prototype[Symbols.Functor] = true;
 class Bifunctor extends Algebra {
     constructor(bimap, type, registry, ...aliases) {
         super(type);
@@ -153,6 +193,7 @@ class Bifunctor extends Algebra {
     }
     bimap() { raise(new Error('Bifunctor: bimap is not implemented')); }
 }
+Bifunctor.prototype[Symbols.Bifunctor] = true;
 class Contravariant extends Algebra {
     constructor(contramap, type, registry, ...aliases) {
         super(type);
@@ -164,6 +205,7 @@ class Contravariant extends Algebra {
     }
     contramap() { raise(new Error('Contravariant: contramap is not implemented')); }
 }
+Contravariant.prototype[Symbols.Contravariant] = true;
 class Profunctor extends Algebra {
     constructor(promap, type, registry, ...aliases) {
         super(type);
@@ -175,9 +217,10 @@ class Profunctor extends Algebra {
     }
     promap() { raise(new Error('Profunctor: promap is not implemented')); }
 }
+Profunctor.prototype[Symbols.Profunctor] = true;
 class Apply extends Functor {
     constructor(functor, ap, type, registry, ...aliases) {
-        !(functor instanceof Functor) && raise(new TypeError('Apply: argument must be a Functor'));
+        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Apply: argument must be a Functor'));
         super(functor.map, type);
         if (ap) {
             this.ap = (fs, values) => (types.equals(fs, values, this.type))
@@ -187,18 +230,20 @@ class Apply extends Functor {
     }
     ap() { raise(new Error('Apply: ap is not implemented')); }
 }
+Apply.prototype[Symbols.Apply] = true;
 class Applicative extends Apply {
     constructor(apply, of, type, registry, ...aliases) {
-        !(apply instanceof Apply) && raise(new TypeError('Applicative: argument must be an Apply'));
+        !(apply && apply[Symbols.Apply]) && raise(new TypeError('Applicative: argument must be an Apply'));
         super(apply, apply.ap, type);
         this.of = of;
         registry && register(registry, this, ...aliases);
     }
     of() { raise(new Error('Applicative: of is not implemented')); }
 }
+Applicative.prototype[Symbols.Applicative] = true;
 class Alt extends Functor {
     constructor(functor, alt, type, registry, ...aliases) {
-        !(functor instanceof Functor) && raise(new TypeError('Alt: argument must be a Functor'));
+        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Alt: argument must be a Functor'));
         super(functor.map, type);
         if (alt) {
             this.alt = (a, b) => (types.equals(a, b, this.type))
@@ -208,19 +253,21 @@ class Alt extends Functor {
     }
     alt() { raise(new Error('Alt: alt is not implemented')); }
 }
+Alt.prototype[Symbols.Alt] = true;
 class Plus extends Alt {
     constructor(alt, zero, type, registry, ...aliases) {
-        !(alt instanceof Alt) && raise(new TypeError('Plus: argument must be an Alt'));
+        !(alt && alt[Symbols.Alt]) && raise(new TypeError('Plus: argument must be an Alt'));
         super(alt, alt.alt, type);
         this.zero = zero;
         registry && register(registry, this, ...aliases);
     }
     zero() { raise(new Error('Plus: zero is not implemented')); }
 }
+Plus.prototype[Symbols.Plus] = true;
 class Alternative extends Applicative {
     constructor(applicative, plus, type, registry, ...aliases) {
-        !(applicative instanceof Applicative) && raise(new TypeError('Alternative: first argument must be an Applicative'));
-        !(plus instanceof Plus) && raise(new TypeError('Alternative: second argument must be a Plus'));
+        !(applicative && applicative[Symbols.Applicative]) && raise(new TypeError('Alternative: first argument must be an Applicative'));
+        !(plus && plus[Symbols.Plus]) && raise(new TypeError('Alternative: second argument must be a Plus'));
         super(applicative, applicative.of, type);
         this.ap = applicative.ap;
         this.alt = plus.alt;
@@ -228,9 +275,10 @@ class Alternative extends Applicative {
         registry && register(registry, this, ...aliases);
     }
 }
+Alternative.prototype[Symbols.Alternative] = true;
 class Chain extends Apply {
     constructor(apply, chain, type, registry, ...aliases) {
-        !(apply instanceof Apply) && raise(new TypeError('Chain: argument must be an Apply'));
+        !(apply && apply[Symbols.Apply]) && raise(new TypeError('Chain: argument must be an Apply'));
         super(apply, apply.ap, type);
         if (chain) {
             this.chain = (f, a) => (types.of(f) === 'function' && types.check(a, this.type))
@@ -240,9 +288,10 @@ class Chain extends Apply {
     }
     chain() { raise(new Error('Chain: chain is not implemented')); }
 }
+Chain.prototype[Symbols.Chain] = true;
 class ChainRec extends Chain {
     constructor(chain, chainRec, type, registry, ...aliases) {
-        !(chain instanceof Chain) && raise(new TypeError('ChainRec: argument must be a Chain'));
+        !(chain && chain[Symbols.Chain]) && raise(new TypeError('ChainRec: argument must be a Chain'));
         super(chain, chain.chain, type);
         if (chainRec) {
             this.chainRec = (f, i) => (types.of(f) === 'function')
@@ -252,16 +301,18 @@ class ChainRec extends Chain {
     }
     chainRec() { raise(new Error('ChainRec: chainRec is not implemented')); }
 }
+ChainRec.prototype[Symbols.ChainRec] = true;
 class Monad extends Applicative {
     constructor(applicative, chain, type, registry, ...aliases) {
-        !(applicative instanceof Applicative) && raise(new TypeError('Monad: first argument must be an Applicative'));
-        !(chain instanceof Chain) && raise(new TypeError('Monad: second argument must be a Chain'));
+        !(applicative && applicative[Symbols.Applicative]) && raise(new TypeError('Monad: first argument must be an Applicative'));
+        !(chain && chain[Symbols.Chain]) && raise(new TypeError('Monad: second argument must be a Chain'));
         super(applicative, applicative.of, type);
         this.ap = applicative.ap;
         this.chain = chain.chain;
         registry && register(registry, this, ...aliases);
     }
 }
+Monad.prototype[Symbols.Monad] = true;
 class Foldable extends Algebra {
     constructor(reduce, type, registry, ...aliases) {
         super(type);
@@ -273,9 +324,10 @@ class Foldable extends Algebra {
     }
     reduce() { raise(new Error('Foldable: reduce is not implemented')); }
 }
+Foldable.prototype[Symbols.Foldable] = true;
 class Extend extends Functor {
     constructor(functor, extend, type, registry, ...aliases) {
-        !(functor instanceof Functor) && raise(new TypeError('Extend: argument must be a Functor'));
+        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Extend: argument must be a Functor'));
         super(functor.map, type);
         if (extend) {
             this.extend = (f, a) => (types.of(f) === 'function' && types.check(a, this.type))
@@ -285,9 +337,10 @@ class Extend extends Functor {
     }
     extend() { raise(new Error('Extend: extend is not implemented')); }
 }
+Extend.prototype[Symbols.Extend] = true;
 class Comonad extends Extend {
     constructor(extend, extract, type, registry, ...aliases) {
-        !(extend instanceof Extend) && raise(new TypeError('Comonad: argument must be an Extend'));
+        !(extend && extend[Symbols.Extend]) && raise(new TypeError('Comonad: argument must be an Extend'));
         super(extend, extend.extend, type);
         if (extract) {
             this.extract = a => types.check(a, this.type) ? extract(a) : raise(new TypeError(`Comonad.extract: argument must be ${this.type}`));
@@ -296,10 +349,11 @@ class Comonad extends Extend {
     }
     extract() { raise(new Error('Comonad: extract is not implemented')); }
 }
+Comonad.prototype[Symbols.Comonad] = true;
 class Traversable extends Functor {
     constructor(functor, foldable, traverse, type, registry, ...aliases) {
-        !(functor instanceof Functor) && raise(new TypeError('Traversable: first argument must be a Functor'));
-        !(foldable instanceof Foldable) && raise(new TypeError('Traversable: second argument must be a Foldable'));
+        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Traversable: first argument must be a Functor'));
+        !(foldable && foldable[Symbols.Foldable]) && raise(new TypeError('Traversable: second argument must be a Foldable'));
         super(functor.map, type);
         this.reduce = foldable.reduce;
         if (traverse) {
@@ -310,6 +364,7 @@ class Traversable extends Functor {
     }
     traverse() { raise(new Error('Traversable: traverse is not implemented')); }
 }
+Traversable.prototype[Symbols.Traversable] = true;
 
 Setoid.op = (a, b) => a === b;
 Setoid.types = {};
@@ -797,12 +852,13 @@ class Nothing extends Maybe {
         return true;
     }
 }
+Maybe.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
 Maybe.Nothing = () => new Nothing();
 Maybe.of = x => new Just(x);
-Maybe.isMaybe = x => x instanceof Maybe;
-Maybe.isJust = x => x instanceof Just;
-Maybe.isNothing = x => x instanceof Nothing;
+Maybe.isMaybe = x => x != null && x[Symbols.Maybe] === true;
+Maybe.isJust = x => Maybe.isMaybe(x) && x.isJust();
+Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
 class MaybeSemigroupoid extends Semigroupoid {
@@ -914,12 +970,13 @@ class Right extends Either {
         return true;
     }
 }
+Either.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
 Either.Right = x => new Right(x);
 Either.of = x => new Right(x);
-Either.isEither = x => x instanceof Either;
-Either.isLeft = x => x instanceof Left;
-Either.isRight = x => x instanceof Right;
+Either.isEither = x => x != null && x[Symbols.Either] === true;
+Either.isLeft = x => Either.isEither(x) && x.isLeft();
+Either.isRight = x => Either.isEither(x) && x.isRight();
 Either.fold = (onLeft, onRight, e) => e.isLeft() ? onLeft(e.value) : onRight(e.value);
 Either.catch = f => {
     try {
@@ -1019,9 +1076,10 @@ class Task {
         this._typeName = 'Task';
     }
 }
+Task.prototype[Symbols.Task] = true;
 Task.of = x => new Task((_, resolve) => resolve(x));
 Task.rejected = x => new Task((reject, _) => reject(x));
-Task.isTask = x => x instanceof Task;
+Task.isTask = x => x != null && x[Symbols.Task] === true;
 Task.fold = (onRejected, onResolved, task) => task.fork(onRejected, onResolved);
 Task.fromPromise = promiseFn => (...args) => new Task((reject, resolve) => promiseFn(...args).then(resolve).catch(reject));
 Task.fromEither = e => e.isRight() ? Task.of(e.value) : Task.rejected(e.value);
