@@ -54,10 +54,34 @@ const types = {
         return actual === expected || actual.toLowerCase() === expected.toLowerCase();
     },
     isFunction: f => typeof f === 'function',
+    checkFunction: (f, msg = '') => {
+        types.isFunction(f) || raise(new TypeError(`Argument must be a function${msg ? ': ' + msg : ''}`));
+        return f;
+    },
+    isPlainObject: a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype,
+    isIterable: a => a != null && typeof a[Symbol.iterator] === 'function',
 };
 const identity = x => x;
 const compose = (f, g) => x => f(g(x));
 const raise = e => { throw e; };
+const runCatch = (f, onError = console.log) => (...args) => {
+    try { return f(...args); }
+    catch (e) { return onError(e); }
+};
+const toIterator = function* (iterable) {
+    if (iterable == null) return;
+    if (types.isIterable(iterable)) {
+        yield* iterable;
+    } else if (types.isPlainObject(iterable)) {
+        for (const key in iterable) {
+            if (Object.prototype.hasOwnProperty.call(iterable, key)) {
+                yield iterable[key];
+            }
+        }
+    } else {
+        yield iterable;
+    }
+};
 const register = (target, instance, ...aliases) => {
     target[instance.constructor.name] = instance;
     for (const alias of aliases) { target[alias.toLowerCase()] = instance; }
@@ -162,7 +186,7 @@ class Filterable extends Algebra {
     constructor(filter, type, registry, ...aliases) {
         super(type);
         if (filter) {
-            this.filter = (pred, a) => (types.of(pred) === 'function' && types.check(a, this.type))
+            this.filter = (pred, a) => (types.isFunction(pred) && types.check(a, this.type))
                 ? filter(pred, a) : raise(new TypeError(`Filterable.filter: arguments must be (function, ${this.type})`));
         }
         registry && register(registry, this, ...aliases);
@@ -174,7 +198,7 @@ class Functor extends Algebra {
     constructor(map, type, registry, ...aliases) {
         super(type);
         if (map) {
-            this.map = (f, a) => (types.of(f) === 'function' && types.check(a, this.type))
+            this.map = (f, a) => (types.isFunction(f) && types.check(a, this.type))
                 ? map(f, a) : raise(new TypeError(`Functor.map: arguments must be (function, ${this.type})`));
         }
         registry && register(registry, this, ...aliases);
@@ -186,7 +210,7 @@ class Bifunctor extends Algebra {
     constructor(bimap, type, registry, ...aliases) {
         super(type);
         if (bimap) {
-            this.bimap = (f, g, a) => (types.of(f) === 'function' && types.of(g) === 'function' && types.check(a, this.type))
+            this.bimap = (f, g, a) => (types.equals(f, g, 'function') && types.check(a, this.type))
                 ? bimap(f, g, a) : raise(new TypeError(`Bifunctor.bimap: arguments must be (function, function, ${this.type})`));
         }
         registry && register(registry, this, ...aliases);
@@ -210,7 +234,7 @@ class Profunctor extends Algebra {
     constructor(promap, type, registry, ...aliases) {
         super(type);
         if (promap) {
-            this.promap = (f, g, fn) => (types.of(f) === 'function' && types.of(g) === 'function' && types.of(fn) === 'function')
+            this.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.isFunction(fn))
                 ? promap(f, g, fn) : raise(new TypeError('Profunctor.promap: all arguments must be functions'));
         }
         registry && register(registry, this, ...aliases);
@@ -294,7 +318,7 @@ class ChainRec extends Chain {
         !(chain && chain[Symbols.Chain]) && raise(new TypeError('ChainRec: argument must be a Chain'));
         super(chain, chain.chain, type);
         if (chainRec) {
-            this.chainRec = (f, i) => (types.of(f) === 'function')
+            this.chainRec = (f, i) => (types.isFunction(f))
                 ? chainRec(f, i) : raise(new TypeError('ChainRec.chainRec: first argument must be a function'));
         }
         registry && register(registry, this, ...aliases);
@@ -317,7 +341,7 @@ class Foldable extends Algebra {
     constructor(reduce, type, registry, ...aliases) {
         super(type);
         if (reduce) {
-            this.reduce = (f, init, a) => (types.of(f) === 'function' && types.check(a, this.type))
+            this.reduce = (f, init, a) => (types.isFunction(f) && types.check(a, this.type))
                 ? reduce(f, init, a) : raise(new TypeError(`Foldable.reduce: arguments must be (function, initial, ${this.type})`));
         }
         registry && register(registry, this, ...aliases);
@@ -330,7 +354,7 @@ class Extend extends Functor {
         !(functor && functor[Symbols.Functor]) && raise(new TypeError('Extend: argument must be a Functor'));
         super(functor.map, type);
         if (extend) {
-            this.extend = (f, a) => (types.of(f) === 'function' && types.check(a, this.type))
+            this.extend = (f, a) => (types.isFunction(f) && types.check(a, this.type))
                 ? extend(f, a) : raise(new TypeError(`Extend.extend: arguments must be (function, ${this.type})`));
         }
         registry && register(registry, this, ...aliases);
@@ -357,8 +381,18 @@ class Traversable extends Functor {
         super(functor.map, type);
         this.reduce = foldable.reduce;
         if (traverse) {
-            this.traverse = (applicative, f, a) => (types.of(f) === 'function' && types.check(a, this.type))
-                ? traverse(applicative, f, a) : raise(new TypeError(`Traversable.traverse: arguments must be (applicative, function, ${this.type})`));
+            this.traverse = (applicative, f, a) => {
+                if (!applicative[Symbols.Applicative]) {
+                    return raise(new TypeError('Traversable.traverse: first argument must be an Applicative'));
+                }
+                if (!types.isFunction(f)) {
+                    return raise(new TypeError('Traversable.traverse: second argument must be a function'));
+                }
+                if (!types.check(a, this.type)) {
+                    return raise(new TypeError(`Traversable.traverse: third argument must be ${this.type}`));
+                }
+                return traverse(applicative, f, a);
+            };
         }
         registry && register(registry, this, ...aliases);
     }
@@ -829,28 +863,20 @@ class DateOrd extends Ord {
 modules.push(DateOrd);
 /* Maybe */
 class Maybe {
-    isJust() {
-        return false;
-    }
-    isNothing() {
-        return false;
-    }
+    isJust() { return false; }
+    isNothing() { return false; }
 }
 class Just extends Maybe {
     constructor(value) {
         super(); this.value = value; this._typeName = 'Maybe';
     }
-    isJust() {
-        return true;
-    }
+    isJust() { return true; }
 }
 class Nothing extends Maybe {
     constructor() {
         super(); this._typeName = 'Maybe';
     }
-    isNothing() {
-        return true;
-    }
+    isNothing() { return true; }
 }
 Maybe.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
@@ -977,6 +1003,7 @@ Either.of = x => new Right(x);
 Either.isEither = x => x != null && x[Symbols.Either] === true;
 Either.isLeft = x => Either.isEither(x) && x.isLeft();
 Either.isRight = x => Either.isEither(x) && x.isRight();
+Either.fromNullable = x => x == null ? Either.Left(null) : Either.Right(x);
 Either.fold = (onLeft, onRight, e) => e.isLeft() ? onLeft(e.value) : onRight(e.value);
 Either.catch = f => {
     try {
@@ -1223,10 +1250,225 @@ const sequence = (traversable, applicative, u) => {
     }
     return traversable.traverse(applicative, identity, u);
 };
-// TODO: 함수 조작 유틸리티 추가 (e.g. pipe, tap, flip, also, ...)
+const constant = x => () => x;
+const tuple = (...args) => args;
+const apply = f => x => types.checkFunction(f, 'apply')(x);
+const unapply = f => (a, b) => types.checkFunction(f, 'unapply')(a, b);
+const curry = f => a => b => types.checkFunction(f, 'curry')(a, b);
+const uncurry = f => (a, b) => types.checkFunction(f, 'uncurry')(a)(b);
+const predicate = f => x => Boolean(runCatch(types.checkFunction(f, 'predicate'), () => false)(x));
+const negate = f => x => !predicate(types.checkFunction(f, 'negate'))(x);
+const flip = f => (a, b) => types.checkFunction(f, 'flip')(b, a);
+const flipCurried = f => a => b => types.checkFunction(f, 'flipCurried')(b)(a);
+const pipe = (f, g) => x => types.checkFunction(g, 'pipe')(f(x));
+const applyN = f => args => {
+    types.of(args) !== 'Array' && raise(new TypeError('applyN: args must be an array'));
+    return types.checkFunction(f, 'applyN')(...args);
+};
+const unapplyN = f => (...args) => f(args);
+const curryN = (f, arity = f.length) => {
+    return function _curryN(...args) {
+        return args.length >= arity ? f(...args) : (...next) => _curryN(...args, ...next);
+    }
+};
+const uncurryN = f => (...args) => args.reduce((acc, arg, i) => types.checkFunction(acc, `uncurryN(${i})`)(arg), f);
+const predicateN = f => (...args) => runCatch(types.checkFunction(f, 'predicateN'), () => false)(...args);
+const negateN = f => (...args) => !predicateN(types.checkFunction(f, 'negateN'))(...args);
+const flipN = f => (...args) => types.checkFunction(f, 'flipN')(...args.slice().reverse());
+const flipCurriedN = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurriedN')(...bs)(...as);
+const pipeN = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipeN(${fs.length})`)(acc), x);
+const composeN = (...fs) => pipeN(...fs.slice().reverse());
+const tap = (...fs) => x => (fs.forEach(f => runCatch(f, console.log)(x)), x);
+const tapN = tap;
+const also = flipCurriedN(tapN);
+const into = flipCurriedN(pipeN);
+const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
+const useOrLift = check => lift => x => predicate(check)(x) ? x : lift(x);
+const once = (f, option = {}) => {
+    types.checkFunction(f, 'once');
+    const state = option.state || { called: false };
+    const defaultValue = option.defaultValue;
+    let result = defaultValue;
+    return (...args) => {
+        if (!state.called) {
+            const val = f(...args);
+            result = val;
+            state.called = true;
+        }
+        return result;
+    };
+};
+const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
+const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
+const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
+const { transducer } = (() => {
+    class Reduced {
+        constructor(value) { this.value = value; }
+        static of(value) { return new Reduced(value); }
+        static isReduced(value) { return value instanceof Reduced; }
+    }
+    const transduce = transducer => reducer => initialValue => collection => {
+        if (!types.isIterable(collection)) {
+            raise(new TypeError(`transduce: expected an iterable, but got ${typeof collection}`));
+        }
+        const transformedReducer = types.checkFunction(transducer, 'transducer.transduce:transducer')(types.checkFunction(reducer, 'transducer.transduce:reducer'));
+        let accumulator = initialValue;
+        for (const item of collection) {
+            accumulator = transformedReducer(accumulator, item);
+            if (Reduced.isReduced(accumulator)) {
+                return accumulator.value;
+            }
+        }
+        return accumulator;
+    };
+    const map = f => reducer => (acc, val) => types.checkFunction(reducer, 'transducer.map:reducer')(acc, types.checkFunction(f, 'transducer.map:f')(val));
+    const filter = p => reducer => (acc, val) => types.checkFunction(p, 'transducer.filter:p')(val) ? types.checkFunction(reducer, 'transducer.filter:reducer')(acc, val) : acc;
+    const take = count => {
+        if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
+            raise(new TypeError(`transducer.take: expected a positive integer (>= 1), but got ${count}`));
+        }
+        let taken = 0;
+        return reducer => (accumulator, value) => {
+            if (taken < count) {
+                taken++;
+                const result = reducer(accumulator, value);
+                return taken === count ? Reduced.of(result) : result;
+            }
+            return Reduced.of(accumulator);
+        };
+    };
+    return {
+        transducer: {
+            Reduced, of: Reduced.of, isReduced: Reduced.isReduced, transduce, map, filter, take,
+        },
+    };
+})();
+const { Free, trampoline } = (() => {
+    const stackSafe = (runner, f, onReentry = f) => {
+        let active = false;
+        return (...args) => {
+            if (active) return onReentry(...args);
+            active = true;
+            return runCatch(
+                () => {
+                    const result = runner(f(...args));
+                    if (result instanceof Promise || (result && typeof result.then === 'function')) {
+                        return result.finally(() => { active = false; });
+                    }
+                    active = false;
+                    return result;
+                },
+                e => { active = false; throw e; }
+            )();
+        };
+    };
+    class Free {
+        static of(x) { return new Pure(x); }
+        static pure(x) { return new Pure(x); }
+        static impure(functor) {
+            functor[Symbols.Functor] || raise(new Error('Free.impure: expected a functor'));
+            return new Impure(functor);
+        }
+        static isPure(x) { return x instanceof Pure; }
+        static isImpure(x) { return x instanceof Impure; }
+        static liftF(command) {
+            command[Symbols.Functor] || raise(new Error('Free.liftF: expected a functor'));
+            return Free.isPure(command) || Free.isImpure(command)
+                ? command
+                : Free.impure(command.map(Free.pure));
+        }
+        static runSync(runner) {
+            return target => {
+                const execute = program => {
+                    let step = program;
+                    while (Free.isImpure(step)) {
+                        step = runner(step.functor);
+                        if (Free.isPure(step) && (Free.isPure(step.value) || Free.isImpure(step.value))) {
+                            step = step.value;
+                        }
+                    }
+                    return Free.isPure(step) ? step.value : step;
+                };
+                return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
+            };
+        }
+        static runAsync(runner) {
+            return target => {
+                const execute = async program => {
+                    let step = program;
+                    while (Free.isImpure(step)) {
+                        step = await runner(step.functor);
+                        if (Free.isPure(step) && (Free.isPure(step.value) || Free.isImpure(step.value))) {
+                            step = step.value;
+                        }
+                    }
+                    return Free.isPure(step) ? step.value : step;
+                };
+                return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
+            };
+        }
+    }
+    class Pure extends Free {
+        constructor(value) {
+            super();
+            this.value = value;
+            this[Symbol.toStringTag] = 'Pure';
+            this[Symbols.Functor] = true;
+            this[Symbols.Monad] = true;
+        }
+        map(f) { return new Pure(f(this.value)); }
+        flatMap(f) { return f(this.value); }
+    }
+    class Impure extends Free {
+        constructor(functor) {
+            super();
+            functor[Symbols.Functor] || raise(new Error('Impure: expected a functor'));
+            this.functor = functor;
+            this[Symbol.toStringTag] = 'Impure';
+            this[Symbols.Functor] = true;
+            this[Symbols.Monad] = true;
+        }
+        map(f) { return new Impure(this.functor.map(free => free.map(f))); }
+        flatMap(f) { return new Impure(this.functor.map(free => free.flatMap(f))); }
+    }
+    class Thunk {
+        constructor(f) {
+            types.checkFunction(f, 'Thunk');
+            this.f = f;
+            this[Symbol.toStringTag] = 'Thunk';
+            this[Symbols.Functor] = true;
+        }
+        map(g) { return new Thunk(compose(g, this.f)); }
+        run() { return this.f(); }
+        static of(f) { return new Thunk(f); }
+        static done(value) { return Free.pure(value); }
+        static suspend(f) { return Free.liftF(new Thunk(f)); }
+    }
+    const trampoline = Free.runSync(thunk => thunk.run());
+    Free.Pure = Pure;
+    Free.Impure = Impure;
+    Free.Thunk = Thunk;
+    Free.trampoline = trampoline;
+    return { Free, trampoline };
+})();
+const extra = (() => {
+    const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
+        (acc, key) => Chain.types.EitherChain.chain(obj => Either.fromNullable(obj[key]), acc),
+        Either.fromNullable(data)
+    );
+    const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
+        (match, keyStr) => Either.fold(_ => match, identity, path(keyStr)(data)));
+    return { path, template };
+})();
+
 export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
-    Extend, Comonad, Traversable, Maybe, Either, Task, sequence
+    Extend, Comonad, Traversable, Maybe, Either, Task, Free,
+    identity, compose, sequence, runCatch, toIterator,
+    constant, tuple, apply, unapply, curry, uncurry, predicate, negate, flip, flipCurried, pipe,
+    applyN, unapplyN, curryN, uncurryN, predicateN, negateN, flipN, flipCurriedN, pipeN, composeN,
+    tap, tapN, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
+    extra
 };

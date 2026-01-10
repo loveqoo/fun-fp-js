@@ -1,3 +1,7 @@
+---
+description: Fun-FP-JS 프로젝트 개요 및 기술 철학
+---
+
 # Fun-FP-JS Project Overview & Context
 This document serves as a context provider for AI agents to quickly understand the project structure and technical philosophy.
 
