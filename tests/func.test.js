@@ -3,9 +3,10 @@ import fp from '../index.js';
 import { test, assertEquals, assert, assertThrows, logSection } from './utils.js';
 
 const {
-    identity, compose, constant, tuple, toIterator,
-    apply, unapply, curry, uncurry, predicate, negate, flip, flipCurried, pipe,
-    applyN, unapplyN, curryN, uncurryN, predicateN, negateN, flipN, flipCurriedN, pipeN, composeN,
+    identity, compose, compose2, constant, tuple, toIterator,
+    apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
+    predicate, predicateN, negate, negateN,
+    flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer
 } = fp;
 
@@ -42,29 +43,33 @@ test('tuple - creates array from arguments', () => {
 // === Binary Function Manipulation ===
 logSection('Binary Function Manipulation');
 
-test('apply - applies single argument', () => {
-    const double = x => x * 2;
-    assertEquals(apply(double)(5), 10);
+test('apply - applies array as arguments', () => {
+    const sum3 = (a, b, c) => a + b + c;
+    assertEquals(apply(sum3)([1, 2, 3]), 6);
 });
 
 test('apply - throws for non-function', () => {
-    assertThrows(() => apply(5)(1), 'apply with non-function');
+    assertThrows(() => apply(5)([1]), 'apply with non-function');
 });
 
-test('unapply - converts array to arguments', () => {
-    const add = (a, b) => a + b;
-    assertEquals(unapply(add)(3, 4), 7);
+test('apply - throws for non-array', () => {
+    assertThrows(() => apply(x => x)(5), 'apply with non-array');
 });
 
-test('curry - converts binary function to curried', () => {
+test('unapply2 - converts args to array', () => {
     const add = (a, b) => a + b;
-    const curriedAdd = curry(add);
+    assertEquals(unapply2(add)(3, 4), 7);
+});
+
+test('curry2 - converts binary function to curried', () => {
+    const add = (a, b) => a + b;
+    const curriedAdd = curry2(add);
     assertEquals(curriedAdd(3)(4), 7);
 });
 
-test('uncurry - converts curried function to binary', () => {
+test('uncurry2 - converts curried function to binary', () => {
     const curriedAdd = a => b => a + b;
-    const uncurriedAdd = uncurry(curriedAdd);
+    const uncurriedAdd = uncurry2(curriedAdd);
     assertEquals(uncurriedAdd(3, 4), 7);
 });
 
@@ -87,56 +92,53 @@ test('negate - negates predicate result', () => {
     assertEquals(isNotPositive(-5), true);
 });
 
-test('flip - swaps binary function arguments', () => {
+test('flip2 - swaps binary function arguments', () => {
     const subtract = (a, b) => a - b;
-    const flipped = flip(subtract);
+    const flipped = flip2(subtract);
     assertEquals(flipped(3, 10), 7); // 10 - 3 = 7
 });
 
-test('flipCurried - swaps curried function arguments', () => {
+test('flipCurried2 - swaps curried function arguments', () => {
     const subtract = a => b => a - b;
-    const flipped = flipCurried(subtract);
+    const flipped = flipCurried2(subtract);
     assertEquals(flipped(3)(10), 7); // subtract(10)(3) = 10 - 3 = 7
 });
 
-test('pipe - left to right composition', () => {
+test('pipe2 - left to right composition (2 functions)', () => {
     const double = x => x * 2;
     const addOne = x => x + 1;
-    const piped = pipe(addOne, double);
+    const piped = pipe2(addOne, double);
     assertEquals(piped(5), 12); // double(addOne(5)) = double(6) = 12
 });
 
 // === N-ary Function Manipulation ===
 logSection('N-ary Function Manipulation');
 
-test('applyN - applies array as arguments', () => {
-    const sum3 = (a, b, c) => a + b + c;
-    assertEquals(applyN(sum3)([1, 2, 3]), 6);
-});
 
-test('unapplyN - converts variadic to array-taking function', () => {
-    const toArray = unapplyN(x => x);
+
+test('unapply - converts variadic to array-taking function', () => {
+    const toArray = unapply(x => x);
     assertEquals(toArray(1, 2, 3), [1, 2, 3]);
 });
 
-test('curryN - curries multi-argument function', () => {
+test('curry - curries multi-argument function', () => {
     const sum3 = (a, b, c) => a + b + c;
-    const curried = curryN(sum3);
+    const curried = curry(sum3);
     assertEquals(curried(1)(2)(3), 6);
     assertEquals(curried(1, 2)(3), 6);
     assertEquals(curried(1)(2, 3), 6);
     assertEquals(curried(1, 2, 3), 6);
 });
 
-test('curryN - respects custom arity', () => {
+test('curry - respects custom arity', () => {
     const sum = (...args) => args.reduce((a, b) => a + b, 0);
-    const curried2 = curryN(sum, 2);
+    const curried2 = curry(sum, 2);
     assertEquals(curried2(1)(2), 3);
 });
 
-test('uncurryN - uncurries deeply nested curried function', () => {
+test('uncurry - uncurries deeply nested curried function', () => {
     const curriedSum3 = a => b => c => a + b + c;
-    const uncurried = uncurryN(curriedSum3);
+    const uncurried = uncurry(curriedSum3);
     assertEquals(uncurried(1, 2, 3), 6);
 });
 
@@ -158,33 +160,33 @@ test('negateN - negates variadic predicate', () => {
     assertEquals(allNonNegative(1, -2, 3), false);
 });
 
-test('flipN - reverses all arguments', () => {
+test('flip - reverses all arguments', () => {
     const joinWithSep = (sep, ...args) => args.join(sep);
-    const flipped = flipN(joinWithSep);
+    const flipped = flip(joinWithSep);
     assertEquals(flipped('c', 'b', 'a', '-'), 'a-b-c');
 });
 
-test('flipCurriedN - swaps argument groups', () => {
+test('flipCurried - swaps argument groups', () => {
     const f = (a, b) => (c, d) => [a, b, c, d];
-    const flipped = flipCurriedN(f);
+    const flipped = flipCurried(f);
     // flipped(3, 4)(1, 2) calls f(1, 2)(3, 4) = [1, 2, 3, 4]
     assertEquals(flipped(3, 4)(1, 2), [1, 2, 3, 4]);
 });
 
-test('pipeN - composes left to right with multiple functions', () => {
+test('pipe - composes left to right with multiple functions', () => {
     const addOne = x => x + 1;
     const double = x => x * 2;
     const square = x => x * x;
-    const piped = pipeN(addOne, double, square);
+    const piped = pipe(addOne, double, square);
     assertEquals(piped(5), 144); // square(double(addOne(5))) = square(double(6)) = square(12) = 144
 });
 
-test('composeN - composes right to left with multiple functions', () => {
+test('compose - composes right to left with multiple functions', () => {
     const addOne = x => x + 1;
     const double = x => x * 2;
     const square = x => x * x;
-    const composed = composeN(square, double, addOne);
-    assertEquals(composed(5), 144); // same as pipeN(addOne, double, square)
+    const composed = compose(square, double, addOne);
+    assertEquals(composed(5), 144); // same as pipe(addOne, double, square)
 });
 
 // === Combinators ===
@@ -217,7 +219,7 @@ test('also - flipped tap (value first, then functions)', () => {
     assertEquals(captured, 5);
 });
 
-test('into - flipped pipeN (value first, then functions)', () => {
+test('into - flipped pipe (value first, then functions)', () => {
     const addOne = x => x + 1;
     const double = x => x * 2;
     const result = into(5)(addOne, double);
@@ -247,20 +249,20 @@ test('curry - throws for non-function', () => {
     assertThrows(() => curry(5)(1)(2), 'curry with non-function');
 });
 
-test('uncurry - throws for non-function', () => {
-    assertThrows(() => uncurry(5)(1, 2), 'uncurry with non-function');
+test('uncurry2 - throws for non-function', () => {
+    assertThrows(() => uncurry2(5)(1, 2), 'uncurry2 with non-function');
 });
 
-test('flip - throws for non-function', () => {
-    assertThrows(() => flip(5)(1, 2), 'flip with non-function');
+test('flip2 - throws for non-function', () => {
+    assertThrows(() => flip2(5)(1, 2), 'flip2 with non-function');
 });
 
-test('pipeN - throws for non-function in chain', () => {
-    assertThrows(() => pipeN(x => x, 5)(1), 'pipeN with non-function');
+test('pipe - throws for non-function in chain', () => {
+    assertThrows(() => pipe(x => x, 5)(1), 'pipe with non-function');
 });
 
-test('composeN - throws for non-function in chain', () => {
-    assertThrows(() => composeN(5, x => x)(1), 'composeN with non-function');
+test('compose - throws for non-function in chain', () => {
+    assertThrows(() => compose(5, x => x)(1), 'compose with non-function');
 });
 
 // === Composition Laws ===
@@ -285,11 +287,11 @@ test('compose - identity: compose(identity, f) === f', () => {
     assertEquals(compose(identity, f)(5), f(5));
 });
 
-test('pipeN - associativity', () => {
+test('pipe - associativity', () => {
     const f = x => x + 1;
     const g = x => x * 2;
     const h = x => x - 3;
-    assertEquals(pipeN(f, g, h)(10), pipeN(pipeN(f, g), h)(10));
+    assertEquals(pipe(f, g, h)(10), pipe(pipe(f, g), h)(10));
 });
 
 // === Additional Utilities ===

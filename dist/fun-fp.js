@@ -1,3 +1,23 @@
+/**
+ * Fun-FP-JS - Functional Programming Library
+ * Built: 2026-01-11T15:33:43.886Z
+ * Static Land specification compliant
+ */
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD
+        define([], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        // CommonJS
+        module.exports = factory();
+        module.exports.default = module.exports;
+    } else {
+        // Browser global
+        root.FunFP = factory();
+    }
+}(typeof self !== 'undefined' ? self : this, function() {
+    'use strict';
+
 const polyfills = {
     array: {
         flatMap: (f, arr) => arr.reduce((acc, x) => acc.concat(f(x)), [])
@@ -1459,7 +1479,7 @@ const extra = (() => {
     return { path, template };
 })();
 
-export default {
+return {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
@@ -1471,3 +1491,4 @@ export default {
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
     extra
 };
+}));
