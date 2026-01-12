@@ -122,6 +122,32 @@ test('Task.all - Preserves order', () => {
     );
 });
 
+testAsync('Task.all - Does not resolve after rejection (race condition)', async () => {
+    const delay = (ms, value) => new Task((_, resolve) => setTimeout(() => resolve(value), ms));
+    const delayedReject = (ms, error) => new Task((reject) => setTimeout(() => reject(error), ms));
+
+    // t1 resolves at 25ms, t2 rejects at 50ms, t3 resolves at 75ms
+    const t1 = delay(25, 1);
+    const t2 = delayedReject(50, 'error');
+    const t3 = delay(75, 3);
+
+    let callCount = 0;
+    let rejectCalled = false;
+
+    await new Promise(done => {
+        Task.all([t1, t2, t3]).fork(
+            e => { callCount++; rejectCalled = true; },
+            v => { callCount++; }
+        );
+
+        setTimeout(() => {
+            assertEquals(callCount, 1);
+            assertEquals(rejectCalled, true);
+            done();
+        }, 150);
+    });
+});
+
 // === race ===
 test('Task.race - First to resolve wins', () => {
     // Note: In synchronous Tasks, the first one always wins

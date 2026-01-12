@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-11T15:33:43.886Z
+ * Built: 2026-01-12T15:22:35.956Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -185,7 +185,7 @@ class Semigroupoid extends Algebra {
         super(type);
         if (compose) {
             this.compose = (f, g) => (types.equals(f, g, 'function'))
-                ? compose2(f, g) : raise(new TypeError('Semigroupoid.compose: both arguments must be functions'));
+                ? compose(f, g) : raise(new TypeError('Semigroupoid.compose: both arguments must be functions'));
         }
         registry && register(registry, this, ...registryKeys);
     }
@@ -1144,6 +1144,7 @@ Task.all = tasks => new Task((reject, resolve) => {
                 }
             },
             v => {
+                if (rejected) return;  // Don't process after rejection
                 results[i] = v;
                 completed++;
                 if (completed === list.length) resolve(results);
@@ -1186,32 +1187,58 @@ class TaskCategory extends Category {
 modules.push(TaskCategory);
 class TaskFunctor extends Functor {
     constructor() {
-        super((f, task) => new Task((reject, resolve) => task.fork(reject, x => resolve(f(x)))), 'Task', Functor.types, 'task');
+        super((f, task) => new Task((reject, resolve) => {
+            let settled = false;
+            task.fork(
+                e => {
+                    if (settled) return;
+                    settled = true;
+                    reject(e);
+                },
+                x => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(f(x));
+                }
+            );
+        }), 'Task', Functor.types, 'task');
     }
 }
 modules.push(TaskFunctor);
 class TaskApply extends Apply {
     constructor() {
         super(Functor.types.TaskFunctor, (taskFn, taskVal) => new Task((reject, resolve) => {
-            let fn, val, fnDone = false, valDone = false, rejected = false;
+            let fn, val, fnDone = false, valDone = false, settled = false;
             taskFn.fork(
                 e => {
-                    rejected || (rejected = true, reject(e));
+                    if (settled) return;
+                    settled = true;
+                    reject(e);
                 },
                 f => {
+                    if (settled) return;
                     fn = f;
                     fnDone = true;
-                    fnDone && valDone && resolve(fn(val));
+                    if (fnDone && valDone) {
+                        settled = true;
+                        resolve(fn(val));
+                    }
                 }
             );
             taskVal.fork(
                 e => {
-                    rejected || (rejected = true, reject(e));
+                    if (settled) return;
+                    settled = true;
+                    reject(e);
                 },
                 v => {
+                    if (settled) return;
                     val = v;
                     valDone = true;
-                    fnDone && valDone && resolve(fn(val));
+                    if (fnDone && valDone) {
+                        settled = true;
+                        resolve(fn(val));
+                    }
                 }
             );
         }), 'Task', Apply.types, 'task');
@@ -1227,7 +1254,29 @@ modules.push(TaskApplicative);
 class TaskAlt extends Alt {
     constructor() {
         super(Functor.types.TaskFunctor, (a, b) => new Task((reject, resolve) => {
-            a.fork(_ => b.fork(reject, resolve), resolve);
+            let settled = false;
+            a.fork(
+                _ => {
+                    if (settled) return;
+                    b.fork(
+                        e => {
+                            if (settled) return;
+                            settled = true;
+                            reject(e);
+                        },
+                        v => {
+                            if (settled) return;
+                            settled = true;
+                            resolve(v);
+                        }
+                    );
+                },
+                v => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(v);
+                }
+            );
         }), 'Task', Alt.types, 'task');
     }
 }
@@ -1235,7 +1284,31 @@ modules.push(TaskAlt);
 class TaskChain extends Chain {
     constructor() {
         super(Apply.types.TaskApply,
-            (f, task) => new Task((reject, resolve) => task.fork(reject, x => f(x).fork(reject, resolve))),
+            (f, task) => new Task((reject, resolve) => {
+                let settled = false;
+                task.fork(
+                    e => {
+                        if (settled) return;
+                        settled = true;
+                        reject(e);
+                    },
+                    x => {
+                        if (settled) return;
+                        f(x).fork(
+                            e => {
+                                if (settled) return;
+                                settled = true;
+                                reject(e);
+                            },
+                            v => {
+                                if (settled) return;
+                                settled = true;
+                                resolve(v);
+                            }
+                        );
+                    }
+                );
+            }),
             'Task', Chain.types, 'task');
     }
 }
@@ -1264,6 +1337,41 @@ load(...modules);
 /* Utilities */
 Maybe.toEither = (defaultLeft, m) => m.isJust() ? Either.Right(m.value) : Either.Left(defaultLeft);
 Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
+
+// Maybe.pipe: Static Land 스타일의 파이프라인
+// 사용법: Maybe.pipe(Maybe.of(value), fn1, fn2, fn3)
+Maybe.pipe = (m, ...fns) => {
+    if (!Maybe.isMaybe(m)) raise(new TypeError('Maybe.pipe: first argument must be a Maybe'));
+    return fns.reduce((acc, fn) => {
+        if (!Maybe.isMaybe(acc)) return acc;
+        return acc.isJust() ? fn(acc) : acc;
+    }, m);
+};
+
+// Maybe.pipeK: Kleisli 합성 - chain용 함수들을 연결
+// 사용법: Maybe.pipeK(fn1, fn2, fn3)(value)
+// fn: a -> Maybe b
+Maybe.pipeK = (...fns) => x => fns.reduce(
+    (acc, fn) => acc.isJust() ? fn(acc.value) : acc,
+    Maybe.of(x)
+);
+
+// Either.pipe: Static Land 스타일의 파이프라인
+Either.pipe = (e, ...fns) => {
+    if (!Either.isEither(e)) raise(new TypeError('Either.pipe: first argument must be an Either'));
+    return fns.reduce((acc, fn) => {
+        if (!Either.isEither(acc)) return acc;
+        return acc.isRight() ? fn(acc) : acc;
+    }, e);
+};
+
+// Either.pipeK: Kleisli 합성 - chain용 함수들을 연결
+// 사용법: Either.pipeK(fn1, fn2, fn3)(value)
+// fn: a -> Either e b
+Either.pipeK = (...fns) => x => fns.reduce(
+    (acc, fn) => acc.isRight() ? fn(acc.value) : acc,
+    Either.Right(x)
+);
 const sequence = (traversable, applicative, u) => {
     if (!types.check(u, traversable.type)) {
         raise(new TypeError(`sequence: u must be ${traversable.type}`));
