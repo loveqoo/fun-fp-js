@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-12T15:22:35.956Z
+ * Built: 2026-01-12T15:29:19.740Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1337,9 +1337,6 @@ load(...modules);
 /* Utilities */
 Maybe.toEither = (defaultLeft, m) => m.isJust() ? Either.Right(m.value) : Either.Left(defaultLeft);
 Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
-
-// Maybe.pipe: Static Land 스타일의 파이프라인
-// 사용법: Maybe.pipe(Maybe.of(value), fn1, fn2, fn3)
 Maybe.pipe = (m, ...fns) => {
     if (!Maybe.isMaybe(m)) raise(new TypeError('Maybe.pipe: first argument must be a Maybe'));
     return fns.reduce((acc, fn) => {
@@ -1347,16 +1344,10 @@ Maybe.pipe = (m, ...fns) => {
         return acc.isJust() ? fn(acc) : acc;
     }, m);
 };
-
-// Maybe.pipeK: Kleisli 합성 - chain용 함수들을 연결
-// 사용법: Maybe.pipeK(fn1, fn2, fn3)(value)
-// fn: a -> Maybe b
 Maybe.pipeK = (...fns) => x => fns.reduce(
     (acc, fn) => acc.isJust() ? fn(acc.value) : acc,
     Maybe.of(x)
 );
-
-// Either.pipe: Static Land 스타일의 파이프라인
 Either.pipe = (e, ...fns) => {
     if (!Either.isEither(e)) raise(new TypeError('Either.pipe: first argument must be an Either'));
     return fns.reduce((acc, fn) => {
@@ -1364,10 +1355,6 @@ Either.pipe = (e, ...fns) => {
         return acc.isRight() ? fn(acc) : acc;
     }, e);
 };
-
-// Either.pipeK: Kleisli 합성 - chain용 함수들을 연결
-// 사용법: Either.pipeK(fn1, fn2, fn3)(value)
-// fn: a -> Either e b
 Either.pipeK = (...fns) => x => fns.reduce(
     (acc, fn) => acc.isRight() ? fn(acc.value) : acc,
     Either.Right(x)
