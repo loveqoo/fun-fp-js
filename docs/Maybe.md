@@ -96,24 +96,30 @@ chain(double, Maybe.Nothing());  // Nothing
 ### fold - 값 추출
 
 ```javascript
-Maybe.of(5).fold(
-    () => 'default',      // Nothing일 때
-    value => `Got: ${value}`  // Just일 때
+Maybe.fold(
+    () => 'default',        // Nothing일 때
+    value => `Got: ${value}`,  // Just일 때
+    Maybe.of(5)
 );
 // 'Got: 5'
 
-Maybe.Nothing().fold(
+Maybe.fold(
     () => 'default',
-    value => `Got: ${value}`
+    value => `Got: ${value}`,
+    Maybe.Nothing()
 );
 // 'default'
 ```
 
-### getOrElse - 기본값 제공
+### getOrElse 패턴 (fold 활용)
 
 ```javascript
-Maybe.of(5).getOrElse(0);       // 5
-Maybe.Nothing().getOrElse(0);   // 0
+// getOrElse는 fold로 구현
+const getOrElse = (defaultVal, maybe) => 
+    Maybe.fold(() => defaultVal, v => v, maybe);
+
+getOrElse(0, Maybe.of(5));       // 5
+getOrElse(0, Maybe.Nothing());   // 0
 ```
 
 ## 타입 체크

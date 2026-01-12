@@ -62,14 +62,20 @@ countSafe(100000);  // Right(100000)
 ### 페이지네이션 루프
 
 ```javascript
+const { Functor } = FunFP;
+const { map } = Functor.types.TaskFunctor;
+
 const fetchAllPages = () => ChainRec.types.TaskChainRec.chainRec(
     (next, done, { page, items }) =>
-        fetchPage(page).map(response => {
-            const allItems = [...items, ...response.data];
-            return response.hasMore
-                ? next({ page: page + 1, items: allItems })
-                : done(allItems);
-        }),
+        map(
+            response => {
+                const allItems = [...items, ...response.data];
+                return response.hasMore
+                    ? next({ page: page + 1, items: allItems })
+                    : done(allItems);
+            },
+            fetchPage(page)
+        ),
     { page: 1, items: [] }
 );
 

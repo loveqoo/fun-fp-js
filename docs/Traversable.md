@@ -191,6 +191,9 @@ traverse(
 ### 옵셔널 필드 처리
 
 ```javascript
+const { Functor } = FunFP;
+const { map } = Functor.types.MaybeFunctor;
+
 const user = {
     name: Maybe.of('Alice'),
     email: Maybe.of('alice@email.com'),
@@ -200,11 +203,13 @@ const user = {
 // 모든 필드가 Just일 때만 객체 생성
 const fields = [user.name, user.email, user.phone];
 
-traverse(
+const result = traverse(
     Applicative.types.MaybeApplicative,
     x => x,
     fields
-).map(([name, email, phone]) => ({ name, email, phone }));
+);
+
+map(([name, email, phone]) => ({ name, email, phone }), result);
 // Nothing (phone이 Nothing이므로)
 ```
 

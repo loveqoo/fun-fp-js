@@ -106,15 +106,17 @@ chain(validatePositive, Either.Left('error')); // Left('error')
 ### fold - 양쪽 처리
 
 ```javascript
-const result = Either.Right(5).fold(
+const result = Either.fold(
     error => `Error: ${error}`,    // Left일 때
-    value => `Success: ${value}`   // Right일 때
+    value => `Success: ${value}`,  // Right일 때
+    Either.Right(5)
 );
 // 'Success: 5'
 
-Either.Left('oops').fold(
+Either.fold(
     error => `Error: ${error}`,
-    value => `Success: ${value}`
+    value => `Success: ${value}`,
+    Either.Left('oops')
 );
 // 'Error: oops'
 ```
@@ -122,15 +124,19 @@ Either.Left('oops').fold(
 ### bimap - 양쪽 모두 변환 (Bifunctor)
 
 ```javascript
-Either.Right(5).bimap(
+const { bimap } = Bifunctor.types.EitherBifunctor;
+
+bimap(
     err => err.toUpperCase(),  // Left 변환
-    val => val * 2             // Right 변환
+    val => val * 2,            // Right 변환
+    Either.Right(5)
 );
 // Right(10)
 
-Either.Left('error').bimap(
+bimap(
     err => err.toUpperCase(),
-    val => val * 2
+    val => val * 2,
+    Either.Left('error')
 );
 // Left('ERROR')
 ```

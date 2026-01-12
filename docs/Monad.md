@@ -17,19 +17,29 @@ Monad는 함수형 프로그래밍에서 **부수 효과를 안전하게 다루�
 ### 문제: Functor만으로는 부족함
 
 ```javascript
+const { Maybe, Functor } = FunFP;
+const { map } = Functor.types.MaybeFunctor;
+
 const getUser = id => Maybe.of({ id, name: 'Alice', addressId: 1 });
 const getAddress = addrId => Maybe.of({ id: addrId, city: 'Seoul' });
 
 // map만 사용하면 중첩됨!
-const result = getUser(1).map(user => getAddress(user.addressId));
+const result = map(user => getAddress(user.addressId), getUser(1));
 // Maybe(Maybe({ city: 'Seoul' }))  ← 이중 중첩!
 ```
 
 ### 해결: chain으로 평탄화
 
 ```javascript
-const result = getUser(1).chain(user => getAddress(user.addressId));
+const { Chain } = FunFP;
+const { chain } = Chain.types.MaybeChain;
+
+const result = chain(user => getAddress(user.addressId), getUser(1));
 // Maybe({ city: 'Seoul' })  ← 깔끔!
+
+// 또는 pipeK 사용
+const getUserAddress = Maybe.pipeK(getUser, user => getAddress(user.addressId));
+getUserAddress(1);  // Maybe({ city: 'Seoul' })
 ```
 
 ## 법칙
@@ -66,7 +76,9 @@ Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
 
 ```javascript
 import FunFP from 'fun-fp-js';
-const { Maybe, Chain, Applicative } = FunFP;
+const { Maybe, Functor, Chain } = FunFP;
+const { map } = Functor.types.MaybeFunctor;
+const { chain } = Chain.types.MaybeChain;
 
 const db = {
     users: { 1: { name: 'Alice', teamId: 10 } },
@@ -76,23 +88,26 @@ const db = {
 const getUser = id => db.users[id] ? Maybe.of(db.users[id]) : Maybe.Nothing();
 const getTeam = id => db.teams[id] ? Maybe.of(db.teams[id]) : Maybe.Nothing();
 
-// 체이닝
-const teamName = getUser(1)
-    .chain(user => getTeam(user.teamId))
-    .map(team => team.name);
+// Static Land 방식
+const teamName = map(
+    team => team.name,
+    chain(user => getTeam(user.teamId), getUser(1))
+);
 // Just('Dev Team')
 
-// 중간에 null이면 안전하게 Nothing
-const noTeam = getUser(999)
-    .chain(user => getTeam(user.teamId))
-    .map(team => team.name);
-// Nothing
+// 또는 pipeK 사용 (더 가독성 좋음)
+const getTeamName = Maybe.pipeK(
+    getUser,
+    user => getTeam(user.teamId)
+);
+map(team => team.name, getTeamName(1));  // Just('Dev Team')
 ```
 
 ### Either - 에러 처리 체이닝
 
 ```javascript
-const { Either } = FunFP;
+const { Either, Chain } = FunFP;
+const { chain } = Chain.types.EitherChain;
 
 const parseNumber = str => {
     const n = parseInt(str);
@@ -105,11 +120,12 @@ const validatePositive = n =>
 const validateMax = max => n =>
     n <= max ? Either.Right(n) : Either.Left(`Must be ≤ ${max}`);
 
-// 검증 체이닝
-const validate = str =>
-    parseNumber(str)
-        .chain(validatePositive)
-        .chain(validateMax(100));
+// pipeK로 검증 파이프라인
+const validate = Either.pipeK(
+    parseNumber,
+    validatePositive,
+    validateMax(100)
+);
 
 validate('50');    // Right(50)
 validate('abc');   // Left('Not a number')
@@ -120,7 +136,9 @@ validate('200');   // Left('Must be ≤ 100')
 ### Task - 비동기 체이닝
 
 ```javascript
-const { Task } = FunFP;
+const { Task, Chain, Functor } = FunFP;
+const { chain } = Chain.types.TaskChain;
+const { map } = Functor.types.TaskFunctor;
 
 const fetchUser = id => Task.fromPromise(() => 
     fetch(`/api/users/${id}`).then(r => r.json())
@@ -130,32 +148,17 @@ const fetchPosts = userId => Task.fromPromise(() =>
     fetch(`/api/users/${userId}/posts`).then(r => r.json())
 )();
 
-// 비동기 체이닝
+// Static Land 방식
 const getUserPosts = userId =>
-    fetchUser(userId).chain(user => 
-        fetchPosts(user.id).map(posts => ({ user, posts }))
+    chain(
+        user => map(posts => ({ user, posts }), fetchPosts(user.id)),
+        fetchUser(userId)
     );
 
 getUserPosts(1).fork(
     err => console.error('Error:', err),
     data => console.log('Data:', data)
 );
-```
-
-## Do 표기법 시뮬레이션
-
-Haskell의 do 표기법처럼 읽기 쉬운 코드를 작성할 수 있습니다:
-
-```javascript
-// 명령형 스타일처럼 보이지만 순수 함수형!
-const program = 
-    getUser(1).chain(user =>
-    getTeam(user.teamId).chain(team =>
-    getLeader(team.leaderId).map(leader => ({
-        user,
-        team,
-        leader
-    }))));
 ```
 
 ## 모나드의 시각화
@@ -180,11 +183,14 @@ chain은 중첩을 펴줍니다:
 | 용도 | 단순 변환 | 조건부/순차 실행 |
 
 ```javascript
+const { map } = Functor.types.MaybeFunctor;
+const { chain } = Chain.types.MaybeChain;
+
 // map: 항상 성공하는 단순 변환
-maybe.map(x => x + 1);
+map(x => x + 1, maybe);
 
 // chain: 실패할 수 있는 연산
-maybe.chain(x => x > 0 ? Maybe.of(x) : Maybe.Nothing());
+chain(x => x > 0 ? Maybe.of(x) : Maybe.Nothing(), maybe);
 ```
 
 ## 관련 타입 클래스

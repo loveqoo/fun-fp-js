@@ -96,9 +96,11 @@ addContext('user-service')(fetchUser(1));
 ## map vs bimap
 
 ```javascript
+const { map } = Functor.types.EitherFunctor;
+
 // map은 Right(성공)만 변환
-Either.Right(5).map(x => x * 2);     // Right(10)
-Either.Left('err').map(x => x * 2);  // Left('err') - 변환 안 됨
+map(x => x * 2, Either.Right(5));     // Right(10)
+map(x => x * 2, Either.Left('err'));  // Left('err') - 변환 안 됨
 
 // bimap은 양쪽 모두 변환
 bimap(e => e.toUpperCase(), x => x * 2, Either.Left('err'));
