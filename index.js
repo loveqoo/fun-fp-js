@@ -887,6 +887,7 @@ Maybe.isJust = x => Maybe.isMaybe(x) && x.isJust();
 Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
+Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
 class MaybeSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'Maybe', Semigroupoid.types, 'maybe');
@@ -981,20 +982,12 @@ class Either {
     isRight() { return false; }
 }
 class Left extends Either {
-    constructor(value) {
-        super(); this.value = value; this._typeName = 'Either';
-    }
-    isLeft() {
-        return true;
-    }
+    constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
+    isLeft() { return true; }
 }
 class Right extends Either {
-    constructor(value) {
-        super(); this.value = value; this._typeName = 'Either';
-    }
-    isRight() {
-        return true;
-    }
+    constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
+    isRight() { return true; }
 }
 Either.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
@@ -1005,14 +998,7 @@ Either.isLeft = x => Either.isEither(x) && x.isLeft();
 Either.isRight = x => Either.isEither(x) && x.isRight();
 Either.fromNullable = x => x == null ? Either.Left(null) : Either.Right(x);
 Either.fold = (onLeft, onRight, e) => e.isLeft() ? onLeft(e.value) : onRight(e.value);
-Either.catch = f => {
-    try {
-        return Either.Right(f());
-    }
-    catch (e) {
-        return Either.Left(e);
-    }
-};
+Either.catch = runCatch(f => Either.Right(f()), Either.Left);
 class EitherSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.EitherChain.chain(f, g(x)), 'function', Semigroupoid.types, 'either');
@@ -1098,12 +1084,41 @@ class EitherTraversable extends Traversable {
 modules.push(EitherTraversable);
 /* Task */
 class Task {
-    constructor(fork) {
-        this.fork = fork;
+    constructor(computation) {
+        // fork를 1회 settle로 래핑하여 다중 호출 방지
+        this.fork = (reject, resolve) => {
+            let settled = false;
+            computation(
+                e => { if (settled) return; settled = true; reject(e); },
+                v => { if (settled) return; settled = true; resolve(v); }
+            );
+        };
         this._typeName = 'Task';
     }
 }
 Task.prototype[Symbols.Task] = true;
+const settledFork = (task, onReject, onResolve) => {
+    let settled = false;
+    task.fork(
+        e => { if (!settled) { settled = true; onReject(e); } },
+        v => { if (!settled) { settled = true; onResolve(v); } }
+    );
+};
+const createSettledGuard = () => {
+    let settled = false;
+    return {
+        isSettled: () => settled,
+        guard: callback => (...args) => {
+            if (settled) return;
+            settled = true;
+            callback(...args);
+        },
+        check: callback => (...args) => {
+            if (settled) return;
+            callback(...args);
+        }
+    };
+};
 Task.of = x => new Task((_, resolve) => resolve(x));
 Task.rejected = x => new Task((reject, _) => reject(x));
 Task.isTask = x => x != null && x[Symbols.Task] === true;
@@ -1114,20 +1129,18 @@ Task.all = tasks => new Task((reject, resolve) => {
     const list = Array.isArray(tasks) ? tasks : [tasks];
     if (list.length === 0) return resolve([]);
     const results = new Array(list.length);
-    let completed = 0, rejected = false;
+    let completed = 0, done = false;
     list.forEach((t, i) => {
         t.fork(
-            e => {
-                if (!rejected) {
-                    rejected = true;
-                    reject(e);
-                }
-            },
+            e => { if (done) return; done = true; reject(e); },
             v => {
-                if (rejected) return;  // Don't process after rejection
+                if (done) return;
                 results[i] = v;
                 completed++;
-                if (completed === list.length) resolve(results);
+                if (completed === list.length) {
+                    done = true;
+                    resolve(results);
+                }
             }
         );
     });
@@ -1136,22 +1149,7 @@ Task.race = tasks => new Task((reject, resolve) => {
     const list = Array.isArray(tasks) ? tasks : [tasks];
     if (list.length === 0) return reject(new Error('race: empty task list'));
     let done = false;
-    list.forEach(t => {
-        t.fork(
-            e => {
-                if (!done) {
-                    done = true;
-                    reject(e);
-                }
-            },
-            v => {
-                if (!done) {
-                    done = true;
-                    resolve(v);
-                }
-            }
-        );
-    });
+    list.forEach(t => t.fork(e => { if (!done) { done = true; reject(e); } }, v => { if (!done) { done = true; resolve(v); } }));
 });
 class TaskSemigroupoid extends Semigroupoid {
     constructor() {
@@ -1168,19 +1166,7 @@ modules.push(TaskCategory);
 class TaskFunctor extends Functor {
     constructor() {
         super((f, task) => new Task((reject, resolve) => {
-            let settled = false;
-            task.fork(
-                e => {
-                    if (settled) return;
-                    settled = true;
-                    reject(e);
-                },
-                x => {
-                    if (settled) return;
-                    settled = true;
-                    resolve(f(x));
-                }
-            );
+            settledFork(task, reject, x => resolve(f(x)));
         }), 'Task', Functor.types, 'task');
     }
 }
@@ -1188,39 +1174,13 @@ modules.push(TaskFunctor);
 class TaskApply extends Apply {
     constructor() {
         super(Functor.types.TaskFunctor, (taskFn, taskVal) => new Task((reject, resolve) => {
-            let fn, val, fnDone = false, valDone = false, settled = false;
-            taskFn.fork(
-                e => {
-                    if (settled) return;
-                    settled = true;
-                    reject(e);
-                },
-                f => {
-                    if (settled) return;
-                    fn = f;
-                    fnDone = true;
-                    if (fnDone && valDone) {
-                        settled = true;
-                        resolve(fn(val));
-                    }
-                }
-            );
-            taskVal.fork(
-                e => {
-                    if (settled) return;
-                    settled = true;
-                    reject(e);
-                },
-                v => {
-                    if (settled) return;
-                    val = v;
-                    valDone = true;
-                    if (fnDone && valDone) {
-                        settled = true;
-                        resolve(fn(val));
-                    }
-                }
-            );
+            const g = createSettledGuard();
+            let fn, val, fnDone = false, valDone = false;
+            const tryResolve = () => {
+                if (fnDone && valDone) g.guard(resolve)(fn(val));
+            };
+            taskFn.fork(g.guard(reject), g.check(f => { fn = f; fnDone = true; tryResolve(); }));
+            taskVal.fork(g.guard(reject), g.check(v => { val = v; valDone = true; tryResolve(); }));
         }), 'Task', Apply.types, 'task');
     }
 }
@@ -1234,28 +1194,10 @@ modules.push(TaskApplicative);
 class TaskAlt extends Alt {
     constructor() {
         super(Functor.types.TaskFunctor, (a, b) => new Task((reject, resolve) => {
-            let settled = false;
+            const g = createSettledGuard();
             a.fork(
-                _ => {
-                    if (settled) return;
-                    b.fork(
-                        e => {
-                            if (settled) return;
-                            settled = true;
-                            reject(e);
-                        },
-                        v => {
-                            if (settled) return;
-                            settled = true;
-                            resolve(v);
-                        }
-                    );
-                },
-                v => {
-                    if (settled) return;
-                    settled = true;
-                    resolve(v);
-                }
+                g.check(_ => b.fork(g.guard(reject), g.guard(resolve))),
+                g.guard(resolve)
             );
         }), 'Task', Alt.types, 'task');
     }
@@ -1265,28 +1207,10 @@ class TaskChain extends Chain {
     constructor() {
         super(Apply.types.TaskApply,
             (f, task) => new Task((reject, resolve) => {
-                let settled = false;
+                const g = createSettledGuard();
                 task.fork(
-                    e => {
-                        if (settled) return;
-                        settled = true;
-                        reject(e);
-                    },
-                    x => {
-                        if (settled) return;
-                        f(x).fork(
-                            e => {
-                                if (settled) return;
-                                settled = true;
-                                reject(e);
-                            },
-                            v => {
-                                if (settled) return;
-                                settled = true;
-                                resolve(v);
-                            }
-                        );
-                    }
+                    g.guard(reject),
+                    g.check(x => f(x).fork(g.guard(reject), g.guard(resolve)))
                 );
             }),
             'Task', Chain.types, 'task');
@@ -1298,9 +1222,7 @@ class TaskChainRec extends ChainRec {
         super(Chain.types.TaskChain,
             (f, i) => new Task((reject, resolve) => {
                 const loop = val => {
-                    f(ChainRec.next, ChainRec.done, val).fork(reject, step => {
-                        step.tag === 'next' ? loop(step.value) : resolve(step.value);
-                    });
+                    f(ChainRec.next, ChainRec.done, val).fork(reject, step => step.tag === 'next' ? loop(step.value) : resolve(step.value));
                 };
                 loop(i);
             }), 'Task', ChainRec.types, 'task');
@@ -1315,8 +1237,19 @@ class TaskMonad extends Monad {
 modules.push(TaskMonad);
 load(...modules);
 /* Utilities */
+const lift = applicative => {
+    if (!(applicative && applicative[Symbols.Applicative] === true)) {
+        raise(new TypeError('lift: first argument must be an Applicative'));
+    }
+    return f => {
+        types.checkFunction(f, 'lift');
+        return (...args) => {
+            if (args.length === 0) return applicative.of(f());
+            return args.slice(1).reduce((acc, arg) => applicative.ap(acc, arg), applicative.map(curry(f, args.length), args[0]));
+        };
+    };
+};
 Maybe.toEither = (defaultLeft, m) => m.isJust() ? Either.Right(m.value) : Either.Left(defaultLeft);
-Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
 Maybe.pipe = (m, ...fns) => {
     if (!Maybe.isMaybe(m)) raise(new TypeError('Maybe.pipe: first argument must be a Maybe'));
     return fns.reduce((acc, fn) => {
@@ -1324,10 +1257,9 @@ Maybe.pipe = (m, ...fns) => {
         return acc.isJust() ? fn(acc) : acc;
     }, m);
 };
-Maybe.pipeK = (...fns) => x => fns.reduce(
-    (acc, fn) => acc.isJust() ? fn(acc.value) : acc,
-    Maybe.of(x)
-);
+Maybe.pipeK = (...fns) => x => fns.reduce((acc, fn) => acc.isJust() ? fn(acc.value) : acc, Maybe.of(x));
+Maybe.lift = f => runCatch(lift(Applicative.types.MaybeApplicative)(f), Maybe.Nothing);
+Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
 Either.pipe = (e, ...fns) => {
     if (!Either.isEither(e)) raise(new TypeError('Either.pipe: first argument must be an Either'));
     return fns.reduce((acc, fn) => {
@@ -1339,7 +1271,11 @@ Either.pipeK = (...fns) => x => fns.reduce(
     (acc, fn) => acc.isRight() ? fn(acc.value) : acc,
     Either.Right(x)
 );
+Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
 const sequence = (traversable, applicative, u) => {
+    if (!traversable || typeof traversable.traverse !== 'function') {
+        raise(new TypeError('sequence: first argument must be a Traversable with traverse method'));
+    }
     if (!types.check(u, traversable.type)) {
         raise(new TypeError(`sequence: u must be ${traversable.type}`));
     }
@@ -1559,7 +1495,7 @@ export default {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free,
-    identity, compose, compose2, sequence, runCatch, toIterator,
+    identity, compose, compose2, sequence, lift, runCatch, toIterator,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
