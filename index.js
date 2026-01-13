@@ -1237,6 +1237,15 @@ class TaskMonad extends Monad {
 modules.push(TaskMonad);
 load(...modules);
 /* Utilities */
+const sequence = (traversable, applicative, u) => {
+    if (!traversable || typeof traversable.traverse !== 'function') {
+        raise(new TypeError('sequence: first argument must be a Traversable with traverse method'));
+    }
+    if (!types.check(u, traversable.type)) {
+        raise(new TypeError(`sequence: u must be ${traversable.type}`));
+    }
+    return traversable.traverse(applicative, identity, u);
+};
 const lift = applicative => {
     if (!(applicative && applicative[Symbols.Applicative] === true)) {
         raise(new TypeError('lift: first argument must be an Applicative'));
@@ -1272,15 +1281,6 @@ Either.pipeK = (...fns) => x => fns.reduce(
     Either.Right(x)
 );
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
-const sequence = (traversable, applicative, u) => {
-    if (!traversable || typeof traversable.traverse !== 'function') {
-        raise(new TypeError('sequence: first argument must be a Traversable with traverse method'));
-    }
-    if (!types.check(u, traversable.type)) {
-        raise(new TypeError(`sequence: u must be ${traversable.type}`));
-    }
-    return traversable.traverse(applicative, identity, u);
-};
 const constant = x => () => x;
 const tuple = (...args) => args;
 const unapply2 = f => (a, b) => types.checkFunction(f, 'unapply2')(a, b);
