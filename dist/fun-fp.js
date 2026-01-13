@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-13T14:36:22.186Z
+ * Built: 2026-01-13T14:38:23.382Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1296,10 +1296,7 @@ Either.pipe = (e, ...fns) => {
         return acc.isRight() ? fn(acc) : acc;
     }, e);
 };
-Either.pipeK = (...fns) => x => fns.reduce(
-    (acc, fn) => acc.isRight() ? fn(acc.value) : acc,
-    Either.Right(x)
-);
+Either.pipeK = (...fns) => x => fns.reduce((acc, fn) => acc.isRight() ? fn(acc.value) : acc, Either.Right(x));
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
 const constant = x => () => x;
 const tuple = (...args) => args;

@@ -1276,10 +1276,7 @@ Either.pipe = (e, ...fns) => {
         return acc.isRight() ? fn(acc) : acc;
     }, e);
 };
-Either.pipeK = (...fns) => x => fns.reduce(
-    (acc, fn) => acc.isRight() ? fn(acc.value) : acc,
-    Either.Right(x)
-);
+Either.pipeK = (...fns) => x => fns.reduce((acc, fn) => acc.isRight() ? fn(acc.value) : acc, Either.Right(x));
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
 const constant = x => () => x;
 const tuple = (...args) => args;
