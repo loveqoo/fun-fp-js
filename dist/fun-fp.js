@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-14T13:45:43.231Z
+ * Built: 2026-01-14T14:55:19.105Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -81,6 +81,7 @@ const types = {
     isPlainObject: a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype,
     isIterable: a => a != null && typeof a[Symbol.iterator] === 'function',
 };
+const emptyFunc = () => { };
 const identity = x => x;
 const compose2 = (f, g) => x => f(g(x));
 const raise = e => { throw e; };
@@ -116,16 +117,234 @@ const load = (...modules) => {
     }
 };
 const modules = [];
+const DEV = typeof process !== 'undefined' && process.env
+    ? process.env.NODE_ENV !== 'production'
+    : true;
+const config = { strictMode: DEV };
+const setStrictMode = (val) => { config.strictMode = !!val; };
+const checkAndSet = (config => {
+    const rules = {
+        Setoid: {
+            strict: (instance, equals) => {
+                typeof equals !== 'function' && raise(new TypeError('Setoid.equals: equals must be a function'));
+                instance.equals = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? equals(a, b) : raise(new TypeError(`Setoid.equals: arguments must be the same type and match ${instance.type}`));
+            }, loose: (instance, equals) => { instance.equals = (a, b) => equals(a, b); }
+        },
+        Ord: {
+            strict: (instance, lte) => {
+                typeof lte !== 'function' && raise(new TypeError('Ord.lte: lte must be a function'));
+                instance.lte = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? lte(a, b) : raise(new TypeError(`Ord.lte: arguments must be the same type and match ${instance.type}`));
+            },
+            loose: (instance, lte) => { instance.lte = (a, b) => lte(a, b); }
+        },
+        Semigroup: {
+            strict: (instance, concat) => {
+                typeof concat !== 'function' && raise(new TypeError('Semigroup.concat: concat must be a function'));
+                instance.concat = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? concat(a, b) : raise(new TypeError(`Semigroup.concat: arguments must be the same type and match ${instance.type}`));
+            },
+            loose: (instance, concat) => { instance.concat = (a, b) => concat(a, b); }
+        },
+        Monoid: {
+            strict: (semigroup) => { !(semigroup && semigroup[Symbols.Semigroup]) && raise(new TypeError('Monoid: argument must be a Semigroup')); },
+            loose: emptyFunc
+        },
+        'Group.super': {
+            strict: (monoid) => { !(monoid && monoid[Symbols.Monoid]) && raise(new TypeError('Group: argument must be a Monoid')); },
+            loose: emptyFunc
+        },
+        Group: {
+            strict: (instance, monoid, invert) => {
+                !(monoid && monoid[Symbols.Monoid]) && raise(new TypeError('Group: argument must be a Monoid'));
+                if (invert) {
+                    typeof invert !== 'function' && raise(new TypeError('Group.invert: invert must be a function'));
+                    instance.invert = a => types.check(a, instance.type) ? invert(a) : raise(new TypeError(`Group.invert: argument must be ${instance.type}`));
+                }
+            },
+            loose: (instance, monoid, invert) => { if (invert) instance.invert = a => invert(a); }
+        },
+        Semigroupoid: {
+            strict: (instance, compose) => {
+                typeof compose !== 'function' && raise(new TypeError('Semigroupoid.compose: compose must be a function'));
+                instance.compose = (f, g) => types.equals(f, g, 'function') ? compose(f, g) : raise(new TypeError('Semigroupoid.compose: both arguments must be functions'));
+            },
+            loose: (instance, compose) => { instance.compose = (f, g) => compose(f, g); }
+        },
+        Category: {
+            strict: (semigroupoid) => { !(semigroupoid && semigroupoid[Symbols.Semigroupoid]) && raise(new TypeError('Category: argument must be a Semigroupoid')); },
+            loose: emptyFunc
+        },
+        Filterable: {
+            strict: (instance, filter) => {
+                typeof filter !== 'function' && raise(new TypeError('Filterable.filter: filter must be a function'));
+                instance.filter = (pred, a) => (types.isFunction(pred) && types.check(a, instance.type)) ? filter(pred, a) : raise(new TypeError(`Filterable.filter: arguments must be (function, ${instance.type})`));
+            },
+            loose: (instance, filter) => { instance.filter = (pred, a) => filter(pred, a); }
+        },
+        Functor: {
+            strict: (instance, map) => {
+                typeof map !== 'function' && raise(new TypeError('Functor.map: map must be a function'));
+                instance.map = (f, a) => (types.isFunction(f) && types.check(a, instance.type)) ? map(f, a) : raise(new TypeError(`Functor.map: arguments must be (function, ${instance.type})`));
+            },
+            loose: (instance, map) => { instance.map = (f, a) => map(f, a); }
+        },
+        Bifunctor: {
+            strict: (instance, bimap) => {
+                typeof bimap !== 'function' && raise(new TypeError('Bifunctor.bimap: bimap must be a function'));
+                instance.bimap = (f, g, a) => (types.equals(f, g, 'function') && types.check(a, instance.type)) ? bimap(f, g, a) : raise(new TypeError(`Bifunctor.bimap: arguments must be (function, function, ${instance.type})`));
+            },
+            loose: (instance, bimap) => { instance.bimap = (f, g, a) => bimap(f, g, a); }
+        },
+        Contravariant: {
+            strict: (instance, contramap) => {
+                typeof contramap !== 'function' && raise(new TypeError('Contravariant.contramap: contramap must be a function'));
+                instance.contramap = (f, g) => types.equals(f, g, 'function') ? contramap(f, g) : raise(new TypeError('Contravariant.contramap: both arguments must be functions'));
+            },
+            loose: (instance, contramap) => { instance.contramap = (f, g) => contramap(f, g); }
+        },
+        Profunctor: {
+            strict: (instance, promap) => {
+                typeof promap !== 'function' && raise(new TypeError('Profunctor.promap: promap must be a function'));
+                instance.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.isFunction(fn)) ? promap(f, g, fn) : raise(new TypeError('Profunctor.promap: all arguments must be functions'));
+            },
+            loose: (instance, promap) => { instance.promap = (f, g, fn) => promap(f, g, fn); }
+        },
+        'Apply.super': {
+            strict: (functor) => { !(functor && functor[Symbols.Functor]) && raise(new TypeError('Apply: argument must be a Functor')); },
+            loose: emptyFunc
+        },
+        Apply: {
+            strict: (instance, functor, ap) => {
+                if (ap) {
+                    typeof ap !== 'function' && raise(new TypeError('Apply.ap: ap must be a function'));
+                    instance.ap = (fs, values) => types.equals(fs, values, instance.type) ? ap(fs, values) : raise(new TypeError(`Apply.ap: both arguments must be ${instance.type}`));
+                }
+            },
+            loose: (instance, functor, ap) => { if (ap) instance.ap = (fs, values) => ap(fs, values); }
+        },
+        Applicative: {
+            strict: (apply) => { !(apply && apply[Symbols.Apply]) && raise(new TypeError('Applicative: argument must be an Apply')); },
+            loose: emptyFunc
+        },
+        'Alt.super': {
+            strict: (functor) => { !(functor && functor[Symbols.Functor]) && raise(new TypeError('Alt: argument must be a Functor')); },
+            loose: emptyFunc
+        },
+        Alt: {
+            strict: (instance, functor, alt) => {
+                if (alt) {
+                    typeof alt !== 'function' && raise(new TypeError('Alt.alt: alt must be a function'));
+                    instance.alt = (a, b) => types.equals(a, b, instance.type) ? alt(a, b) : raise(new TypeError(`Alt.alt: both arguments must be ${instance.type}`));
+                }
+            },
+            loose: (instance, functor, alt) => { if (alt) instance.alt = (a, b) => alt(a, b); }
+        },
+        Plus: {
+            strict: (alt) => { !(alt && alt[Symbols.Alt]) && raise(new TypeError('Plus: argument must be an Alt')); },
+            loose: emptyFunc
+        },
+        'Chain.super': {
+            strict: (apply) => { !(apply && apply[Symbols.Apply]) && raise(new TypeError('Chain: argument must be an Apply')); },
+            loose: emptyFunc
+        },
+        Alternative: {
+            strict: (applicative, plus) => {
+                !(applicative && applicative[Symbols.Applicative]) && raise(new TypeError('Alternative: first argument must be an Applicative'));
+                !(plus && plus[Symbols.Plus]) && raise(new TypeError('Alternative: second argument must be a Plus'));
+            },
+            loose: emptyFunc
+        },
+        Chain: {
+            strict: (instance, apply, chain) => {
+                if (chain) {
+                    typeof chain !== 'function' && raise(new TypeError('Chain.chain: chain must be a function'));
+                    instance.chain = (f, a) => (types.isFunction(f) && types.check(a, instance.type)) ? chain(f, a) : raise(new TypeError(`Chain.chain: arguments must be (function, ${instance.type})`));
+                }
+            },
+            loose: (instance, apply, chain) => { if (chain) instance.chain = (f, a) => chain(f, a); }
+        },
+        'ChainRec.super': {
+            strict: (chain) => { !(chain && chain[Symbols.Chain]) && raise(new TypeError('ChainRec: argument must be a Chain')); },
+            loose: emptyFunc
+        },
+        ChainRec: {
+            strict: (instance, chain, chainRec) => {
+                if (chainRec) {
+                    typeof chainRec !== 'function' && raise(new TypeError('ChainRec.chainRec: chainRec must be a function'));
+                    instance.chainRec = (f, i) => types.isFunction(f) ? chainRec(f, i) : raise(new TypeError('ChainRec.chainRec: first argument must be a function'));
+                }
+            },
+            loose: (instance, chain, chainRec) => { if (chainRec) instance.chainRec = (f, i) => chainRec(f, i); }
+        },
+        Monad: {
+            strict: (applicative, chain) => {
+                !(applicative && applicative[Symbols.Applicative]) && raise(new TypeError('Monad: first argument must be an Applicative'));
+                !(chain && chain[Symbols.Chain]) && raise(new TypeError('Monad: second argument must be a Chain'));
+            },
+            loose: emptyFunc
+        },
+        Foldable: {
+            strict: (instance, reduce) => {
+                typeof reduce !== 'function' && raise(new TypeError('Foldable.reduce: reduce must be a function'));
+                instance.reduce = (f, init, a) => (types.isFunction(f) && types.check(a, instance.type)) ? reduce(f, init, a) : raise(new TypeError(`Foldable.reduce: arguments must be (function, initial, ${instance.type})`));
+            },
+            loose: (instance, reduce) => { instance.reduce = (f, init, a) => reduce(f, init, a); }
+        },
+        'Extend.super': {
+            strict: (functor) => { !(functor && functor[Symbols.Functor]) && raise(new TypeError('Extend: argument must be a Functor')); },
+            loose: emptyFunc
+        },
+        Extend: {
+            strict: (instance, functor, extend) => {
+                if (extend) {
+                    typeof extend !== 'function' && raise(new TypeError('Extend.extend: extend must be a function'));
+                    instance.extend = (f, a) => (types.isFunction(f) && types.check(a, instance.type)) ? extend(f, a) : raise(new TypeError(`Extend.extend: arguments must be (function, ${instance.type})`));
+                }
+            },
+            loose: (instance, functor, extend) => { if (extend) instance.extend = (f, a) => extend(f, a); }
+        },
+        'Comonad.super': {
+            strict: (extend) => { !(extend && extend[Symbols.Extend]) && raise(new TypeError('Comonad: argument must be an Extend')); },
+            loose: emptyFunc
+        },
+        Comonad: {
+            strict: (instance, extend, extract) => {
+                if (extract) {
+                    typeof extract !== 'function' && raise(new TypeError('Comonad.extract: extract must be a function'));
+                    instance.extract = a => types.check(a, instance.type) ? extract(a) : raise(new TypeError(`Comonad.extract: argument must be ${instance.type}`));
+                }
+            },
+            loose: (instance, extend, extract) => { if (extract) instance.extract = a => extract(a); }
+        },
+        'Traversable.super': {
+            strict: (functor, foldable) => {
+                !(functor && functor[Symbols.Functor]) && raise(new TypeError('Traversable: first argument must be a Functor'));
+                !(foldable && foldable[Symbols.Foldable]) && raise(new TypeError('Traversable: second argument must be a Foldable'));
+            },
+            loose: emptyFunc
+        },
+        Traversable: {
+            strict: (instance, functor, foldable, traverse) => {
+                if (traverse) {
+                    typeof traverse !== 'function' && raise(new TypeError('Traversable.traverse: traverse must be a function'));
+                    instance.traverse = (applicative, f, a) => {
+                        if (!applicative[Symbols.Applicative]) return raise(new TypeError('Traversable.traverse: first argument must be an Applicative'));
+                        if (!types.isFunction(f)) return raise(new TypeError('Traversable.traverse: second argument must be a function'));
+                        if (!types.check(a, instance.type)) return raise(new TypeError(`Traversable.traverse: third argument must be ${instance.type}`));
+                        return traverse(applicative, f, a);
+                    };
+                }
+            },
+            loose: (instance, functor, foldable, traverse) => { if (traverse) instance.traverse = (applicative, f, a) => traverse(applicative, f, a); }
+        },
+    };
+    return key => (instance, ...args) => { config.strictMode ? rules[key].strict(instance, ...args) : rules[key].loose(instance, ...args); };
+})(config);
 class Algebra { constructor(type) { this.type = type; } }
 Algebra.prototype[Symbols.Algebra] = true;
 class Setoid extends Algebra {
     constructor(equals, type, registry, ...registryKeys) {
         super(type);
-        if (equals) {
-            this.equals = (a, b) => (types.equals(a, b) && types.check(a, this.type))
-                ? equals(a, b)
-                : raise(new TypeError(`Setoid.equals: arguments must be the same type and match ${this.type}`));
-        }
+        checkAndSet('Setoid')(this, equals);
         registry && register(registry, this, ...registryKeys);
     }
     equals() { raise(new Error('Setoid: equals is not implemented')); }
@@ -134,11 +353,7 @@ Setoid.prototype[Symbols.Setoid] = true;
 class Ord extends Algebra {
     constructor(lte, type, registry, ...aliases) {
         super(type);
-        if (lte) {
-            this.lte = (a, b) => (types.equals(a, b) && types.check(a, this.type))
-                ? lte(a, b)
-                : raise(new TypeError(`Ord.lte: arguments must be the same type and match ${this.type}`));
-        }
+        checkAndSet('Ord')(this, lte);
         registry && register(registry, this, ...aliases);
     }
     lte() { raise(new Error('Ord: lte is not implemented')); }
@@ -147,11 +362,7 @@ Ord.prototype[Symbols.Ord] = true;
 class Semigroup extends Algebra {
     constructor(concat, type, registry, ...aliases) {
         super(type);
-        if (concat) {
-            this.concat = (a, b) => (types.equals(a, b) && types.check(a, this.type))
-                ? concat(a, b)
-                : raise(new TypeError(`Semigroup.concat: arguments must be the same type and match ${this.type}`));
-        }
+        checkAndSet('Semigroup')(this, concat);
         registry && register(registry, this, ...aliases);
     }
     concat() { raise(new Error('Semigroup: concat is not implemented')); }
@@ -159,7 +370,7 @@ class Semigroup extends Algebra {
 Semigroup.prototype[Symbols.Semigroup] = true;
 class Monoid extends Semigroup {
     constructor(semigroup, empty, type, registry, ...aliases) {
-        !(semigroup && semigroup[Symbols.Semigroup]) && raise(new TypeError('Monoid: argument must be a Semigroup'));
+        checkAndSet('Monoid')(semigroup);
         super(semigroup.concat, type);
         this.empty = empty;
         registry && register(registry, this, ...aliases);
@@ -169,12 +380,9 @@ class Monoid extends Semigroup {
 Monoid.prototype[Symbols.Monoid] = true;
 class Group extends Monoid {
     constructor(monoid, invert, type, registry, ...aliases) {
-        !(monoid && monoid[Symbols.Monoid]) && raise(new TypeError('Group: argument must be a Monoid'));
+        checkAndSet('Group.super')(monoid);
         super(monoid, monoid.empty, type);
-        if (invert) {
-            this.invert = a => types.check(a, this.type)
-                ? invert(a) : raise(new TypeError(`Group.invert: argument must be ${this.type}`));
-        }
+        checkAndSet('Group')(this, monoid, invert);
         registry && register(registry, this, ...aliases);
     }
     invert() { raise(new Error('Group: invert is not implemented')); }
@@ -183,10 +391,7 @@ Group.prototype[Symbols.Group] = true;
 class Semigroupoid extends Algebra {
     constructor(compose, type, registry, ...registryKeys) {
         super(type);
-        if (compose) {
-            this.compose = (f, g) => (types.equals(f, g, 'function'))
-                ? compose(f, g) : raise(new TypeError('Semigroupoid.compose: both arguments must be functions'));
-        }
+        checkAndSet('Semigroupoid')(this, compose);
         registry && register(registry, this, ...registryKeys);
     }
     compose() { raise(new Error('Semigroupoid: compose is not implemented')); }
@@ -194,7 +399,7 @@ class Semigroupoid extends Algebra {
 Semigroupoid.prototype[Symbols.Semigroupoid] = true;
 class Category extends Semigroupoid {
     constructor(semigroupoid, id, type, registry, ...aliases) {
-        !(semigroupoid && semigroupoid[Symbols.Semigroupoid]) && raise(new TypeError('Category: argument must be a Semigroupoid'));
+        checkAndSet('Category')(semigroupoid);
         super(semigroupoid.compose, type);
         this.id = id;
         registry && register(registry, this, ...aliases);
@@ -205,10 +410,7 @@ Category.prototype[Symbols.Category] = true;
 class Filterable extends Algebra {
     constructor(filter, type, registry, ...aliases) {
         super(type);
-        if (filter) {
-            this.filter = (pred, a) => (types.isFunction(pred) && types.check(a, this.type))
-                ? filter(pred, a) : raise(new TypeError(`Filterable.filter: arguments must be (function, ${this.type})`));
-        }
+        checkAndSet('Filterable')(this, filter);
         registry && register(registry, this, ...aliases);
     }
     filter() { raise(new Error('Filterable: filter is not implemented')); }
@@ -217,10 +419,7 @@ Filterable.prototype[Symbols.Filterable] = true;
 class Functor extends Algebra {
     constructor(map, type, registry, ...aliases) {
         super(type);
-        if (map) {
-            this.map = (f, a) => (types.isFunction(f) && types.check(a, this.type))
-                ? map(f, a) : raise(new TypeError(`Functor.map: arguments must be (function, ${this.type})`));
-        }
+        checkAndSet('Functor')(this, map);
         registry && register(registry, this, ...aliases);
     }
     map() { raise(new Error('Functor: map is not implemented')); }
@@ -229,10 +428,7 @@ Functor.prototype[Symbols.Functor] = true;
 class Bifunctor extends Algebra {
     constructor(bimap, type, registry, ...aliases) {
         super(type);
-        if (bimap) {
-            this.bimap = (f, g, a) => (types.equals(f, g, 'function') && types.check(a, this.type))
-                ? bimap(f, g, a) : raise(new TypeError(`Bifunctor.bimap: arguments must be (function, function, ${this.type})`));
-        }
+        checkAndSet('Bifunctor')(this, bimap);
         registry && register(registry, this, ...aliases);
     }
     bimap() { raise(new Error('Bifunctor: bimap is not implemented')); }
@@ -241,10 +437,7 @@ Bifunctor.prototype[Symbols.Bifunctor] = true;
 class Contravariant extends Algebra {
     constructor(contramap, type, registry, ...aliases) {
         super(type);
-        if (contramap) {
-            this.contramap = (f, g) => (types.equals(f, g, 'function'))
-                ? contramap(f, g) : raise(new TypeError('Contravariant.contramap: both arguments must be functions'));
-        }
+        checkAndSet('Contravariant')(this, contramap);
         registry && register(registry, this, ...aliases);
     }
     contramap() { raise(new Error('Contravariant: contramap is not implemented')); }
@@ -253,10 +446,7 @@ Contravariant.prototype[Symbols.Contravariant] = true;
 class Profunctor extends Algebra {
     constructor(promap, type, registry, ...aliases) {
         super(type);
-        if (promap) {
-            this.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.isFunction(fn))
-                ? promap(f, g, fn) : raise(new TypeError('Profunctor.promap: all arguments must be functions'));
-        }
+        checkAndSet('Profunctor')(this, promap);
         registry && register(registry, this, ...aliases);
     }
     promap() { raise(new Error('Profunctor: promap is not implemented')); }
@@ -264,12 +454,9 @@ class Profunctor extends Algebra {
 Profunctor.prototype[Symbols.Profunctor] = true;
 class Apply extends Functor {
     constructor(functor, ap, type, registry, ...aliases) {
-        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Apply: argument must be a Functor'));
+        checkAndSet('Apply.super')(functor);
         super(functor.map, type);
-        if (ap) {
-            this.ap = (fs, values) => (types.equals(fs, values, this.type))
-                ? ap(fs, values) : raise(new TypeError(`Apply.ap: both arguments must be ${this.type}`));
-        }
+        checkAndSet('Apply')(this, functor, ap);
         registry && register(registry, this, ...aliases);
     }
     ap() { raise(new Error('Apply: ap is not implemented')); }
@@ -277,7 +464,7 @@ class Apply extends Functor {
 Apply.prototype[Symbols.Apply] = true;
 class Applicative extends Apply {
     constructor(apply, of, type, registry, ...aliases) {
-        !(apply && apply[Symbols.Apply]) && raise(new TypeError('Applicative: argument must be an Apply'));
+        checkAndSet('Applicative')(apply);
         super(apply, apply.ap, type);
         this.of = of;
         registry && register(registry, this, ...aliases);
@@ -287,12 +474,9 @@ class Applicative extends Apply {
 Applicative.prototype[Symbols.Applicative] = true;
 class Alt extends Functor {
     constructor(functor, alt, type, registry, ...aliases) {
-        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Alt: argument must be a Functor'));
+        checkAndSet('Alt.super')(functor);
         super(functor.map, type);
-        if (alt) {
-            this.alt = (a, b) => (types.equals(a, b, this.type))
-                ? alt(a, b) : raise(new TypeError(`Alt.alt: both arguments must be ${this.type}`));
-        }
+        checkAndSet('Alt')(this, functor, alt);
         registry && register(registry, this, ...aliases);
     }
     alt() { raise(new Error('Alt: alt is not implemented')); }
@@ -300,7 +484,7 @@ class Alt extends Functor {
 Alt.prototype[Symbols.Alt] = true;
 class Plus extends Alt {
     constructor(alt, zero, type, registry, ...aliases) {
-        !(alt && alt[Symbols.Alt]) && raise(new TypeError('Plus: argument must be an Alt'));
+        checkAndSet('Plus')(alt);
         super(alt, alt.alt, type);
         this.zero = zero;
         registry && register(registry, this, ...aliases);
@@ -310,8 +494,7 @@ class Plus extends Alt {
 Plus.prototype[Symbols.Plus] = true;
 class Alternative extends Applicative {
     constructor(applicative, plus, type, registry, ...aliases) {
-        !(applicative && applicative[Symbols.Applicative]) && raise(new TypeError('Alternative: first argument must be an Applicative'));
-        !(plus && plus[Symbols.Plus]) && raise(new TypeError('Alternative: second argument must be a Plus'));
+        checkAndSet('Alternative')(applicative, plus);
         super(applicative, applicative.of, type);
         this.ap = applicative.ap;
         this.alt = plus.alt;
@@ -322,12 +505,9 @@ class Alternative extends Applicative {
 Alternative.prototype[Symbols.Alternative] = true;
 class Chain extends Apply {
     constructor(apply, chain, type, registry, ...aliases) {
-        !(apply && apply[Symbols.Apply]) && raise(new TypeError('Chain: argument must be an Apply'));
+        checkAndSet('Chain.super')(apply);
         super(apply, apply.ap, type);
-        if (chain) {
-            this.chain = (f, a) => (types.of(f) === 'function' && types.check(a, this.type))
-                ? chain(f, a) : raise(new TypeError(`Chain.chain: arguments must be (function, ${this.type})`));
-        }
+        checkAndSet('Chain')(this, apply, chain);
         registry && register(registry, this, ...aliases);
     }
     chain() { raise(new Error('Chain: chain is not implemented')); }
@@ -335,12 +515,9 @@ class Chain extends Apply {
 Chain.prototype[Symbols.Chain] = true;
 class ChainRec extends Chain {
     constructor(chain, chainRec, type, registry, ...aliases) {
-        !(chain && chain[Symbols.Chain]) && raise(new TypeError('ChainRec: argument must be a Chain'));
+        checkAndSet('ChainRec.super')(chain);
         super(chain, chain.chain, type);
-        if (chainRec) {
-            this.chainRec = (f, i) => (types.isFunction(f))
-                ? chainRec(f, i) : raise(new TypeError('ChainRec.chainRec: first argument must be a function'));
-        }
+        checkAndSet('ChainRec')(this, chain, chainRec);
         registry && register(registry, this, ...aliases);
     }
     chainRec() { raise(new Error('ChainRec: chainRec is not implemented')); }
@@ -348,8 +525,7 @@ class ChainRec extends Chain {
 ChainRec.prototype[Symbols.ChainRec] = true;
 class Monad extends Applicative {
     constructor(applicative, chain, type, registry, ...aliases) {
-        !(applicative && applicative[Symbols.Applicative]) && raise(new TypeError('Monad: first argument must be an Applicative'));
-        !(chain && chain[Symbols.Chain]) && raise(new TypeError('Monad: second argument must be a Chain'));
+        checkAndSet('Monad')(applicative, chain);
         super(applicative, applicative.of, type);
         this.ap = applicative.ap;
         this.chain = chain.chain;
@@ -360,10 +536,7 @@ Monad.prototype[Symbols.Monad] = true;
 class Foldable extends Algebra {
     constructor(reduce, type, registry, ...aliases) {
         super(type);
-        if (reduce) {
-            this.reduce = (f, init, a) => (types.isFunction(f) && types.check(a, this.type))
-                ? reduce(f, init, a) : raise(new TypeError(`Foldable.reduce: arguments must be (function, initial, ${this.type})`));
-        }
+        checkAndSet('Foldable')(this, reduce);
         registry && register(registry, this, ...aliases);
     }
     reduce() { raise(new Error('Foldable: reduce is not implemented')); }
@@ -371,12 +544,9 @@ class Foldable extends Algebra {
 Foldable.prototype[Symbols.Foldable] = true;
 class Extend extends Functor {
     constructor(functor, extend, type, registry, ...aliases) {
-        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Extend: argument must be a Functor'));
+        checkAndSet('Extend.super')(functor);
         super(functor.map, type);
-        if (extend) {
-            this.extend = (f, a) => (types.isFunction(f) && types.check(a, this.type))
-                ? extend(f, a) : raise(new TypeError(`Extend.extend: arguments must be (function, ${this.type})`));
-        }
+        checkAndSet('Extend')(this, functor, extend);
         registry && register(registry, this, ...aliases);
     }
     extend() { raise(new Error('Extend: extend is not implemented')); }
@@ -384,11 +554,9 @@ class Extend extends Functor {
 Extend.prototype[Symbols.Extend] = true;
 class Comonad extends Extend {
     constructor(extend, extract, type, registry, ...aliases) {
-        !(extend && extend[Symbols.Extend]) && raise(new TypeError('Comonad: argument must be an Extend'));
+        checkAndSet('Comonad.super')(extend);
         super(extend, extend.extend, type);
-        if (extract) {
-            this.extract = a => types.check(a, this.type) ? extract(a) : raise(new TypeError(`Comonad.extract: argument must be ${this.type}`));
-        }
+        checkAndSet('Comonad')(this, extend, extract);
         registry && register(registry, this, ...aliases);
     }
     extract() { raise(new Error('Comonad: extract is not implemented')); }
@@ -396,24 +564,10 @@ class Comonad extends Extend {
 Comonad.prototype[Symbols.Comonad] = true;
 class Traversable extends Functor {
     constructor(functor, foldable, traverse, type, registry, ...aliases) {
-        !(functor && functor[Symbols.Functor]) && raise(new TypeError('Traversable: first argument must be a Functor'));
-        !(foldable && foldable[Symbols.Foldable]) && raise(new TypeError('Traversable: second argument must be a Foldable'));
+        checkAndSet('Traversable.super')(functor, foldable);
         super(functor.map, type);
         this.reduce = foldable.reduce;
-        if (traverse) {
-            this.traverse = (applicative, f, a) => {
-                if (!applicative[Symbols.Applicative]) {
-                    return raise(new TypeError('Traversable.traverse: first argument must be an Applicative'));
-                }
-                if (!types.isFunction(f)) {
-                    return raise(new TypeError('Traversable.traverse: second argument must be a function'));
-                }
-                if (!types.check(a, this.type)) {
-                    return raise(new TypeError(`Traversable.traverse: third argument must be ${this.type}`));
-                }
-                return traverse(applicative, f, a);
-            };
-        }
+        checkAndSet('Traversable')(this, functor, foldable, traverse);
         registry && register(registry, this, ...aliases);
     }
     traverse() { raise(new Error('Traversable: traverse is not implemented')); }
@@ -1530,6 +1684,6 @@ return {
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
-    extra
+    extra, setStrictMode
 };
 }));
