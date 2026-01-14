@@ -64,7 +64,7 @@ const types = {
 const identity = x => x;
 const compose2 = (f, g) => x => f(g(x));
 const raise = e => { throw e; };
-const runCatch = (f, onError = console.log) => (...args) => {
+const runCatch = (f, onError = raise) => (...args) => {
     try { return f(...args); }
     catch (e) { return onError(e); }
 };
@@ -1123,11 +1123,23 @@ Task.of = x => new Task((_, resolve) => resolve(x));
 Task.rejected = x => new Task((reject, _) => reject(x));
 Task.isTask = x => x != null && x[Symbols.Task] === true;
 Task.fold = (onRejected, onResolved, task) => task.fork(onRejected, onResolved);
-Task.fromPromise = promiseFn => (...args) => new Task((reject, resolve) => promiseFn(...args).then(resolve).catch(reject));
+Task.fromPromise = promiseFn => (...args) => new Task((reject, resolve) => {
+    try {
+        const result = promiseFn(...args);
+        if (result && typeof result.then === 'function') {
+            result.then(resolve).catch(reject);
+        } else {
+            resolve(result); // non-Promise 값은 그대로 resolve
+        }
+    } catch (e) {
+        reject(e); // 즉시 throw 시 reject
+    }
+});
 Task.fromEither = e => e.isRight() ? Task.of(e.value) : Task.rejected(e.value);
 Task.all = tasks => new Task((reject, resolve) => {
     const list = Array.isArray(tasks) ? tasks : [tasks];
     if (list.length === 0) return resolve([]);
+    if (!list.every(Task.isTask)) raise(new TypeError('Task.all: all elements must be Task'));
     const results = new Array(list.length);
     let completed = 0, done = false;
     list.forEach((t, i) => {
@@ -1148,6 +1160,7 @@ Task.all = tasks => new Task((reject, resolve) => {
 Task.race = tasks => new Task((reject, resolve) => {
     const list = Array.isArray(tasks) ? tasks : [tasks];
     if (list.length === 0) return reject(new Error('race: empty task list'));
+    if (!list.every(Task.isTask)) raise(new TypeError('Task.race: all elements must be Task'));
     let done = false;
     list.forEach(t => t.fork(e => { if (!done) { done = true; reject(e); } }, v => { if (!done) { done = true; resolve(v); } }));
 });
