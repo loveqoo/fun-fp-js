@@ -41,22 +41,19 @@ import FunFP from 'fun-fp-js';
 const { Monoid } = FunFP;
 
 // 문자열
-Monoid.types.StringMonoid.empty();  // ''
-Monoid.types.StringMonoid.concat('Hello', Monoid.types.StringMonoid.empty());
-// 'Hello'
+const str = Monoid.of('string');
+str.empty();  // ''
+str.concat('Hello', str.empty());  // 'Hello'
 
 // 배열
-Monoid.types.ArrayMonoid.empty();  // []
-Monoid.types.ArrayMonoid.concat([1, 2], Monoid.types.ArrayMonoid.empty());
-// [1, 2]
+const arr = Monoid.of('array');
+arr.empty();  // []
+arr.concat([1, 2], arr.empty());  // [1, 2]
 
 // 숫자 덧셈
-Monoid.types.NumberAddMonoid.empty();  // 0
-Monoid.types.NumberAddMonoid.concat(5, Monoid.types.NumberAddMonoid.empty());
-// 5
-
-// 숫자 곱셈
-Monoid.types.NumberMulMonoid.empty();  // 1
+const num = Monoid.of('number');
+num.empty();  // 0
+num.concat(5, num.empty());  // 5
 ```
 
 ## 실용적 활용
@@ -70,27 +67,28 @@ Semigroup만으로는 빈 배열을 처리할 수 없지만, Monoid는 가능합
 // arr.reduce((a, b) => semigroup.concat(a, b))  // Error on []
 
 // Monoid - 안전!
-const foldMonoid = (monoid, arr) => arr.reduce(
+const monoid = Monoid.of('number');
+
+const foldMonoid = arr => arr.reduce(
     (acc, x) => monoid.concat(acc, x),
-    monoid.empty()  // 초기값으로 항등원 사용
+    monoid.empty()
 );
 
-foldMonoid(Monoid.types.NumberAddMonoid, [1, 2, 3]);  // 6
-foldMonoid(Monoid.types.NumberAddMonoid, []);         // 0 (안전!)
-
-foldMonoid(Monoid.types.ArrayMonoid, [[1], [2], [3]]);  // [1, 2, 3]
-foldMonoid(Monoid.types.ArrayMonoid, []);               // [] (안전!)
+foldMonoid([1, 2, 3]);  // 6
+foldMonoid([]);         // 0 (안전!)
 ```
 
 ### 조건부 결합
 
 ```javascript
-const concatIf = (monoid, condition, value) =>
-    condition ? value : monoid.empty();
+const arr = Monoid.of('array');
 
-const result = monoid.concat(
-    concatIf(Monoid.types.ArrayMonoid, hasErrors, errors),
-    concatIf(Monoid.types.ArrayMonoid, hasWarnings, warnings)
+const concatIf = (condition, value) =>
+    condition ? value : arr.empty();
+
+const result = arr.concat(
+    concatIf(hasErrors, errors),
+    concatIf(hasWarnings, warnings)
 );
 // 조건에 맞는 것만 결합, 없으면 빈 배열
 ```
@@ -98,7 +96,7 @@ const result = monoid.concat(
 ### 객체 기본값 패턴
 
 ```javascript
-const { concat, empty } = Monoid.types.ObjectMonoid;
+const { concat, empty } = Monoid.of('object');
 
 const withDefaults = (defaults, obj) => concat(defaults, obj);
 
@@ -115,12 +113,14 @@ const log = (msgs) => ({
     messages: msgs
 });
 
+const arr = Monoid.of('array');
+
 const combineResults = (results) => results.reduce(
     (acc, r) => ({
         value: r.value,
-        messages: Monoid.types.ArrayMonoid.concat(acc.messages, r.messages)
+        messages: arr.concat(acc.messages, r.messages)
     }),
-    { value: null, messages: Monoid.types.ArrayMonoid.empty() }
+    { value: null, messages: arr.empty() }
 );
 ```
 

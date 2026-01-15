@@ -18,7 +18,7 @@ Monad는 함수형 프로그래밍에서 **부수 효과를 안전하게 다루�
 
 ```javascript
 const { Maybe, Functor } = FunFP;
-const { map } = Functor.types.MaybeFunctor;
+const { map } = Functor.of('maybe');
 
 const getUser = id => Maybe.of({ id, name: 'Alice', addressId: 1 });
 const getAddress = addrId => Maybe.of({ id: addrId, city: 'Seoul' });
@@ -32,7 +32,7 @@ const result = map(user => getAddress(user.addressId), getUser(1));
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.types.MaybeChain;
+const { chain } = Chain.of('maybe');
 
 const result = chain(user => getAddress(user.addressId), getUser(1));
 // Maybe({ city: 'Seoul' })  ← 깔끔!
@@ -77,8 +77,8 @@ Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
 ```javascript
 import FunFP from 'fun-fp-js';
 const { Maybe, Functor, Chain } = FunFP;
-const { map } = Functor.types.MaybeFunctor;
-const { chain } = Chain.types.MaybeChain;
+const { map } = Functor.of('maybe');
+const { chain } = Chain.of('maybe');
 
 const db = {
     users: { 1: { name: 'Alice', teamId: 10 } },
@@ -107,7 +107,7 @@ map(team => team.name, getTeamName(1));  // Just('Dev Team')
 
 ```javascript
 const { Either, Chain } = FunFP;
-const { chain } = Chain.types.EitherChain;
+const { chain } = Chain.of('either');
 
 const parseNumber = str => {
     const n = parseInt(str);
@@ -137,8 +137,8 @@ validate('200');   // Left('Must be ≤ 100')
 
 ```javascript
 const { Task, Chain, Functor } = FunFP;
-const { chain } = Chain.types.TaskChain;
-const { map } = Functor.types.TaskFunctor;
+const { chain } = Chain.of('task');
+const { map } = Functor.of('task');
 
 const fetchUser = id => Task.fromPromise(() => 
     fetch(`/api/users/${id}`).then(r => r.json())
@@ -183,8 +183,8 @@ chain은 중첩을 펴줍니다:
 | 용도 | 단순 변환 | 조건부/순차 실행 |
 
 ```javascript
-const { map } = Functor.types.MaybeFunctor;
-const { chain } = Chain.types.MaybeChain;
+const { map } = Functor.of('maybe');
+const { chain } = Chain.of('maybe');
 
 // map: 항상 성공하는 단순 변환
 map(x => x + 1, maybe);

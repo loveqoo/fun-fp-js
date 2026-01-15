@@ -30,8 +30,10 @@ const tasks = users.map(fetchUser);
 ### 해결: traverse로 뒤집기
 
 ```javascript
-Traversable.types.ArrayTraversable.traverse(
-    Applicative.types.TaskApplicative,
+const { traverse } = Traversable.of('array');
+
+traverse(
+    Applicative.of('task'),
     fetchUser,
     users
 );
@@ -67,16 +69,16 @@ traverse(G, compose(eta, f), t) === eta(traverse(F, f, t))
 import FunFP from 'fun-fp-js';
 const { Traversable, Applicative, Maybe, Either, Task } = FunFP;
 
-const { traverse } = Traversable.types.ArrayTraversable;
+const { traverse } = Traversable.of('array');
 
 // Array[Maybe] → Maybe[Array]
 const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
-traverse(Applicative.types.MaybeApplicative, x => x, maybes);
+traverse(Applicative.of('maybe'), x => x, maybes);
 // Just([1, 2, 3])
 
 // 하나라도 Nothing이면 전체가 Nothing
 const hasNothing = [Maybe.of(1), Maybe.Nothing(), Maybe.of(3)];
-traverse(Applicative.types.MaybeApplicative, x => x, hasNothing);
+traverse(Applicative.of('maybe'), x => x, hasNothing);
 // Nothing
 ```
 
@@ -86,22 +88,14 @@ traverse(Applicative.types.MaybeApplicative, x => x, hasNothing);
 const validatePositive = n =>
     n > 0 ? Either.Right(n) : Either.Left(`${n} is not positive`);
 
-const numbers = [1, 2, 3, 4, 5];
+const { traverse } = Traversable.of('array');
 
-traverse(
-    Applicative.types.EitherApplicative,
-    validatePositive,
-    numbers
-);
+const numbers = [1, 2, 3, 4, 5];
+traverse(Applicative.of('either'), validatePositive, numbers);
 // Right([1, 2, 3, 4, 5])
 
 const withNegative = [1, -2, 3];
-
-traverse(
-    Applicative.types.EitherApplicative,
-    validatePositive,
-    withNegative
-);
+traverse(Applicative.of('either'), validatePositive, withNegative);
 // Left('-2 is not positive')
 ```
 
@@ -114,11 +108,9 @@ const fetchUser = id => Task.fromPromise(() =>
 
 const userIds = [1, 2, 3, 4, 5];
 
-traverse(
-    Applicative.types.TaskApplicative,
-    fetchUser,
-    userIds
-).fork(
+const { traverse } = Traversable.of('array');
+
+traverse(Applicative.of('task'), fetchUser, userIds).fork(
     err => console.error('Failed:', err),
     users => console.log('All users:', users)
 );
@@ -136,11 +128,9 @@ const { sequence, Maybe, Applicative } = FunFP;
 // 이미 Maybe가 담긴 배열을 뒤집기
 const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
 
-sequence(
-    Traversable.types.ArrayTraversable,
-    Applicative.types.MaybeApplicative,
-    maybes
-);
+const { traverse } = Traversable.of('array');
+
+sequence(traverse, Applicative.of('maybe'), maybes);
 // Just([1, 2, 3])
 ```
 
@@ -155,11 +145,9 @@ const readFile = path => Task.fromPromise(() =>
 
 const configFiles = ['./config.json', './env.json', './secrets.json'];
 
-traverse(
-    Applicative.types.TaskApplicative,
-    readFile,
-    configFiles
-).fork(
+const { traverse } = Traversable.of('array');
+
+traverse(Applicative.of('task'), readFile, configFiles).fork(
     err => console.error('Failed to read config:', err),
     contents => {
         const [config, env, secrets] = contents.map(JSON.parse);
@@ -178,11 +166,9 @@ const parseDate = str => {
 
 const dates = ['2023-01-01', '2023-06-15', '2023-12-31'];
 
-traverse(
-    Applicative.types.EitherApplicative,
-    parseDate,
-    dates
-).fold(
+const { traverse } = Traversable.of('array');
+
+traverse(Applicative.of('either'), parseDate, dates).fold(
     err => console.error('Parse error:', err),
     parsed => console.log('Parsed dates:', parsed)
 );
@@ -191,23 +177,17 @@ traverse(
 ### 옵셔널 필드 처리
 
 ```javascript
-const { Functor } = FunFP;
-const { map } = Functor.types.MaybeFunctor;
+const { map } = Functor.of('maybe');
+const { traverse } = Traversable.of('array');
 
 const user = {
     name: Maybe.of('Alice'),
     email: Maybe.of('alice@email.com'),
-    phone: Maybe.Nothing()  // 없을 수도 있음
+    phone: Maybe.Nothing()
 };
 
-// 모든 필드가 Just일 때만 객체 생성
 const fields = [user.name, user.email, user.phone];
-
-const result = traverse(
-    Applicative.types.MaybeApplicative,
-    x => x,
-    fields
-);
+const result = traverse(Applicative.of('maybe'), x => x, fields);
 
 map(([name, email, phone]) => ({ name, email, phone }), result);
 // Nothing (phone이 Nothing이므로)

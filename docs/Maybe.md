@@ -26,8 +26,8 @@ const getCity = user => {
 
 ```javascript
 const { Maybe, Functor, Chain } = FunFP;
-const { map } = Functor.types.MaybeFunctor;
-const { chain } = Chain.types.MaybeChain;
+const { map } = Functor.of('maybe');
+const { chain } = Chain.of('maybe');
 
 const getCity = user =>
     map(
@@ -74,7 +74,7 @@ safe(undefined); // Nothing
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.types.MaybeFunctor;
+const { map } = Functor.of('maybe');
 
 map(x => x * 2, Maybe.of(5));       // Just(10)
 map(x => x * 2, Maybe.Nothing());   // Nothing (함수 실행 안 됨)
@@ -84,7 +84,7 @@ map(x => x * 2, Maybe.Nothing());   // Nothing (함수 실행 안 됨)
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.types.MaybeChain;
+const { chain } = Chain.of('maybe');
 
 const double = x => x > 0 ? Maybe.of(x * 2) : Maybe.Nothing();
 
@@ -248,7 +248,7 @@ Static Land 스타일로 읽기 쉽게 체이닝하기:
 ### Maybe.pipe - 함수들을 순차 적용
 
 ```javascript
-const { map } = Functor.types.MaybeFunctor;
+const { map } = Functor.of('maybe');
 
 Maybe.pipe(
     Maybe.of(user),

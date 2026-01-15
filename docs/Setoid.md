@@ -45,21 +45,15 @@ import FunFP from 'fun-fp-js';
 const { Setoid } = FunFP;
 
 // 숫자 비교
-Setoid.types.NumberSetoid.equals(1, 1);    // true
-Setoid.types.NumberSetoid.equals(1, 2);    // false
+Setoid.of('number').equals(1, 1);    // true
+Setoid.of('number').equals(1, 2);    // false
 
 // 문자열 비교
-Setoid.types.StringSetoid.equals('hello', 'hello');  // true
-
-// 불리언 비교
-Setoid.types.BooleanSetoid.equals(true, true);  // true
+Setoid.of('string').equals('hello', 'hello');  // true
 
 // 배열 비교 (깊은 비교)
-Setoid.types.ArraySetoid.equals([1, 2], [1, 2]);  // true
-Setoid.types.ArraySetoid.equals([1, 2], [1, 3]);  // false
-
-// 객체 비교 (깊은 비교)
-Setoid.types.ObjectSetoid.equals({a: 1}, {a: 1});  // true
+Setoid.of('array').equals([1, 2], [1, 2]);  // true
+Setoid.of('array').equals([1, 2], [1, 3]);  // false
 ```
 
 ### 자동 타입 추론
@@ -74,21 +68,23 @@ numSetoid.equals(1, 1);  // true
 
 ### 중복 제거
 ```javascript
-const uniqueBy = (setoid, arr) => arr.reduce((acc, item) => 
+const setoid = Setoid.of('number');
+
+const uniqueBy = arr => arr.reduce((acc, item) => 
     acc.some(x => setoid.equals(x, item)) ? acc : [...acc, item],
     []
 );
 
-const numbers = [1, 2, 1, 3, 2];
-uniqueBy(Setoid.types.NumberSetoid, numbers);  // [1, 2, 3]
+uniqueBy([1, 2, 1, 3, 2]);  // [1, 2, 3]
 ```
 
 ### 배열에서 요소 찾기
 ```javascript
-const findBy = (setoid, target, arr) => 
-    arr.find(x => setoid.equals(x, target));
+const setoid = Setoid.of('object');
 
-findBy(Setoid.types.ObjectSetoid, {id: 1}, [{id: 1, name: 'a'}, {id: 2, name: 'b'}]);
+const findBy = (target, arr) => arr.find(x => setoid.equals(x, target));
+
+findBy({id: 1}, [{id: 1, name: 'a'}, {id: 2, name: 'b'}]);
 // {id: 1, name: 'a'}
 ```
 

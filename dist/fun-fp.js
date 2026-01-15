@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-14T14:55:19.105Z
+ * Built: 2026-01-15T14:23:32.454Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -20,13 +20,23 @@
 
 const polyfills = {
     array: {
-        flatMap: (f, arr) => arr.reduce((acc, x) => acc.concat(f(x)), [])
+        flatMap: Array.prototype.flatMap
+            ? (f, arr) => arr.flatMap(f)
+            : (f, arr) => arr.reduce((acc, x) => acc.concat(f(x)), [])
     },
     object: {
-        fromEntries: entries => entries.reduce((obj, [k, v]) => (obj[k] = v, obj), {}),
-        entries: obj => Object.keys(obj).map(k => [k, obj[k]]),
-        values: obj => Object.keys(obj).map(k => obj[k]),
-        filter: (pred, obj) => polyfills.object.fromEntries(polyfills.object.entries(obj).filter(([k, v]) => pred(v, k)))
+        fromEntries: Object.fromEntries
+            ? entries => Object.fromEntries(entries)
+            : entries => entries.reduce((obj, [k, v]) => (obj[k] = v, obj), {}),
+        entries: Object.entries
+            ? obj => Object.entries(obj)
+            : obj => Object.keys(obj).map(k => [k, obj[k]]),
+        values: Object.values
+            ? obj => Object.values(obj)
+            : obj => Object.keys(obj).map(k => obj[k]),
+        filter: (pred, obj) => polyfills.object.fromEntries(
+            polyfills.object.entries(obj).filter(([k, v]) => pred(v, k))
+        )
     }
 };
 const Symbols = {
@@ -83,26 +93,62 @@ const types = {
 };
 const emptyFunc = () => { };
 const identity = x => x;
-const compose2 = (f, g) => x => f(g(x));
+const compose2 = (f, g) => x => types.checkFunction(f, 'compose2')(types.checkFunction(g, 'compose2')(x));
 const raise = e => { throw e; };
 const runCatch = (f, onError = raise) => (...args) => {
-    try { return f(...args); }
+    try { return types.checkFunction(f, 'runCatch')(...args); }
     catch (e) { return onError(e); }
 };
-const toIterator = function* (iterable) {
-    if (iterable == null) return;
-    if (types.isIterable(iterable)) {
-        yield* iterable;
-    } else if (types.isPlainObject(iterable)) {
-        for (const key in iterable) {
-            if (Object.prototype.hasOwnProperty.call(iterable, key)) {
-                yield iterable[key];
-            }
-        }
-    } else {
-        yield iterable;
+const constant = x => () => x;
+const tuple = (...args) => args;
+const unapply2 = f => (a, b) => types.checkFunction(f, 'unapply2')(a, b);
+const curry2 = f => a => b => types.checkFunction(f, 'curry2')(a, b);
+const uncurry2 = f => (a, b) => types.checkFunction(f, 'uncurry2')(a)(b);
+const predicate = f => x => Boolean(runCatch(types.checkFunction(f, 'predicate'), () => false)(x));
+const negate = f => x => !predicate(types.checkFunction(f, 'negate'))(x);
+const flip2 = f => (a, b) => types.checkFunction(f, 'flip2')(b, a);
+const flipCurried2 = f => a => b => types.checkFunction(f, 'flipCurried2')(b)(a);
+const pipe2 = (f, g) => x => types.checkFunction(g, 'pipe2')(f(x));
+const apply = f => args => {
+    types.of(args) !== 'Array' && raise(new TypeError('apply: args must be an array'));
+    return types.checkFunction(f, 'apply')(...args);
+};
+const unapply = f => (...args) => types.checkFunction(f, 'unapply')(args);
+const curry = (f, arity = f.length) => {
+    types.checkFunction(f, 'curry');
+    return function _curry(...args) {
+        return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
     }
 };
+const uncurry = f => (...args) => args.reduce((acc, arg, i) => types.checkFunction(acc, `uncurry(${i})`)(arg), f);
+const predicateN = f => (...args) => runCatch(f, () => false)(...args);
+const negateN = f => (...args) => !predicateN(f)(...args);
+const flip = f => (...args) => types.checkFunction(f, 'flip')(...args.slice().reverse());
+const flipCurried = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurried')(...bs)(...as);
+const pipe = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipe(${fs.length})`)(acc), x);
+const compose = (...fs) => pipe(...fs.slice().reverse());
+const tap = (...fs) => x => (fs.forEach(f => runCatch(f, console.log)(x)), x);
+const also = flipCurried(tap);
+const into = flipCurried(pipe);
+const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
+const useOrLift = check => lift => x => predicate(check)(x) ? x : types.checkFunction(lift, 'useOrLift')(x);
+const once = (f, option = {}) => {
+    types.checkFunction(f, 'once');
+    const state = option.state || { called: false };
+    const defaultValue = option.defaultValue;
+    let result = defaultValue;
+    return (...args) => {
+        if (!state.called) {
+            const val = f(...args);
+            result = val;
+            state.called = true;
+        }
+        return result;
+    };
+};
+const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
+const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
+const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
 const register = (target, instance, ...aliases) => {
     target[instance.constructor.name] = instance;
     for (const alias of aliases) { target[alias.toLowerCase()] = instance; }
@@ -897,10 +943,16 @@ class LastMonoid extends Monoid {
 modules.push(LastMonoid);
 class ObjectFilterable extends Filterable {
     constructor() {
-        super((pred, obj) => es6.object.filter(pred, obj), 'object', Filterable.types, 'object');
+        super((pred, obj) => polyfills.object.filter(pred, obj), 'object', Filterable.types, 'object');
     }
 }
 modules.push(ObjectFilterable);
+class ObjectFoldable extends Foldable {
+    constructor() {
+        super((f, init, obj) => polyfills.object.values(obj).reduce(f, init), 'object', Foldable.types, 'object');
+    }
+}
+modules.push(ObjectFoldable);
 /* Array */
 class ArraySemigroup extends Semigroup {
     constructor() {
@@ -1465,55 +1517,6 @@ Either.pipe = (e, ...fns) => {
 };
 Either.pipeK = (...fns) => x => fns.reduce((acc, fn) => acc.isRight() ? fn(acc.value) : acc, Either.Right(x));
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
-const constant = x => () => x;
-const tuple = (...args) => args;
-const unapply2 = f => (a, b) => types.checkFunction(f, 'unapply2')(a, b);
-const curry2 = f => a => b => types.checkFunction(f, 'curry2')(a, b);
-const uncurry2 = f => (a, b) => types.checkFunction(f, 'uncurry2')(a)(b);
-const predicate = f => x => Boolean(runCatch(types.checkFunction(f, 'predicate'), () => false)(x));
-const negate = f => x => !predicate(types.checkFunction(f, 'negate'))(x);
-const flip2 = f => (a, b) => types.checkFunction(f, 'flip2')(b, a);
-const flipCurried2 = f => a => b => types.checkFunction(f, 'flipCurried2')(b)(a);
-const pipe2 = (f, g) => x => types.checkFunction(g, 'pipe2')(f(x));
-const apply = f => args => {
-    types.of(args) !== 'Array' && raise(new TypeError('apply: args must be an array'));
-    return types.checkFunction(f, 'apply')(...args);
-};
-const unapply = f => (...args) => f(args);
-const curry = (f, arity = f.length) => {
-    return function _curry(...args) {
-        return args.length >= arity ? f(...args) : (...next) => _curry(...args, ...next);
-    }
-};
-const uncurry = f => (...args) => args.reduce((acc, arg, i) => types.checkFunction(acc, `uncurry(${i})`)(arg), f);
-const predicateN = f => (...args) => runCatch(types.checkFunction(f, 'predicateN'), () => false)(...args);
-const negateN = f => (...args) => !predicateN(types.checkFunction(f, 'negateN'))(...args);
-const flip = f => (...args) => types.checkFunction(f, 'flip')(...args.slice().reverse());
-const flipCurried = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurried')(...bs)(...as);
-const pipe = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipe(${fs.length})`)(acc), x);
-const compose = (...fs) => pipe(...fs.slice().reverse());
-const tap = (...fs) => x => (fs.forEach(f => runCatch(f, console.log)(x)), x);
-const also = flipCurried(tap);
-const into = flipCurried(pipe);
-const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
-const useOrLift = check => lift => x => predicate(check)(x) ? x : lift(x);
-const once = (f, option = {}) => {
-    types.checkFunction(f, 'once');
-    const state = option.state || { called: false };
-    const defaultValue = option.defaultValue;
-    let result = defaultValue;
-    return (...args) => {
-        if (!state.called) {
-            const val = f(...args);
-            result = val;
-            state.called = true;
-        }
-        return result;
-    };
-};
-const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
-const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
-const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
 const { transducer } = (() => {
     class Reduced {
         constructor(value) { this.value = value; }
@@ -1679,7 +1682,7 @@ return {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free,
-    identity, compose, compose2, sequence, lift, runCatch, toIterator,
+    identity, compose, compose2, sequence, lift, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,

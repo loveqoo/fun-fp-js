@@ -3,7 +3,7 @@ import fp from '../index.js';
 import { test, assertEquals, assert, assertThrows, logSection } from './utils.js';
 
 const {
-    identity, compose, compose2, constant, tuple, toIterator,
+    identity, compose, compose2, constant, tuple,
     apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
@@ -373,44 +373,6 @@ test('rangeBy - returns empty array when start >= end', () => {
     assertEquals(rangeBy(5, 3), []);
 });
 
-// === toIterator ===
-logSection('toIterator');
-
-test('toIterator - iterates array', () => {
-    const result = [...toIterator([1, 2, 3])];
-    assertEquals(result, [1, 2, 3]);
-});
-
-test('toIterator - iterates string', () => {
-    const result = [...toIterator('abc')];
-    assertEquals(result, ['a', 'b', 'c']);
-});
-
-test('toIterator - iterates plain object values', () => {
-    const result = [...toIterator({ a: 1, b: 2 })];
-    assertEquals(result, [1, 2]);
-});
-
-test('toIterator - wraps single value', () => {
-    const result = [...toIterator(42)];
-    assertEquals(result, [42]);
-});
-
-test('toIterator - handles null/undefined', () => {
-    assertEquals([...toIterator(null)], []);
-    assertEquals([...toIterator(undefined)], []);
-});
-
-test('toIterator - iterates Set', () => {
-    const result = [...toIterator(new Set([1, 2, 3]))];
-    assertEquals(result, [1, 2, 3]);
-});
-
-test('toIterator - iterates Map values', () => {
-    const map = new Map([['a', 1], ['b', 2]]);
-    const result = [...toIterator(map)];
-    assertEquals(result, [['a', 1], ['b', 2]]);
-});
 
 // === Transducer ===
 logSection('Transducer');

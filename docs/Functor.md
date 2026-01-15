@@ -43,10 +43,12 @@ Functor.map(f, a): Functor a
 import FunFP from 'fun-fp-js';
 const { Functor } = FunFP;
 
-Functor.types.ArrayFunctor.map(x => x * 2, [1, 2, 3]);
+const { map } = Functor.of('array');
+
+map(x => x * 2, [1, 2, 3]);
 // [2, 4, 6]
 
-Functor.types.ArrayFunctor.map(x => x.toUpperCase(), ['a', 'b', 'c']);
+map(x => x.toUpperCase(), ['a', 'b', 'c']);
 // ['A', 'B', 'C']
 ```
 
@@ -58,10 +60,12 @@ const { Maybe, Functor } = FunFP;
 const just = Maybe.of(5);
 const nothing = Maybe.Nothing();
 
-Functor.types.MaybeFunctor.map(x => x * 2, just);
+const { map } = Functor.of('maybe');
+
+map(x => x * 2, just);
 // Just(10)
 
-Functor.types.MaybeFunctor.map(x => x * 2, nothing);
+map(x => x * 2, nothing);
 // Nothing - 변환 시도 안 함
 ```
 
@@ -73,10 +77,12 @@ const { Either, Functor } = FunFP;
 const right = Either.Right(5);
 const left = Either.Left('error');
 
-Functor.types.EitherFunctor.map(x => x * 2, right);
+const { map } = Functor.of('either');
+
+map(x => x * 2, right);
 // Right(10)
 
-Functor.types.EitherFunctor.map(x => x * 2, left);
+map(x => x * 2, left);
 // Left('error') - 에러는 그대로 유지
 ```
 
@@ -86,8 +92,9 @@ Functor.types.EitherFunctor.map(x => x * 2, left);
 const { Task, Functor } = FunFP;
 
 const task = Task.of(5);
-const doubled = Functor.types.TaskFunctor.map(x => x * 2, task);
+const { map } = Functor.of('task');
 
+const doubled = map(x => x * 2, task);
 doubled.fork(console.error, console.log);  // 10
 ```
 
@@ -98,16 +105,18 @@ doubled.fork(console.error, console.log);  // 10
 ```javascript
 const user = Maybe.of({ name: 'Alice', address: { city: 'Seoul' } });
 
+const { map } = Functor.of('maybe');
+
 // 안전하게 중첩 속성 접근
-Functor.types.MaybeFunctor.map(u => u.name, user);
+map(u => u.name, user);
 // Just('Alice')
 
-Functor.types.MaybeFunctor.map(u => u.address.city, user);
+map(u => u.address.city, user);
 // Just('Seoul')
 
 // null이면 안전하게 Nothing
 const noUser = Maybe.Nothing();
-Functor.types.MaybeFunctor.map(u => u.name, noUser);
+map(u => u.name, noUser);
 // Nothing
 ```
 
@@ -125,8 +134,10 @@ const parseJson = str => {
 const data = '{"name": "Alice", "age": 30}';
 const result = parseJson(data);
 
+const { map } = Functor.of('either');
+
 // 파싱 성공시에만 변환
-Functor.types.EitherFunctor.map(obj => obj.name, result);
+map(obj => obj.name, result);
 // Right('Alice')
 ```
 
@@ -137,9 +148,11 @@ const fetchUser = userId => Task.fromPromise(
     () => fetch(`/api/users/${userId}`).then(r => r.json())
 );
 
+const { map } = Functor.of('task');
+
 const getUserName = pipe(
     fetchUser,
-    task => Functor.types.TaskFunctor.map(user => user.name, task)
+    task => map(user => user.name, task)
 );
 
 getUserName(1).fork(console.error, console.log);

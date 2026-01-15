@@ -36,9 +36,11 @@ Functor.map(f, Plus.zero()) ≡ Plus.zero()
 ```javascript
 const { Maybe, Alt } = FunFP;
 
+const { alt } = Alt.of('maybe');
+
 // Maybe.Nothing()은 zero 역할
-Alt.types.MaybeAlt.alt(Maybe.Nothing(), Maybe.of(1));  // Just(1)
-Alt.types.MaybeAlt.alt(Maybe.of(1), Maybe.Nothing());  // Just(1)
+alt(Maybe.Nothing(), Maybe.of(1));  // Just(1)
+alt(Maybe.of(1), Maybe.Nothing());  // Just(1)
 ```
 
 ## 관계

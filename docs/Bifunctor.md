@@ -39,7 +39,7 @@ bimap(f, g, bimap(h, i, a)) === bimap(x => f(h(x)), x => g(i(x)), a)
 import FunFP from 'fun-fp-js';
 const { Bifunctor, Either } = FunFP;
 
-const { bimap } = Bifunctor.types.EitherBifunctor;
+const { bimap } = Bifunctor.of('either');
 
 // Right 변환
 bimap(
@@ -96,7 +96,7 @@ addContext('user-service')(fetchUser(1));
 ## map vs bimap
 
 ```javascript
-const { map } = Functor.types.EitherFunctor;
+const { map } = Functor.of('either');
 
 // map은 Right(성공)만 변환
 map(x => x * 2, Either.Right(5));     // Right(10)

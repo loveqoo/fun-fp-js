@@ -37,7 +37,7 @@ map(f, alt(a, b)) === alt(map(f, a), map(f, b))
 import FunFP from 'fun-fp-js';
 const { Alt, Maybe } = FunFP;
 
-const { alt } = Alt.types.MaybeAlt;
+const { alt } = Alt.of('maybe');
 
 alt(Maybe.of(5), Maybe.of(10));           // Just(5)
 alt(Maybe.Nothing(), Maybe.of(10));       // Just(10)
@@ -47,7 +47,7 @@ alt(Maybe.Nothing(), Maybe.Nothing());    // Nothing
 ### Either - 에러 복구
 
 ```javascript
-const { alt } = Alt.types.EitherAlt;
+const { alt } = Alt.of('either');
 
 alt(Either.Right(5), Either.Right(10));   // Right(5)
 alt(Either.Left('err'), Either.Right(10)); // Right(10)
@@ -56,7 +56,7 @@ alt(Either.Left('err'), Either.Right(10)); // Right(10)
 ### Task - 폴백
 
 ```javascript
-const { alt } = Alt.types.TaskAlt;
+const { alt } = Alt.of('task');
 
 const mainServer = Task.rejected('timeout');
 const backupServer = Task.of({ data: 'from backup' });
@@ -98,7 +98,7 @@ Plus는 Alt에 **빈 값(zero)**을 추가한 것입니다:
 ```javascript
 const { Plus } = FunFP;
 
-Plus.types.MaybePlus.zero();  // Nothing
+Plus.of('maybe').zero();  // Nothing
 
 // zero는 alt의 항등원
 alt(a, zero) === a

@@ -44,7 +44,7 @@ filter(x => false, a) === empty
 import FunFP from 'fun-fp-js';
 const { Filterable } = FunFP;
 
-const { filter } = Filterable.types.ArrayFilterable;
+const { filter } = Filterable.of('array');
 
 filter(x => x > 2, [1, 2, 3, 4, 5]);
 // [3, 4, 5]
@@ -63,7 +63,7 @@ filter(x => x.active, [
 ### 객체 필터링
 
 ```javascript
-const { filter } = Filterable.types.ObjectFilterable;
+const { filter } = Filterable.of('object');
 
 filter(x => x > 1, { a: 1, b: 2, c: 3 });
 // { b: 2, c: 3 }

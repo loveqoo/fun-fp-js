@@ -25,12 +25,14 @@ ChainRec.chainRec(f, initial): Monad a
 import FunFP from 'fun-fp-js';
 const { ChainRec, Either } = FunFP;
 
+const { chainRec } = ChainRec.of('either');
+
 // 1부터 n까지 합
-const sumTo = n => ChainRec.types.EitherChainRec.chainRec(
+const sumTo = n => chainRec(
     (next, done, { sum, i }) =>
         i > n
-            ? Either.Right(done(sum))       // 종료
-            : Either.Right(next({ sum: sum + i, i: i + 1 })),  // 계속
+            ? Either.Right(done(sum))
+            : Either.Right(next({ sum: sum + i, i: i + 1 })),
     { sum: 0, i: 1 }
 );
 
@@ -45,8 +47,9 @@ sumTo(1000000);  // 스택 오버플로 없이 동작!
 const countNormal = n => n === 0 ? 0 : 1 + countNormal(n - 1);
 countNormal(100000);  // RangeError: Maximum call stack size exceeded
 
-// ChainRec - 안전!
-const countSafe = n => ChainRec.types.EitherChainRec.chainRec(
+const { chainRec } = ChainRec.of('either');
+
+const countSafe = n => chainRec(
     (next, done, i) =>
         i >= n
             ? Either.Right(done(i))
@@ -62,10 +65,10 @@ countSafe(100000);  // Right(100000)
 ### 페이지네이션 루프
 
 ```javascript
-const { Functor } = FunFP;
-const { map } = Functor.types.TaskFunctor;
+const { map } = Functor.of('task');
+const { chainRec } = ChainRec.of('task');
 
-const fetchAllPages = () => ChainRec.types.TaskChainRec.chainRec(
+const fetchAllPages = () => chainRec(
     (next, done, { page, items }) =>
         map(
             response => {
@@ -88,7 +91,9 @@ fetchAllPages().fork(
 ### 파일 라인 처리
 
 ```javascript
-const processLines = (lines) => ChainRec.types.EitherChainRec.chainRec(
+const { chainRec } = ChainRec.of('either');
+
+const processLines = (lines) => chainRec(
     (next, done, { remaining, results }) => {
         if (remaining.length === 0) {
             return Either.Right(done(results));

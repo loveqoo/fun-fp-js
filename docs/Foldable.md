@@ -28,7 +28,7 @@ Foldable.reduce(f, initial, t): b
 import FunFP from 'fun-fp-js';
 const { Foldable } = FunFP;
 
-const { reduce } = Foldable.types.ArrayFoldable;
+const { reduce } = Foldable.of('array');
 
 // 합계
 reduce((acc, x) => acc + x, 0, [1, 2, 3, 4, 5]);
@@ -50,7 +50,7 @@ reduce((acc, x) => [...acc, ...x], [], [[1, 2], [3, 4], [5]]);
 ### 객체 Foldable
 
 ```javascript
-const { reduce } = Foldable.types.ObjectFoldable;
+const { reduce } = Foldable.of('object');
 
 const obj = { a: 1, b: 2, c: 3 };
 
@@ -64,7 +64,7 @@ reduce((acc, x) => acc + x, 0, obj);
 ### 최대/최소값
 
 ```javascript
-const { reduce } = Foldable.types.ArrayFoldable;
+const { reduce } = Foldable.of('array');
 
 const max = arr => reduce(
     (acc, x) => x > acc ? x : acc,
@@ -143,8 +143,10 @@ const avg = stats.sum / stats.count;  // 3
 Foldable은 Monoid와 함께 사용하면 강력합니다:
 
 ```javascript
+const { reduce } = Foldable.of('array');
+
 const foldMap = (monoid, f, foldable) =>
-    Foldable.types.ArrayFoldable.reduce(
+    reduce(
         (acc, x) => monoid.concat(acc, f(x)),
         monoid.empty(),
         foldable
@@ -152,7 +154,7 @@ const foldMap = (monoid, f, foldable) =>
 
 // 예: 배열의 모든 길이 합
 foldMap(
-    Monoid.types.NumberAddMonoid,
+    Monoid.of('number'),
     str => str.length,
     ['hello', 'world']
 );

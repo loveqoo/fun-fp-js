@@ -27,7 +27,7 @@ compose(f, compose(g, h)) === compose(compose(f, g), h)
 import FunFP from 'fun-fp-js';
 const { Semigroupoid } = FunFP;
 
-const { compose } = Semigroupoid.types.FunctionSemigroupoid;
+const { compose } = Semigroupoid.of('function');
 
 const addOne = x => x + 1;
 const double = x => x * 2;
@@ -66,7 +66,7 @@ compose(f, id) === f
 ```javascript
 const { Category } = FunFP;
 
-const { compose, id } = Category.types.FunctionCategory;
+const { compose, id } = Category.of('function');
 
 // id는 항등원
 id(5);  // 5

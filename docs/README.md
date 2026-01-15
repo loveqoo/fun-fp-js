@@ -138,15 +138,14 @@ validate('-5');   // Left('Must be positive')
 ### 비동기 순차 실행
 ```javascript
 const { Chain, Task } = FunFP;
-const { chain } = Chain.types.TaskChain;
+const { chain } = Chain.of('task');
 
-chain(
-    posts => fetchComments(posts[0].id),
-    chain(
-        user => fetchPosts(user.id),
-        fetchUser(userId)
-    )
-).fork(console.error, console.log);
+const fetchData = userId =>
+    chain(user => fetchPosts(user.id),
+        chain(posts => fetchComments(posts[0].id),
+            fetchUser(userId)));
+
+fetchData(1).fork(console.error, console.log);
 ```
 
 ### 병렬 실행 후 결합
@@ -166,7 +165,7 @@ Task.all([
 ### pipe 유틸리티로 가독성 개선
 ```javascript
 const { pipe, Chain } = FunFP;
-const { chain } = Chain.types.TaskChain;
+const { chain } = Chain.of('task');
 
 // pipe를 사용하면 좌에서 우로 읽기 쉬움
 pipe(

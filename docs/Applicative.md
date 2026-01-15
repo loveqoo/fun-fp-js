@@ -64,50 +64,38 @@ const maybeAdd = Maybe.of(add);      // Just(a => b => a + b)
 const maybeA = Maybe.of(5);          // Just(5)
 const maybeB = Maybe.of(3);          // Just(3)
 
-const step1 = Apply.types.MaybeApply.ap(maybeAdd, maybeA);  // Just(b => 5 + b)
-const step2 = Apply.types.MaybeApply.ap(step1, maybeB);     // Just(8)
+const { ap } = Apply.of('maybe');
+
+const step1 = ap(maybeAdd, maybeA);  // Just(b => 5 + b)
+const step2 = ap(step1, maybeB);     // Just(8)
 ```
 
 ### liftA2 - 두 값에 이항 함수 적용
 
 ```javascript
-const liftA2 = (apply, f, a, b) =>
-    apply.ap(a.map(f), b);
+const { ap } = Apply.of('maybe');
+
+const liftA2 = (f, a, b) => ap(a.map(f), b);
 
 // 두 Maybe 값 더하기
-const result = liftA2(
-    Apply.types.MaybeApply,
-    a => b => a + b,
-    Maybe.of(5),
-    Maybe.of(3)
-);
+const result = liftA2(a => b => a + b, Maybe.of(5), Maybe.of(3));
 // Just(8)
 
 // 하나라도 Nothing이면
-const noResult = liftA2(
-    Apply.types.MaybeApply,
-    a => b => a + b,
-    Maybe.of(5),
-    Maybe.Nothing()
-);
+const noResult = liftA2(a => b => a + b, Maybe.of(5), Maybe.Nothing());
 // Nothing
 ```
 
 ### liftA3 - 세 값에 삼항 함수 적용
 
 ```javascript
-const liftA3 = (apply, f, a, b, c) =>
-    apply.ap(apply.ap(a.map(f), b), c);
+const { ap } = Apply.of('maybe');
+
+const liftA3 = (f, a, b, c) => ap(ap(a.map(f), b), c);
 
 const fullName = first => middle => last => `${first} ${middle} ${last}`;
 
-const result = liftA3(
-    Apply.types.MaybeApply,
-    fullName,
-    Maybe.of('John'),
-    Maybe.of('Michael'),
-    Maybe.of('Smith')
-);
+const result = liftA3(fullName, Maybe.of('John'), Maybe.of('Michael'), Maybe.of('Smith'));
 // Just('John Michael Smith')
 ```
 
@@ -130,11 +118,9 @@ const validateEmail = email =>
 const createUser = name => age => email => ({ name, age, email });
 
 // 모든 검증 통과시에만 사용자 생성
-const liftA3 = (f, a, b, c) =>
-    Apply.types.EitherApply.ap(
-        Apply.types.EitherApply.ap(a.map(f), b),
-        c
-    );
+const { ap } = Apply.of('either');
+
+const liftA3 = (f, a, b, c) => ap(ap(a.map(f), b), c);
 
 const result = liftA3(
     createUser,
@@ -165,14 +151,10 @@ const fetchComments = postId => Task.of([{ id: 1, text: 'Nice!' }]);
 const combine = user => posts => comments => ({ user, posts, comments });
 
 // 세 개의 Task를 병렬로 실행하고 결합
-const liftA3 = (f, a, b, c) =>
-    Apply.types.TaskApply.ap(
-        Apply.types.TaskApply.ap(
-            Functor.types.TaskFunctor.map(f, a),
-            b
-        ),
-        c
-    );
+const { ap } = Apply.of('task');
+const { map } = Functor.of('task');
+
+const liftA3 = (f, a, b, c) => ap(ap(map(f, a), b), c);
 
 liftA3(
     combine,

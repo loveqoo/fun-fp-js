@@ -42,29 +42,18 @@ import FunFP from 'fun-fp-js';
 const { Semigroup } = FunFP;
 
 // 문자열 연결
-Semigroup.types.StringSemigroup.concat('Hello, ', 'World!');
-// 'Hello, World!'
+Semigroup.of('string').concat('Hello, ', 'World!');  // 'Hello, World!'
 
 // 배열 병합
-Semigroup.types.ArraySemigroup.concat([1, 2], [3, 4]);
-// [1, 2, 3, 4]
-
-// 객체 병합
-Semigroup.types.ObjectSemigroup.concat({a: 1}, {b: 2});
-// {a: 1, b: 2}
+Semigroup.of('array').concat([1, 2], [3, 4]);  // [1, 2, 3, 4]
 
 // 숫자 덧셈
-Semigroup.types.NumberAddSemigroup.concat(5, 3);
-// 8
-
-// 숫자 곱셈
-Semigroup.types.NumberMulSemigroup.concat(5, 3);
-// 15
+Semigroup.of('number').concat(5, 3);  // 8
 
 // 함수 합성
 const add1 = x => x + 1;
 const mul2 = x => x * 2;
-const composed = Semigroup.types.FunctionSemigroup.concat(add1, mul2);
+const composed = Semigroup.of('function').concat(add1, mul2);
 composed(5);  // add1(mul2(5)) = add1(10) = 11
 ```
 
@@ -73,31 +62,10 @@ composed(5);  // add1(mul2(5)) = add1(10) = 11
 ### 여러 값 결합 (reduce 패턴)
 
 ```javascript
-const concatAll = (semigroup, arr) => arr.reduce(
-    (acc, x) => semigroup.concat(acc, x)
-);
+const { concat } = Semigroup.of('array');
 
-// 모든 문자열 결합
-concatAll(Semigroup.types.StringSemigroup, ['a', 'b', 'c']);
-// 'abc'
-
-// 모든 배열 병합
-concatAll(Semigroup.types.ArraySemigroup, [[1], [2], [3]]);
-// [1, 2, 3]
-
-// 모든 객체 병합
-concatAll(Semigroup.types.ObjectSemigroup, [{a: 1}, {b: 2}, {c: 3}]);
-// {a: 1, b: 2, c: 3}
-```
-
-### 설정 병합 (기본값 패턴)
-
-```javascript
-const defaultConfig = { theme: 'dark', lang: 'en', debug: false };
-const userConfig = { lang: 'ko' };
-
-const finalConfig = Semigroup.types.ObjectSemigroup.concat(defaultConfig, userConfig);
-// { theme: 'dark', lang: 'ko', debug: false }
+const concatAll = arr => arr.reduce(concat);
+concatAll([[1], [2], [3]]);  // [1, 2, 3]
 ```
 
 ### 검증 결과 수집
@@ -107,11 +75,12 @@ const finalConfig = Semigroup.types.ObjectSemigroup.concat(defaultConfig, userCo
 const errors = [];
 const validate = (cond, msg) => cond ? [] : [msg];
 
+const { concat } = Semigroup.of('array');
+
 const nameErrors = validate(name.length > 0, 'Name is required');
 const emailErrors = validate(email.includes('@'), 'Invalid email');
 
-const allErrors = Semigroup.types.ArraySemigroup.concat(nameErrors, emailErrors);
-// 모든 에러 메시지가 하나의 배열에
+const allErrors = concat(nameErrors, emailErrors);
 ```
 
 ## 왜 Semigroup인가?
@@ -124,10 +93,10 @@ const allErrors = Semigroup.types.ArraySemigroup.concat(nameErrors, emailErrors)
 
 ```javascript
 // 추상화된 합계 함수
-const sum = (semigroup, arr) => arr.reduce(semigroup.concat);
+const sum = (type, arr) => arr.reduce(Semigroup.of(type).concat);
 
-sum(Semigroup.types.NumberAddSemigroup, [1, 2, 3]);     // 6
-sum(Semigroup.types.StringSemigroup, ['a', 'b', 'c']);  // 'abc'
+sum('number', [1, 2, 3]);     // 6
+sum('string', ['a', 'b', 'c']);  // 'abc'
 ```
 
 ## 관련 타입 클래스
