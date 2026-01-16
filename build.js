@@ -108,11 +108,14 @@ fs.writeFileSync(OUTPUT_MIN_FILE, minified, 'utf-8');
 console.log(`✅ Built: ${OUTPUT_MIN_FILE}`);
 console.log(`   Size: ${(minified.length / 1024).toFixed(2)} KB`);
 
-// Copy ESM source to dist
+// Copy ESM source to dist with build header
 const OUTPUT_ESM_FILE = path.join(__dirname, 'dist', 'fun-fp.js');
-fs.copyFileSync(SOURCE_FILE, OUTPUT_ESM_FILE);
-console.log(`✅ Copied: ${OUTPUT_ESM_FILE} (ESM)`);
-console.log(`   Size: ${(fs.statSync(OUTPUT_ESM_FILE).size / 1024).toFixed(2)} KB`);
+const esmHeader = `${buildInfo}
+`;
+const esmContent = esmHeader + source;
+fs.writeFileSync(OUTPUT_ESM_FILE, esmContent, 'utf-8');
+console.log(`✅ Built: ${OUTPUT_ESM_FILE} (ESM)`);
+console.log(`   Size: ${(esmContent.length / 1024).toFixed(2)} KB`);
 
 console.log('\n📦 Build complete!');
 console.log('\nUsage:');

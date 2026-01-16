@@ -1,3 +1,8 @@
+/**
+ * Fun-FP-JS - Functional Programming Library
+ * Built: 2026-01-16T07:13:58.797Z
+ * Static Land specification compliant
+ */
 const polyfills = {
     array: {
         flatMap: Array.prototype.flatMap
