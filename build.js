@@ -11,8 +11,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SOURCE_FILE = path.join(__dirname, 'index.js');
-const OUTPUT_FILE = path.join(__dirname, 'dist', 'fun-fp.js');
-const OUTPUT_MIN_FILE = path.join(__dirname, 'dist', 'fun-fp.min.js');
+const OUTPUT_FILE = path.join(__dirname, 'dist', 'fun-fp.cjs');
+const OUTPUT_MIN_FILE = path.join(__dirname, 'dist', 'fun-fp.min.cjs');
 
 // Read source
 const source = fs.readFileSync(SOURCE_FILE, 'utf-8');
@@ -108,9 +108,16 @@ fs.writeFileSync(OUTPUT_MIN_FILE, minified, 'utf-8');
 console.log(`✅ Built: ${OUTPUT_MIN_FILE}`);
 console.log(`   Size: ${(minified.length / 1024).toFixed(2)} KB`);
 
+// Copy ESM source to dist
+const OUTPUT_ESM_FILE = path.join(__dirname, 'dist', 'fun-fp.js');
+fs.copyFileSync(SOURCE_FILE, OUTPUT_ESM_FILE);
+console.log(`✅ Copied: ${OUTPUT_ESM_FILE} (ESM)`);
+console.log(`   Size: ${(fs.statSync(OUTPUT_ESM_FILE).size / 1024).toFixed(2)} KB`);
+
 console.log('\n📦 Build complete!');
 console.log('\nUsage:');
-console.log('  Browser: <script src="dist/fun-fp.js"></script>');
+console.log('  Browser: <script src="dist/fun-fp.cjs"></script>');
 console.log('           Then use: FunFP.Maybe, FunFP.Either, etc.');
-console.log('  CommonJS: const FunFP = require("./dist/fun-fp.js")');
-console.log('  ESM: import FunFP from "./index.js"');
+console.log('  CommonJS: const FunFP = require("./dist/fun-fp.cjs")');
+console.log('  ESM: import FunFP from "./dist/fun-fp.js"');
+
