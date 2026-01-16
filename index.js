@@ -1582,17 +1582,25 @@ const { Free, trampoline } = (() => {
                 ? command
                 : Free.impure(command.map(Free.pure));
         }
+        static *runGenerator(runner, program) {
+            let step = program;
+            while (Free.isImpure(step)) {
+                step = yield runner(step.functor);
+                if (Free.isPure(step) && (Free.isPure(step.value) || Free.isImpure(step.value))) {
+                    step = step.value;
+                }
+            }
+            return Free.isPure(step) ? step.value : step;
+        }
         static runSync(runner) {
             return target => {
                 const execute = program => {
-                    let step = program;
-                    while (Free.isImpure(step)) {
-                        step = runner(step.functor);
-                        if (Free.isPure(step) && (Free.isPure(step.value) || Free.isImpure(step.value))) {
-                            step = step.value;
-                        }
+                    const gen = Free.runGenerator(runner, program);
+                    let result = gen.next();
+                    while (!result.done) {
+                        result = gen.next(result.value);
                     }
-                    return Free.isPure(step) ? step.value : step;
+                    return result.value;
                 };
                 return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
             };
@@ -1600,14 +1608,12 @@ const { Free, trampoline } = (() => {
         static runAsync(runner) {
             return target => {
                 const execute = async program => {
-                    let step = program;
-                    while (Free.isImpure(step)) {
-                        step = await runner(step.functor);
-                        if (Free.isPure(step) && (Free.isPure(step.value) || Free.isImpure(step.value))) {
-                            step = step.value;
-                        }
+                    const gen = Free.runGenerator(runner, program);
+                    let result = gen.next();
+                    while (!result.done) {
+                        result = gen.next(await result.value);
                     }
-                    return Free.isPure(step) ? step.value : step;
+                    return result.value;
                 };
                 return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
             };
