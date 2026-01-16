@@ -2,8 +2,8 @@
 import fp from '../index.js';
 import { test, testAsync, assertEquals, assert, logSection } from './utils.js';
 
-const { Free, trampoline } = fp;
-const { Pure, Impure, Thunk } = Free;
+const { Free, Functor, Chain, Monad, trampoline } = fp;
+const { Thunk } = Free;
 
 logSection('Free Monad - Basic');
 
@@ -19,16 +19,24 @@ test('Free.pure creates Pure', () => {
     assertEquals(pure.value, 'hello');
 });
 
-test('Pure.map transforms value', () => {
+test('Free.isFree checks Free type', () => {
+    const pure = Free.pure(42);
+    const impure = Thunk.suspend(() => 42);
+    assert(Free.isFree(pure), 'Pure should be Free');
+    assert(Free.isFree(impure), 'Impure should be Free');
+    assert(!Free.isFree(42), 'Number should not be Free');
+});
+
+test('Functor.of("free").map transforms value', () => {
     const pure = Free.pure(5);
-    const mapped = pure.map(x => x * 2);
+    const mapped = Functor.of('free').map(x => x * 2, pure);
     assert(Free.isPure(mapped), 'should still be Pure');
     assertEquals(mapped.value, 10);
 });
 
-test('Pure.flatMap chains computation', () => {
+test('Chain.of("free").chain chains computation', () => {
     const pure = Free.pure(5);
-    const result = pure.flatMap(x => Free.pure(x + 1));
+    const result = Chain.of('free').chain(x => Free.pure(x + 1), pure);
     assert(Free.isPure(result), 'should be Pure');
     assertEquals(result.value, 6);
 });
@@ -71,21 +79,27 @@ test('trampoline - suspended computation', () => {
     assertEquals(result, 42);
 });
 
-test('trampoline - chained computation', () => {
-    const program = Thunk.suspend(() => 5)
-        .flatMap(x => Thunk.suspend(() => x * 2))
-        .flatMap(x => Thunk.done(x + 1));
+test('trampoline - chained computation using Chain', () => {
+    const chain = Chain.of('free');
+    const program = chain.chain(
+        x => chain.chain(
+            y => Thunk.done(y + 1),
+            Thunk.suspend(() => x * 2)
+        ),
+        Thunk.suspend(() => 5)
+    );
     const result = trampoline(program);
     assertEquals(result, 11); // (5 * 2) + 1 = 11
 });
 
 test('trampoline - stack safe recursion', () => {
+    const chain = Chain.of('free');
     // Factorial using trampoline (stack safe)
     const factorial = n => {
         const go = (n, acc) =>
             n <= 1
                 ? Thunk.done(acc)
-                : Thunk.suspend(() => go(n - 1, n * acc)).flatMap(x => x);
+                : chain.chain(x => x, Thunk.suspend(() => go(n - 1, n * acc)));
         return trampoline(go(n, 1));
     };
     assertEquals(factorial(5), 120);
@@ -93,15 +107,15 @@ test('trampoline - stack safe recursion', () => {
 });
 
 test('trampoline - sum with large recursion', () => {
+    const chain = Chain.of('free');
     const sum = n => {
         const go = (n, acc) =>
             n <= 0
                 ? Thunk.done(acc)
-                : Thunk.suspend(() => go(n - 1, acc + n)).flatMap(x => x);
+                : chain.chain(x => x, Thunk.suspend(() => go(n - 1, acc + n)));
         return trampoline(go(n, 0));
     };
     assertEquals(sum(100), 5050);
-    // Large recursion that would cause stack overflow without trampoline
     assertEquals(sum(1000), 500500);
 });
 
@@ -123,8 +137,6 @@ test('runSync - handles function target (memoized)', () => {
     };
     const runner = Free.runSync(interpreter)(makeProgram);
     const result1 = runner();
-    const result2 = runner();
-    // First call executes, second call is stack-safe and may be memoized
     assert(typeof result1 === 'number', 'should return number');
 });
 
@@ -140,40 +152,56 @@ testAsync('runAsync - executes async program', async () => {
     assertEquals(result, 42);
 });
 
-testAsync('runAsync - chains async computations', async () => {
+testAsync('runAsync - chains async computations using Chain', async () => {
+    const chain = Chain.of('free');
     const asyncInterpreter = async thunk => {
         await new Promise(r => setTimeout(r, 1));
         return thunk.run();
     };
-    const program = Thunk.suspend(() => 5)
-        .flatMap(x => Thunk.suspend(() => x * 2));
+    const program = chain.chain(
+        x => Thunk.suspend(() => x * 2),
+        Thunk.suspend(() => 5)
+    );
     const result = await Free.runAsync(asyncInterpreter)(program);
     assertEquals(result, 10);
 });
 
-logSection('Free Monad - Monad Laws');
+logSection('Free Monad - Static Land Laws');
 
-test('Left identity: pure(a).flatMap(f) === f(a)', () => {
+test('Left identity: chain(f, of(a)) === f(a)', () => {
+    const chain = Chain.of('free');
     const f = x => Free.pure(x * 2);
     const a = 5;
-    const left = Free.pure(a).flatMap(f);
+    const left = chain.chain(f, Free.pure(a));
     const right = f(a);
     assertEquals(left.value, right.value);
 });
 
-test('Right identity: m.flatMap(pure) === m', () => {
+test('Right identity: chain(of, m) === m', () => {
+    const chain = Chain.of('free');
     const m = Free.pure(42);
-    const result = m.flatMap(Free.pure);
+    const result = chain.chain(Free.pure, m);
     assertEquals(result.value, m.value);
 });
 
-test('Associativity: m.flatMap(f).flatMap(g) === m.flatMap(x => f(x).flatMap(g))', () => {
+test('Associativity: chain(g, chain(f, m)) === chain(x => chain(g, f(x)), m)', () => {
+    const chain = Chain.of('free');
     const m = Free.pure(5);
     const f = x => Free.pure(x + 1);
     const g = x => Free.pure(x * 2);
-    const left = m.flatMap(f).flatMap(g);
-    const right = m.flatMap(x => f(x).flatMap(g));
+    const left = chain.chain(g, chain.chain(f, m));
+    const right = chain.chain(x => chain.chain(g, f(x)), m);
     assertEquals(left.value, right.value);
+});
+
+logSection('Free Monad - pipeK');
+
+test('Free.pipeK composes Kleisli arrows', () => {
+    const inc = x => Free.pure(x + 1);
+    const double = x => Free.pure(x * 2);
+    const pipeline = Free.pipeK(inc, double);
+    const result = trampoline(pipeline(5));
+    assertEquals(result, 12); // (5 + 1) * 2 = 12
 });
 
 console.log('\n✅ Free Monad tests completed\n');

@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-16T00:45:44.137Z
+ * Built: 2026-01-16T01:10:22.309Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -67,7 +67,8 @@ const Symbols = {
     Traversable: Symbol.for('fun-fp-js/Traversable'),
     Maybe: Symbol.for('fun-fp-js/Maybe'),
     Either: Symbol.for('fun-fp-js/Either'),
-    Task: Symbol.for('fun-fp-js/Task')
+    Task: Symbol.for('fun-fp-js/Task'),
+    Free: Symbol.for('fun-fp-js/Free')
 };
 const types = {
     of: a => {
@@ -1636,25 +1637,20 @@ const { Free, trampoline } = (() => {
         constructor(value) {
             super();
             this.value = value;
+            this._typeName = 'Free';
             this[Symbol.toStringTag] = 'Pure';
-            this[Symbols.Functor] = true;
-            this[Symbols.Monad] = true;
         }
-        map(f) { return new Pure(f(this.value)); }
-        flatMap(f) { return f(this.value); }
     }
     class Impure extends Free {
         constructor(functor) {
             super();
             functor[Symbols.Functor] || raise(new Error('Impure: expected a functor'));
             this.functor = functor;
+            this._typeName = 'Free';
             this[Symbol.toStringTag] = 'Impure';
-            this[Symbols.Functor] = true;
-            this[Symbols.Monad] = true;
         }
-        map(f) { return new Impure(this.functor.map(free => free.map(f))); }
-        flatMap(f) { return new Impure(this.functor.map(free => free.flatMap(f))); }
     }
+    Free.prototype[Symbols.Free] = true;
     class Thunk {
         constructor(f) {
             types.checkFunction(f, 'Thunk');
@@ -1675,6 +1671,56 @@ const { Free, trampoline } = (() => {
     Free.trampoline = trampoline;
     return { Free, trampoline };
 })();
+Free.isFree = x => x != null && x[Symbols.Free] === true;
+/* Free Static Land */
+class FreeFunctor extends Functor {
+    constructor() {
+        super(
+            (f, free) => Free.isPure(free)
+                ? Free.pure(f(free.value))
+                : Free.impure(free.functor.map(inner => Functor.of('free').map(f, inner))),
+            'Free', Functor.types, 'free'
+        );
+    }
+}
+modules.push(FreeFunctor);
+class FreeApply extends Apply {
+    constructor() {
+        super(
+            Functor.types.FreeFunctor,
+            (mf, mx) => Chain.of('free').chain(f => Functor.of('free').map(f, mx), mf),
+            'Free', Apply.types, 'free'
+        );
+    }
+}
+modules.push(FreeApply);
+class FreeApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.FreeApply, Free.pure, 'Free', Applicative.types, 'free');
+    }
+}
+modules.push(FreeApplicative);
+class FreeChain extends Chain {
+    constructor() {
+        super(
+            Apply.types.FreeApply,
+            (f, free) => Free.isPure(free)
+                ? f(free.value)
+                : Free.impure(free.functor.map(inner => Chain.of('free').chain(f, inner))),
+            'Free', Chain.types, 'free'
+        );
+    }
+}
+modules.push(FreeChain);
+class FreeMonad extends Monad {
+    constructor() {
+        super(Applicative.types.FreeApplicative, Chain.types.FreeChain, 'Free', Monad.types, 'free');
+    }
+}
+modules.push(FreeMonad);
+load(...modules);
+Free.pipeK = (...fns) => pipeK(Monad.of('free'))(fns);
+Free.lift = f => lift(Applicative.of('free'))(f);
 const extra = (() => {
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
         (acc, key) => Chain.types.EitherChain.chain(obj => Either.fromNullable(obj[key]), acc),
