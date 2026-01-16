@@ -1469,13 +1469,20 @@ const lift = applicative => {
     if (!(applicative && applicative[Symbols.Applicative] === true)) {
         raise(new TypeError('lift: first argument must be an Applicative'));
     }
-    return f => {
+    return f => (...args) => {
         types.checkFunction(f, 'lift');
-        return (...args) => {
-            if (args.length === 0) return applicative.of(f());
-            return args.slice(1).reduce((acc, arg) => applicative.ap(acc, arg), applicative.map(curry(f, args.length), args[0]));
-        };
+        if (args.length === 0) return applicative.of(f());
+        return args.slice(1).reduce((acc, arg) => applicative.ap(acc, arg), applicative.map(curry(f, args.length), args[0]));
     };
+};
+const pipeK = (monad, foldable = Foldable.of('array')) => {
+    if (!(monad && monad[Symbols.Monad] === true)) {
+        raise(new TypeError('pipeK: first argument must be a Monad'));
+    }
+    if (!(foldable && foldable[Symbols.Foldable] === true)) {
+        raise(new TypeError('pipeK: second argument must be a Foldable'));
+    }
+    return fns => x => foldable.reduce((acc, fn) => monad.chain(types.checkFunction(fn, 'pipeK'), acc), monad.of(x), fns);
 };
 Maybe.toEither = (defaultLeft, m) => m.isJust() ? Either.Right(m.value) : Either.Left(defaultLeft);
 Maybe.pipe = (m, ...fns) => {
@@ -1485,7 +1492,7 @@ Maybe.pipe = (m, ...fns) => {
         return acc.isJust() ? fn(acc) : acc;
     }, m);
 };
-Maybe.pipeK = (...fns) => x => fns.reduce((acc, fn) => acc.isJust() ? fn(acc.value) : acc, Maybe.of(x));
+Maybe.pipeK = (...fns) => pipeK(Monad.of('maybe'))(fns);
 Maybe.lift = f => runCatch(lift(Applicative.types.MaybeApplicative)(f), Maybe.Nothing);
 Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
 Either.pipe = (e, ...fns) => {
@@ -1495,8 +1502,9 @@ Either.pipe = (e, ...fns) => {
         return acc.isRight() ? fn(acc) : acc;
     }, e);
 };
-Either.pipeK = (...fns) => x => fns.reduce((acc, fn) => acc.isRight() ? fn(acc.value) : acc, Either.Right(x));
+Either.pipeK = (...fns) => pipeK(Monad.of('either'))(fns);
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
+Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
 const { transducer } = (() => {
     class Reduced {
         constructor(value) { this.value = value; }
@@ -1662,7 +1670,7 @@ export default {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free,
-    identity, compose, compose2, sequence, lift, runCatch,
+    identity, compose, compose2, sequence, lift, pipeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
