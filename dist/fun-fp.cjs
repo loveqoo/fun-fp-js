@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-16T07:13:58.797Z
+ * Built: 2026-01-17T16:12:28.195Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -499,7 +499,7 @@ class Profunctor extends Algebra {
     promap() { raise(new Error('Profunctor: promap is not implemented')); }
 }
 Profunctor.prototype[Symbols.Profunctor] = true;
-class Apply extends Functor {
+class Apply extends Functor { // F(a -> b) => F(a) => F(b)
     constructor(functor, ap, type, registry, ...aliases) {
         checkAndSet('Apply.super')(functor);
         super(functor.map, type);
@@ -1569,7 +1569,7 @@ const { transducer } = (() => {
     };
 })();
 const { Free, trampoline } = (() => {
-    const stackSafe = (runner, f, onReentry = f) => {
+    const reentrantGuard = (runner, f, onReentry = f) => {
         let active = false;
         return (...args) => {
             if (active) return onReentry(...args);
@@ -1596,9 +1596,10 @@ const { Free, trampoline } = (() => {
         }
         static isPure(x) { return x instanceof Pure; }
         static isImpure(x) { return x instanceof Impure; }
+        static isFree(x) { return Free.isPure(x) || Free.isImpure(x); }
         static liftF(command) {
             command[Symbols.Functor] || raise(new Error('Free.liftF: expected a functor'));
-            return Free.isPure(command) || Free.isImpure(command)
+            return Free.isFree(command)
                 ? command
                 : Free.impure(command.map(Free.pure));
         }
@@ -1606,7 +1607,7 @@ const { Free, trampoline } = (() => {
             let step = program;
             while (Free.isImpure(step)) {
                 step = yield runner(step.functor);
-                if (Free.isPure(step) && (Free.isPure(step.value) || Free.isImpure(step.value))) {
+                if (Free.isPure(step) && Free.isFree(step.value)) {
                     step = step.value;
                 }
             }
@@ -1622,7 +1623,7 @@ const { Free, trampoline } = (() => {
                     }
                     return result.value;
                 };
-                return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
+                return typeof target === 'function' ? reentrantGuard(execute, target) : execute(target);
             };
         }
         static runAsync(runner) {
@@ -1635,7 +1636,7 @@ const { Free, trampoline } = (() => {
                     }
                     return result.value;
                 };
-                return typeof target === 'function' ? stackSafe(execute, target) : execute(target);
+                return typeof target === 'function' ? reentrantGuard(execute, target) : execute(target);
             };
         }
     }
@@ -1684,7 +1685,7 @@ class FreeFunctor extends Functor {
         super(
             (f, free) => Free.isPure(free)
                 ? Free.pure(f(free.value))
-                : Free.impure(free.functor.map(inner => Functor.of('free').map(f, inner))),
+                : Free.impure(free.functor.map(prevFree => Functor.of('free').map(f, prevFree))),
             'Free', Functor.types, 'free'
         );
     }
@@ -1712,7 +1713,7 @@ class FreeChain extends Chain {
             Apply.types.FreeApply,
             (f, free) => Free.isPure(free)
                 ? f(free.value)
-                : Free.impure(free.functor.map(inner => Chain.of('free').chain(f, inner))),
+                : Free.impure(free.functor.map(prevFree => Chain.of('free').chain(f, prevFree))),
             'Free', Chain.types, 'free'
         );
     }
