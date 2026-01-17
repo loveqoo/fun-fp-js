@@ -48,7 +48,10 @@ const Symbols = {
     Maybe: Symbol.for('fun-fp-js/Maybe'),
     Either: Symbol.for('fun-fp-js/Either'),
     Task: Symbol.for('fun-fp-js/Task'),
-    Free: Symbol.for('fun-fp-js/Free')
+    Free: Symbol.for('fun-fp-js/Free'),
+    Pure: Symbol.for('fun-fp-js/Pure'),
+    Impure: Symbol.for('fun-fp-js/Impure'),
+    Reduced: Symbol.for('fun-fp-js/Reduced')
 };
 const types = {
     of: a => {
@@ -1508,9 +1511,12 @@ Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either
 Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
 const { transducer } = (() => {
     class Reduced {
-        constructor(value) { this.value = value; }
+        constructor(value) {
+            this.value = value;
+            this[Symbols.Reduced] = true;
+        }
         static of(value) { return new Reduced(value); }
-        static isReduced(value) { return value instanceof Reduced; }
+        static isReduced(value) { return value != null && value[Symbols.Reduced] === true; }
     }
     const transduce = transducer => reducer => initialValue => collection => {
         if (!types.isIterable(collection)) {
@@ -1574,8 +1580,8 @@ const { Free, trampoline } = (() => {
             functor[Symbols.Functor] || raise(new Error('Free.impure: expected a functor'));
             return new Impure(functor);
         }
-        static isPure(x) { return x instanceof Pure; }
-        static isImpure(x) { return x instanceof Impure; }
+        static isPure(x) { return x != null && x[Symbols.Pure] === true; }
+        static isImpure(x) { return x != null && x[Symbols.Impure] === true; }
         static isFree(x) { return Free.isPure(x) || Free.isImpure(x); }
         static liftF(command) {
             command[Symbols.Functor] || raise(new Error('Free.liftF: expected a functor'));
@@ -1626,6 +1632,7 @@ const { Free, trampoline } = (() => {
             this.value = value;
             this._typeName = 'Free';
             this[Symbol.toStringTag] = 'Pure';
+            this[Symbols.Pure] = true;
         }
     }
     class Impure extends Free {
@@ -1635,6 +1642,7 @@ const { Free, trampoline } = (() => {
             this.functor = functor;
             this._typeName = 'Free';
             this[Symbol.toStringTag] = 'Impure';
+            this[Symbols.Impure] = true;
         }
     }
     Free.prototype[Symbols.Free] = true;
