@@ -45,6 +45,19 @@
 - [Extend](./Extend.md) - 컨텍스트 기반 변환
 - [Comonad](./Comonad.md) - Monad의 쌍대
 
+### 9단계: Free Monad
+- [Free](./Free.md) - 스택 안전 재귀, DSL 구축
+
+## 추상 함수
+
+타입 클래스를 조합하여 사용하는 고차 함수들:
+
+| 함수 | 시그니처 | 설명 |
+|------|----------|------|
+| `sequence` | `(Traversable, Applicative, u) -> Applicative u` | 효과 뒤집기 |
+| `lift` | `Applicative -> (a -> b) -> (F a -> F b)` | 함수를 컨테이너 컨텍스트로 |
+| `pipeK` | `(Monad, Foldable?) -> [a -> M b] -> a -> M b` | Kleisli 합성 |
+
 ## 타입 클래스 의존성 그래프
 
 ```
@@ -100,6 +113,7 @@ Extend ──> Comonad
 | Category | id | 항등 함수 |
 | Extend | extend | 컨텍스트 변환 |
 | Comonad | extract | 값 추출 |
+| Free | trampoline | 스택 안전 재귀 |
 
 ## 자주 쓰는 패턴
 

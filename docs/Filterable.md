@@ -114,6 +114,38 @@ filter(x => x != null, config);
 // { host: 'localhost', debug: true }
 ```
 
+### Maybe 필터링
+
+```javascript
+const { filter } = Filterable.of('maybe');
+
+filter(x => x > 0, Maybe.Just(5));   // Just(5)
+filter(x => x > 0, Maybe.Just(-1));  // Nothing
+filter(x => x > 0, Maybe.Nothing()); // Nothing
+```
+
+### Either 필터링
+
+```javascript
+const { filter } = Filterable.of('either');
+
+filter(x => x > 0, Either.Right(5));   // Right(5)
+filter(x => x > 0, Either.Right(-1));  // Left(-1) - 값 보존
+filter(x => x > 0, Either.Left('err')); // Left('err')
+```
+
+### Task 필터링
+
+```javascript
+const { filter } = Filterable.of('task');
+
+filter(x => x > 0, Task.of(5))
+    .fork(console.error, console.log);  // 5
+
+filter(x => x > 0, Task.of(-1))
+    .fork(console.error, console.log);  // rejected: -1
+```
+
 ## 관련 타입 클래스
 
 - **Functor**: 값 변환
