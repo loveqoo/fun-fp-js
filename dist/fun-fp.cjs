@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-17T16:18:03.935Z
+ * Built: 2026-01-18T13:52:47.566Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1130,6 +1130,12 @@ class MaybeCategory extends Category {
     }
 }
 modules.push(MaybeCategory);
+class MaybeFilterable extends Filterable {
+    constructor() {
+        super((pred, m) => m.isJust() && pred(m.value) ? m : Maybe.Nothing(), 'Maybe', Filterable.types, 'maybe');
+    }
+}
+modules.push(MaybeFilterable);
 class MaybeFunctor extends Functor {
     constructor() {
         super((f, m) => m.isJust() ? Maybe.Just(f(m.value)) : m, 'Maybe', Functor.types, 'maybe');
@@ -1241,6 +1247,12 @@ class EitherCategory extends Category {
     }
 }
 modules.push(EitherCategory);
+class EitherFilterable extends Filterable {
+    constructor() {
+        super((pred, e) => e.isRight() && pred(e.value) ? e : Either.Left(e.value), 'Either', Filterable.types, 'either');
+    }
+}
+modules.push(EitherFilterable);
 class EitherFunctor extends Functor {
     constructor() {
         super((f, e) => e.isRight() ? Either.Right(f(e.value)) : e, 'Either', Functor.types, 'either');
@@ -1406,6 +1418,14 @@ class TaskCategory extends Category {
     }
 }
 modules.push(TaskCategory);
+class TaskFilterable extends Filterable {
+    constructor() {
+        super((pred, t) => new Task((reject, resolve) =>
+            t.fork(reject, x => pred(x) ? resolve(x) : reject(x))
+        ), 'Task', Filterable.types, 'task');
+    }
+}
+modules.push(TaskFilterable);
 class TaskFunctor extends Functor {
     constructor() {
         super((f, task) => new Task((reject, resolve) => {
