@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-19T13:35:14.498Z
+ * Built: 2026-01-19T14:25:47.018Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1669,6 +1669,19 @@ const { Free, trampoline } = (() => {
                 };
                 return typeof target === 'function' ? reentrantGuard(execute, target) : execute(target);
             };
+        }
+        static runWithTask(runner) {
+            return program => new Promise((resolve, reject) => {
+                const step = free => {
+                    if (Free.isPure(free)) return resolve(free.value);
+                    if (Free.isImpure(free)) {
+                        runner(free.functor).fork(reject, step);
+                    } else {
+                        reject(new Error('runWithTask: unknown Free type'));
+                    }
+                };
+                step(program);
+            });
         }
     }
     class Pure extends Free {
