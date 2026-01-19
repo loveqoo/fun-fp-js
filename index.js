@@ -1086,12 +1086,16 @@ class Just extends Maybe {
         super(); this.value = value; this._typeName = 'Maybe';
     }
     isJust() { return true; }
+    map(f) { return Functor.of('maybe').map(f, this); }
+    chain(f) { return Chain.of('maybe').chain(f, this); }
 }
 class Nothing extends Maybe {
     constructor() {
         super(); this._typeName = 'Maybe';
     }
     isNothing() { return true; }
+    map(f) { return Functor.of('maybe').map(f, this); }
+    chain(f) { return Chain.of('maybe').chain(f, this); }
 }
 Maybe.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
@@ -1205,10 +1209,14 @@ class Either {
 class Left extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isLeft() { return true; }
+    map(f) { return Functor.of('either').map(f, this); }
+    chain(f) { return Chain.of('either').chain(f, this); }
 }
 class Right extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isRight() { return true; }
+    map(f) { return Functor.of('either').map(f, this); }
+    chain(f) { return Chain.of('either').chain(f, this); }
 }
 Either.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
@@ -1322,6 +1330,8 @@ class Task {
         };
         this._typeName = 'Task';
     }
+    map(f) { return Functor.of('task').map(f, this); }
+    chain(f) { return Chain.of('task').chain(f, this); }
 }
 Task.prototype[Symbols.Task] = true;
 const settledFork = (task, onReject, onResolve) => {
@@ -1672,6 +1682,8 @@ const { Free, trampoline } = (() => {
             this[Symbol.toStringTag] = 'Pure';
             this[Symbols.Pure] = true;
         }
+        map(f) { return Functor.of('free').map(f, this); }
+        chain(f) { return Chain.of('free').chain(f, this); }
     }
     class Impure extends Free {
         constructor(functor) {
@@ -1682,6 +1694,8 @@ const { Free, trampoline } = (() => {
             this[Symbol.toStringTag] = 'Impure';
             this[Symbols.Impure] = true;
         }
+        map(f) { return Functor.of('free').map(f, this); }
+        chain(f) { return Chain.of('free').chain(f, this); }
     }
     Free.prototype[Symbols.Free] = true;
     class Thunk {
