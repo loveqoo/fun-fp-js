@@ -64,6 +64,7 @@ const types = {
     },
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
+        if (typeof expected !== 'string') return false;
         const actual = types.of(val);
         return actual === expected || actual.toLowerCase() === expected.toLowerCase();
     },
@@ -79,7 +80,7 @@ const emptyFunc = () => { };
 const identity = x => x;
 const compose2 = (f, g) => x => types.checkFunction(f, 'compose2')(types.checkFunction(g, 'compose2')(x));
 const raise = e => { throw e; };
-const runCatch = (f, onError = raise) => (...args) => {
+const runCatch = (f, onError = emptyFunc) => (...args) => {
     try { return types.checkFunction(f, 'runCatch')(...args); }
     catch (e) { return onError(e); }
 };
@@ -111,7 +112,7 @@ const flip = f => (...args) => types.checkFunction(f, 'flip')(...args.slice().re
 const flipCurried = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurried')(...bs)(...as);
 const pipe = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipe(${fs.length})`)(acc), x);
 const compose = (...fs) => pipe(...fs.slice().reverse());
-const tap = (...fs) => x => (fs.forEach(f => runCatch(f, console.log)(x)), x);
+const tap = (...fs) => x => (fs.forEach(f => runCatch(f)(x)), x);
 const also = flipCurried(tap);
 const into = flipCurried(pipe);
 const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
@@ -367,7 +368,11 @@ const checkAndSet = (config => {
             loose: (instance, functor, foldable, traverse) => { if (traverse) instance.traverse = (applicative, f, a) => traverse(applicative, f, a); }
         },
     };
-    return key => (instance, ...args) => { config.strictMode ? rules[key].strict(instance, ...args) : rules[key].loose(instance, ...args); };
+    return key => {
+        const rule = rules[key];
+        if (!rule) raise(new TypeError(`checkAndSet: unknown key '${key}'`));
+        return (instance, ...args) => { config.strictMode ? rule.strict(instance, ...args) : rule.loose(instance, ...args); };
+    };
 })(config);
 class Algebra { constructor(type) { this.type = type; } }
 Algebra.prototype[Symbols.Algebra] = true;
