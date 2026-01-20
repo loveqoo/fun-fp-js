@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-19T15:05:56.007Z
+ * Built: 2026-01-20T13:22:43.740Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -132,7 +132,7 @@ const flip = f => (...args) => types.checkFunction(f, 'flip')(...args.slice().re
 const flipCurried = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurried')(...bs)(...as);
 const pipe = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipe(${fs.length})`)(acc), x);
 const compose = (...fs) => pipe(...fs.slice().reverse());
-const tap = (...fs) => x => (fs.forEach(f => runCatch(f)(x)), x);
+const tap = (...fs) => x => (fs.forEach(f => runCatch(f, config.tapErrorHandler)(x)), x);
 const also = flipCurried(tap);
 const into = flipCurried(pipe);
 const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
@@ -171,8 +171,9 @@ const modules = [];
 const DEV = typeof process !== 'undefined' && process.env
     ? process.env.NODE_ENV !== 'production'
     : true;
-const config = { strictMode: DEV };
+const config = { strictMode: DEV, tapErrorHandler: emptyFunc };
 const setStrictMode = (val) => { config.strictMode = !!val; };
+const setTapErrorHandler = (handler) => { config.tapErrorHandler = handler; };
 const checkAndSet = (config => {
     const rules = {
         Setoid: {
@@ -1127,6 +1128,15 @@ Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
 Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
+Maybe.map = (f, m) => Functor.of('maybe').map(f, m);
+Maybe.ap = (mf, m) => Apply.of('maybe').ap(mf, m);
+Maybe.chain = (f, m) => Chain.of('maybe').chain(f, m);
+Maybe.alt = (m1, m2) => Alt.of('maybe').alt(m1, m2);
+Maybe.zero = () => Plus.of('maybe').zero();
+Maybe.filter = (pred, m) => Filterable.of('maybe').filter(pred, m);
+Maybe.reduce = (f, init, m) => Foldable.of('maybe').reduce(f, init, m);
+Maybe.traverse = (applicative, f, m) => Traversable.of('maybe').traverse(applicative, f, m);
+Maybe.chainRec = (f, i) => ChainRec.of('maybe').chainRec(f, i);
 class MaybeSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'Maybe', Semigroupoid.types, 'maybe');
@@ -1248,6 +1258,15 @@ Either.isRight = x => Either.isEither(x) && x.isRight();
 Either.fromNullable = x => x == null ? Either.Left(null) : Either.Right(x);
 Either.fold = (onLeft, onRight, e) => e.isLeft() ? onLeft(e.value) : onRight(e.value);
 Either.catch = runCatch(f => Either.Right(f()), Either.Left);
+Either.map = (f, e) => Functor.of('either').map(f, e);
+Either.ap = (ef, e) => Apply.of('either').ap(ef, e);
+Either.chain = (f, e) => Chain.of('either').chain(f, e);
+Either.alt = (e1, e2) => Alt.of('either').alt(e1, e2);
+Either.bimap = (f, g, e) => Bifunctor.of('either').bimap(f, g, e);
+Either.filter = (pred, e) => Filterable.of('either').filter(pred, e);
+Either.reduce = (f, init, e) => Foldable.of('either').reduce(f, init, e);
+Either.traverse = (applicative, f, e) => Traversable.of('either').traverse(applicative, f, e);
+Either.chainRec = (f, i) => ChainRec.of('either').chainRec(f, i);
 class EitherSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.EitherChain.chain(f, g(x)), 'function', Semigroupoid.types, 'either');
@@ -1421,6 +1440,12 @@ Task.race = tasks => new Task((reject, resolve) => {
     let done = false;
     list.forEach(t => t.fork(e => { if (!done) { done = true; reject(e); } }, v => { if (!done) { done = true; resolve(v); } }));
 });
+Task.map = (f, t) => Functor.of('task').map(f, t);
+Task.ap = (tf, t) => Apply.of('task').ap(tf, t);
+Task.chain = (f, t) => Chain.of('task').chain(f, t);
+Task.alt = (t1, t2) => Alt.of('task').alt(t1, t2);
+Task.filter = (pred, t) => Filterable.of('task').filter(pred, t);
+Task.chainRec = (f, i) => ChainRec.of('task').chainRec(f, i);
 class TaskSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.TaskChain.chain(f, g(x)), 'function', Semigroupoid.types, 'task');
@@ -1738,7 +1763,6 @@ const { Free, trampoline } = (() => {
     Free.trampoline = trampoline;
     return { Free, trampoline };
 })();
-Free.isFree = x => x != null && x[Symbols.Free] === true;
 /* Free Static Land */
 class FreeFunctor extends Functor {
     constructor() {
@@ -1797,6 +1821,10 @@ const extra = (() => {
         (match, keyStr) => Either.fold(_ => match, identity, path(keyStr)(data)));
     return { path, template };
 })();
+Free.isFree = x => x != null && x[Symbols.Free] === true;
+Free.map = (f, free) => Functor.of('free').map(f, free);
+Free.chain = (f, free) => Chain.of('free').chain(f, free);
+Free.ap = (ff, free) => Apply.of('free').ap(ff, free);
 
 return {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
@@ -1808,6 +1836,6 @@ return {
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
-    extra, setStrictMode
+    extra, setStrictMode, setTapErrorHandler
 };
 }));
