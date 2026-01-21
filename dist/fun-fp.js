@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-21T13:55:39.582Z
+ * Built: 2026-01-21T14:04:30.895Z
  * Static Land specification compliant
  */
 const polyfills = {
