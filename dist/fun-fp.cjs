@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-20T13:22:43.740Z
+ * Built: 2026-01-21T13:55:39.582Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1362,10 +1362,14 @@ class Task {
         // fork를 1회 settle로 래핑하여 다중 호출 방지
         this.fork = (reject, resolve) => {
             let settled = false;
-            computation(
-                e => { if (settled) return; settled = true; reject(e); },
-                v => { if (settled) return; settled = true; resolve(v); }
-            );
+            try {
+                computation(
+                    e => { if (settled) return; settled = true; reject(e); },
+                    v => { if (settled) return; settled = true; resolve(v); }
+                );
+            } catch (e) {
+                if (!settled) { settled = true; reject(e); }
+            }
         };
         this._typeName = 'Task';
     }
@@ -1478,12 +1482,15 @@ class TaskApply extends Apply {
     constructor() {
         super(Functor.types.TaskFunctor, (taskFn, taskVal) => new Task((reject, resolve) => {
             const g = createSettledGuard();
-            let fn, val, fnDone = false, valDone = false;
+            let func, value, funcReady = false, valueReady = false;
             const tryResolve = () => {
-                if (fnDone && valDone) g.guard(resolve)(fn(val));
+                if (funcReady && valueReady) {
+                    try { g.guard(resolve)(func(value)); }
+                    catch (e) { g.guard(reject)(e); }
+                }
             };
-            taskFn.fork(g.guard(reject), g.check(f => { fn = f; fnDone = true; tryResolve(); }));
-            taskVal.fork(g.guard(reject), g.check(v => { val = v; valDone = true; tryResolve(); }));
+            taskFn.fork(g.guard(reject), g.check(f => { func = f; funcReady = true; tryResolve(); }));
+            taskVal.fork(g.guard(reject), g.check(v => { value = v; valueReady = true; tryResolve(); }));
         }), 'Task', Apply.types, 'task');
     }
 }
@@ -1513,7 +1520,10 @@ class TaskChain extends Chain {
                 const g = createSettledGuard();
                 task.fork(
                     g.guard(reject),
-                    g.check(x => f(x).fork(g.guard(reject), g.guard(resolve)))
+                    g.check(x => {
+                        try { f(x).fork(g.guard(reject), g.guard(resolve)); }
+                        catch (e) { g.guard(reject)(e); }
+                    })
                 );
             }),
             'Task', Chain.types, 'task');
@@ -1523,11 +1533,16 @@ modules.push(TaskChain);
 class TaskChainRec extends ChainRec {
     constructor() {
         super(Chain.types.TaskChain,
-            (f, i) => new Task((reject, resolve) => {
-                const loop = val => {
-                    f(ChainRec.next, ChainRec.done, val).fork(reject, step => step.tag === 'next' ? loop(step.value) : resolve(step.value));
+            (f, initial) => new Task((reject, resolve) => {
+                const loop = current => {
+                    try {
+                        f(ChainRec.next, ChainRec.done, current)
+                            .fork(reject, result => {
+                                result.tag === 'next' ? loop(result.value) : resolve(result.value);
+                            });
+                    } catch (e) { reject(e); }
                 };
-                loop(i);
+                loop(initial);
             }), 'Task', ChainRec.types, 'task');
     }
 }
