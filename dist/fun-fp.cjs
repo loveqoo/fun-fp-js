@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-21T14:04:30.895Z
+ * Built: 2026-01-23T15:06:26.736Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -75,12 +75,12 @@ const Symbols = {
 };
 const types = {
     of: a => {
-        if (a === null) { return 'null'; }
+        if (a == null) return a === null ? 'null' : 'undefined';
+        if (a._typeName !== undefined) return a._typeName;
         const typeName = typeof a;
-        if (typeName !== 'object') { return typeName; }
-        if (Array.isArray(a)) { return 'Array'; }
-        if (a._typeName) { return a._typeName; }
-        return a.constructor && a.constructor.name || 'object';
+        if (typeName !== 'object') return typeName;
+        if (Array.isArray(a)) return 'Array';
+        return a.constructor?.name || 'object';
     },
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
@@ -95,6 +95,10 @@ const types = {
     },
     isPlainObject: a => typeof a === 'object' && a !== null && !Array.isArray(a) && Object.getPrototypeOf(a) === Object.prototype,
     isIterable: a => a != null && typeof a[Symbol.iterator] === 'function',
+    dateCheckAndGet: d => {
+        if (Number.isNaN(d.getTime())) raise(new TypeError('Invalid Date'));
+        return d;
+    },
 };
 const emptyFunc = () => { };
 const identity = x => x;
@@ -113,7 +117,7 @@ const predicate = f => x => Boolean(runCatch(types.checkFunction(f, 'predicate')
 const negate = f => x => !predicate(types.checkFunction(f, 'negate'))(x);
 const flip2 = f => (a, b) => types.checkFunction(f, 'flip2')(b, a);
 const flipCurried2 = f => a => b => types.checkFunction(f, 'flipCurried2')(b)(a);
-const pipe2 = (f, g) => x => types.checkFunction(g, 'pipe2')(f(x));
+const pipe2 = (f, g) => x => types.checkFunction(g, 'pipe2')(types.checkFunction(f, 'pipe2')(x));
 const apply = f => args => {
     types.of(args) !== 'Array' && raise(new TypeError('apply: args must be an array'));
     return types.checkFunction(f, 'apply')(...args);
@@ -137,22 +141,23 @@ const also = flipCurried(tap);
 const into = flipCurried(pipe);
 const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
 const useOrLift = check => lift => x => predicate(check)(x) ? x : types.checkFunction(lift, 'useOrLift')(x);
-const once = (f, option = {}) => {
+const once = f => {
     types.checkFunction(f, 'once');
-    const state = option.state || { called: false };
-    const defaultValue = option.defaultValue;
-    let result = defaultValue;
+    let called = false;
+    let result;
     return (...args) => {
-        if (!state.called) {
-            const val = f(...args);
-            result = val;
-            state.called = true;
+        if (!called) {
+            result = f(...args);
+            called = true;
         }
         return result;
     };
 };
 const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
-const range = n => n >= 0 ? Array.from({ length: n }, (_, i) => i) : [];
+const range = n => {
+    if (n < 0) raise(new RangeError(`range: n must be non-negative, got ${n}`));
+    return Array.from({ length: n }, (_, i) => i);
+};
 const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
 const register = (target, instance, ...aliases) => {
     target[instance.constructor.name] = instance;
@@ -630,105 +635,43 @@ class Traversable extends Functor {
 }
 Traversable.prototype[Symbols.Traversable] = true;
 
+const withTypeRegistry = (TypeClass, defaultResolver = null) => {
+    TypeClass.types = {};
+    TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
+    TypeClass.of = key => TypeClass.resolver(key)
+        || raise(new TypeError(`${TypeClass.name}.of: unsupported key ${key}`));
+};
+
 Setoid.op = (a, b) => a === b;
-Setoid.types = {};
-Setoid.resolver = key => Setoid.types[key] || (key === 'default' ? { equals: Setoid.op } : null);
-Setoid.of = key => Setoid.resolver(key) || raise(new TypeError(`Setoid.of: unsupported key ${key}`));
+withTypeRegistry(Setoid, key => key === 'default' ? { equals: Setoid.op } : null);
 
 Ord.op = (a, b) => a <= b;
-Ord.types = {};
-Ord.resolver = key => Ord.types[key] || (key === 'default' ? { lte: Ord.op } : null);
-Ord.of = key => Ord.resolver(key) || raise(new TypeError(`Ord.of: unsupported key ${key}`));
+withTypeRegistry(Ord, key => key === 'default' ? { lte: Ord.op } : null);
 
-Semigroup.types = {};
-Semigroup.resolver = key => Semigroup.types[key];
-Semigroup.of = key => Semigroup.resolver(key) || raise(new TypeError(`Semigroup.of: unsupported key ${key}`));
-
-Monoid.types = {};
-Monoid.resolver = key => Monoid.types[key];
-Monoid.of = key => Monoid.resolver(key) || raise(new TypeError(`Monoid.of: unsupported key ${key}`));
-
-Group.types = {};
-Group.resolver = key => Group.types[key];
-Group.of = key => Group.resolver(key) || raise(new TypeError(`Group.of: unsupported key ${key}`));
-
-Semigroupoid.types = {};
-Semigroupoid.resolver = key => Semigroupoid.types[key];
-Semigroupoid.of = key => Semigroupoid.resolver(key) || raise(new TypeError(`Semigroupoid.of: unsupported key ${key}`));
-
-Category.types = {};
-Category.resolver = key => Category.types[key];
-Category.of = key => Category.resolver(key) || raise(new TypeError(`Category.of: unsupported key ${key}`));
-
-Filterable.types = {};
-Filterable.resolver = key => Filterable.types[key];
-Filterable.of = key => Filterable.resolver(key) || raise(new TypeError(`Filterable.of: unsupported key ${key}`));
-
-Functor.types = {};
-Functor.resolver = key => Functor.types[key];
-Functor.of = key => Functor.resolver(key) || raise(new TypeError(`Functor.of: unsupported key ${key}`));
-
-Bifunctor.types = {};
-Bifunctor.resolver = key => Bifunctor.types[key];
-Bifunctor.of = key => Bifunctor.resolver(key) || raise(new TypeError(`Bifunctor.of: unsupported key ${key}`));
-
-Contravariant.types = {};
-Contravariant.resolver = key => Contravariant.types[key];
-Contravariant.of = key => Contravariant.resolver(key) || raise(new TypeError(`Contravariant.of: unsupported key ${key}`));
-
-Profunctor.types = {};
-Profunctor.resolver = key => Profunctor.types[key];
-Profunctor.of = key => Profunctor.resolver(key) || raise(new TypeError(`Profunctor.of: unsupported key ${key}`));
-
-Apply.types = {};
-Apply.resolver = key => Apply.types[key];
-Apply.of = key => Apply.resolver(key) || raise(new TypeError(`Apply.of: unsupported key ${key}`));
-
-Applicative.types = {};
-Applicative.resolver = key => Applicative.types[key];
-Applicative.of = key => Applicative.resolver(key) || raise(new TypeError(`Applicative.of: unsupported key ${key}`));
-
-Alt.types = {};
-Alt.resolver = key => Alt.types[key];
-Alt.of = key => Alt.resolver(key) || raise(new TypeError(`Alt.of: unsupported key ${key}`));
-
-Plus.types = {};
-Plus.resolver = key => Plus.types[key];
-Plus.of = key => Plus.resolver(key) || raise(new TypeError(`Plus.of: unsupported key ${key}`));
-
-Alternative.types = {};
-Alternative.resolver = key => Alternative.types[key];
-Alternative.of = key => Alternative.resolver(key) || raise(new TypeError(`Alternative.of: unsupported key ${key}`));
-
-Chain.types = {};
-Chain.resolver = key => Chain.types[key];
-Chain.of = key => Chain.resolver(key) || raise(new TypeError(`Chain.of: unsupported key ${key}`));
-
-ChainRec.types = {};
+withTypeRegistry(Semigroup);
+withTypeRegistry(Monoid);
+withTypeRegistry(Group);
+withTypeRegistry(Semigroupoid);
+withTypeRegistry(Category);
+withTypeRegistry(Filterable);
+withTypeRegistry(Functor);
+withTypeRegistry(Bifunctor);
+withTypeRegistry(Contravariant);
+withTypeRegistry(Profunctor);
+withTypeRegistry(Apply);
+withTypeRegistry(Applicative);
+withTypeRegistry(Alt);
+withTypeRegistry(Plus);
+withTypeRegistry(Alternative);
+withTypeRegistry(Chain);
+withTypeRegistry(ChainRec);
 ChainRec.next = value => ({ tag: 'next', value });
 ChainRec.done = value => ({ tag: 'done', value });
-ChainRec.resolver = key => ChainRec.types[key];
-ChainRec.of = key => ChainRec.resolver(key) || raise(new TypeError(`ChainRec.of: unsupported key ${key}`));
-
-Monad.types = {};
-Monad.resolver = key => Monad.types[key];
-Monad.of = key => Monad.resolver(key) || raise(new TypeError(`Monad.of: unsupported key ${key}`));
-
-Foldable.types = {};
-Foldable.resolver = key => Foldable.types[key];
-Foldable.of = key => Foldable.resolver(key) || raise(new TypeError(`Foldable.of: unsupported key ${key}`));
-
-Extend.types = {};
-Extend.resolver = key => Extend.types[key];
-Extend.of = key => Extend.resolver(key) || raise(new TypeError(`Extend.of: unsupported key ${key}`));
-
-Comonad.types = {};
-Comonad.resolver = key => Comonad.types[key];
-Comonad.of = key => Comonad.resolver(key) || raise(new TypeError(`Comonad.of: unsupported key ${key}`));
-
-Traversable.types = {};
-Traversable.resolver = key => Traversable.types[key];
-Traversable.of = key => Traversable.resolver(key) || raise(new TypeError(`Traversable.of: unsupported key ${key}`));
+withTypeRegistry(Monad);
+withTypeRegistry(Foldable);
+withTypeRegistry(Extend);
+withTypeRegistry(Comonad);
+withTypeRegistry(Traversable);
 
 /* Function */
 class FunctionSemigroup extends Semigroup {
@@ -1076,9 +1019,12 @@ class ArrayTraversable extends Traversable {
     constructor() {
         super(Functor.types.ArrayFunctor,
             Foldable.types.ArrayFoldable,
-            (applicative, f, arr) => arr.reduce(
-                (acc, x) => applicative.ap(applicative.map(a => b => [...a, b], acc), f(x)),
-                applicative.of([])
+            (applicative, f, arr) => applicative.map(
+                result => [...result],
+                arr.reduce(
+                    (acc, x) => applicative.ap(applicative.map(a => b => (a.push(b), a), acc), f(x)),
+                    applicative.of([])
+                )
             ),
             'Array', Traversable.types, 'array');
     }
@@ -1087,13 +1033,13 @@ modules.push(ArrayTraversable);
 /* Date */
 class DateSetoid extends Setoid {
     constructor() {
-        super((x, y) => x.getTime() === y.getTime(), 'date', Setoid.types, 'date');
+        super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'date', Setoid.types, 'date');
     }
 }
 modules.push(DateSetoid);
 class DateOrd extends Ord {
     constructor() {
-        super((x, y) => x.getTime() <= y.getTime(), 'date', Ord.types, 'date');
+        super((x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'date', Ord.types, 'date');
     }
 }
 modules.push(DateOrd);
@@ -1263,7 +1209,7 @@ Either.ap = (ef, e) => Apply.of('either').ap(ef, e);
 Either.chain = (f, e) => Chain.of('either').chain(f, e);
 Either.alt = (e1, e2) => Alt.of('either').alt(e1, e2);
 Either.bimap = (f, g, e) => Bifunctor.of('either').bimap(f, g, e);
-Either.filter = (pred, e) => Filterable.of('either').filter(pred, e);
+Either.filter = (pred, e, onFalse) => Filterable.of('either').filter(pred, e, onFalse);
 Either.reduce = (f, init, e) => Foldable.of('either').reduce(f, init, e);
 Either.traverse = (applicative, f, e) => Traversable.of('either').traverse(applicative, f, e);
 Either.chainRec = (f, i) => ChainRec.of('either').chainRec(f, i);
@@ -1281,7 +1227,7 @@ class EitherCategory extends Category {
 modules.push(EitherCategory);
 class EitherFilterable extends Filterable {
     constructor() {
-        super((pred, e) => e.isRight() && pred(e.value) ? e : Either.Left(e.value), 'Either', Filterable.types, 'either');
+        super((pred, e, onFalse = identity) => e.isLeft() ? e : (pred(e.value) ? e : Either.Left(onFalse(e.value))), 'Either', Filterable.types, 'either');
     }
 }
 modules.push(EitherFilterable);
@@ -1553,7 +1499,108 @@ class TaskMonad extends Monad {
     }
 }
 modules.push(TaskMonad);
-load(...modules);
+/* Validation */
+class Validation {
+    isValid() { return false; }
+    isInvalid() { return false; }
+}
+class Valid extends Validation {
+    constructor(value) { super(); this.value = value; this._typeName = 'Validation'; }
+    isValid() { return true; }
+    map(f) { return Functor.of('validation').map(f, this); }
+}
+class Invalid extends Validation {
+    constructor(errors, monoid = Monoid.of('array')) {
+        super();
+        this.errors = errors;
+        this.monoid = monoid;
+        this._typeName = 'Validation';
+    }
+    isInvalid() { return true; }
+    map(f) { return this; }
+}
+Validation.prototype[Symbols.Validation] = true;
+Validation.Valid = x => new Valid(x);
+Validation.Invalid = (errors, monoid) => new Invalid(errors, monoid);
+Validation.of = x => new Valid(x);
+Validation.isValidation = x => x != null && x[Symbols.Validation] === true;
+Validation.isValid = x => Validation.isValidation(x) && x.isValid();
+Validation.isInvalid = x => Validation.isValidation(x) && x.isInvalid();
+Validation.fromEither = (e, monoid) => e.isRight()
+    ? Validation.Valid(e.value)
+    : Validation.Invalid(e.value, monoid);
+Validation.prototype.toEither = function () {
+    return this.isValid() ? Either.Right(this.value) : Either.Left(this.errors);
+};
+Validation.fold = (onInvalid, onValid, v) =>
+    v.isValid() ? onValid(v.value) : onInvalid(v.errors);
+Validation.map = (f, v) => Functor.of('validation').map(f, v);
+Validation.ap = (vf, va) => Apply.of('validation').ap(vf, va);
+Validation.bimap = (f, g, v) => Bifunctor.of('validation').bimap(f, g, v);
+Validation.reduce = (f, init, v) => Foldable.of('validation').reduce(f, init, v);
+Validation.collect = (...validators) => f => (...args) => {
+    if (validators.length === 0) return Validation.Valid(f());
+    const validations = validators.map((validator, i) => {
+        const result = validator(args[i]);
+        return result.isRight()
+            ? Validation.Valid(result.value)
+            : Validation.Invalid([result.value]); // wrap in array for Monoid.of('array')
+    });
+    const curriedF = curry(f, validators.length);
+    return validations.reduce(
+        (acc, v) => Apply.of('validation').ap(acc, v),
+        Validation.Valid(curriedF)
+    );
+};
+class ValidationFunctor extends Functor {
+    constructor() {
+        super((f, v) => v.isValid() ? Validation.Valid(f(v.value)) : v,
+            'Validation', Functor.types, 'validation');
+    }
+}
+modules.push(ValidationFunctor);
+class ValidationBifunctor extends Bifunctor {
+    constructor() {
+        super((f, g, v) => v.isInvalid()
+            ? Validation.Invalid(f(v.errors), v.monoid)
+            : Validation.Valid(g(v.value)),
+            'Validation', Bifunctor.types, 'validation');
+    }
+}
+modules.push(ValidationBifunctor);
+class ValidationApply extends Apply {
+    constructor() {
+        super(Functor.types.ValidationFunctor,
+            (vf, va) => {
+                if (vf.isInvalid() && va.isInvalid()) {
+                    const monoid = vf.monoid;
+                    return Validation.Invalid(
+                        monoid.concat(vf.errors, va.errors),
+                        monoid
+                    );
+                }
+                if (vf.isInvalid()) return vf;
+                if (va.isInvalid()) return va;
+                return Validation.Valid(vf.value(va.value));
+            },
+            'Validation', Apply.types, 'validation');
+    }
+}
+modules.push(ValidationApply);
+class ValidationApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.ValidationApply, Validation.Valid,
+            'Validation', Applicative.types, 'validation');
+    }
+}
+modules.push(ValidationApplicative);
+class ValidationFoldable extends Foldable {
+    constructor() {
+        super((f, init, v) => v.isValid() ? f(init, v.value) : init,
+            'Validation', Foldable.types, 'validation');
+    }
+}
+modules.push(ValidationFoldable);
 /* Utilities */
 const sequence = (traversable, applicative, u) => {
     if (!traversable || typeof traversable.traverse !== 'function') {
@@ -1633,14 +1680,16 @@ const { transducer } = (() => {
         if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
             raise(new TypeError(`transducer.take: expected a positive integer (>= 1), but got ${count}`));
         }
-        let taken = 0;
-        return reducer => (accumulator, value) => {
-            if (taken < count) {
-                taken++;
-                const result = reducer(accumulator, value);
-                return taken === count ? Reduced.of(result) : result;
-            }
-            return Reduced.of(accumulator);
+        return reducer => {
+            let taken = 0;
+            return (accumulator, value) => {
+                if (taken < count) {
+                    taken++;
+                    const result = reducer(accumulator, value);
+                    return taken === count ? Reduced.of(result) : result;
+                }
+                return Reduced.of(accumulator);
+            };
         };
     };
     return {
@@ -1836,7 +1885,6 @@ const extra = (() => {
         (match, keyStr) => Either.fold(_ => match, identity, path(keyStr)(data)));
     return { path, template };
 })();
-Free.isFree = x => x != null && x[Symbols.Free] === true;
 Free.map = (f, free) => Functor.of('free').map(f, free);
 Free.chain = (f, free) => Chain.of('free').chain(f, free);
 Free.ap = (ff, free) => Apply.of('free').ap(ff, free);
@@ -1845,7 +1893,7 @@ return {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
-    Extend, Comonad, Traversable, Maybe, Either, Task, Free,
+    Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation,
     identity, compose, compose2, sequence, lift, pipeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,

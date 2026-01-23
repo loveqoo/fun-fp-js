@@ -204,4 +204,36 @@ test('Free.pipeK composes Kleisli arrows', () => {
     assertEquals(result, 12); // (5 + 1) * 2 = 12
 });
 
+logSection('Free Monad - Deep Nesting');
+
+test('Free Monad - deeply nested chain (1000 levels)', () => {
+    const chain = Chain.of('free');
+    let program = Free.pure(0);
+    for (let i = 0; i < 1000; i++) {
+        program = chain.chain(x => Free.pure(x + 1), program);
+    }
+    const result = trampoline(program);
+    assertEquals(result, 1000);
+});
+
+test('Free Monad - deeply nested chain (10000 levels)', () => {
+    const chain = Chain.of('free');
+    let program = Free.pure(0);
+    for (let i = 0; i < 10000; i++) {
+        program = chain.chain(x => Free.pure(x + 1), program);
+    }
+    const result = trampoline(program);
+    assertEquals(result, 10000);
+});
+
+test('Free Monad - deeply nested Thunk.suspend', () => {
+    const chain = Chain.of('free');
+    const buildDeep = (n, acc) => {
+        if (n <= 0) return Thunk.done(acc);
+        return chain.chain(x => x, Thunk.suspend(() => buildDeep(n - 1, acc + 1)));
+    };
+    const result = trampoline(buildDeep(5000, 0));
+    assertEquals(result, 5000);
+});
+
 console.log('\n✅ Free Monad tests completed\n');

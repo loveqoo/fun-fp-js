@@ -325,18 +325,6 @@ test('once - returns first result on subsequent calls', () => {
     assertEquals(first, second);
 });
 
-test('once - supports external state', () => {
-    const state = { called: false };
-    const fn = once(() => 42, { state });
-    assertEquals(fn(), 42);
-    assertEquals(state.called, true);
-});
-
-test('once - supports default value', () => {
-    const fn = once(() => 'result', { defaultValue: 'default' });
-    assertEquals(fn(), 'result');
-});
-
 test('converge - combines branch results', () => {
     const add = (a, b) => a + b;
     const double = x => x * 2;
@@ -359,8 +347,8 @@ test('range - creates array from 0 to n-1', () => {
     assertEquals(range(1), [0]);
 });
 
-test('range - returns empty array for negative', () => {
-    assertEquals(range(-5), []);
+test('range - throws for negative', () => {
+    assertThrows(() => range(-5));
 });
 
 test('rangeBy - creates array from start to end-1', () => {

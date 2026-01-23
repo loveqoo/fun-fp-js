@@ -58,4 +58,26 @@ test('EitherChainRec.chainRec - early failure with Left', () => {
     assertEquals(result.value, 'error at 5');
 });
 
+test('EitherChainRec.chainRec - stack safe with 10000 iterations', () => {
+    const result = ChainRec.types.EitherChainRec.chainRec(
+        (next, done, i) => i >= 10000
+            ? Either.Right(done(i))
+            : Either.Right(next(i + 1)),
+        0
+    );
+
+    assertEquals(result.value, 10000);
+});
+
+test('EitherChainRec.chainRec - stack safe with 100000 iterations', () => {
+    const result = ChainRec.types.EitherChainRec.chainRec(
+        (next, done, i) => i >= 100000
+            ? Either.Right(done(i))
+            : Either.Right(next(i + 1)),
+        0
+    );
+
+    assertEquals(result.value, 100000);
+});
+
 console.log('\n✅ ChainRec tests completed\n');

@@ -173,6 +173,32 @@ test('Task.race - Empty array rejects', () => {
     );
 });
 
+test('Task.race - Single Task resolves', () => {
+    Task.race(Task.of(42)).fork(
+        e => { throw new Error(`Unexpected rejection: ${e}`); },
+        v => assertEquals(v, 42)
+    );
+});
+
+test('Task.race - Single Task rejects', () => {
+    Task.race(Task.rejected('single error')).fork(
+        e => assertEquals(e, 'single error'),
+        v => { throw new Error(`Unexpected resolve: ${v}`); }
+    );
+});
+
+test('Task.race - All tasks reject (first wins)', () => {
+    const tasks = [
+        Task.rejected('error1'),
+        Task.rejected('error2'),
+        Task.rejected('error3')
+    ];
+    Task.race(tasks).fork(
+        e => assertEquals(e, 'error1'),
+        v => { throw new Error(`Unexpected resolve: ${v}`); }
+    );
+});
+
 // === Lazy execution ===
 test('Task is lazy - Does not execute until forked', () => {
     let executed = false;
