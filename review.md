@@ -118,42 +118,54 @@ Task는 지연 실행되므로 `fork` 호출 전까지 실제 요청이 발생�
 
 ### 해결 방법
 ```javascript
-const { Either, Semigroup } = fp;
+const { Validation, Either } = fp;
 
-// 에러 누적을 위한 검증 함수
+// Either를 반환하는 개별 검증 함수
 const validateName = name => name.length >= 2
     ? Either.Right(name)
-    : Either.Left(['Name must be at least 2 characters']);
+    : Either.Left('Name must be at least 2 characters');
 
 const validateEmail = email => email.includes('@')
     ? Either.Right(email)
-    : Either.Left(['Invalid email format']);
+    : Either.Left('Invalid email format');
 
 const validateAge = age => age >= 18
     ? Either.Right(age)
-    : Either.Left(['Must be 18 or older']);
+    : Either.Left('Must be 18 or older');
 
-// Applicative 스타일로 모든 검증 실행
-const validateForm = (name, email, age) => {
-    const applicative = fp.Applicative.of('either');
-    return applicative.ap(
-        applicative.ap(
-            applicative.map(
-                n => e => a => ({ name: n, email: e, age: a }),
-                validateName(name)
-            ),
-            validateEmail(email)
-        ),
-        validateAge(age)
-    );
-};
+// Validation.collect로 모든 검증 실행 및 에러 수집
+const validateForm = Validation.collect(
+    validateName,
+    validateEmail,
+    validateAge
+)((name, email, age) => ({ name, email, age }));
+
+validateForm('Kim', 'kim@example.com', 25);
+// Validation.Valid({ name: 'Kim', email: 'kim@example.com', age: 25 })
 
 validateForm('K', 'invalid', 15);
-// 첫 번째 에러에서 중단: Either.Left(['Name must be at least 2 characters'])
+// Validation.Invalid(['Name must be at least 2 characters', 'Invalid email format', 'Must be 18 or older'])
+
+// Validation을 Either로 변환하여 후속 처리
+validateForm('Kim', 'kim@example.com', 25).toEither();
+// Either.Right({ name: 'Kim', email: 'kim@example.com', age: 25 })
+```
+
+### 직접 Validation 사용
+```javascript
+const { Validation, Apply } = fp;
+
+// Validation을 직접 생성하여 ap으로 조합
+const v1 = Validation.Invalid(['Error 1']);
+const v2 = Validation.Invalid(['Error 2']);
+const vf = Validation.Valid(x => y => x + y);
+
+Apply.of('validation').ap(Apply.of('validation').ap(vf, v1), v2);
+// Validation.Invalid(['Error 1', 'Error 2']) - 모든 에러 누적!
 ```
 
 ### 평가
-기본 Either.ap은 첫 에러에서 중단됩니다. 모든 에러 수집이 필요하면 Validation Applicative 패턴을 별도 구현해야 합니다. 현재 라이브러리에서는 이 부분이 내장되어 있지 않으므로 확장이 필요합니다.
+`Validation` 타입은 Monoid 기반으로 에러를 누적합니다. `Either.ap`이 첫 에러에서 중단되는 것과 달리, `Validation.ap`은 양쪽이 모두 `Invalid`일 때 에러를 합칩니다. `Validation.collect`는 여러 검증기를 간편하게 조합하는 헬퍼입니다.
 
 ---
 
@@ -259,7 +271,7 @@ const getFullName = converge(
 | 안전한 데이터 접근 | ★★★★★ | Maybe, Either, extra.path 조합 |
 | 에러 핸들링 파이프라인 | ★★★★★ | Either.pipeK로 깔끔한 체이닝 |
 | 비동기 작업 합성 | ★★★★★ | Task의 지연 실행과 다양한 조합기 |
-| 폼 검증 (에러 수집) | ★★★☆☆ | Validation Applicative 미지원 |
+| 폼 검증 (에러 수집) | ★★★★★ | Validation으로 모든 에러 누적 |
 | 대용량 데이터 변환 | ★★★★★ | Transducer로 효율적 처리 |
 | 스택 안전 재귀 | ★★★★★ | Free Monad + trampoline |
 | 일반 유틸리티 | ★★★★★ | pipe, compose, curry 등 완비 |
@@ -267,11 +279,12 @@ const getFullName = converge(
 ### 장점
 - **학습 곡선 완화**: Static Land 명세를 따르면서도 인스턴스 메서드(`.map()`, `.chain()`)를 함께 제공하여 초보자도 접근하기 쉬움
 - **실용적인 설계**: 엄격 모드와 느슨 모드를 지원하여 개발/프로덕션 환경에 맞게 조절 가능
+- **완전한 검증 지원**: Validation 타입으로 모든 에러를 수집하고, `Validation.collect`로 간편하게 검증 파이프라인 구축 가능
 - **단일 파일**: 번들 크기를 최소화하고 의존성 없이 사용 가능
 
 ### 개선 여지
-- Validation Applicative (모든 에러 수집)가 내장되면 폼 검증 시나리오에서 더 유용할 것
 - Lens/Optics 지원이 추가되면 불변 데이터 업데이트가 더 편리해질 것
+- Reader/Writer/State Monad가 추가되면 더 다양한 효과를 다룰 수 있을 것
 
 ### 결론
 실무에서 함수형 프로그래밍 패턴을 적용하기에 충분한 도구를 제공합니다. 특히 Maybe/Either/Task 조합으로 안전하고 선언적인 코드를 작성할 수 있습니다.

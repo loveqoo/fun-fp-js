@@ -51,7 +51,11 @@ const Symbols = {
     Free: Symbol.for('fun-fp-js/Free'),
     Pure: Symbol.for('fun-fp-js/Pure'),
     Impure: Symbol.for('fun-fp-js/Impure'),
-    Reduced: Symbol.for('fun-fp-js/Reduced')
+    Reduced: Symbol.for('fun-fp-js/Reduced'),
+    Validation: Symbol.for('fun-fp-js/Validation'),
+    Reader: Symbol.for('fun-fp-js/Reader'),
+    Writer: Symbol.for('fun-fp-js/Writer'),
+    State: Symbol.for('fun-fp-js/State')
 };
 const types = {
     of: a => {
@@ -1581,6 +1585,197 @@ class ValidationFoldable extends Foldable {
     }
 }
 modules.push(ValidationFoldable);
+/* Reader */
+class Reader {
+    constructor(run) {
+        types.checkFunction(run, 'Reader');
+        this._run = run;
+        this._typeName = 'Reader';
+    }
+    run(env) { return this._run(env); }
+    map(f) { return Functor.of('reader').map(f, this); }
+    chain(f) { return Chain.of('reader').chain(f, this); }
+}
+Reader.prototype[Symbols.Reader] = true;
+Reader.of = x => new Reader(_ => x);
+Reader.isReader = x => x != null && x[Symbols.Reader] === true;
+Reader.ask = new Reader(env => env);
+Reader.asks = f => new Reader(env => f(env));
+Reader.local = (f, reader) => new Reader(env => reader.run(f(env)));
+Reader.map = (f, r) => Functor.of('reader').map(f, r);
+Reader.ap = (rf, ra) => Apply.of('reader').ap(rf, ra);
+Reader.chain = (f, r) => Chain.of('reader').chain(f, r);
+class ReaderFunctor extends Functor {
+    constructor() {
+        super((f, r) => new Reader(env => f(r.run(env))), 'Reader', Functor.types, 'reader');
+    }
+}
+modules.push(ReaderFunctor);
+class ReaderApply extends Apply {
+    constructor() {
+        super(Functor.types.ReaderFunctor,
+            (rf, ra) => new Reader(env => rf.run(env)(ra.run(env))),
+            'Reader', Apply.types, 'reader');
+    }
+}
+modules.push(ReaderApply);
+class ReaderApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.ReaderApply, Reader.of, 'Reader', Applicative.types, 'reader');
+    }
+}
+modules.push(ReaderApplicative);
+class ReaderChain extends Chain {
+    constructor() {
+        super(Apply.types.ReaderApply,
+            (f, r) => new Reader(env => f(r.run(env)).run(env)),
+            'Reader', Chain.types, 'reader');
+    }
+}
+modules.push(ReaderChain);
+class ReaderMonad extends Monad {
+    constructor() {
+        super(Applicative.types.ReaderApplicative, Chain.types.ReaderChain, 'Reader', Monad.types, 'reader');
+    }
+}
+modules.push(ReaderMonad);
+Reader.pipeK = (...fns) => pipeK(Monad.of('reader'))(fns);
+Reader.lift = f => lift(Applicative.of('reader'))(f);
+/* Writer */
+class Writer {
+    constructor(value, output, monoid = Monoid.of('array')) {
+        this.value = value;
+        this.output = output;
+        this.monoid = monoid;
+        this._typeName = 'Writer';
+    }
+    run() { return [this.value, this.output]; }
+    exec() { return this.value; }
+    map(f) { return Functor.of('writer').map(f, this); }
+    chain(f) { return Chain.of('writer').chain(f, this); }
+}
+Writer.prototype[Symbols.Writer] = true;
+Writer.of = (x, monoid = Monoid.of('array')) => new Writer(x, monoid.empty(), monoid);
+Writer.isWriter = x => x != null && x[Symbols.Writer] === true;
+Writer.tell = (output, monoid = Monoid.of('array')) => new Writer(undefined, output, monoid);
+Writer.listen = w => new Writer([w.value, w.output], w.output, w.monoid);
+Writer.listens = (f, w) => new Writer([w.value, f(w.output)], w.output, w.monoid);
+Writer.pass = w => {
+    const [a, f] = w.value;
+    return new Writer(a, f(w.output), w.monoid);
+};
+Writer.censor = (f, w) => new Writer(w.value, f(w.output), w.monoid);
+Writer.map = (f, w) => Functor.of('writer').map(f, w);
+Writer.ap = (wf, wa) => Apply.of('writer').ap(wf, wa);
+Writer.chain = (f, w) => Chain.of('writer').chain(f, w);
+class WriterFunctor extends Functor {
+    constructor() {
+        super((f, w) => new Writer(f(w.value), w.output, w.monoid), 'Writer', Functor.types, 'writer');
+    }
+}
+modules.push(WriterFunctor);
+class WriterApply extends Apply {
+    constructor() {
+        super(Functor.types.WriterFunctor,
+            (wf, wa) => new Writer(wf.value(wa.value), wf.monoid.concat(wf.output, wa.output), wf.monoid),
+            'Writer', Apply.types, 'writer');
+    }
+}
+modules.push(WriterApply);
+class WriterApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.WriterApply, Writer.of, 'Writer', Applicative.types, 'writer');
+    }
+}
+modules.push(WriterApplicative);
+class WriterChain extends Chain {
+    constructor() {
+        super(Apply.types.WriterApply,
+            (f, w) => {
+                const next = f(w.value);
+                return new Writer(next.value, w.monoid.concat(w.output, next.output), w.monoid);
+            },
+            'Writer', Chain.types, 'writer');
+    }
+}
+modules.push(WriterChain);
+class WriterMonad extends Monad {
+    constructor() {
+        super(Applicative.types.WriterApplicative, Chain.types.WriterChain, 'Writer', Monad.types, 'writer');
+    }
+}
+modules.push(WriterMonad);
+Writer.pipeK = (...fns) => pipeK(Monad.of('writer'))(fns);
+Writer.lift = f => lift(Applicative.of('writer'))(f);
+/* State */
+class State {
+    constructor(run) {
+        types.checkFunction(run, 'State');
+        this._run = run;
+        this._typeName = 'State';
+    }
+    run(s) { return this._run(s); }
+    eval(s) { return this.run(s)[0]; }
+    exec(s) { return this.run(s)[1]; }
+    map(f) { return Functor.of('state').map(f, this); }
+    chain(f) { return Chain.of('state').chain(f, this); }
+}
+State.prototype[Symbols.State] = true;
+State.of = x => new State(s => [x, s]);
+State.isState = x => x != null && x[Symbols.State] === true;
+State.get = new State(s => [s, s]);
+State.put = s => new State(_ => [undefined, s]);
+State.modify = f => new State(s => [undefined, f(s)]);
+State.gets = f => new State(s => [f(s), s]);
+State.map = (f, st) => Functor.of('state').map(f, st);
+State.ap = (sf, sa) => Apply.of('state').ap(sf, sa);
+State.chain = (f, st) => Chain.of('state').chain(f, st);
+class StateFunctor extends Functor {
+    constructor() {
+        super((f, st) => new State(s => {
+            const [a, s2] = st.run(s);
+            return [f(a), s2];
+        }), 'State', Functor.types, 'state');
+    }
+}
+modules.push(StateFunctor);
+class StateApply extends Apply {
+    constructor() {
+        super(Functor.types.StateFunctor,
+            (sf, sa) => new State(s => {
+                const [f, s2] = sf.run(s);
+                const [a, s3] = sa.run(s2);
+                return [f(a), s3];
+            }),
+            'State', Apply.types, 'state');
+    }
+}
+modules.push(StateApply);
+class StateApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.StateApply, State.of, 'State', Applicative.types, 'state');
+    }
+}
+modules.push(StateApplicative);
+class StateChain extends Chain {
+    constructor() {
+        super(Apply.types.StateApply,
+            (f, st) => new State(s => {
+                const [a, s2] = st.run(s);
+                return f(a).run(s2);
+            }),
+            'State', Chain.types, 'state');
+    }
+}
+modules.push(StateChain);
+class StateMonad extends Monad {
+    constructor() {
+        super(Applicative.types.StateApplicative, Chain.types.StateChain, 'State', Monad.types, 'state');
+    }
+}
+modules.push(StateMonad);
+State.pipeK = (...fns) => pipeK(Monad.of('state'))(fns);
+State.lift = f => lift(Applicative.of('state'))(f);
 /* Utilities */
 const sequence = (traversable, applicative, u) => {
     if (!traversable || typeof traversable.traverse !== 'function') {
@@ -1873,7 +2068,7 @@ export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
-    Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation,
+    Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     identity, compose, compose2, sequence, lift, pipeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
