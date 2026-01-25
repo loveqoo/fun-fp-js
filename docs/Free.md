@@ -70,6 +70,104 @@ Free 구조를 동기적으로 실행.
 ### Free.runAsync(runner)
 커스텀 runner로 Free 실행 (비동기).
 
+### Free.runWithTask(runner, free)
+Task 기반 비동기 실행. runner가 Task를 반환할 때 사용하며, Promise를 반환하여 async/await 호환성을 제공합니다.
+
+```javascript
+import FunFP from 'fun-fp-js';
+const { Free, Task } = FunFP;
+
+// 1. DSL 정의 - 명령 타입
+class FetchCmd {
+    constructor(url) {
+        this.url = url;
+    }
+}
+
+class LogCmd {
+    constructor(message) {
+        this.message = message;
+    }
+}
+
+// 2. Task 기반 인터프리터 (runner)
+const interpreter = cmd => {
+    if (cmd instanceof FetchCmd) {
+        return Task.fromPromise(() =>
+            fetch(cmd.url).then(r => r.json())
+        )();
+    }
+    if (cmd instanceof LogCmd) {
+        return Task.of(console.log(cmd.message));
+    }
+    return Task.rejected(new Error('Unknown command'));
+};
+
+// 3. Free 프로그램 작성
+const program = Free.liftF(new FetchCmd('/api/users/1'))
+    .chain(user => Free.liftF(new LogCmd(`User: ${user.name}`)))
+    .chain(_ => Free.liftF(new FetchCmd(`/api/posts/${user.id}`)))
+    .chain(posts => Free.pure({ user, posts }));
+
+// 4. async/await로 실행
+(async () => {
+    try {
+        const result = await Free.runWithTask(interpreter, program);
+        console.log('Result:', result);
+    } catch (err) {
+        console.error('Error:', err);
+    }
+})();
+
+// 또는 Promise then/catch
+Free.runWithTask(interpreter, program)
+    .then(result => console.log('Result:', result))
+    .catch(err => console.error('Error:', err));
+```
+
+**runWithTask vs runAsync:**
+- `runAsync`: 콜백 기반 (`(err, result) => ...`)
+- `runWithTask`: Promise 반환 (async/await 사용 가능)
+
+**사용 시나리오:**
+1. HTTP 요청 DSL (fetch 래핑)
+2. 파일 시스템 연산 DSL
+3. 데이터베이스 쿼리 DSL
+4. 모든 비동기 효과를 순수하게 표현
+
+```javascript
+// 실용적 예시: API 조합
+class GetUser {
+    constructor(id) { this.id = id; }
+}
+class GetPosts {
+    constructor(userId) { this.userId = userId; }
+}
+
+const runAPI = cmd => {
+    if (cmd instanceof GetUser) {
+        return Task.fromPromise(() =>
+            fetch(`/api/users/${cmd.id}`).then(r => r.json())
+        )();
+    }
+    if (cmd instanceof GetPosts) {
+        return Task.fromPromise(() =>
+            fetch(`/api/users/${cmd.userId}/posts`).then(r => r.json())
+        )();
+    }
+};
+
+const getUserWithPosts = userId =>
+    Free.liftF(new GetUser(userId))
+        .chain(user =>
+            Free.liftF(new GetPosts(user.id))
+                .map(posts => ({ user, posts }))
+        );
+
+// Promise 기반 실행
+await Free.runWithTask(runAPI, getUserWithPosts(1));
+```
+
 ## Thunk 헬퍼
 
 ```javascript

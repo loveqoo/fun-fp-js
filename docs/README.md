@@ -12,9 +12,22 @@
 - [Group](./Group.md) - 결합 + 항등원 + 역원
 
 ### 2단계: 핵심 컨테이너 타입
+
+#### 기본 컨테이너
 - [Maybe](./Maybe.md) - null 안전 처리
-- [Either](./Either.md) - 에러 처리
+- [Either](./Either.md) - 에러 처리 (fail-fast)
+- [Validation](./Validation.md) - 에러 누적 (병렬 검증)
+
+#### 비동기
 - [Task](./Task.md) - 비동기 처리
+
+#### 환경/상태 관리
+- [Reader](./Reader.md) - 환경 기반 계산 (의존성 주입)
+- [Writer](./Writer.md) - 출력 추적 (로깅)
+- [State](./State.md) - 상태 변환
+
+#### 고급
+- [Free](./Free.md) - 스택 안전 재귀, DSL 구축
 
 ### 3단계: 변환과 합성
 - [Functor](./Functor.md) - 값 변환 (map)
@@ -45,8 +58,6 @@
 - [Extend](./Extend.md) - 컨텍스트 기반 변환
 - [Comonad](./Comonad.md) - Monad의 쌍대
 
-### 9단계: Free Monad
-- [Free](./Free.md) - 스택 안전 재귀, DSL 구축
 
 ## 추상 함수
 
@@ -56,7 +67,9 @@
 |------|----------|------|
 | `sequence` | `(Traversable, Applicative, u) -> Applicative u` | 효과 뒤집기 |
 | `lift` | `Applicative -> (a -> b) -> (F a -> F b)` | 함수를 컨테이너 컨텍스트로 |
-| `pipeK` | `(Monad, Foldable?) -> [a -> M b] -> a -> M b` | Kleisli 합성 |
+| `pipeK` | `(Monad, Foldable?) -> [a -> M b] -> a -> M b` | Kleisli 합성 (좌→우) |
+| `composeK` | `(Monad, Foldable?) -> [a -> M b] -> a -> M b` | Kleisli 합성 (우→좌) |
+| `foldMap` | `(Foldable, Monoid) -> (a -> b) -> F a -> b` | 매핑 후 Monoid로 축소 |
 
 ## 타입 클래스 의존성 그래프
 
@@ -87,8 +100,10 @@ Extend ──> Comonad
 
 ## 핵심 개념 요약
 
+### 타입 클래스
+
 | 타입 클래스 | 핵심 연산 | 한 줄 설명 |
-|------------|----------|-----------| 
+|------------|----------|-----------|
 | Setoid | equals | 같은가? |
 | Ord | lte | 순서 비교 |
 | Semigroup | concat | 결합하기 |
@@ -113,7 +128,19 @@ Extend ──> Comonad
 | Category | id | 항등 함수 |
 | Extend | extend | 컨텍스트 변환 |
 | Comonad | extract | 값 추출 |
-| Free | trampoline | 스택 안전 재귀 |
+
+### 데이터 타입
+
+| 타입 | 주요 용도 | 핵심 특징 |
+|------|----------|----------|
+| Maybe | null 안전 처리 | Just / Nothing |
+| Either | 에러 처리 (fail-fast) | Right / Left |
+| Validation | 병렬 검증 (에러 누적) | Valid / Invalid (Monoid) |
+| Task | 비동기 처리 | Lazy Promise |
+| Reader | 의존성 주입 | 환경 전파 |
+| Writer | 로깅/출력 추적 | 값 + 출력 (Monoid) |
+| State | 상태 변환 | 상태 스레딩 |
+| Free | DSL, 스택 안전 재귀 | Pure / Impure |
 
 ## 자주 쓰는 패턴
 

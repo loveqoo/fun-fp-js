@@ -193,6 +193,118 @@ map(x => x + 1, maybe);
 chain(x => x > 0 ? Maybe.of(x) : Maybe.Nothing(), maybe);
 ```
 
+## pipeK vs composeK - Kleisli 합성
+
+Kleisli 합성은 `a -> M b` 형태의 함수들을 합성하는 방법입니다.
+
+### pipeK - 왼쪽에서 오른쪽 합성
+
+```javascript
+const { Maybe } = FunFP;
+
+const parse = str => {
+    const n = parseInt(str);
+    return isNaN(n) ? Maybe.Nothing() : Maybe.of(n);
+};
+const double = n => Maybe.of(n * 2);
+const asString = n => Maybe.of(`Result: ${n}`);
+
+// pipeK: 좌 → 우 (왼쪽부터 읽기)
+const pipeline = Maybe.pipeK(parse, double, asString);
+
+pipeline('5');     // Just('Result: 10')
+pipeline('abc');   // Nothing
+```
+
+### composeK - 오른쪽에서 왼쪽 합성 (수학적 합성)
+
+```javascript
+const { Maybe } = FunFP;
+
+// composeK: 우 → 좌 (수학적 합성 순서)
+const pipeline = Maybe.composeK(asString, double, parse);
+
+pipeline('5');     // Just('Result: 10')
+pipeline('abc');   // Nothing
+```
+
+**같은 결과, 다른 방향:**
+- `pipeK(f, g, h)` = f → g → h (순차적 읽기)
+- `composeK(h, g, f)` = f → g → h (수학적 표기)
+
+### 비교 테이블
+
+| | pipeK | composeK |
+|---|---|---|
+| 방향 | 좌 → 우 | 우 → 좌 |
+| 읽기 | 순차적 (실행 순서대로) | 수학적 (∘ 합성과 동일) |
+| 첫 번째 인자 | 첫 번째로 실행 | 마지막으로 실행 |
+| 사용 경향 | 파이프라인, 워크플로우 | 함수형 수학 스타일 |
+
+### 예시: Either로 검증 파이프라인
+
+```javascript
+const { Either } = FunFP;
+
+const parseNumber = str => {
+    const n = parseInt(str);
+    return isNaN(n) ? Either.Left('Not a number') : Either.Right(n);
+};
+
+const validatePositive = n =>
+    n > 0 ? Either.Right(n) : Either.Left('Must be positive');
+
+const double = n => Either.Right(n * 2);
+
+// pipeK: 읽기 쉬운 순서
+const validateAndDouble = Either.pipeK(
+    parseNumber,
+    validatePositive,
+    double
+);
+
+// composeK: 수학적 순서 (역순으로 작성)
+const validateAndDouble2 = Either.composeK(
+    double,
+    validatePositive,
+    parseNumber
+);
+
+validateAndDouble('5');    // Right(10)
+validateAndDouble2('5');   // Right(10) - 동일한 결과
+```
+
+### 지원 타입
+
+모든 Monad 타입이 `pipeK`와 `composeK`를 지원합니다:
+- **Maybe**: null 안전 파이프라인
+- **Either**: 에러 처리 파이프라인
+- **Task**: 비동기 워크플로우
+- **Reader**: 환경 공유 합성
+- **Writer**: 출력 누적 합성
+- **State**: 상태 흐름 합성
+- **Free**: DSL 합성
+
+```javascript
+// Task 예시
+const { Task } = FunFP;
+
+const fetchUser = id => Task.fromPromise(() =>
+    fetch(`/api/users/${id}`).then(r => r.json())
+)();
+
+const fetchPosts = user => Task.fromPromise(() =>
+    fetch(`/api/users/${user.id}/posts`).then(r => r.json())
+)();
+
+const formatData = posts => Task.of({ count: posts.length, posts });
+
+// pipeK로 비동기 파이프라인
+const getUserData = Task.pipeK(fetchUser, fetchPosts, formatData);
+
+getUserData(1).fork(console.error, console.log);
+```
+
 ## 관련 타입 클래스
 
 - **Functor**: map만 제공
