@@ -231,4 +231,70 @@ test('Task can be forked multiple times', () => {
     assertEquals(results, [1, 2, 3]);
 });
 
+// === Task.lift ===
+logSection('Task.lift');
+
+test('Task.lift lifts binary function', () => {
+    const add = (a, b) => a + b;
+    const liftedAdd = Task.lift(add);
+
+    const t1 = Task.of(10);
+    const t2 = Task.of(32);
+
+    liftedAdd(t1, t2).fork(
+        e => { throw new Error(`Unexpected rejection: ${e}`); },
+        v => assertEquals(v, 42)
+    );
+});
+
+test('Task.lift lifts ternary function', () => {
+    const sum3 = (a, b, c) => a + b + c;
+    const liftedSum = Task.lift(sum3);
+
+    const t1 = Task.of(10);
+    const t2 = Task.of(20);
+    const t3 = Task.of(12);
+
+    liftedSum(t1, t2, t3).fork(
+        e => { throw new Error(`Unexpected rejection: ${e}`); },
+        v => assertEquals(v, 42)
+    );
+});
+
+test('Task.lift with mixed resolved and rejected tasks', () => {
+    const add = (a, b) => a + b;
+    const liftedAdd = Task.lift(add);
+
+    const t1 = Task.of(10);
+    const t2 = Task.rejected('error');
+
+    liftedAdd(t1, t2).fork(
+        e => assertEquals(e, 'error'),
+        v => { throw new Error(`Unexpected resolve: ${v}`); }
+    );
+});
+
+test('Task.lift preserves laziness', () => {
+    let executed = false;
+    const add = (a, b) => {
+        executed = true;
+        return a + b;
+    };
+    const liftedAdd = Task.lift(add);
+
+    const t1 = Task.of(5);
+    const t2 = Task.of(3);
+
+    const result = liftedAdd(t1, t2);
+    assertEquals(executed, false); // Not executed yet
+
+    result.fork(
+        e => { throw new Error(`Unexpected rejection: ${e}`); },
+        v => {
+            assertEquals(executed, true);
+            assertEquals(v, 8);
+        }
+    );
+});
+
 console.log('\n✅ Task tests completed');
