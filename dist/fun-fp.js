@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-25T04:31:26.336Z
+ * Built: 2026-01-25T04:50:14.474Z
  * Static Land specification compliant
  */
 const polyfills = {
@@ -1063,15 +1063,6 @@ Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
 Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
-Maybe.map = (f, m) => Functor.of('maybe').map(f, m);
-Maybe.ap = (mf, m) => Apply.of('maybe').ap(mf, m);
-Maybe.chain = (f, m) => Chain.of('maybe').chain(f, m);
-Maybe.alt = (m1, m2) => Alt.of('maybe').alt(m1, m2);
-Maybe.zero = () => Plus.of('maybe').zero();
-Maybe.filter = (pred, m) => Filterable.of('maybe').filter(pred, m);
-Maybe.reduce = (f, init, m) => Foldable.of('maybe').reduce(f, init, m);
-Maybe.traverse = (applicative, f, m) => Traversable.of('maybe').traverse(applicative, f, m);
-Maybe.chainRec = (f, i) => ChainRec.of('maybe').chainRec(f, i);
 class MaybeSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'Maybe', Semigroupoid.types, 'maybe');
@@ -1193,15 +1184,6 @@ Either.isRight = x => Either.isEither(x) && x.isRight();
 Either.fromNullable = x => x == null ? Either.Left(null) : Either.Right(x);
 Either.fold = (onLeft, onRight, e) => e.isLeft() ? onLeft(e.value) : onRight(e.value);
 Either.catch = runCatch(f => Either.Right(f()), Either.Left);
-Either.map = (f, e) => Functor.of('either').map(f, e);
-Either.ap = (ef, e) => Apply.of('either').ap(ef, e);
-Either.chain = (f, e) => Chain.of('either').chain(f, e);
-Either.alt = (e1, e2) => Alt.of('either').alt(e1, e2);
-Either.bimap = (f, g, e) => Bifunctor.of('either').bimap(f, g, e);
-Either.filter = (pred, e, onFalse) => Filterable.of('either').filter(pred, e, onFalse);
-Either.reduce = (f, init, e) => Foldable.of('either').reduce(f, init, e);
-Either.traverse = (applicative, f, e) => Traversable.of('either').traverse(applicative, f, e);
-Either.chainRec = (f, i) => ChainRec.of('either').chainRec(f, i);
 class EitherSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.EitherChain.chain(f, g(x)), 'function', Semigroupoid.types, 'either');
@@ -1379,12 +1361,6 @@ Task.race = tasks => new Task((reject, resolve) => {
     let done = false;
     list.forEach(t => t.fork(e => { if (!done) { done = true; reject(e); } }, v => { if (!done) { done = true; resolve(v); } }));
 });
-Task.map = (f, t) => Functor.of('task').map(f, t);
-Task.ap = (tf, t) => Apply.of('task').ap(tf, t);
-Task.chain = (f, t) => Chain.of('task').chain(f, t);
-Task.alt = (t1, t2) => Alt.of('task').alt(t1, t2);
-Task.filter = (pred, t) => Filterable.of('task').filter(pred, t);
-Task.chainRec = (f, i) => ChainRec.of('task').chainRec(f, i);
 class TaskSemigroupoid extends Semigroupoid {
     constructor() {
         super((f, g) => x => Chain.types.TaskChain.chain(f, g(x)), 'function', Semigroupoid.types, 'task');
@@ -1607,9 +1583,6 @@ Reader.isReader = x => x != null && x[Symbols.Reader] === true;
 Reader.ask = new Reader(env => env);
 Reader.asks = f => new Reader(env => f(env));
 Reader.local = (f, reader) => new Reader(env => reader.run(f(env)));
-Reader.map = (f, r) => Functor.of('reader').map(f, r);
-Reader.ap = (rf, ra) => Apply.of('reader').ap(rf, ra);
-Reader.chain = (f, r) => Chain.of('reader').chain(f, r);
 class ReaderFunctor extends Functor {
     constructor() {
         super((f, r) => new Reader(env => f(r.run(env))), 'Reader', Functor.types, 'reader');
@@ -1644,9 +1617,6 @@ class ReaderMonad extends Monad {
     }
 }
 modules.push(ReaderMonad);
-Reader.pipeK = (...fns) => pipeK(Monad.of('reader'))(fns);
-Reader.composeK = (...fns) => composeK(Monad.of('reader'))(fns);
-Reader.lift = f => lift(Applicative.of('reader'))(f);
 /* Writer */
 class Writer {
     constructor(value, output, monoid = Monoid.of('array')) {
@@ -1671,9 +1641,6 @@ Writer.pass = w => {
     return new Writer(a, f(w.output), w.monoid);
 };
 Writer.censor = (f, w) => new Writer(w.value, f(w.output), w.monoid);
-Writer.map = (f, w) => Functor.of('writer').map(f, w);
-Writer.ap = (wf, wa) => Apply.of('writer').ap(wf, wa);
-Writer.chain = (f, w) => Chain.of('writer').chain(f, w);
 class WriterFunctor extends Functor {
     constructor() {
         super((f, w) => new Writer(f(w.value), w.output, w.monoid), 'Writer', Functor.types, 'writer');
@@ -1711,9 +1678,6 @@ class WriterMonad extends Monad {
     }
 }
 modules.push(WriterMonad);
-Writer.pipeK = (...fns) => pipeK(Monad.of('writer'))(fns);
-Writer.composeK = (...fns) => composeK(Monad.of('writer'))(fns);
-Writer.lift = f => lift(Applicative.of('writer'))(f);
 /* State */
 class State {
     constructor(run) {
@@ -1734,9 +1698,6 @@ State.get = new State(s => [s, s]);
 State.put = s => new State(_ => [undefined, s]);
 State.modify = f => new State(s => [undefined, f(s)]);
 State.gets = f => new State(s => [f(s), s]);
-State.map = (f, st) => Functor.of('state').map(f, st);
-State.ap = (sf, sa) => Apply.of('state').ap(sf, sa);
-State.chain = (f, st) => Chain.of('state').chain(f, st);
 class StateFunctor extends Functor {
     constructor() {
         super((f, st) => new State(s => {
@@ -1781,9 +1742,6 @@ class StateMonad extends Monad {
     }
 }
 modules.push(StateMonad);
-State.pipeK = (...fns) => pipeK(Monad.of('state'))(fns);
-State.composeK = (...fns) => composeK(Monad.of('state'))(fns);
-State.lift = f => lift(Applicative.of('state'))(f);
 /* Utilities */
 const sequence = (traversable, applicative, u) => {
     if (!traversable || typeof traversable.traverse !== 'function') {
@@ -1843,9 +1801,6 @@ Maybe.pipe = (m, ...fns) => {
         return acc.isJust() ? fn(acc) : acc;
     }, m);
 };
-Maybe.pipeK = (...fns) => pipeK(Monad.of('maybe'))(fns);
-Maybe.composeK = (...fns) => composeK(Monad.of('maybe'))(fns);
-Maybe.lift = f => runCatch(lift(Applicative.types.MaybeApplicative)(f), Maybe.Nothing);
 Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
 Either.pipe = (e, ...fns) => {
     if (!Either.isEither(e)) raise(new TypeError('Either.pipe: first argument must be an Either'));
@@ -1854,12 +1809,6 @@ Either.pipe = (e, ...fns) => {
         return acc.isRight() ? fn(acc) : acc;
     }, e);
 };
-Either.pipeK = (...fns) => pipeK(Monad.of('either'))(fns);
-Either.composeK = (...fns) => composeK(Monad.of('either'))(fns);
-Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
-Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
-Task.composeK = (...fns) => composeK(Monad.of('task'))(fns);
-Task.lift = f => runCatch(lift(Applicative.of('task'))(f), Task.rejected);
 const { transducer } = (() => {
     class Reduced {
         constructor(value) {
@@ -2083,9 +2032,99 @@ class FreeMonad extends Monad {
 }
 modules.push(FreeMonad);
 load(...modules);
+
+/* ═══════════════════════════════════════════════════════════════
+   Static Methods (Eta Reduced)
+   - load() 이후에 정의해야 TypeClass.of()가 정상 작동
+   ═══════════════════════════════════════════════════════════════ */
+
+// Functor
+Maybe.map = Functor.of('maybe').map;
+Either.map = Functor.of('either').map;
+Task.map = Functor.of('task').map;
+Reader.map = Functor.of('reader').map;
+Writer.map = Functor.of('writer').map;
+State.map = Functor.of('state').map;
+Free.map = Functor.of('free').map;
+
+// Apply
+Maybe.ap = Apply.of('maybe').ap;
+Either.ap = Apply.of('either').ap;
+Task.ap = Apply.of('task').ap;
+Reader.ap = Apply.of('reader').ap;
+Writer.ap = Apply.of('writer').ap;
+State.ap = Apply.of('state').ap;
+Free.ap = Apply.of('free').ap;
+
+// Chain
+Maybe.chain = Chain.of('maybe').chain;
+Either.chain = Chain.of('either').chain;
+Task.chain = Chain.of('task').chain;
+Reader.chain = Chain.of('reader').chain;
+Writer.chain = Chain.of('writer').chain;
+State.chain = Chain.of('state').chain;
+Free.chain = Chain.of('free').chain;
+
+// Alt
+Maybe.alt = Alt.of('maybe').alt;
+Either.alt = Alt.of('either').alt;
+Task.alt = Alt.of('task').alt;
+
+// Plus
+Maybe.zero = () => Plus.of('maybe').zero();
+
+// Filterable
+Maybe.filter = Filterable.of('maybe').filter;
+Task.filter = Filterable.of('task').filter;
+
+// Foldable (3+ args - no eta reduction)
+Maybe.reduce = (f, init, m) => Foldable.of('maybe').reduce(f, init, m);
+Either.reduce = (f, init, e) => Foldable.of('either').reduce(f, init, e);
+
+// Traversable (3+ args - no eta reduction)
+Maybe.traverse = (applicative, f, m) => Traversable.of('maybe').traverse(applicative, f, m);
+Either.traverse = (applicative, f, e) => Traversable.of('either').traverse(applicative, f, e);
+
+// Bifunctor (3 args - no eta reduction)
+Either.bimap = (f, g, e) => Bifunctor.of('either').bimap(f, g, e);
+
+// Filterable with 3 args (no eta reduction)
+Either.filter = (pred, e, onFalse) => Filterable.of('either').filter(pred, e, onFalse);
+
+// ChainRec
+Maybe.chainRec = ChainRec.of('maybe').chainRec;
+Either.chainRec = ChainRec.of('either').chainRec;
+Task.chainRec = ChainRec.of('task').chainRec;
+
+// pipeK (현재 API 유지 - variadic)
+Maybe.pipeK = (...fns) => pipeK(Monad.of('maybe'))(fns);
+Either.pipeK = (...fns) => pipeK(Monad.of('either'))(fns);
+Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
+Reader.pipeK = (...fns) => pipeK(Monad.of('reader'))(fns);
+Writer.pipeK = (...fns) => pipeK(Monad.of('writer'))(fns);
+State.pipeK = (...fns) => pipeK(Monad.of('state'))(fns);
 Free.pipeK = (...fns) => pipeK(Monad.of('free'))(fns);
+
+// composeK (현재 API 유지 - variadic)
+Maybe.composeK = (...fns) => composeK(Monad.of('maybe'))(fns);
+Either.composeK = (...fns) => composeK(Monad.of('either'))(fns);
+Task.composeK = (...fns) => composeK(Monad.of('task'))(fns);
+Reader.composeK = (...fns) => composeK(Monad.of('reader'))(fns);
+Writer.composeK = (...fns) => composeK(Monad.of('writer'))(fns);
+State.composeK = (...fns) => composeK(Monad.of('state'))(fns);
 Free.composeK = (...fns) => composeK(Monad.of('free'))(fns);
-Free.lift = f => lift(Applicative.of('free'))(f);
+
+// lift (eta reduced)
+Reader.lift = lift(Applicative.of('reader'));
+Writer.lift = lift(Applicative.of('writer'));
+State.lift = lift(Applicative.of('state'));
+Free.lift = lift(Applicative.of('free'));
+
+// lift (with error handling - cannot eta reduce)
+Maybe.lift = f => runCatch(lift(Applicative.of('maybe'))(f), Maybe.Nothing);
+Either.lift = f => runCatch(lift(Applicative.of('either'))(f), Either.Left);
+Task.lift = f => runCatch(lift(Applicative.of('task'))(f), Task.rejected);
+
 const extra = (() => {
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
         (acc, key) => Chain.types.EitherChain.chain(obj => Either.fromNullable(obj[key]), acc),
@@ -2095,9 +2134,6 @@ const extra = (() => {
         (match, keyStr) => Either.fold(_ => match, identity, path(keyStr)(data)));
     return { path, template };
 })();
-Free.map = (f, free) => Functor.of('free').map(f, free);
-Free.chain = (f, free) => Chain.of('free').chain(f, free);
-Free.ap = (ff, free) => Apply.of('free').ap(ff, free);
 
 export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
