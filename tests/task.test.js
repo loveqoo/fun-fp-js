@@ -297,4 +297,21 @@ test('Task.lift preserves laziness', () => {
     );
 });
 
+test('Task.lift catches exceptions and returns rejected Task', () => {
+    const throwingFn = (a, b) => {
+        throw new Error('computation error');
+    };
+    const liftedFn = Task.lift(throwingFn);
+
+    const t1 = Task.of(5);
+    const t2 = Task.of(3);
+
+    liftedFn(t1, t2).fork(
+        e => {
+            assertEquals(e.message, 'computation error');
+        },
+        v => { throw new Error(`Unexpected resolve: ${v}`); }
+    );
+});
+
 console.log('\n✅ Task tests completed');

@@ -1854,7 +1854,7 @@ Either.composeK = (...fns) => composeK(Monad.of('either'))(fns);
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
 Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
 Task.composeK = (...fns) => composeK(Monad.of('task'))(fns);
-Task.lift = f => lift(Applicative.of('task'))(f);
+Task.lift = f => runCatch(lift(Applicative.of('task'))(f), Task.rejected);
 const { transducer } = (() => {
     class Reduced {
         constructor(value) {
