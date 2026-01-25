@@ -7,7 +7,8 @@ const {
     apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
-    tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer
+    tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer,
+    composeK, foldMap, Maybe, Either, Foldable, Monoid, Monad
 } = fp;
 
 // === Basic Utilities ===
@@ -414,6 +415,102 @@ test('transducer.transduce - with sum reducer', () => {
     const double = x => x * 2;
     const result = transducer.transduce(transducer.map(double))((acc, x) => acc + x)(0)([1, 2, 3]);
     assertEquals(result, 12); // (1*2) + (2*2) + (3*2) = 2 + 4 + 6 = 12
+});
+
+// === composeK ===
+logSection('composeK - Kleisli composition (right to left)');
+
+test('Maybe.composeK - composes right to left', () => {
+    const safeDouble = x => Maybe.Just(x * 2);
+    const safeAddOne = x => Maybe.Just(x + 1);
+
+    // compose: safeDouble(safeAddOne(5)) = safeDouble(6) = 12
+    const composed = Maybe.composeK(safeDouble, safeAddOne);
+    const result = composed(5);
+    assertEquals(result.value, 12);
+});
+
+test('Maybe.composeK - short-circuits on Nothing', () => {
+    const safeHead = arr => arr.length > 0 ? Maybe.Just(arr[0]) : Maybe.Nothing();
+    const safeProp = key => obj => obj[key] != null ? Maybe.Just(obj[key]) : Maybe.Nothing();
+
+    const getFirstName = Maybe.composeK(safeProp('name'), safeHead);
+
+    // 성공 케이스
+    const success = getFirstName([{ name: 'Alice' }]);
+    assertEquals(success.value, 'Alice');
+
+    // 실패 케이스 (빈 배열)
+    const fail = getFirstName([]);
+    assert(fail.isNothing(), 'should be Nothing for empty array');
+});
+
+test('Either.composeK - composes right to left', () => {
+    const safeDouble = x => Either.Right(x * 2);
+    const safeAddOne = x => Either.Right(x + 1);
+
+    const composed = Either.composeK(safeDouble, safeAddOne);
+    const result = composed(5);
+    assertEquals(result.value, 12);
+});
+
+test('Either.composeK - short-circuits on Left', () => {
+    const safeDiv = y => x => y === 0 ? Either.Left('Division by zero') : Either.Right(x / y);
+    const safeDouble = x => Either.Right(x * 2);
+
+    const composed = Either.composeK(safeDouble, safeDiv(0));
+    const result = composed(10);
+    assert(result.isLeft(), 'should be Left');
+    assertEquals(result.value, 'Division by zero');
+});
+
+test('composeK - generic function works correctly', () => {
+    const safeDouble = x => Maybe.Just(x * 2);
+    const safeAddOne = x => Maybe.Just(x + 1);
+    const safeSquare = x => Maybe.Just(x * x);
+
+    // compose: safeSquare(safeDouble(safeAddOne(3))) = safeSquare(safeDouble(4)) = safeSquare(8) = 64
+    const composed = composeK(Monad.of('maybe'))([safeSquare, safeDouble, safeAddOne]);
+    const result = composed(3);
+    assertEquals(result.value, 64);
+});
+
+// === foldMap ===
+logSection('foldMap - Foldable with Monoid');
+
+test('foldMap - array monoid (flatten)', () => {
+    const duplicate = x => [x, x];
+    const result = foldMap(Foldable.of('array'), Monoid.of('array'))(duplicate)([1, 2, 3]);
+    assertEquals(result, [1, 1, 2, 2, 3, 3]);
+});
+
+test('foldMap - number sum monoid', () => {
+    const toLength = str => str.length;
+    const result = foldMap(Foldable.of('array'), Monoid.of('number'))(toLength)(['a', 'bb', 'ccc']);
+    assertEquals(result, 6); // 1 + 2 + 3
+});
+
+test('foldMap - string monoid', () => {
+    const wrap = x => `[${x}]`;
+    const result = foldMap(Foldable.of('array'), Monoid.of('string'))(wrap)([1, 2, 3]);
+    assertEquals(result, '[1][2][3]');
+});
+
+test('foldMap - empty array returns monoid empty', () => {
+    const result = foldMap(Foldable.of('array'), Monoid.of('number'))(x => x)([]);
+    assertEquals(result, 0);
+});
+
+test('foldMap - with Maybe array (flatten Just values)', () => {
+    const toMaybeLength = str => str.length > 0 ? Maybe.Just(str.length) : Maybe.Nothing();
+    // This test shows foldMap composing functions that return monoid values
+    const lengths = ['a', '', 'bb', '', 'ccc'].map(toMaybeLength);
+    // [Just(1), Nothing, Just(2), Nothing, Just(3)]
+
+    // foldMap with array monoid extracts values
+    const extractJusts = m => m.isJust() ? [m.value] : [];
+    const result = foldMap(Foldable.of('array'), Monoid.of('array'))(extractJusts)(lengths);
+    assertEquals(result, [1, 2, 3]);
 });
 
 console.log('\n✅ Function manipulation tests completed\n');

@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-24T16:29:40.720Z
+ * Built: 2026-01-25T04:15:55.557Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1660,6 +1660,7 @@ class ReaderMonad extends Monad {
 }
 modules.push(ReaderMonad);
 Reader.pipeK = (...fns) => pipeK(Monad.of('reader'))(fns);
+Reader.composeK = (...fns) => composeK(Monad.of('reader'))(fns);
 Reader.lift = f => lift(Applicative.of('reader'))(f);
 /* Writer */
 class Writer {
@@ -1726,6 +1727,7 @@ class WriterMonad extends Monad {
 }
 modules.push(WriterMonad);
 Writer.pipeK = (...fns) => pipeK(Monad.of('writer'))(fns);
+Writer.composeK = (...fns) => composeK(Monad.of('writer'))(fns);
 Writer.lift = f => lift(Applicative.of('writer'))(f);
 /* State */
 class State {
@@ -1795,6 +1797,7 @@ class StateMonad extends Monad {
 }
 modules.push(StateMonad);
 State.pipeK = (...fns) => pipeK(Monad.of('state'))(fns);
+State.composeK = (...fns) => composeK(Monad.of('state'))(fns);
 State.lift = f => lift(Applicative.of('state'))(f);
 /* Utilities */
 const sequence = (traversable, applicative, u) => {
@@ -1805,6 +1808,19 @@ const sequence = (traversable, applicative, u) => {
         raise(new TypeError(`sequence: u must be ${traversable.type}`));
     }
     return traversable.traverse(applicative, identity, u);
+};
+const foldMap = (foldable, monoid) => {
+    if (!(foldable && foldable[Symbols.Foldable] === true)) {
+        raise(new TypeError('foldMap: first argument must be a Foldable'));
+    }
+    if (!(monoid && monoid[Symbols.Monoid] === true)) {
+        raise(new TypeError('foldMap: second argument must be a Monoid'));
+    }
+    return f => fa => foldable.reduce(
+        (acc, a) => monoid.concat(acc, types.checkFunction(f, 'foldMap')(a)),
+        monoid.empty(),
+        fa
+    );
 };
 const lift = applicative => {
     if (!(applicative && applicative[Symbols.Applicative] === true)) {
@@ -1825,6 +1841,15 @@ const pipeK = (monad, foldable = Foldable.of('array')) => {
     }
     return fns => x => foldable.reduce((acc, fn) => monad.chain(types.checkFunction(fn, 'pipeK'), acc), monad.of(x), fns);
 };
+const composeK = (monad, foldable = Foldable.of('array')) => {
+    if (!(monad && monad[Symbols.Monad] === true)) {
+        raise(new TypeError('composeK: first argument must be a Monad'));
+    }
+    if (!(foldable && foldable[Symbols.Foldable] === true)) {
+        raise(new TypeError('composeK: second argument must be a Foldable'));
+    }
+    return fns => pipeK(monad, foldable)(fns.slice().reverse());
+};
 Maybe.toEither = (defaultLeft, m) => m.isJust() ? Either.Right(m.value) : Either.Left(defaultLeft);
 Maybe.pipe = (m, ...fns) => {
     if (!Maybe.isMaybe(m)) raise(new TypeError('Maybe.pipe: first argument must be a Maybe'));
@@ -1834,6 +1859,7 @@ Maybe.pipe = (m, ...fns) => {
     }, m);
 };
 Maybe.pipeK = (...fns) => pipeK(Monad.of('maybe'))(fns);
+Maybe.composeK = (...fns) => composeK(Monad.of('maybe'))(fns);
 Maybe.lift = f => runCatch(lift(Applicative.types.MaybeApplicative)(f), Maybe.Nothing);
 Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
 Either.pipe = (e, ...fns) => {
@@ -1844,8 +1870,10 @@ Either.pipe = (e, ...fns) => {
     }, e);
 };
 Either.pipeK = (...fns) => pipeK(Monad.of('either'))(fns);
+Either.composeK = (...fns) => composeK(Monad.of('either'))(fns);
 Either.lift = f => runCatch(lift(Applicative.types.EitherApplicative)(f), Either.Left);
 Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
+Task.composeK = (...fns) => composeK(Monad.of('task'))(fns);
 const { transducer } = (() => {
     class Reduced {
         constructor(value) {
@@ -2070,6 +2098,7 @@ class FreeMonad extends Monad {
 modules.push(FreeMonad);
 load(...modules);
 Free.pipeK = (...fns) => pipeK(Monad.of('free'))(fns);
+Free.composeK = (...fns) => composeK(Monad.of('free'))(fns);
 Free.lift = f => lift(Applicative.of('free'))(f);
 const extra = (() => {
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
@@ -2089,7 +2118,7 @@ return {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
-    identity, compose, compose2, sequence, lift, pipeK, runCatch,
+    identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
