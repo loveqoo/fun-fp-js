@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-25T04:50:14.474Z
+ * Built: 2026-01-26T15:12:42.276Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -205,9 +205,16 @@ const checkAndSet = (config => {
             },
             loose: (instance, concat) => { instance.concat = (a, b) => concat(a, b); }
         },
-        Monoid: {
+        'Monoid.super': {
             strict: (semigroup) => { !(semigroup && semigroup[Symbols.Semigroup]) && raise(new TypeError('Monoid: argument must be a Semigroup')); },
             loose: emptyFunc
+        },
+        Monoid: {
+            strict: (instance, semigroup, empty) => {
+                typeof empty !== 'function' && raise(new TypeError('Monoid.empty: empty must be a function'));
+                instance.empty = empty;
+            },
+            loose: (instance, semigroup, empty) => { instance.empty = empty; }
         },
         'Group.super': {
             strict: (monoid) => { !(monoid && monoid[Symbols.Monoid]) && raise(new TypeError('Group: argument must be a Monoid')); },
@@ -230,9 +237,16 @@ const checkAndSet = (config => {
             },
             loose: (instance, compose) => { instance.compose = (f, g) => compose(f, g); }
         },
-        Category: {
+        'Category.super': {
             strict: (semigroupoid) => { !(semigroupoid && semigroupoid[Symbols.Semigroupoid]) && raise(new TypeError('Category: argument must be a Semigroupoid')); },
             loose: emptyFunc
+        },
+        Category: {
+            strict: (instance, semigroupoid, id) => {
+                typeof id !== 'function' && raise(new TypeError('Category.id: id must be a function'));
+                instance.id = id;
+            },
+            loose: (instance, semigroupoid, id) => { instance.id = id; }
         },
         Filterable: {
             strict: (instance, filter) => {
@@ -282,9 +296,16 @@ const checkAndSet = (config => {
             },
             loose: (instance, functor, ap) => { if (ap) instance.ap = (fs, values) => ap(fs, values); }
         },
-        Applicative: {
+        'Applicative.super': {
             strict: (apply) => { !(apply && apply[Symbols.Apply]) && raise(new TypeError('Applicative: argument must be an Apply')); },
             loose: emptyFunc
+        },
+        Applicative: {
+            strict: (instance, apply, of) => {
+                typeof of !== 'function' && raise(new TypeError('Applicative.of: of must be a function'));
+                instance.of = of;
+            },
+            loose: (instance, apply, of) => { instance.of = of; }
         },
         'Alt.super': {
             strict: (functor) => { !(functor && functor[Symbols.Functor]) && raise(new TypeError('Alt: argument must be a Functor')); },
@@ -299,9 +320,16 @@ const checkAndSet = (config => {
             },
             loose: (instance, functor, alt) => { if (alt) instance.alt = (a, b) => alt(a, b); }
         },
-        Plus: {
+        'Plus.super': {
             strict: (alt) => { !(alt && alt[Symbols.Alt]) && raise(new TypeError('Plus: argument must be an Alt')); },
             loose: emptyFunc
+        },
+        Plus: {
+            strict: (instance, alt, zero) => {
+                typeof zero !== 'function' && raise(new TypeError('Plus.zero: zero must be a function'));
+                instance.zero = zero;
+            },
+            loose: (instance, alt, zero) => { instance.zero = zero; }
         },
         'Chain.super': {
             strict: (apply) => { !(apply && apply[Symbols.Apply]) && raise(new TypeError('Chain: argument must be an Apply')); },
@@ -435,9 +463,9 @@ class Semigroup extends Algebra {
 Semigroup.prototype[Symbols.Semigroup] = true;
 class Monoid extends Semigroup {
     constructor(semigroup, empty, type, registry, ...aliases) {
-        checkAndSet('Monoid')(semigroup);
+        checkAndSet('Monoid.super')(semigroup);
         super(semigroup.concat, type);
-        this.empty = empty;
+        checkAndSet('Monoid')(this, semigroup, empty);
         registry && register(registry, this, ...aliases);
     }
     empty() { raise(new Error('Monoid: empty is not implemented')); }
@@ -464,9 +492,9 @@ class Semigroupoid extends Algebra {
 Semigroupoid.prototype[Symbols.Semigroupoid] = true;
 class Category extends Semigroupoid {
     constructor(semigroupoid, id, type, registry, ...aliases) {
-        checkAndSet('Category')(semigroupoid);
+        checkAndSet('Category.super')(semigroupoid);
         super(semigroupoid.compose, type);
-        this.id = id;
+        checkAndSet('Category')(this, semigroupoid, id);
         registry && register(registry, this, ...aliases);
     }
     id() { raise(new Error('Category: id is not implemented')); }
@@ -529,9 +557,9 @@ class Apply extends Functor { // F(a -> b) => F(a) => F(b)
 Apply.prototype[Symbols.Apply] = true;
 class Applicative extends Apply {
     constructor(apply, of, type, registry, ...aliases) {
-        checkAndSet('Applicative')(apply);
+        checkAndSet('Applicative.super')(apply);
         super(apply, apply.ap, type);
-        this.of = of;
+        checkAndSet('Applicative')(this, apply, of);
         registry && register(registry, this, ...aliases);
     }
     of() { raise(new Error('Applicative: of is not implemented')); }
@@ -549,9 +577,9 @@ class Alt extends Functor {
 Alt.prototype[Symbols.Alt] = true;
 class Plus extends Alt {
     constructor(alt, zero, type, registry, ...aliases) {
-        checkAndSet('Plus')(alt);
+        checkAndSet('Plus.super')(alt);
         super(alt, alt.alt, type);
-        this.zero = zero;
+        checkAndSet('Plus')(this, alt, zero);
         registry && register(registry, this, ...aliases);
     }
     zero() { raise(new Error('Plus: zero is not implemented')); }
