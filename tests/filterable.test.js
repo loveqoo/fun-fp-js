@@ -2,7 +2,7 @@
 import fp from '../index.js';
 import { test, assertEquals, assert, logSection } from './utils.js';
 
-const { Filterable } = fp;
+const { Filterable, Either, Maybe, Task } = fp;
 
 logSection('Filterable');
 
@@ -60,6 +60,68 @@ test('Annihilation: filter(x => false, a) === empty', () => {
     const arr = [1, 2, 3];
     const result = Filterable.types.ArrayFilterable.filter(() => false, arr);
     assertEquals(result, []);
+});
+
+logSection('Either Filterable');
+
+test('Either.filter - Right passes predicate stays Right', () => {
+    const result = Either.filter(x => x > 0, Either.Right(5));
+    assert(result.isRight(), 'should remain Right');
+    assertEquals(result.value, 5);
+});
+
+test('Either.filter - Right fails predicate becomes Left(identity)', () => {
+    const result = Either.filter(x => x > 10, Either.Right(5));
+    assert(result.isLeft(), 'should become Left');
+    assertEquals(result.value, 5);
+});
+
+test('Either.filter - Left is unchanged', () => {
+    const result = Either.filter(x => x > 0, Either.Left('err'));
+    assert(result.isLeft(), 'should remain Left');
+    assertEquals(result.value, 'err');
+});
+
+test('Either.filter - onFalse transforms the Left value', () => {
+    const onFalse = x => `${x} is not positive`;
+    const result = Either.filter(x => x > 0, Either.Right(-3), onFalse);
+    assert(result.isLeft(), 'should become Left');
+    assertEquals(result.value, '-3 is not positive');
+});
+
+test('Either.filter - onFalse is not called when predicate passes', () => {
+    let called = false;
+    const onFalse = x => { called = true; return `fail: ${x}`; };
+    const result = Either.filter(x => x > 0, Either.Right(5), onFalse);
+    assert(result.isRight(), 'should remain Right');
+    assert(!called, 'onFalse should not be called');
+});
+
+test('Either.filter - onFalse is not called for Left', () => {
+    let called = false;
+    const onFalse = x => { called = true; return `fail: ${x}`; };
+    const result = Either.filter(x => x > 0, Either.Left('err'), onFalse);
+    assert(result.isLeft(), 'should remain Left');
+    assert(!called, 'onFalse should not be called for Left');
+    assertEquals(result.value, 'err');
+});
+
+logSection('Maybe Filterable');
+
+test('Maybe.filter - Just passes predicate stays Just', () => {
+    const result = Maybe.filter(x => x > 0, Maybe.Just(5));
+    assert(result.isJust(), 'should remain Just');
+    assertEquals(result.value, 5);
+});
+
+test('Maybe.filter - Just fails predicate becomes Nothing', () => {
+    const result = Maybe.filter(x => x > 10, Maybe.Just(5));
+    assert(result.isNothing(), 'should become Nothing');
+});
+
+test('Maybe.filter - Nothing is unchanged', () => {
+    const result = Maybe.filter(x => x > 0, Maybe.Nothing());
+    assert(result.isNothing(), 'should remain Nothing');
 });
 
 console.log('\n✅ Filterable tests completed\n');

@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-26T15:12:42.276Z
+ * Built: 2026-01-27T14:14:50.323Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -251,9 +251,9 @@ const checkAndSet = (config => {
         Filterable: {
             strict: (instance, filter) => {
                 typeof filter !== 'function' && raise(new TypeError('Filterable.filter: filter must be a function'));
-                instance.filter = (pred, a) => (types.isFunction(pred) && types.check(a, instance.type)) ? filter(pred, a) : raise(new TypeError(`Filterable.filter: arguments must be (function, ${instance.type})`));
+                instance.filter = (pred, a, ...rest) => (types.isFunction(pred) && types.check(a, instance.type)) ? filter(pred, a, ...rest) : raise(new TypeError(`Filterable.filter: arguments must be (function, ${instance.type})`));
             },
-            loose: (instance, filter) => { instance.filter = (pred, a) => filter(pred, a); }
+            loose: (instance, filter) => { instance.filter = (pred, a, ...rest) => filter(pred, a, ...rest); }
         },
         Functor: {
             strict: (instance, map) => {
