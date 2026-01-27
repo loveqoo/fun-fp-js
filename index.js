@@ -894,18 +894,6 @@ class LastSemigroup extends Semigroup {
     }
 }
 modules.push(LastSemigroup);
-class FirstMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.FirstSemigroup, () => null, 'object', Monoid.types, 'first');
-    }
-}
-modules.push(FirstMonoid);
-class LastMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.LastSemigroup, () => null, 'object', Monoid.types, 'last');
-    }
-}
-modules.push(LastMonoid);
 class ObjectFilterable extends Filterable {
     constructor() {
         super((pred, obj) => polyfills.object.filter(pred, obj), 'object', Filterable.types, 'object');

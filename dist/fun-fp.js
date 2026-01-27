@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-01-27T14:14:50.323Z
+ * Built: 2026-01-27T14:26:13.582Z
  * Static Land specification compliant
  */
 const polyfills = {
@@ -899,18 +899,6 @@ class LastSemigroup extends Semigroup {
     }
 }
 modules.push(LastSemigroup);
-class FirstMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.FirstSemigroup, () => null, 'object', Monoid.types, 'first');
-    }
-}
-modules.push(FirstMonoid);
-class LastMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.LastSemigroup, () => null, 'object', Monoid.types, 'last');
-    }
-}
-modules.push(LastMonoid);
 class ObjectFilterable extends Filterable {
     constructor() {
         super((pred, obj) => polyfills.object.filter(pred, obj), 'object', Filterable.types, 'object');
