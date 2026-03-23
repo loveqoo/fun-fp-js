@@ -310,6 +310,13 @@ test('runState: non-ST instance throws TypeError', () => {
     );
 });
 
+test('chain callback returning non-ST throws TypeError', () => {
+    assertThrows(
+        () => ST.runState(0, ST.of(1).chain(_ => 42)),
+        'Non-ST return from chain callback should throw'
+    );
+});
+
 test('runState: different StateT(X) instance throws TypeError', () => {
     const STM = StateT('maybe');
     const maybeProgram = STM.of(1);

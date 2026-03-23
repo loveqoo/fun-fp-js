@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-03-23T16:01:23.124Z
+ * Built: 2026-03-23T16:37:01.608Z
  * Static Land specification compliant
  */
 const polyfills = {
@@ -2040,6 +2040,51 @@ const { Free, trampoline } = (() => {
         }
         map(f) { return new LiftF(this.ma, this.cont, { fn: f, next: this._mapChain }); }
     }
+    /* EitherF — 에러 처리 연산을 감싸는 Functor */
+    class ThrowF {
+        constructor(error) {
+            this.error = error;
+            this[Symbols.Functor] = true;
+        }
+        map(_) { return this; }
+    }
+    class CatchF {
+        constructor(program, handler, _mapChain) {
+            this.program = program;
+            this.handler = handler;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(f) { return new CatchF(this.program, this.handler, { fn: f, next: this._mapChain }); }
+    }
+    /* ReaderF — 환경 읽기 연산을 감싸는 Functor */
+    class AskF {
+        constructor(cont, _mapChain) {
+            this.cont = cont;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(f) { return new AskF(this.cont, { fn: f, next: this._mapChain }); }
+    }
+    class LocalF {
+        constructor(f, program, _mapChain) {
+            this.f = f;
+            this.program = program;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(g) { return new LocalF(this.f, this.program, { fn: g, next: this._mapChain }); }
+    }
+    /* WriterF — 출력 누적 연산을 감싸는 Functor */
+    class TellF {
+        constructor(output, next, _mapChain) {
+            this.output = output;
+            this.next = next;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(f) { return new TellF(this.output, this.next, { fn: f, next: this._mapChain }); }
+    }
     Free.Pure = Pure;
     Free.Impure = Impure;
     Free.Thunk = Thunk;
@@ -2048,6 +2093,11 @@ const { Free, trampoline } = (() => {
     Free.PutF = PutF;
     Free.ModifyF = ModifyF;
     Free.LiftF = LiftF;
+    Free.ThrowF = ThrowF;
+    Free.CatchF = CatchF;
+    Free.AskF = AskF;
+    Free.LocalF = LocalF;
+    Free.TellF = TellF;
     Free.applyMapChain = applyMapChain;
     return { Free, trampoline };
 })();
@@ -2119,29 +2169,82 @@ const normalizeMonad = M => {
     return M;
 };
 
-const { GetF, PutF, ModifyF, LiftF, applyMapChain } = Free;
+const { GetF, PutF, ModifyF, LiftF, ThrowF, CatchF, AskF, LocalF, TellF, applyMapChain } = Free;
 
-let _stateTId = 0;
+// _mapChain + cont를 해석하는 공통 헬퍼
+const liftCont = f => f._mapChain
+    ? a => applyMapChain(f._mapChain, f.cont(a))
+    : f.cont;
+
+// 타입 클래스 인스턴스 동적 등록: Functor → Apply → Applicative → Chain → Monad
+// registry=null로 generic 키 오염 방지, alias만 수동 등록
+// nominal typing (instanceof XT) 강제
+// 전제: 호출 시점에 XT.of가 이미 완성되어 있어야 한다.
+// WriterT처럼 추가 파라미터를 캡처하는 경우, of가 해당 클로저를 올바르게 품고 있어야 한다.
+const registerTransformerTypeClasses = (XT, typeName, alias) => {
+    const check = (val, method) => {
+        if (!(val instanceof XT)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
+    };
+    const tFunctor = new Functor(
+        (f, t) => { check(t, 'map'); return new XT(Functor.of('free').map(f, t._program)); },
+        typeName, null
+    );
+    Functor.types[alias] = tFunctor;
+    const tApply = new Apply(tFunctor, (tf, ta) => {
+        check(tf, 'ap'); check(ta, 'ap');
+        return new XT(Chain.of('free').chain(f => Functor.of('free').map(f, ta._program), tf._program));
+    }, typeName, null);
+    Apply.types[alias] = tApply;
+    const tApplicative = new Applicative(tApply, XT.of, typeName, null);
+    Applicative.types[alias] = tApplicative;
+    const tChain = new Chain(tApply, (f, t) => {
+        check(t, 'chain');
+        return new XT(Chain.of('free').chain(x => {
+            const result = f(x);
+            check(result, 'chain callback');
+            return result._program;
+        }, t._program));
+    }, typeName, null);
+    Chain.types[alias] = tChain;
+    const tMonad = new Monad(tApplicative, tChain, typeName, null);
+    Monad.types[alias] = tMonad;
+    XT.map = tFunctor.map;
+    XT.ap = tApply.ap;
+    XT.chain = tChain.chain;
+    XT.pipeK = (...fns) => pipeK(tMonad)(fns);
+    XT.composeK = (...fns) => composeK(tMonad)(fns);
+};
+
+// type 없는 커스텀 모나드에 자동 부여되는 alias는 프로세스 실행 순서에 따라 달라진다.
+// 이 alias를 외부에서 Functor.of('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
+// 문자열 M (예: 'maybe', 'either')이나 type 프로퍼티가 있는 객체 M을 사용하면 결정적 alias를 얻을 수 있다.
+let _transformerAutoId = 0;
+const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
+
+/* ── StateT ── */
 const StateT = (M) => {
     if (StateT._cache.has(M)) return StateT._cache.get(M);
-
     const nm = normalizeMonad(M);
-    const mType = nm.type || (typeof M === 'string' ? M : `M${++_stateTId}`);
-    const typeName = `StateT(${mType})`;
+    const typeName = `StateT(${resolveMonadType(M, nm)})`;
     const alias = typeName.toLowerCase();
 
     class ST {
-        constructor(program) {
-            this._program = program;
-            this._typeName = typeName;
+        constructor(program) { this._program = program; this._typeName = typeName; }
+        run(s) {
+            if (!(this instanceof ST)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
+            return ST.runState(s, this);
         }
-        run(s) { return ST.runState(s, this); }
-        eval(s) { return nm.map(([a]) => a, this.run(s)); }
-        exec(s) { return nm.map(([_, s2]) => s2, this.run(s)); }
+        eval(s) {
+            if (!(this instanceof ST)) raise(new TypeError(`${typeName}.eval: must be called on a ${typeName} instance`));
+            return nm.map(([a]) => a, this.run(s));
+        }
+        exec(s) {
+            if (!(this instanceof ST)) raise(new TypeError(`${typeName}.exec: must be called on a ${typeName} instance`));
+            return nm.map(([_, s2]) => s2, this.run(s));
+        }
         map(f) { return Functor.of(alias).map(f, this); }
         chain(f) { return Chain.of(alias).chain(f, this); }
     }
-
     ST.of = x => new ST(Free.pure(x));
     ST.get = new ST(Free.liftF(new GetF(s => s)));
     ST.put = s => new ST(Free.liftF(new PutF(s, undefined)));
@@ -2150,9 +2253,7 @@ const StateT = (M) => {
     ST.lift = ma => new ST(Free.liftF(new LiftF(ma, a => a)));
 
     ST.runState = (initial, st) => {
-        if (!(st instanceof ST)) {
-            raise(new TypeError(`${typeName}.runState: second argument must be a ${typeName} instance`));
-        }
+        if (!(st instanceof ST)) raise(new TypeError(`${typeName}.runState: second argument must be a ${typeName} instance`));
         const go = (s, free) => {
             while (Free.isImpure(free)) {
                 const f = free.functor;
@@ -2160,12 +2261,7 @@ const StateT = (M) => {
                 if (f instanceof GetF)    { free = apply(f.cont(s)); continue; }
                 if (f instanceof PutF)    { s = f.state; free = apply(f.next); continue; }
                 if (f instanceof ModifyF) { s = f.f(s); free = apply(f.next); continue; }
-                if (f instanceof LiftF)   {
-                    const cont = f._mapChain
-                        ? a => applyMapChain(f._mapChain, f.cont(a))
-                        : f.cont;
-                    return nm.chain(a => go(s, cont(a)), f.ma);
-                }
+                if (f instanceof LiftF)   { return nm.chain(a => go(s, liftCont(f)(a)), f.ma); }
                 throw new Error(`${typeName}.runState: unknown functor`);
             }
             return nm.of([Free.isPure(free) ? free.value : free, s]);
@@ -2173,52 +2269,169 @@ const StateT = (M) => {
         return go(initial, st._program);
     };
 
-    // 타입 클래스 인스턴스 동적 등록 (registry=null로 generic 키 오염 방지)
-    // 모든 인스턴스에서 instanceof ST로 nominal typing 강제
-    const checkST = (val, method) => {
-        if (!(val instanceof ST)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
-    };
-
-    const stFunctor = new Functor(
-        (f, st) => { checkST(st, 'map'); return new ST(Functor.of('free').map(f, st._program)); },
-        typeName, null
-    );
-    Functor.types[alias] = stFunctor;
-
-    const stApply = new Apply(
-        stFunctor,
-        (sf, sa) => {
-            checkST(sf, 'ap'); checkST(sa, 'ap');
-            return new ST(Chain.of('free').chain(
-                f => Functor.of('free').map(f, sa._program), sf._program));
-        },
-        typeName, null
-    );
-    Apply.types[alias] = stApply;
-
-    const stApplicative = new Applicative(stApply, ST.of, typeName, null);
-    Applicative.types[alias] = stApplicative;
-
-    const stChain = new Chain(
-        stApply,
-        (f, st) => { checkST(st, 'chain'); return new ST(Chain.of('free').chain(x => f(x)._program, st._program)); },
-        typeName, null
-    );
-    Chain.types[alias] = stChain;
-
-    const stMonad = new Monad(stApplicative, stChain, typeName, null);
-    Monad.types[alias] = stMonad;
-
-    ST.map = stFunctor.map;
-    ST.ap = stApply.ap;
-    ST.chain = stChain.chain;
-    ST.pipeK = (...fns) => pipeK(stMonad)(fns);
-    ST.composeK = (...fns) => composeK(stMonad)(fns);
-
+    registerTransformerTypeClasses(ST, typeName, alias);
     StateT._cache.set(M, ST);
     return ST;
 };
 StateT._cache = new Map();
+
+/* ── EitherT ── */
+const EitherT = (M) => {
+    if (EitherT._cache.has(M)) return EitherT._cache.get(M);
+    const nm = normalizeMonad(M);
+    const typeName = `EitherT(${resolveMonadType(M, nm)})`;
+    const alias = typeName.toLowerCase();
+
+    class ET {
+        constructor(program) { this._program = program; this._typeName = typeName; }
+        run() {
+            if (!(this instanceof ET)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
+            return ET.runEitherT(this);
+        }
+        map(f) { return Functor.of(alias).map(f, this); }
+        chain(f) { return Chain.of(alias).chain(f, this); }
+    }
+    ET.of = x => new ET(Free.pure(x));
+    ET.throwError = e => new ET(Free.liftF(new ThrowF(e)));
+    ET.catchError = (et, handler) => {
+        if (!(et instanceof ET)) raise(new TypeError(`${typeName}.catchError: first argument must be a ${typeName} instance`));
+        return new ET(Free.liftF(new CatchF(et._program, e => {
+            const result = handler(e);
+            if (!(result instanceof ET)) raise(new TypeError(`${typeName}.catchError: handler must return a ${typeName} instance`));
+            return result._program;
+        })));
+    };
+    ET.lift = ma => new ET(Free.liftF(new LiftF(ma, a => a)));
+    ET.fromEither = either => either.isRight() ? ET.of(either.value) : ET.throwError(either.value);
+
+    ET.runEitherT = (et) => {
+        if (!(et instanceof ET)) raise(new TypeError(`${typeName}.runEitherT: argument must be a ${typeName} instance`));
+        const go = (free) => {
+            while (Free.isImpure(free)) {
+                const f = free.functor;
+                if (f instanceof ThrowF) return nm.of(Either.Left(f.error));
+                if (f instanceof CatchF) {
+                    const apply = val => f._mapChain ? applyMapChain(f._mapChain, val) : Free.pure(val);
+                    return nm.chain(either => {
+                        if (either.isLeft()) {
+                            return nm.chain(rec => rec.isLeft() ? nm.of(rec) : go(apply(rec.value)),
+                                go(f.handler(either.value)));
+                        }
+                        return go(apply(either.value));
+                    }, go(f.program));
+                }
+                if (f instanceof LiftF) { return nm.chain(a => go(liftCont(f)(a)), f.ma); }
+                throw new Error(`${typeName}.runEitherT: unknown functor`);
+            }
+            return nm.of(Either.Right(Free.isPure(free) ? free.value : free));
+        };
+        return go(et._program);
+    };
+
+    registerTransformerTypeClasses(ET, typeName, alias);
+    EitherT._cache.set(M, ET);
+    return ET;
+};
+EitherT._cache = new Map();
+
+/* ── ReaderT ── */
+const ReaderT = (M) => {
+    if (ReaderT._cache.has(M)) return ReaderT._cache.get(M);
+    const nm = normalizeMonad(M);
+    const typeName = `ReaderT(${resolveMonadType(M, nm)})`;
+    const alias = typeName.toLowerCase();
+
+    class RT {
+        constructor(program) { this._program = program; this._typeName = typeName; }
+        run(env) {
+            if (!(this instanceof RT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
+            return RT.runReaderT(env, this);
+        }
+        map(f) { return Functor.of(alias).map(f, this); }
+        chain(f) { return Chain.of(alias).chain(f, this); }
+    }
+    RT.of = x => new RT(Free.pure(x));
+    RT.ask = new RT(Free.liftF(new AskF(env => env)));
+    RT.asks = f => new RT(Free.liftF(new AskF(f)));
+    RT.local = (f, rt) => {
+        if (typeof f !== 'function') raise(new TypeError(`${typeName}.local: first argument must be a function`));
+        if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.local: second argument must be a ${typeName} instance`));
+        return new RT(Free.liftF(new LocalF(f, rt._program)));
+    };
+    RT.lift = ma => new RT(Free.liftF(new LiftF(ma, a => a)));
+
+    RT.runReaderT = (env, rt) => {
+        if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.runReaderT: second argument must be a ${typeName} instance`));
+        const go = (e, free) => {
+            while (Free.isImpure(free)) {
+                const f = free.functor;
+                const apply = val => f._mapChain ? applyMapChain(f._mapChain, val) : val;
+                if (f instanceof AskF) { free = apply(f.cont(e)); continue; }
+                if (f instanceof LocalF) {
+                    const applyL = val => f._mapChain ? applyMapChain(f._mapChain, val) : Free.pure(val);
+                    return nm.chain(val => go(e, applyL(val)), go(f.f(e), f.program));
+                }
+                if (f instanceof LiftF) { return nm.chain(a => go(e, liftCont(f)(a)), f.ma); }
+                throw new Error(`${typeName}.runReaderT: unknown functor`);
+            }
+            return nm.of(Free.isPure(free) ? free.value : free);
+        };
+        return go(env, rt._program);
+    };
+
+    registerTransformerTypeClasses(RT, typeName, alias);
+    ReaderT._cache.set(M, RT);
+    return RT;
+};
+ReaderT._cache = new Map();
+
+/* ── WriterT ── */
+const WriterT = (M, writerMonoid) => {
+    if (!writerMonoid) writerMonoid = Monoid.of('array');
+    if (typeof writerMonoid.empty !== 'function' || typeof writerMonoid.concat !== 'function') {
+        raise(new TypeError('WriterT: monoid must have empty() and concat(a, b) methods'));
+    }
+    if (!WriterT._cache.has(M)) WriterT._cache.set(M, new Map());
+    if (WriterT._cache.get(M).has(writerMonoid)) return WriterT._cache.get(M).get(writerMonoid);
+    const nm = normalizeMonad(M);
+    const mType = resolveMonadType(M, nm);
+    const monoidId = writerMonoid.type || `monoid${++_transformerAutoId}`;
+    const typeName = `WriterT(${mType},${monoidId})`;
+    const alias = typeName.toLowerCase();
+
+    class WT {
+        constructor(program) { this._program = program; this._typeName = typeName; }
+        run() {
+            if (!(this instanceof WT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
+            return WT.runWriterT(this);
+        }
+        map(f) { return Functor.of(alias).map(f, this); }
+        chain(f) { return Chain.of(alias).chain(f, this); }
+    }
+    WT.of = x => new WT(Free.pure(x));
+    WT.tell = output => new WT(Free.liftF(new TellF(output, undefined)));
+    WT.lift = ma => new WT(Free.liftF(new LiftF(ma, a => a)));
+
+    WT.runWriterT = (wt) => {
+        if (!(wt instanceof WT)) raise(new TypeError(`${typeName}.runWriterT: argument must be a ${typeName} instance`));
+        const go = (log, free) => {
+            while (Free.isImpure(free)) {
+                const f = free.functor;
+                const apply = val => f._mapChain ? applyMapChain(f._mapChain, val) : val;
+                if (f instanceof TellF) { log = writerMonoid.concat(log, f.output); free = apply(f.next); continue; }
+                if (f instanceof LiftF) { return nm.chain(a => go(log, liftCont(f)(a)), f.ma); }
+                throw new Error(`${typeName}.runWriterT: unknown functor`);
+            }
+            return nm.of([Free.isPure(free) ? free.value : free, log]);
+        };
+        return go(writerMonoid.empty(), wt._program);
+    };
+
+    registerTransformerTypeClasses(WT, typeName, alias);
+    WriterT._cache.get(M).set(writerMonoid, WT);
+    return WT;
+};
+WriterT._cache = new Map();
 
 /* ═══════════════════════════════════════════════════════════════
    Static Methods (Eta Reduced)
@@ -2327,7 +2540,7 @@ export default {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
-    StateT,
+    StateT, EitherT, ReaderT, WriterT,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
