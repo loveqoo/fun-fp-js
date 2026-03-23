@@ -4,7 +4,7 @@
 
 ## 프로젝트 개요
 
-**fun-fp-js**는 Static Land 및 Fantasy Land 명세를 구현한 JavaScript 함수형 프로그래밍 라이브러리입니다. 대수적 데이터 타입(Maybe, Either, Task, Free Monad), 타입 클래스(Functor, Monad, Applicative, Traversable 등), 핵심 FP 유틸리티(compose, pipe, curry)를 제공합니다.
+**fun-fp-js**는 Static Land 및 Fantasy Land 명세를 구현한 JavaScript 함수형 프로그래밍 라이브러리입니다. 대수적 데이터 타입(Maybe, Either, Task, Free Monad), 타입 클래스(Functor, Monad, Applicative, Traversable 등), 핵심 FP 유틸리티(compose, pipe, curry), 그리고 Free Monad 기반 Monad Transformer(StateT, EitherT, ReaderT, WriterT)를 제공합니다.
 
 **참고:** ES6 환경 호환성을 위해 polyfill이 포함되어 있습니다.
 
@@ -30,6 +30,13 @@ node tests/either.test.js
 node tests/task.test.js
 node tests/free.test.js
 node tests/func.test.js
+node tests/statet.test.js
+node tests/eithert.test.js
+node tests/readert.test.js
+node tests/writert.test.js
+
+# 전체 테스트 (셸 루프)
+for f in tests/*.test.js; do node "$f"; done
 ```
 
 ### 브라우저 테스트
@@ -39,7 +46,7 @@ node tests/func.test.js
 
 ### 단일 파일 구조 (의도적 설계)
 
-전체 라이브러리가 `index.js` (~1835줄)에 있습니다. 모듈 분리보다 단일 파일 구조를 선택한 이유:
+전체 라이브러리가 `index.js` (~2545줄)에 있습니다. 모듈 분리보다 단일 파일 구조를 선택한 이유:
 - 모듈을 나눠서 관리하는 비용보다 나눠진 모듈을 모아서 빌드하는 비용이 더 큼
 - 최종 배포물이 하나의 파일이므로 개발 시점 분리의 이점이 적음
 
@@ -50,9 +57,11 @@ node tests/func.test.js
 3. **핵심 유틸리티** (140-370줄) - `compose`, `pipe`, `curry`, `tap`, `partial` 등
 4. **타입 클래스** (370-610줄) - Algebra, Setoid, Ord, Semigroup, Monoid, Functor, Monad 등
 5. **Function/Array 인스턴스** (710-1100줄) - 내장 타입에 대한 타입 클래스 구현
-6. **핵심 데이터 타입** (1100-1500줄) - Maybe, Either, Task, Free
-7. **순회 & 유틸리티** (1500-1700줄) - `sequence()`, `lift()`, `pipeK()`
-8. **설정** (1700-1800줄) - `setStrictMode()`, `setTapErrorHandler()`
+6. **핵심 데이터 타입** (1100-1800줄) - Maybe, Either, Task, Free (StateF/EitherF/ReaderF/WriterF Functor 포함)
+7. **순회 & 유틸리티** (1800-1870줄) - `sequence()`, `lift()`, `pipeK()`
+8. **Free Static Land** (1870-2000줄) - FreeFunctor, FreeApply, FreeChain, FreeMonad
+9. **Monad Transformer** (2000-2430줄) - 공통 인프라 + StateT, EitherT, ReaderT, WriterT
+10. **Static Methods & 설정** (2430-2545줄) - Static Land 메서드 wiring, `setStrictMode()`
 
 ### 검증 로직 분리 (checkAndSet)
 
@@ -66,7 +75,23 @@ node tests/func.test.js
 - **Maybe** - nullable 값을 위한 `Just`/`Nothing`. Functor, Monad, Foldable, Traversable, Filterable 구현.
 - **Either** - 에러 처리를 위한 `Right`/`Left`. Left가 Semigroup일 때 `ap()`가 Left 값을 누적.
 - **Task** - 지연 실행되는 Promise 유사 비동기 모나드. `fork(onError, onSuccess)`로 실행.
-- **Free** - 트램폴린을 통한 스택 안전 재귀. `liftF()`로 펑터를 리프트하고, `runSync`/`runAsync`/`runWithTask`로 실행.
+- **Free** - 트램폴린을 통한 스택 안전 재귀. `liftF()`로 펑터를 리프트하고, `runSync`/`runAsync`/`runWithTask`로 실행. Monad Transformer의 내부 표현으로도 사용.
+
+### Monad Transformer
+
+Free Monad 기반으로 구현. 각 transformer는 XxxF Functor(명령) + XT 컨테이너(Free 프로그램 래퍼) + 동적 타입 클래스 등록으로 구성.
+
+- **StateT(M)** - `State + M` 합성. `of`/`get`/`put`/`modify`/`gets`/`lift`. `runState(s, st) → M([a, s])`. 예: `StateT(Maybe)`, `StateT(Task)`
+- **EitherT(M)** - `Either + M` 합성. `of`/`throwError`/`catchError`/`lift`/`fromEither`. `runEitherT(et) → M(Either(a, e))`. 예: `EitherT(Task)`
+- **ReaderT(M)** - `Reader + M` 합성. `of`/`ask`/`asks`/`local`/`lift`. `runReaderT(env, rt) → M(a)`. 예: `ReaderT(Maybe)`
+- **WriterT(M, monoid)** - `Writer + M` 합성. `of`/`tell`/`lift`. `runWriterT(wt) → M([a, log])`. 예: `WriterT(Task)`
+- M은 데이터 타입 객체(`Maybe`, `Either`, `Task`)나 문자열(`'maybe'`, `'task'`)을 모두 지원.
+
+공통 인프라:
+- `normalizeMonad(M)` - 문자열 또는 `{ of, map, chain }` 객체를 정규화
+- `registerTransformerTypeClasses(XT, typeName, alias)` - Functor→Monad 5개 동적 등록 (nominal typing 강제)
+- `liftCont(f)` - `_mapChain` + `cont` 해석 공통 헬퍼
+- 각 transformer는 `Functor.of('statet(maybe)')` 같은 방식으로 타입 클래스 레지스트리의 1급 시민
 
 ### 타입 클래스 계층 구조
 
@@ -116,4 +141,23 @@ Either.pipeK(parseJson, validate, transform)(data);
 ```javascript
 sequence(Applicative.of('maybe'), maybeArray);
 // [Maybe a] -> Maybe [a]
+```
+
+### Monad Transformer 사용
+```javascript
+const { StateT, Maybe } = fp;
+const ST = StateT(Maybe);
+
+const program = ST.get
+    .chain(s => ST.put(s + 1))
+    .chain(_ => ST.lift(Maybe.Just(42)))
+    .chain(x => ST.of(x));
+
+program.run(0);  // Maybe.Just([42, 1])
+```
+
+### Transformer 타입 클래스 접근
+```javascript
+Functor.of('statet(maybe)').map(f, st);
+Monad.of('eithert(task)');
 ```

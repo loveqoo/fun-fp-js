@@ -128,6 +128,75 @@ testAsync('WriterT(task): async with fork', async () => {
 /* ═══════════════════════════════════════════════════
    chain 법칙
    ═══════════════════════════════════════════════════ */
+logSection('WriterT - Functor Laws');
+
+test('Functor identity: map(id, m) === m', () => {
+    const m = WT.of(42);
+    const left = WT.runWriterT(m.map(x => x));
+    const right = WT.runWriterT(m);
+    assertEquals(left.value, right.value);
+});
+
+test('Functor composition: map(f∘g, m) === map(f, map(g, m))', () => {
+    const m = WT.of(5);
+    const f = x => x * 2;
+    const g = x => x + 1;
+    const left = WT.runWriterT(m.map(x => f(g(x))));
+    const right = WT.runWriterT(m.map(g).map(f));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Applicative 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('WriterT - Applicative Laws');
+
+test('Applicative identity: ap(of(id), v) === v', () => {
+    const v = WT.of(42);
+    const left = WT.runWriterT(WT.ap(WT.of(x => x), v));
+    const right = WT.runWriterT(v);
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative homomorphism: ap(of(f), of(x)) === of(f(x))', () => {
+    const f = x => x * 2;
+    const left = WT.runWriterT(WT.ap(WT.of(f), WT.of(5)));
+    const right = WT.runWriterT(WT.of(f(5)));
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative interchange: ap(u, of(y)) === ap(of(f => f(y)), u)', () => {
+    const u = WT.of(x => x + 10);
+    const y = 5;
+    const left = WT.runWriterT(WT.ap(u, WT.of(y)));
+    const right = WT.runWriterT(WT.ap(WT.of(f => f(y)), u));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Transformer 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('WriterT - Transformer Laws');
+
+test('lift(M.of(a)) === T.of(a)', () => {
+    const WTM = WriterT('maybe');
+    const left = WTM.runWriterT(WTM.lift(Maybe.of(42)));
+    const right = WTM.runWriterT(WTM.of(42));
+    assertEquals(left.value, right.value);
+});
+
+test('lift(M.chain(f, m)) === T.chain(x => lift(f(x)), lift(m))', () => {
+    const WTM = WriterT('maybe');
+    const m = Maybe.Just(5);
+    const f = x => Maybe.Just(x * 2);
+    const left = WTM.runWriterT(WTM.lift(Maybe.chain(f, m)));
+    const right = WTM.runWriterT(WTM.lift(m).chain(x => WTM.lift(f(x))));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Chain 법칙 (Monad)
+   ═══════════════════════════════════════════════════ */
 logSection('WriterT - Chain Laws');
 
 test('Left identity', () => {

@@ -183,7 +183,77 @@ testAsync('EitherT(task): throwError in task', async () => {
 });
 
 /* ═══════════════════════════════════════════════════
-   chain 법칙
+   Functor 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('EitherT - Functor Laws');
+
+test('Functor identity: map(id, m) === m', () => {
+    const m = ET.of(42);
+    const left = ET.runEitherT(m.map(x => x));
+    const right = ET.runEitherT(m);
+    assertEquals(left.value, right.value);
+});
+
+test('Functor composition: map(f∘g, m) === map(f, map(g, m))', () => {
+    const m = ET.of(5);
+    const f = x => x * 2;
+    const g = x => x + 1;
+    const left = ET.runEitherT(m.map(x => f(g(x))));
+    const right = ET.runEitherT(m.map(g).map(f));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Applicative 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('EitherT - Applicative Laws');
+
+test('Applicative identity: ap(of(id), v) === v', () => {
+    const v = ET.of(42);
+    const left = ET.runEitherT(ET.ap(ET.of(x => x), v));
+    const right = ET.runEitherT(v);
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative homomorphism: ap(of(f), of(x)) === of(f(x))', () => {
+    const f = x => x * 2;
+    const left = ET.runEitherT(ET.ap(ET.of(f), ET.of(5)));
+    const right = ET.runEitherT(ET.of(f(5)));
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative interchange: ap(u, of(y)) === ap(of(f => f(y)), u)', () => {
+    const u = ET.of(x => x + 10);
+    const y = 5;
+    const left = ET.runEitherT(ET.ap(u, ET.of(y)));
+    const right = ET.runEitherT(ET.ap(ET.of(f => f(y)), u));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Transformer 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('EitherT - Transformer Laws');
+
+test('lift(M.of(a)) === T.of(a)', () => {
+    const a = 42;
+    const ETM = EitherT('maybe');
+    const left = ETM.runEitherT(ETM.lift(Maybe.of(a)));
+    const right = ETM.runEitherT(ETM.of(a));
+    assertEquals(left.value, right.value);
+});
+
+test('lift(M.chain(f, m)) === T.chain(x => lift(f(x)), lift(m))', () => {
+    const ETM = EitherT('maybe');
+    const m = Maybe.Just(5);
+    const f = x => Maybe.Just(x * 2);
+    const left = ETM.runEitherT(ETM.lift(Maybe.chain(f, m)));
+    const right = ETM.runEitherT(ETM.lift(m).chain(x => ETM.lift(f(x))));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Chain 법칙 (Monad)
    ═══════════════════════════════════════════════════ */
 logSection('EitherT - Chain Laws');
 

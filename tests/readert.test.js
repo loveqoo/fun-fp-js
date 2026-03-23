@@ -123,7 +123,76 @@ testAsync('ReaderT(task): async with fork', async () => {
 });
 
 /* ═══════════════════════════════════════════════════
-   chain 법칙
+   Functor 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('ReaderT - Functor Laws');
+
+test('Functor identity: map(id, m) === m', () => {
+    const m = RT.of(42);
+    const left = RT.runReaderT('e', m.map(x => x));
+    const right = RT.runReaderT('e', m);
+    assertEquals(left.value, right.value);
+});
+
+test('Functor composition: map(f∘g, m) === map(f, map(g, m))', () => {
+    const m = RT.of(5);
+    const f = x => x * 2;
+    const g = x => x + 1;
+    const left = RT.runReaderT('e', m.map(x => f(g(x))));
+    const right = RT.runReaderT('e', m.map(g).map(f));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Applicative 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('ReaderT - Applicative Laws');
+
+test('Applicative identity: ap(of(id), v) === v', () => {
+    const v = RT.of(42);
+    const left = RT.runReaderT('e', RT.ap(RT.of(x => x), v));
+    const right = RT.runReaderT('e', v);
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative homomorphism: ap(of(f), of(x)) === of(f(x))', () => {
+    const f = x => x * 2;
+    const left = RT.runReaderT('e', RT.ap(RT.of(f), RT.of(5)));
+    const right = RT.runReaderT('e', RT.of(f(5)));
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative interchange: ap(u, of(y)) === ap(of(f => f(y)), u)', () => {
+    const u = RT.of(x => x + 10);
+    const y = 5;
+    const left = RT.runReaderT('e', RT.ap(u, RT.of(y)));
+    const right = RT.runReaderT('e', RT.ap(RT.of(f => f(y)), u));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Transformer 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('ReaderT - Transformer Laws');
+
+test('lift(M.of(a)) === T.of(a)', () => {
+    const RTM = ReaderT('maybe');
+    const left = RTM.runReaderT('e', RTM.lift(Maybe.of(42)));
+    const right = RTM.runReaderT('e', RTM.of(42));
+    assertEquals(left.value, right.value);
+});
+
+test('lift(M.chain(f, m)) === T.chain(x => lift(f(x)), lift(m))', () => {
+    const RTM = ReaderT('maybe');
+    const m = Maybe.Just(5);
+    const f = x => Maybe.Just(x * 2);
+    const left = RTM.runReaderT('e', RTM.lift(Maybe.chain(f, m)));
+    const right = RTM.runReaderT('e', RTM.lift(m).chain(x => RTM.lift(f(x))));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Chain 법칙 (Monad)
    ═══════════════════════════════════════════════════ */
 logSection('ReaderT - Chain Laws');
 

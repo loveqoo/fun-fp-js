@@ -202,7 +202,78 @@ testAsync('StateT(task): lift with Task.of', async () => {
 });
 
 /* ═══════════════════════════════════════════════════
-   Free 위 chain 법칙
+   Functor 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('StateT - Functor Laws');
+
+test('Functor identity: map(id, m) === m', () => {
+    const m = ST.get.chain(s => ST.of(s + 1));
+    const left = ST.runState(0, m.map(x => x));
+    const right = ST.runState(0, m);
+    assertEquals(left.value, right.value);
+});
+
+test('Functor composition: map(f∘g, m) === map(f, map(g, m))', () => {
+    const m = ST.of(5);
+    const f = x => x * 2;
+    const g = x => x + 1;
+    const left = ST.runState(0, m.map(x => f(g(x))));
+    const right = ST.runState(0, m.map(g).map(f));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Applicative 법칙
+   ═══════════════════════════════════════════════════ */
+logSection('StateT - Applicative Laws');
+
+test('Applicative identity: ap(of(id), v) === v', () => {
+    const v = ST.of(42);
+    const left = ST.runState(0, ST.ap(ST.of(x => x), v));
+    const right = ST.runState(0, v);
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative homomorphism: ap(of(f), of(x)) === of(f(x))', () => {
+    const f = x => x * 2;
+    const x = 5;
+    const left = ST.runState(0, ST.ap(ST.of(f), ST.of(x)));
+    const right = ST.runState(0, ST.of(f(x)));
+    assertEquals(left.value, right.value);
+});
+
+test('Applicative interchange: ap(u, of(y)) === ap(of(f => f(y)), u)', () => {
+    const u = ST.of(x => x + 10);
+    const y = 5;
+    const left = ST.runState(0, ST.ap(u, ST.of(y)));
+    const right = ST.runState(0, ST.ap(ST.of(f => f(y)), u));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Transformer 법칙 (lift는 M에서 T로의 monad 준동형사상)
+   ═══════════════════════════════════════════════════ */
+logSection('StateT - Transformer Laws');
+
+test('lift(M.of(a)) === T.of(a)', () => {
+    const a = 42;
+    const STM = StateT('maybe');
+    const left = STM.runState(0, STM.lift(Maybe.of(a)));
+    const right = STM.runState(0, STM.of(a));
+    assertEquals(left.value, right.value);
+});
+
+test('lift(M.chain(f, m)) === T.chain(x => lift(f(x)), lift(m))', () => {
+    const STM = StateT('maybe');
+    const m = Maybe.Just(5);
+    const f = x => Maybe.Just(x * 2);
+    const left = STM.runState(0, STM.lift(Maybe.chain(f, m)));
+    const right = STM.runState(0, STM.lift(m).chain(x => STM.lift(f(x))));
+    assertEquals(left.value, right.value);
+});
+
+/* ═══════════════════════════════════════════════════
+   Chain 법칙 (Monad)
    ═══════════════════════════════════════════════════ */
 logSection('StateT - Chain Laws');
 
