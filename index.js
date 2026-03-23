@@ -1990,10 +1990,60 @@ const { Free, trampoline } = (() => {
         static suspend(f) { return Free.liftF(new Thunk(f)); }
     }
     const trampoline = Free.runSync(thunk => thunk.run());
+    /* StateF — 상태 연산을 감싸는 Functor (Thunk과 동일 패턴)
+       _mapChain: left-associated chain의 O(N) 스택 문제를 flat linked list로 해결 */
+    const applyMapChain = (mapChain, value) => {
+        const fns = [];
+        let node = mapChain;
+        while (node) { fns.push(node.fn); node = node.next; }
+        let result = value;
+        for (let i = fns.length - 1; i >= 0; i--) { result = fns[i](result); }
+        return result;
+    };
+    class GetF {
+        constructor(cont, _mapChain) {
+            this.cont = cont;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(f) { return new GetF(this.cont, { fn: f, next: this._mapChain }); }
+    }
+    class PutF {
+        constructor(state, next, _mapChain) {
+            this.state = state;
+            this.next = next;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(f) { return new PutF(this.state, this.next, { fn: f, next: this._mapChain }); }
+    }
+    class ModifyF {
+        constructor(f, next, _mapChain) {
+            this.f = f;
+            this.next = next;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(g) { return new ModifyF(this.f, this.next, { fn: g, next: this._mapChain }); }
+    }
+    class LiftF {
+        constructor(ma, cont, _mapChain) {
+            this.ma = ma;
+            this.cont = cont;
+            this._mapChain = _mapChain || null;
+            this[Symbols.Functor] = true;
+        }
+        map(f) { return new LiftF(this.ma, this.cont, { fn: f, next: this._mapChain }); }
+    }
     Free.Pure = Pure;
     Free.Impure = Impure;
     Free.Thunk = Thunk;
     Free.trampoline = trampoline;
+    Free.GetF = GetF;
+    Free.PutF = PutF;
+    Free.ModifyF = ModifyF;
+    Free.LiftF = LiftF;
+    Free.applyMapChain = applyMapChain;
     return { Free, trampoline };
 })();
 /* Free Static Land */
@@ -2043,6 +2093,139 @@ class FreeMonad extends Monad {
 }
 modules.push(FreeMonad);
 load(...modules);
+
+/* ═══════════════════════════════════════════════════════════════
+   Monad Transformer
+   - load() 이후에 위치: Monad.of(), Functor.of() 등이 로드된 상태 필요
+   - 타입 클래스 인스턴스를 동적 생성하여 레지스트리에 등록
+   ═══════════════════════════════════════════════════════════════ */
+
+const normalizeMonad = M => {
+    if (typeof M === 'string') {
+        const m = Monad.of(M);
+        const f = Functor.of(M);
+        return { of: m.of, chain: m.chain, map: f.map, type: M };
+    }
+    if (!M || typeof M.of !== 'function' || typeof M.chain !== 'function' || typeof M.map !== 'function') {
+        raise(new TypeError(
+            'normalizeMonad: M must be a static-land style object with of(a), map(f, ma), chain(f, ma)'
+        ));
+    }
+    return M;
+};
+
+const { GetF, PutF, ModifyF, LiftF, applyMapChain } = Free;
+
+// type 없는 커스텀 모나드에 자동 부여되는 alias는 프로세스 실행 순서에 따라 달라진다.
+// 이 alias를 외부에서 Functor.of('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
+// 문자열 M (예: 'maybe', 'either')이나 type 프로퍼티가 있는 객체 M을 사용하면 결정적 alias를 얻을 수 있다.
+let _stateTId = 0;
+const StateT = (M) => {
+    if (StateT._cache.has(M)) return StateT._cache.get(M);
+
+    const nm = normalizeMonad(M);
+    const mType = nm.type || (typeof M === 'string' ? M : `M${++_stateTId}`);
+    const typeName = `StateT(${mType})`;
+    const alias = typeName.toLowerCase();
+
+    class ST {
+        constructor(program) {
+            this._program = program;
+            this._typeName = typeName;
+        }
+        run(s) {
+            if (!(this instanceof ST)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
+            return ST.runState(s, this);
+        }
+        eval(s) {
+            if (!(this instanceof ST)) raise(new TypeError(`${typeName}.eval: must be called on a ${typeName} instance`));
+            return nm.map(([a]) => a, this.run(s));
+        }
+        exec(s) {
+            if (!(this instanceof ST)) raise(new TypeError(`${typeName}.exec: must be called on a ${typeName} instance`));
+            return nm.map(([_, s2]) => s2, this.run(s));
+        }
+        map(f) { return Functor.of(alias).map(f, this); }
+        chain(f) { return Chain.of(alias).chain(f, this); }
+    }
+
+    ST.of = x => new ST(Free.pure(x));
+    ST.get = new ST(Free.liftF(new GetF(s => s)));
+    ST.put = s => new ST(Free.liftF(new PutF(s, undefined)));
+    ST.modify = f => new ST(Free.liftF(new ModifyF(f, undefined)));
+    ST.gets = f => new ST(Free.liftF(new GetF(f)));
+    ST.lift = ma => new ST(Free.liftF(new LiftF(ma, a => a)));
+
+    ST.runState = (initial, st) => {
+        if (!(st instanceof ST)) {
+            raise(new TypeError(`${typeName}.runState: second argument must be a ${typeName} instance`));
+        }
+        const go = (s, free) => {
+            while (Free.isImpure(free)) {
+                const f = free.functor;
+                const apply = val => f._mapChain ? applyMapChain(f._mapChain, val) : val;
+                if (f instanceof GetF)    { free = apply(f.cont(s)); continue; }
+                if (f instanceof PutF)    { s = f.state; free = apply(f.next); continue; }
+                if (f instanceof ModifyF) { s = f.f(s); free = apply(f.next); continue; }
+                if (f instanceof LiftF)   {
+                    const cont = f._mapChain
+                        ? a => applyMapChain(f._mapChain, f.cont(a))
+                        : f.cont;
+                    return nm.chain(a => go(s, cont(a)), f.ma);
+                }
+                throw new Error(`${typeName}.runState: unknown functor`);
+            }
+            return nm.of([Free.isPure(free) ? free.value : free, s]);
+        };
+        return go(initial, st._program);
+    };
+
+    // 타입 클래스 인스턴스 동적 등록 (registry=null로 generic 키 오염 방지)
+    // 모든 인스턴스에서 instanceof ST로 nominal typing 강제
+    const checkST = (val, method) => {
+        if (!(val instanceof ST)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
+    };
+
+    const stFunctor = new Functor(
+        (f, st) => { checkST(st, 'map'); return new ST(Functor.of('free').map(f, st._program)); },
+        typeName, null
+    );
+    Functor.types[alias] = stFunctor;
+
+    const stApply = new Apply(
+        stFunctor,
+        (sf, sa) => {
+            checkST(sf, 'ap'); checkST(sa, 'ap');
+            return new ST(Chain.of('free').chain(
+                f => Functor.of('free').map(f, sa._program), sf._program));
+        },
+        typeName, null
+    );
+    Apply.types[alias] = stApply;
+
+    const stApplicative = new Applicative(stApply, ST.of, typeName, null);
+    Applicative.types[alias] = stApplicative;
+
+    const stChain = new Chain(
+        stApply,
+        (f, st) => { checkST(st, 'chain'); return new ST(Chain.of('free').chain(x => f(x)._program, st._program)); },
+        typeName, null
+    );
+    Chain.types[alias] = stChain;
+
+    const stMonad = new Monad(stApplicative, stChain, typeName, null);
+    Monad.types[alias] = stMonad;
+
+    ST.map = stFunctor.map;
+    ST.ap = stApply.ap;
+    ST.chain = stChain.chain;
+    ST.pipeK = (...fns) => pipeK(stMonad)(fns);
+    ST.composeK = (...fns) => composeK(stMonad)(fns);
+
+    StateT._cache.set(M, ST);
+    return ST;
+};
+StateT._cache = new Map();
 
 /* ═══════════════════════════════════════════════════════════════
    Static Methods (Eta Reduced)
@@ -2151,6 +2334,7 @@ export default {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
+    StateT,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
