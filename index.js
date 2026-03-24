@@ -2439,16 +2439,24 @@ const Actor = ({ init, handle }) => {
         if (processing || queue.length === 0) return;
         processing = true;
         const { msg, resolve, reject } = queue.shift();
-        try {
-            const [result, newState] = handle(state, msg);
+        const done = () => { processing = false; if (queue.length > 0) process(); };
+        const onSuccess = ([result, newState]) => {
             state = newState;
             for (let i = 0; i < subscribers.length; i++) subscribers[i](result, state);
             resolve(result);
+            done();
+        };
+        const onError = e => { reject(e); done(); };
+        try {
+            const returned = handle(state, msg);
+            if (returned != null && typeof returned.fork === 'function') {
+                returned.fork(onError, onSuccess);
+            } else {
+                onSuccess(returned);
+            }
         } catch (e) {
-            reject(e);
+            onError(e);
         }
-        processing = false;
-        if (queue.length > 0) process();
     };
 
     return {

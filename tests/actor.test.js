@@ -42,6 +42,73 @@ testAsync('getState reflects current state', async () => {
 });
 
 /* ═══════════════════════════════════════════════════
+   비동기 handle (Task 반환)
+   ═══════════════════════════════════════════════════ */
+logSection('Actor - Async Handle');
+
+testAsync('handle returning Task works', async () => {
+    const actor = Actor({
+        init: 0,
+        handle: (state, msg) => new Task((_, resolve) => {
+            setTimeout(() => resolve([msg * 2, state + msg]), 10);
+        })
+    });
+    const result = await new Promise((resolve, reject) => {
+        actor.send(5).fork(reject, resolve);
+    });
+    assertEquals(result, 10);
+    assertEquals(actor.getState(), 5);
+});
+
+testAsync('async handle serializes correctly', async () => {
+    const order = [];
+    const actor = Actor({
+        init: 0,
+        handle: (state, msg) => new Task((_, resolve) => {
+            setTimeout(() => {
+                order.push(msg);
+                resolve([state + msg, state + msg]);
+            }, 5);
+        })
+    });
+    const results = await Promise.all([
+        new Promise((resolve, reject) => actor.send(1).fork(reject, resolve)),
+        new Promise((resolve, reject) => actor.send(2).fork(reject, resolve)),
+        new Promise((resolve, reject) => actor.send(3).fork(reject, resolve)),
+    ]);
+    assertEquals(results, [1, 3, 6]);
+    assertEquals(order, [1, 2, 3]);
+});
+
+testAsync('async handle error rejects Task', async () => {
+    const actor = Actor({
+        init: 0,
+        handle: (state, msg) => new Task((reject, _) => {
+            setTimeout(() => reject('async-error'), 5);
+        })
+    });
+    let caught = null;
+    await new Promise((resolve) => {
+        actor.send('x').fork(err => { caught = err; resolve(); }, resolve);
+    });
+    assertEquals(caught, 'async-error');
+    assertEquals(actor.getState(), 0);
+});
+
+testAsync('async handle error does not block next message', async () => {
+    const actor = Actor({
+        init: 0,
+        handle: (state, msg) => msg === 'bad'
+            ? new Task((reject) => setTimeout(() => reject('fail'), 5))
+            : new Task((_, resolve) => setTimeout(() => resolve(['ok', msg]), 5))
+    });
+    await new Promise((resolve) => actor.send('bad').fork(_ => resolve(), resolve));
+    const result = await new Promise((resolve, reject) => actor.send(42).fork(reject, resolve));
+    assertEquals(result, 'ok');
+    assertEquals(actor.getState(), 42);
+});
+
+/* ═══════════════════════════════════════════════════
    순차 처리 (경합 방지)
    ═══════════════════════════════════════════════════ */
 logSection('Actor - Sequential Processing');
