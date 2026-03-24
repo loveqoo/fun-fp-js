@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-03-23T23:01:30.887Z
+ * Built: 2026-03-24T13:41:47.586Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -2445,6 +2445,50 @@ const WriterT = (M, writerMonoid) => {
 WriterT._cache = new Map();
 
 /* ═══════════════════════════════════════════════════════════════
+   Actor — 가벼운 메시지 큐 + 순차 처리
+   ═══════════════════════════════════════════════════════════════ */
+
+const Actor = ({ init, handle }) => {
+    if (typeof handle !== 'function') raise(new TypeError('Actor: handle must be a function'));
+    let state = init;
+    const queue = [];
+    let processing = false;
+    const subscribers = [];
+
+    const process = () => {
+        if (processing || queue.length === 0) return;
+        processing = true;
+        const { msg, resolve, reject } = queue.shift();
+        try {
+            const [result, newState] = handle(state, msg);
+            state = newState;
+            for (let i = 0; i < subscribers.length; i++) subscribers[i](result, state);
+            resolve(result);
+        } catch (e) {
+            reject(e);
+        }
+        processing = false;
+        if (queue.length > 0) process();
+    };
+
+    return {
+        send: msg => new Task((reject, resolve) => {
+            queue.push({ msg, resolve, reject });
+            process();
+        }),
+        subscribe: fn => {
+            if (typeof fn !== 'function') raise(new TypeError('Actor.subscribe: argument must be a function'));
+            subscribers.push(fn);
+            return () => {
+                const idx = subscribers.indexOf(fn);
+                if (idx >= 0) subscribers.splice(idx, 1);
+            };
+        },
+        getState: () => state,
+    };
+};
+
+/* ═══════════════════════════════════════════════════════════════
    Static Methods (Eta Reduced)
    - load() 이후에 정의해야 TypeClass.of()가 정상 작동
    ═══════════════════════════════════════════════════════════════ */
@@ -2551,7 +2595,7 @@ return {
     Filterable, Functor, Bifunctor, Contravariant, Profunctor,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
-    StateT, EitherT, ReaderT, WriterT,
+    StateT, EitherT, ReaderT, WriterT, Actor,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
