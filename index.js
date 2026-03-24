@@ -2151,11 +2151,7 @@ load(...modules);
    ═══════════════════════════════════════════════════════════════ */
 
 const normalizeMonad = M => {
-    if (typeof M === 'string') {
-        const m = Monad.of(M);
-        const f = Functor.of(M);
-        return { of: m.of, chain: m.chain, map: f.map, type: M };
-    }
+    if (typeof M === 'string') return Monad.of(M);
     if (!M || typeof M.of !== 'function' || typeof M.chain !== 'function' || typeof M.map !== 'function') {
         raise(new TypeError(
             'normalizeMonad: M must be a static-land style object with of(a), map(f, ma), chain(f, ma)'
