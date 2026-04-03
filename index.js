@@ -1303,6 +1303,7 @@ class Task {
     }
     map(f) { return Functor.of('task').map(f, this); }
     chain(f) { return Chain.of('task').chain(f, this); }
+    catchError(handler) { return Task.catchError(handler, this); }
 }
 Task.prototype[Symbols.Task] = true;
 const settledFork = (task, onReject, onResolve) => {
@@ -1371,6 +1372,12 @@ Task.race = tasks => new Task((reject, resolve) => {
     if (!list.every(Task.isTask)) raise(new TypeError('Task.race: all elements must be Task'));
     let done = false;
     list.forEach(t => t.fork(e => { if (!done) { done = true; reject(e); } }, v => { if (!done) { done = true; resolve(v); } }));
+});
+Task.catchError = (handler, task) => new Task((reject, resolve) => {
+    task.fork(
+        e => handler(e).fork(reject, resolve),
+        resolve
+    );
 });
 class TaskSemigroupoid extends Semigroupoid {
     constructor() {

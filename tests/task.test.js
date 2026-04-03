@@ -314,4 +314,65 @@ test('Task.lift catches exceptions and returns rejected Task', () => {
     );
 });
 
+// === catchError ===
+logSection('Task.catchError');
+
+test('catchError - Rejected Task recovers with fallback', () => {
+    Task.rejected('error')
+        .catchError(e => Task.of(`recovered: ${e}`))
+        .fork(
+            e => { throw new Error(`Unexpected rejection: ${e}`); },
+            v => assertEquals(v, 'recovered: error')
+        );
+});
+
+test('catchError - Resolved Task passes through', () => {
+    Task.of(42)
+        .catchError(e => Task.of(0))
+        .fork(
+            e => { throw new Error(`Unexpected rejection: ${e}`); },
+            v => assertEquals(v, 42)
+        );
+});
+
+test('catchError - Handler can re-reject', () => {
+    Task.rejected('original')
+        .catchError(e => Task.rejected(`wrapped: ${e}`))
+        .fork(
+            e => assertEquals(e, 'wrapped: original'),
+            v => { throw new Error(`Unexpected resolve: ${v}`); }
+        );
+});
+
+test('catchError - Static method form', () => {
+    const recovered = Task.catchError(
+        e => Task.of('fallback'),
+        Task.rejected('error')
+    );
+    recovered.fork(
+        e => { throw new Error(`Unexpected rejection: ${e}`); },
+        v => assertEquals(v, 'fallback')
+    );
+});
+
+test('catchError - Chains with map', () => {
+    Task.rejected('error')
+        .catchError(e => Task.of(0))
+        .map(x => x + 1)
+        .fork(
+            e => { throw new Error(`Unexpected rejection: ${e}`); },
+            v => assertEquals(v, 1)
+        );
+});
+
+test('catchError - fromPromise integration', () => {
+    const fetchData = Task.fromPromise(() => Promise.reject('network error'));
+    fetchData()
+        .catchError(e => Task.of('default'))
+        .fork(
+            e => { throw new Error(`Unexpected rejection: ${e}`); },
+            v => assertEquals(v, 'default')
+        );
+});
+
 console.log('\n✅ Task tests completed');
