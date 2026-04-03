@@ -314,6 +314,28 @@ test('Task.lift catches exceptions and returns rejected Task', () => {
     );
 });
 
+// === map safety ===
+logSection('Task.map safety');
+
+test('map - throw in callback rejects the Task', () => {
+    Task.of(1)
+        .map(x => { throw new Error('boom'); })
+        .fork(
+            e => assertEquals(e.message, 'boom'),
+            v => { throw new Error(`Unexpected resolve: ${v}`); }
+        );
+});
+
+test('map - throw in callback is recoverable via catchError', () => {
+    Task.of(1)
+        .map(x => { throw new Error('fail'); })
+        .catchError(e => Task.of('recovered'))
+        .fork(
+            e => { throw new Error(`Unexpected rejection: ${e}`); },
+            v => assertEquals(v, 'recovered')
+        );
+});
+
 // === catchError ===
 logSection('Task.catchError');
 

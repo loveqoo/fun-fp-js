@@ -1402,7 +1402,10 @@ modules.push(TaskFilterable);
 class TaskFunctor extends Functor {
     constructor() {
         super((f, task) => new Task((reject, resolve) => {
-            settledFork(task, reject, x => resolve(f(x)));
+            settledFork(task, reject, x => {
+                try { resolve(f(x)); }
+                catch (e) { reject(e); }
+            });
         }), 'Task', Functor.types, 'task');
     }
 }
