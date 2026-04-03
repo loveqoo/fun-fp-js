@@ -81,4 +81,16 @@ export const assertThrows = (fn, desc) => {
     }
 };
 
+export const assertThrowsWith = (fn, expectedMessage, desc) => {
+    try {
+        fn();
+        throw new Error(`Expected to throw '${expectedMessage}', but did not.`);
+    } catch (e) {
+        if (e.message.startsWith('Expected to throw')) throw e;
+        if (!e.message.includes(expectedMessage)) {
+            throw new Error(`${desc || 'Error message mismatch'}\n      Expected message containing: ${expectedMessage}\n      Actual: ${e.message}`);
+        }
+    }
+};
+
 export const logSection = title => console.log(`\n=== ${title} ===\n`);

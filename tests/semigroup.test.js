@@ -1,8 +1,8 @@
 // Semigroup Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, logSection } from './utils.js';
+import { test, assertEquals, assertDeepEquals, assert, assertThrowsWith, logSection } from './utils.js';
 
-const { Semigroup } = fp;
+const { Semigroup, Maybe, Either } = fp;
 
 logSection('Semigroup Laws');
 
@@ -118,6 +118,132 @@ test('Function Semigroup - Associativity: compose(compose(f, g), h) === compose(
     const right = fnSemigroup.concat(f, fnSemigroup.concat(g, h));
 
     assertEquals(left(input), right(input));
+});
+
+// === Maybe Semigroup ===
+logSection('Maybe Semigroup');
+
+const maybeSG = Maybe.Semigroup('array');
+
+test('Maybe Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
+    const a = Maybe.Just([1]), b = Maybe.Just([2]), c = Maybe.Just([3]);
+    assertDeepEquals(
+        maybeSG.concat(maybeSG.concat(a, b), c),
+        maybeSG.concat(a, maybeSG.concat(b, c))
+    );
+});
+
+test('Maybe Semigroup - Just concat Just', () => {
+    assertDeepEquals(maybeSG.concat(Maybe.Just([1, 2]), Maybe.Just([3, 4])), Maybe.Just([1, 2, 3, 4]));
+});
+
+test('Maybe Semigroup - Just concat Nothing', () => {
+    assertDeepEquals(maybeSG.concat(Maybe.Just([1]), Maybe.Nothing()), Maybe.Just([1]));
+});
+
+test('Maybe Semigroup - Nothing concat Just', () => {
+    assertDeepEquals(maybeSG.concat(Maybe.Nothing(), Maybe.Just([1])), Maybe.Just([1]));
+});
+
+test('Maybe Semigroup - Nothing concat Nothing', () => {
+    assertDeepEquals(maybeSG.concat(Maybe.Nothing(), Maybe.Nothing()), Maybe.Nothing());
+});
+
+test('Maybe Semigroup - cache: string and instance produce same reference', () => {
+    assert(Maybe.Semigroup('array') === Maybe.Semigroup(Semigroup.of('array')));
+});
+
+test('Maybe Semigroup - registry: Semigroup.of resolves parameterized key', () => {
+    assert(Semigroup.of('maybe(array)') === Maybe.Semigroup('array'));
+});
+
+// === Either Semigroup ===
+logSection('Either Semigroup');
+
+const eitherSG = Either.Semigroup('array');
+
+test('Either Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
+    const a = Either.Right([1]), b = Either.Right([2]), c = Either.Right([3]);
+    assertDeepEquals(
+        eitherSG.concat(eitherSG.concat(a, b), c),
+        eitherSG.concat(a, eitherSG.concat(b, c))
+    );
+});
+
+test('Either Semigroup - Right concat Right', () => {
+    assertDeepEquals(eitherSG.concat(Either.Right([1]), Either.Right([2])), Either.Right([1, 2]));
+});
+
+test('Either Semigroup - Left concat Right (first Left wins)', () => {
+    assertDeepEquals(eitherSG.concat(Either.Left('err'), Either.Right([1])), Either.Left('err'));
+});
+
+test('Either Semigroup - Right concat Left', () => {
+    assertDeepEquals(eitherSG.concat(Either.Right([1]), Either.Left('err')), Either.Left('err'));
+});
+
+test('Either Semigroup - Left concat Left (first Left wins)', () => {
+    assertDeepEquals(eitherSG.concat(Either.Left('e1'), Either.Left('e2')), Either.Left('e1'));
+});
+
+test('Either Semigroup - cache: string and instance produce same reference', () => {
+    assert(Either.Semigroup('array') === Either.Semigroup(Semigroup.of('array')));
+});
+
+test('Either Semigroup - registry: Semigroup.of resolves parameterized key', () => {
+    assert(Semigroup.of('either(array)') === Either.Semigroup('array'));
+});
+
+// === Nested Semigroup ===
+logSection('Nested Semigroup');
+
+test('Nested maybe - Semigroup.of resolves maybe(maybe(array))', () => {
+    const nested = Semigroup.of('maybe(maybe(array))');
+    assert(nested === Maybe.Semigroup('maybe(array)'));
+});
+
+test('Nested maybe - concat works on nested structure', () => {
+    const nested = Semigroup.of('maybe(maybe(array))');
+    assertDeepEquals(
+        nested.concat(Maybe.Just(Maybe.Just([1])), Maybe.Just(Maybe.Just([2]))),
+        Maybe.Just(Maybe.Just([1, 2]))
+    );
+});
+
+// === Error Cases ===
+logSection('Container Semigroup Error Cases');
+
+test('Semigroup.of with mixed-case container key throws', () => {
+    assertThrowsWith(() => Semigroup.of('Maybe(array)'), 'unsupported key Maybe(array)');
+});
+
+test('Maybe.Semigroup with non-Semigroup object throws', () => {
+    assertThrowsWith(() => Maybe.Semigroup({}), 'Maybe.Semigroup: innerSG must be a supported semigroup key or Semigroup instance');
+});
+
+test('Either.Semigroup with non-Semigroup object throws', () => {
+    assertThrowsWith(() => Either.Semigroup({}), 'Either.Semigroup: innerSG must be a supported semigroup key or Semigroup instance');
+});
+
+test('Maybe.Semigroup with unsupported key propagates Semigroup.of error', () => {
+    assertThrowsWith(() => Maybe.Semigroup('unknown'), 'unsupported key unknown');
+});
+
+test('Maybe.Monoid with unsupported key propagates Semigroup.of error', () => {
+    assertThrowsWith(() => Maybe.Monoid('unknown'), 'unsupported key unknown');
+});
+
+test('Maybe Semigroup - strict mode: type mismatch throws (Just vs Right)', () => {
+    fp.setStrictMode(true);
+    try {
+        const sg = Maybe.Semigroup('array');
+        assertThrowsWith(
+            () => sg.concat(Maybe.Just([]), Either.Right([])),
+            'Semigroup.concat'
+        );
+    } finally {
+        fp.setStrictMode(false);
+    }
 });
 
 console.log('\n✅ Semigroup tests completed');

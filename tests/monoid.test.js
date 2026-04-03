@@ -1,8 +1,8 @@
 // Monoid Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, logSection } from './utils.js';
+import { test, assertEquals, assertDeepEquals, assert, assertThrowsWith, logSection } from './utils.js';
 
-const { Monoid } = fp;
+const { Monoid, Maybe } = fp;
 
 logSection('Monoid Laws');
 
@@ -136,6 +136,39 @@ test('Function Monoid - Left identity: compose(identity, f) === f', () => {
     const f = x => x * 2;
     const result = fnMonoid.concat(fnMonoid.empty(), f);
     assertEquals(result(5), f(5));
+});
+
+// === Maybe Monoid ===
+logSection('Maybe Monoid');
+
+const maybeMN = Maybe.Monoid('array');
+
+test('Maybe Monoid - empty() returns Nothing', () => {
+    assertDeepEquals(maybeMN.empty(), Maybe.Nothing());
+});
+
+test('Maybe Monoid - Right identity: concat(a, empty()) === a', () => {
+    assertDeepEquals(maybeMN.concat(Maybe.Just([1, 2]), maybeMN.empty()), Maybe.Just([1, 2]));
+});
+
+test('Maybe Monoid - Left identity: concat(empty(), a) === a', () => {
+    assertDeepEquals(maybeMN.concat(maybeMN.empty(), Maybe.Just([1, 2])), Maybe.Just([1, 2]));
+});
+
+test('Maybe Monoid - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
+    const a = Maybe.Just([1]), b = Maybe.Just([2]), c = Maybe.Just([3]);
+    assertDeepEquals(
+        maybeMN.concat(maybeMN.concat(a, b), c),
+        maybeMN.concat(a, maybeMN.concat(b, c))
+    );
+});
+
+test('Maybe Monoid - registry: Monoid.of resolves parameterized key', () => {
+    assert(Monoid.of('maybe(array)') === Maybe.Monoid('array'));
+});
+
+test('Maybe Monoid - invalid input throws', () => {
+    assertThrowsWith(() => Maybe.Monoid({}), 'Maybe.Monoid: innerSG must be a supported semigroup key or Semigroup instance');
 });
 
 console.log('\n✅ Monoid tests completed');
