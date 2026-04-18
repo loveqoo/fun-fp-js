@@ -8,7 +8,7 @@ const {
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer,
-    composeK, foldMap, Maybe, Either, Foldable, Monoid, Monad
+    composeK, foldMap, Maybe, Either, Foldable, Monoid, Monad, setTapErrorHandler
 } = fp;
 
 // === Basic Utilities ===
@@ -211,6 +211,20 @@ test('tap - catches errors in side effects', () => {
     // Should not throw, just log
     const result = tap(x => { throw new Error('side effect error'); })(5);
     assertEquals(result, 5);
+});
+
+test('setTapErrorHandler - rejects non-function', () => {
+    assertThrows(() => setTapErrorHandler(null));
+    assertThrows(() => setTapErrorHandler(undefined));
+    assertThrows(() => setTapErrorHandler(42));
+});
+
+test('setTapErrorHandler - accepts function and routes errors', () => {
+    let captured;
+    setTapErrorHandler(e => { captured = e.message; });
+    tap(() => { throw new Error('boom'); })(1);
+    assertEquals(captured, 'boom');
+    setTapErrorHandler(() => {});
 });
 
 test('also - flipped tap (value first, then functions)', () => {

@@ -7,7 +7,9 @@ const polyfills = {
     object: {
         fromEntries: Object.fromEntries
             ? entries => Object.fromEntries(entries)
-            : entries => entries.reduce((obj, [k, v]) => (obj[k] = v, obj), {}),
+            : entries => entries.reduce((obj, [k, v]) => (Object.defineProperty(obj, k, {
+                value: v, writable: true, enumerable: true, configurable: true
+            }), obj), {}),
         entries: Object.entries
             ? obj => Object.entries(obj)
             : obj => Object.keys(obj).map(k => [k, obj[k]]),
@@ -162,7 +164,10 @@ const DEV = typeof process !== 'undefined' && process.env
     : true;
 const config = { strictMode: DEV, tapErrorHandler: emptyFunc };
 const setStrictMode = (val) => { config.strictMode = !!val; };
-const setTapErrorHandler = (handler) => { config.tapErrorHandler = handler; };
+const setTapErrorHandler = (handler) => {
+    types.checkFunction(handler, 'setTapErrorHandler');
+    config.tapErrorHandler = handler;
+};
 const checkAndSet = (config => {
     const rules = {
         Setoid: {
@@ -1023,12 +1028,9 @@ class ArrayTraversable extends Traversable {
     constructor() {
         super(Functor.types.ArrayFunctor,
             Foldable.types.ArrayFoldable,
-            (applicative, f, arr) => applicative.map(
-                result => [...result],
-                arr.reduce(
-                    (acc, x) => applicative.ap(applicative.map(a => b => (a.push(b), a), acc), f(x)),
-                    applicative.of([])
-                )
+            (applicative, f, arr) => arr.reduce(
+                (acc, x) => applicative.ap(applicative.map(a => b => [...a, b], acc), f(x)),
+                applicative.of([])
             ),
             'Array', Traversable.types, 'array');
     }

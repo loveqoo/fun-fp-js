@@ -57,6 +57,26 @@ test('ArrayTraversable.traverse with Either - has Left', () => {
     assertEquals(result.value, 'error at 2');
 });
 
+test('ArrayTraversable.traverse with Array applicative - no shared mutation', () => {
+    const result = Traversable.types.ArrayTraversable.traverse(
+        Applicative.types.ArrayApplicative,
+        x => [x, x + 10],
+        [1, 2]
+    );
+
+    assertEquals(result, [[1, 2], [1, 12], [11, 2], [11, 12]]);
+});
+
+test('ArrayTraversable.traverse with Array applicative - empty input', () => {
+    const result = Traversable.types.ArrayTraversable.traverse(
+        Applicative.types.ArrayApplicative,
+        x => [x],
+        []
+    );
+
+    assertEquals(result, [[]]);
+});
+
 testAsync('ArrayTraversable.traverse with Task', async () => {
     const arr = [1, 2, 3];
     const result = Traversable.types.ArrayTraversable.traverse(
