@@ -1,2 +1,11 @@
 # Build artifacts
 build/
+
+# Dependencies
+node_modules/
+
+# OS metadata
+.DS_Store
+
+# Claude Code
+.claude/worktrees/

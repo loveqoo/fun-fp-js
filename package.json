@@ -1,0 +1,18 @@
+{
+    "name": "fun-fp-js",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "main": "./dist/fun-fp.cjs",
+    "module": "./dist/fun-fp.js",
+    "types": "./dist/fun-fp.d.ts",
+    "scripts": {
+        "build": "node build.js && node build-types.js",
+        "build:js": "node build.js",
+        "build:types": "node build-types.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "typescript": "^5.6.0"
+    }
+}

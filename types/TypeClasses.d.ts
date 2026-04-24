@@ -1,0 +1,424 @@
+/**
+ * Type-class interfaces for fun-fp-js.
+ *
+ * Each interface is generic over a TypeLambda `F`. Method signatures match
+ * the runtime (uncurried, static-land style). Slot threading is explicit:
+ * `map` only varies Target; `bimap` varies Out2 + Target; `contramap` varies
+ * Target contravariantly; etc.
+ *
+ * Dispatch entry points (`Functor.of(name)`, `Monad.of(name)`) resolve a
+ * literal string key to a TypeLambda via per-type-class `*Instances` maps.
+ * Users register new runtime-dispatch keys by module-augmenting those maps.
+ * (Registering a *new TypeLambda* needs no augmentation — just declare
+ * `interface XTypeLambda extends TypeLambda`.)
+ *
+ * Not yet covered: Bifunctor, Contravariant, Profunctor, Filterable,
+ * ChainRec, Extend, Comonad, Semigroupoid, Category, Setoid, Ord,
+ * Semigroup, Monoid, Group. Added in follow-up steps.
+ */
+
+import type { Kind, TypeClass, TypeLambda } from "./HKT";
+
+// ── Algebra — base class for every type-class instance at runtime ────
+// Exposed for completeness (the default export includes `Algebra`);
+// users rarely construct it directly.
+export declare class Algebra {
+    constructor(type: string);
+    readonly type: string;
+}
+
+// ─── Functor ────────────────────────────────────────────────────────
+export interface Functor<F extends TypeLambda> extends TypeClass<F> {
+    readonly map: <In, Out2, Out1, A, B>(
+        f: (a: A) => B,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => Kind<F, In, Out2, Out1, B>;
+}
+
+// ─── Apply ──────────────────────────────────────────────────────────
+export interface Apply<F extends TypeLambda> extends Functor<F> {
+    readonly ap: <In, Out2, Out1, A, B>(
+        ff: Kind<F, In, Out2, Out1, (a: A) => B>,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => Kind<F, In, Out2, Out1, B>;
+}
+
+// ─── Applicative ────────────────────────────────────────────────────
+export interface Applicative<F extends TypeLambda> extends Apply<F> {
+    readonly of: <A, In = never, Out2 = never, Out1 = never>(
+        a: A
+    ) => Kind<F, In, Out2, Out1, A>;
+}
+
+// ─── Chain (Bind) ───────────────────────────────────────────────────
+export interface Chain<F extends TypeLambda> extends Apply<F> {
+    readonly chain: <In, Out2, Out1, A, B>(
+        f: (a: A) => Kind<F, In, Out2, Out1, B>,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => Kind<F, In, Out2, Out1, B>;
+}
+
+// ─── Monad ──────────────────────────────────────────────────────────
+export interface Monad<F extends TypeLambda> extends Applicative<F>, Chain<F> {}
+
+// ─── Alt / Plus / Alternative ───────────────────────────────────────
+export interface Alt<F extends TypeLambda> extends Functor<F> {
+    readonly alt: <In, Out2, Out1, A>(
+        fa: Kind<F, In, Out2, Out1, A>,
+        fb: Kind<F, In, Out2, Out1, A>
+    ) => Kind<F, In, Out2, Out1, A>;
+}
+
+export interface Plus<F extends TypeLambda> extends Alt<F> {
+    readonly zero: <A, In = never, Out2 = never, Out1 = never>() => Kind<
+        F, In, Out2, Out1, A
+    >;
+}
+
+export interface Alternative<F extends TypeLambda>
+    extends Applicative<F>, Plus<F> {}
+
+// ─── Foldable ───────────────────────────────────────────────────────
+export interface Foldable<F extends TypeLambda> extends TypeClass<F> {
+    readonly reduce: <In, Out2, Out1, A, B>(
+        f: (acc: B, a: A) => B,
+        init: B,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => B;
+}
+
+// ─── Traversable ────────────────────────────────────────────────────
+// `G` is the Applicative being distributed through; `F` is the outer
+// Traversable structure. Slot threading is preserved on both.
+export interface Traversable<F extends TypeLambda>
+    extends Functor<F>, Foldable<F> {
+    readonly traverse: <G extends TypeLambda>(
+        applicative: Applicative<G>
+    ) => <A, B, GIn, GOut2, GOut1, FIn, FOut2, FOut1>(
+        f: (a: A) => Kind<G, GIn, GOut2, GOut1, B>,
+        fa: Kind<F, FIn, FOut2, FOut1, A>
+    ) => Kind<G, GIn, GOut2, GOut1, Kind<F, FIn, FOut2, FOut1, B>>;
+}
+
+// ─── Bifunctor ──────────────────────────────────────────────────────
+// Varies Out2 (E) and Target (A) jointly.
+export interface Bifunctor<F extends TypeLambda> extends TypeClass<F> {
+    readonly bimap: <In, Out1, E1, E2, A, B>(
+        f: (e: E1) => E2,
+        g: (a: A) => B,
+        fa: Kind<F, In, E1, Out1, A>
+    ) => Kind<F, In, E2, Out1, B>;
+}
+
+// ─── Contravariant ──────────────────────────────────────────────────
+// In fun-fp-js this is used on FunctionTypeLambda where the varying slot
+// is `In` (the function's input), not `Target`. Other libraries (effect-ts)
+// vary Target; we follow the runtime's actual instance (PredicateContravariant).
+export interface Contravariant<F extends TypeLambda> extends TypeClass<F> {
+    readonly contramap: <In1, Out2, Out1, Target, In2>(
+        f: (a: In2) => In1,
+        fa: Kind<F, In1, Out2, Out1, Target>
+    ) => Kind<F, In2, Out2, Out1, Target>;
+}
+
+// ─── Profunctor ─────────────────────────────────────────────────────
+// Varies In (contravariantly) and Target (covariantly).
+export interface Profunctor<F extends TypeLambda> extends TypeClass<F> {
+    readonly promap: <In1, Out2, Out1, T1, In2, T2>(
+        f: (a: In2) => In1,
+        g: (b: T1) => T2,
+        fa: Kind<F, In1, Out2, Out1, T1>
+    ) => Kind<F, In2, Out2, Out1, T2>;
+}
+
+// ─── Filterable ─────────────────────────────────────────────────────
+// Base form: 2-arg (pred, fa). Instances that accept extra args (like
+// Either's `onFalse`) expose those on their own const namespace, not on
+// the generic Filterable interface.
+export interface Filterable<F extends TypeLambda> extends TypeClass<F> {
+    readonly filter: {
+        <In, Out2, Out1, A, B extends A>(
+            pred: (a: A) => a is B,
+            fa: Kind<F, In, Out2, Out1, A>
+        ): Kind<F, In, Out2, Out1, B>;
+        <In, Out2, Out1, A>(
+            pred: (a: A) => boolean,
+            fa: Kind<F, In, Out2, Out1, A>
+        ): Kind<F, In, Out2, Out1, A>;
+    };
+}
+
+// ─── ChainRec — stack-safe monadic recursion ────────────────────────
+// Step<A, B> is the runtime-tagged union produced by `ChainRec.next(a)` /
+// `ChainRec.done(b)`. The user callback yields one Step at a time wrapped
+// in F. The implementation loops until it sees a `done`, avoiding a
+// host-stack-bound recursion.
+export type ChainRecStep<A, B> =
+    | { readonly tag: "next"; readonly value: A }
+    | { readonly tag: "done"; readonly value: B };
+
+export interface ChainRec<F extends TypeLambda> extends Chain<F> {
+    readonly chainRec: <In, Out2, Out1, A, B>(
+        f: (
+            next: (a: A) => ChainRecStep<A, B>,
+            done: (b: B) => ChainRecStep<A, B>,
+            input: A
+        ) => Kind<F, In, Out2, Out1, ChainRecStep<A, B>>,
+        init: A
+    ) => Kind<F, In, Out2, Out1, B>;
+}
+
+// ─── Extend / Comonad ───────────────────────────────────────────────
+export interface Extend<F extends TypeLambda> extends Functor<F> {
+    readonly extend: <In, Out2, Out1, A, B>(
+        f: (fa: Kind<F, In, Out2, Out1, A>) => B,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => Kind<F, In, Out2, Out1, B>;
+}
+
+export interface Comonad<F extends TypeLambda> extends Extend<F> {
+    readonly extract: <In, Out2, Out1, A>(
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => A;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   Kind-2 type classes (Semigroupoid, Category)
+//   Still HKT-style — parameterized over a TypeLambda whose In and
+//   Target slots act as the two endpoints.
+// ═══════════════════════════════════════════════════════════════════
+
+export interface Semigroupoid<F extends TypeLambda> extends TypeClass<F> {
+    readonly compose: <A, B, C, Out2, Out1>(
+        bc: Kind<F, B, Out2, Out1, C>,
+        ab: Kind<F, A, Out2, Out1, B>
+    ) => Kind<F, A, Out2, Out1, C>;
+}
+
+export interface Category<F extends TypeLambda> extends Semigroupoid<F> {
+    readonly id: <A, Out2 = never, Out1 = never>() => Kind<
+        F, A, Out2, Out1, A
+    >;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   Concrete-type classes (Setoid, Ord, Semigroup, Monoid, Group)
+//   Parameterized over a *concrete* type A, not a TypeLambda.
+//   Dispatched via string keys mapped to `A` (not to a TypeLambda).
+// ═══════════════════════════════════════════════════════════════════
+
+export interface Setoid<A> {
+    readonly equals: (a: A, b: A) => boolean;
+}
+
+// Ord compares to boolean (runtime uses `lte`-style: true if `x ≤ y`).
+// The library's Ord.op is a `<=` comparator, not a -1|0|1 compare.
+export interface Ord<A> extends Setoid<A> {
+    readonly lte: (a: A, b: A) => boolean;
+}
+
+export interface Semigroup<A> {
+    readonly concat: (a: A, b: A) => A;
+}
+
+export interface Monoid<A> extends Semigroup<A> {
+    readonly empty: () => A;
+}
+
+export interface Group<A> extends Monoid<A> {
+    readonly invert: (a: A) => A;
+}
+
+// ─── Runtime dispatch registries ────────────────────────────────────
+// These map runtime string keys → TypeLambdas. Users register new keys
+// via module augmentation, e.g.:
+//
+//   declare module "fun-fp-js/types/TypeClasses" {
+//     interface FunctorInstances { mybox: MyBoxTypeLambda }
+//   }
+//
+// Built-in keys are declared here. Per-type files (step 4) will add
+// entries for Maybe/Either/Task/etc. via interface merging.
+
+export interface FunctorInstances {}
+export interface ApplyInstances {}
+export interface ApplicativeInstances {}
+export interface ChainInstances {}
+export interface MonadInstances {}
+export interface AltInstances {}
+export interface PlusInstances {}
+export interface AlternativeInstances {}
+export interface FoldableInstances {}
+export interface TraversableInstances {}
+export interface BifunctorInstances {}
+export interface ContravariantInstances {}
+export interface ProfunctorInstances {}
+export interface FilterableInstances {}
+export interface ChainRecInstances {}
+export interface ExtendInstances {}
+export interface ComonadInstances {}
+export interface SemigroupoidInstances {}
+export interface CategoryInstances {}
+
+// ─── Concrete-type instance maps (key → concrete A) ──────────────────
+// Not TypeLambda-valued — the value is the concrete type the dispatch
+// targets. Augment to register new runtime keys.
+export interface SetoidInstances {}
+export interface OrdInstances {}
+export interface SemigroupInstances {}
+export interface MonoidInstances {}
+export interface GroupInstances {}
+
+// ─── Dispatch entry points ──────────────────────────────────────────
+// Signature mirrors the runtime: `TypeClass.of('name')` returns the
+// instance for that name. The TS side resolves via the *Instances maps.
+
+export declare const Functor: {
+    readonly of: <K extends keyof FunctorInstances>(
+        name: K
+    ) => Functor<FunctorInstances[K]>;
+};
+
+export declare const Apply: {
+    readonly of: <K extends keyof ApplyInstances>(
+        name: K
+    ) => Apply<ApplyInstances[K]>;
+};
+
+export declare const Applicative: {
+    readonly of: <K extends keyof ApplicativeInstances>(
+        name: K
+    ) => Applicative<ApplicativeInstances[K]>;
+};
+
+export declare const Chain: {
+    readonly of: <K extends keyof ChainInstances>(
+        name: K
+    ) => Chain<ChainInstances[K]>;
+};
+
+export declare const Monad: {
+    readonly of: <K extends keyof MonadInstances>(
+        name: K
+    ) => Monad<MonadInstances[K]>;
+};
+
+export declare const Alt: {
+    readonly of: <K extends keyof AltInstances>(
+        name: K
+    ) => Alt<AltInstances[K]>;
+};
+
+export declare const Plus: {
+    readonly of: <K extends keyof PlusInstances>(
+        name: K
+    ) => Plus<PlusInstances[K]>;
+};
+
+export declare const Alternative: {
+    readonly of: <K extends keyof AlternativeInstances>(
+        name: K
+    ) => Alternative<AlternativeInstances[K]>;
+};
+
+export declare const Foldable: {
+    readonly of: <K extends keyof FoldableInstances>(
+        name: K
+    ) => Foldable<FoldableInstances[K]>;
+};
+
+export declare const Traversable: {
+    readonly of: <K extends keyof TraversableInstances>(
+        name: K
+    ) => Traversable<TraversableInstances[K]>;
+};
+
+export declare const Bifunctor: {
+    readonly of: <K extends keyof BifunctorInstances>(
+        name: K
+    ) => Bifunctor<BifunctorInstances[K]>;
+};
+
+export declare const Contravariant: {
+    readonly of: <K extends keyof ContravariantInstances>(
+        name: K
+    ) => Contravariant<ContravariantInstances[K]>;
+};
+
+export declare const Profunctor: {
+    readonly of: <K extends keyof ProfunctorInstances>(
+        name: K
+    ) => Profunctor<ProfunctorInstances[K]>;
+};
+
+export declare const Filterable: {
+    readonly of: <K extends keyof FilterableInstances>(
+        name: K
+    ) => Filterable<FilterableInstances[K]>;
+};
+
+export declare const ChainRec: {
+    readonly of: <K extends keyof ChainRecInstances>(
+        name: K
+    ) => ChainRec<ChainRecInstances[K]>;
+    // Step constructors — used by chainRec callbacks.
+    readonly next: <A>(a: A) => ChainRecStep<A, never>;
+    readonly done: <B>(b: B) => ChainRecStep<never, B>;
+};
+
+export declare const Extend: {
+    readonly of: <K extends keyof ExtendInstances>(
+        name: K
+    ) => Extend<ExtendInstances[K]>;
+};
+
+export declare const Comonad: {
+    readonly of: <K extends keyof ComonadInstances>(
+        name: K
+    ) => Comonad<ComonadInstances[K]>;
+};
+
+export declare const Semigroupoid: {
+    readonly of: <K extends keyof SemigroupoidInstances>(
+        name: K
+    ) => Semigroupoid<SemigroupoidInstances[K]>;
+};
+
+export declare const Category: {
+    readonly of: <K extends keyof CategoryInstances>(
+        name: K
+    ) => Category<CategoryInstances[K]>;
+};
+
+// ─── Concrete-type class dispatch entry points ───────────────────────
+// These return instances keyed by concrete type (not TypeLambda).
+
+export declare const Setoid: {
+    readonly of: <K extends keyof SetoidInstances>(
+        name: K
+    ) => Setoid<SetoidInstances[K]>;
+};
+
+export declare const Ord: {
+    readonly of: <K extends keyof OrdInstances>(
+        name: K
+    ) => Ord<OrdInstances[K]>;
+};
+
+export declare const Semigroup: {
+    readonly of: <K extends keyof SemigroupInstances>(
+        name: K
+    ) => Semigroup<SemigroupInstances[K]>;
+};
+
+export declare const Monoid: {
+    readonly of: <K extends keyof MonoidInstances>(
+        name: K
+    ) => Monoid<MonoidInstances[K]>;
+};
+
+export declare const Group: {
+    readonly of: <K extends keyof GroupInstances>(
+        name: K
+    ) => Group<GroupInstances[K]>;
+};
