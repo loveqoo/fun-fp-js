@@ -102,7 +102,8 @@ export declare function pipe<A, B, C, D, E, F>(
     j: (e: E) => F
 ): (a: A) => F;
 
-// ─── 4. Variadic curry / uncurry (up to 5 args) ───────────────────────
+// ─── 4. Variadic curry / uncurry (0..5 args) ──────────────────────────
+export declare function curry<R>(f: () => R): () => R;
 export declare function curry<A, B>(
     f: (a: A) => B
 ): (a: A) => B;

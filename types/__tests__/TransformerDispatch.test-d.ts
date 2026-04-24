@@ -9,6 +9,7 @@
  * which return fully-polymorphic XT monads.
  */
 
+import type { Equals, Expect, AssignableTo } from "./_test-utils";
 import {
     Functor,
     Apply,
@@ -25,34 +26,33 @@ import type { EitherTypeLambda } from "../data/Either";
 // Bring registrations into scope
 import "../data/transformers/registrations";
 
-type Assert<T extends U, U> = T;
 
 // ── StateT over Maybe / Either / Task ────────────────────────────────
 const fSM = Functor.of("statet(maybe)");
-type _1 = Assert<typeof fSM, Functor<StateTTypeLambda<MaybeTypeLambda>>>;
+type _1 = Expect<Equals<typeof fSM, Functor<StateTTypeLambda<MaybeTypeLambda>>>>;
 
 const mSM = Monad.of("statet(maybe)");
-type _2 = Assert<typeof mSM, Monad<StateTTypeLambda<MaybeTypeLambda>>>;
+type _2 = Expect<Equals<typeof mSM, Monad<StateTTypeLambda<MaybeTypeLambda>>>>;
 
 const mSE = Monad.of("statet(either)");
-type _3 = Assert<typeof mSE, Monad<StateTTypeLambda<EitherTypeLambda>>>;
+type _3 = Expect<Equals<typeof mSE, Monad<StateTTypeLambda<EitherTypeLambda>>>>;
 
 const mST = Monad.of("statet(task)");
-type _4 = Assert<typeof mST, Monad<StateTTypeLambda<TaskTypeLambda>>>;
+type _4 = Expect<Equals<typeof mST, Monad<StateTTypeLambda<TaskTypeLambda>>>>;
 
 // ── EitherT over Maybe / Task ────────────────────────────────────────
 const mEM = Monad.of("eithert(maybe)");
-type _5 = Assert<typeof mEM, Monad<EitherTTypeLambda<MaybeTypeLambda>>>;
+type _5 = Expect<Equals<typeof mEM, Monad<EitherTTypeLambda<MaybeTypeLambda>>>>;
 
 const mET = Monad.of("eithert(task)");
-type _6 = Assert<typeof mET, Monad<EitherTTypeLambda<TaskTypeLambda>>>;
+type _6 = Expect<Equals<typeof mET, Monad<EitherTTypeLambda<TaskTypeLambda>>>>;
 
 // ── ReaderT over Maybe / Task ────────────────────────────────────────
 const mRM = Monad.of("readert(maybe)");
-type _7 = Assert<typeof mRM, Monad<ReaderTTypeLambda<MaybeTypeLambda>>>;
+type _7 = Expect<Equals<typeof mRM, Monad<ReaderTTypeLambda<MaybeTypeLambda>>>>;
 
 const mRT = Monad.of("readert(task)");
-type _8 = Assert<typeof mRT, Monad<ReaderTTypeLambda<TaskTypeLambda>>>;
+type _8 = Expect<Equals<typeof mRT, Monad<ReaderTTypeLambda<TaskTypeLambda>>>>;
 
 // ── WriterT over Maybe / Task (W = unknown[] fixed) ──────────────────
 const mWM = Monad.of("writert(maybe,array)");
@@ -65,9 +65,9 @@ type _10 = typeof mWT extends Monad<infer F> ? F : never;
 const aSM = Apply.of("statet(maybe)");
 const apSM = Applicative.of("statet(maybe)");
 const chSM = Chain.of("statet(maybe)");
-type _11a = Assert<typeof aSM, Apply<StateTTypeLambda<MaybeTypeLambda>>>;
-type _11b = Assert<typeof apSM, Applicative<StateTTypeLambda<MaybeTypeLambda>>>;
-type _11c = Assert<typeof chSM, Chain<StateTTypeLambda<MaybeTypeLambda>>>;
+type _11a = Expect<Equals<typeof aSM, Apply<StateTTypeLambda<MaybeTypeLambda>>>>;
+type _11b = Expect<Equals<typeof apSM, Applicative<StateTTypeLambda<MaybeTypeLambda>>>>;
+type _11c = Expect<Equals<typeof chSM, Chain<StateTTypeLambda<MaybeTypeLambda>>>>;
 
 // ── Unregistered keys should error (demonstrates registry gate) ──────
 // @ts-expect-error — 'writert(task,string)' is not registered.

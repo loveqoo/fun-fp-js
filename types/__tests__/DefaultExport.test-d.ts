@@ -6,6 +6,7 @@
 
 // Default-import pattern — mirrors the runtime's `export default { ... }`.
 import fp from "../index";
+import type { Equals, Expect, AssignableTo } from "./_test-utils";
 
 // Named type-only imports — for types with no runtime counterpart.
 import type {
@@ -55,7 +56,6 @@ import type {
     ActorRef,
 } from "../index";
 
-type Assert<T extends U, U> = T;
 
 // ── Data types accessed via default export ───────────────────────────
 const m1: Maybe<number> = fp.Maybe.Just(42);
@@ -68,16 +68,16 @@ const st1: State<number, string> = fp.State.of("hi");
 
 // ── Type classes via default export ──────────────────────────────────
 const fMaybe = fp.Functor.of("maybe");
-type _fm = Assert<typeof fMaybe, Functor<MaybeTypeLambda>>;
+type _fm = Expect<Equals<typeof fMaybe, Functor<MaybeTypeLambda>>>;
 
 const mTask = fp.Monad.of("task");
-type _mt = Assert<typeof mTask, Monad<TaskTypeLambda>>;
+type _mt = Expect<Equals<typeof mTask, Monad<TaskTypeLambda>>>;
 
 const sgN = fp.Semigroup.of("number");
-type _sn = Assert<typeof sgN, Semigroup<number>>;
+type _sn = Expect<Equals<typeof sgN, Semigroup<number>>>;
 
 const mN = fp.Monoid.of("number");
-type _mn = Assert<typeof mN, Monoid<number>>;
+type _mn = Expect<Equals<typeof mN, Monoid<number>>>;
 
 // ── Transformers via default ─────────────────────────────────────────
 const SM = fp.StateT("maybe");
@@ -137,7 +137,7 @@ const trampolined: number = fp.trampoline(fp.Free.Thunk.done(42));
 
 // ── HKT type utility ─────────────────────────────────────────────────
 type KMaybe = Kind<MaybeTypeLambda, never, never, never, string>;
-type _k = Assert<KMaybe, Maybe<string>>;
+type _k = Expect<Equals<KMaybe, Maybe<string>>>;
 
 // ── ChainRecStep ─────────────────────────────────────────────────────
 const step1: ChainRecStep<number, string> = fp.ChainRec.next(5);

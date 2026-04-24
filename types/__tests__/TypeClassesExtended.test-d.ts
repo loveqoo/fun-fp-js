@@ -5,6 +5,7 @@
  */
 
 import type { Kind } from "../HKT";
+import type { Equals, Expect, AssignableTo } from "./_test-utils";
 import {
     Bifunctor,
     Contravariant,
@@ -32,18 +33,17 @@ import type {
 // Trigger builtin module-augmentation (ArrayTypeLambda etc. on registries)
 import "../data/builtins";
 
-type Assert<T extends U, U> = T;
 
 // ── 1. Bifunctor on Either ───────────────────────────────────────────
 const biE = Bifunctor.of("either");
-type _1a = Assert<typeof biE, Bifunctor<EitherTypeLambda>>;
+type _1a = Expect<Equals<typeof biE, Bifunctor<EitherTypeLambda>>>;
 declare const e1: Either<string, number>;
 const e1b = biE.bimap(
     (s: string) => s.length,
     (n: number) => n.toString(),
     e1
 );
-type _1b = Assert<typeof e1b, Either<number, string>>;
+type _1b = Expect<Equals<typeof e1b, Either<number, string>>>;
 
 // Instance-style via const Either
 const e1c = Either.bimap(
@@ -51,31 +51,31 @@ const e1c = Either.bimap(
     (n: number) => n + 1,
     e1
 );
-type _1c = Assert<typeof e1c, Either<string[], number>>;
+type _1c = Expect<Equals<typeof e1c, Either<string[], number>>>;
 
 // ── 2. Bifunctor on Validation ───────────────────────────────────────
 const biV = Bifunctor.of("validation");
-type _2 = Assert<typeof biV, Bifunctor<ValidationTypeLambda>>;
+type _2 = Expect<Equals<typeof biV, Bifunctor<ValidationTypeLambda>>>;
 declare const v2: Validation<string[], number>;
 const v2b = biV.bimap(
     (errs: string[]) => errs.length,
     (n: number) => n.toString(),
     v2
 );
-type _2b = Assert<typeof v2b, Validation<number, string>>;
+type _2b = Expect<Equals<typeof v2b, Validation<number, string>>>;
 
 // ── 3. Filterable on Maybe / Either / Task / Array ───────────────────
 const fM = Filterable.of("maybe");
-type _3a = Assert<typeof fM, Filterable<MaybeTypeLambda>>;
+type _3a = Expect<Equals<typeof fM, Filterable<MaybeTypeLambda>>>;
 
 const fE = Filterable.of("either");
-type _3b = Assert<typeof fE, Filterable<EitherTypeLambda>>;
+type _3b = Expect<Equals<typeof fE, Filterable<EitherTypeLambda>>>;
 
 const fT = Filterable.of("task");
-type _3c = Assert<typeof fT, Filterable<TaskTypeLambda>>;
+type _3c = Expect<Equals<typeof fT, Filterable<TaskTypeLambda>>>;
 
 const fA = Filterable.of("array");
-type _3d = Assert<typeof fA, Filterable<ArrayTypeLambda>>;
+type _3d = Expect<Equals<typeof fA, Filterable<ArrayTypeLambda>>>;
 
 // Actual use — narrowing via type-guard
 declare const m3: Maybe<string | number>;
@@ -83,11 +83,11 @@ const m3b = fM.filter(
     (x: string | number): x is string => typeof x === "string",
     m3
 );
-type _3e = Assert<typeof m3b, Maybe<string>>;
+type _3e = Expect<Equals<typeof m3b, Maybe<string>>>;
 
 // ── 4. ChainRec on Maybe / Either / Task ─────────────────────────────
 const crM = ChainRec.of("maybe");
-type _4a = Assert<typeof crM, ChainRec<MaybeTypeLambda>>;
+type _4a = Expect<Equals<typeof crM, ChainRec<MaybeTypeLambda>>>;
 
 // Count down from n to 0 using chainRec — must return Maybe of a Step.
 const count = crM.chainRec<never, never, never, number, string>(
@@ -97,7 +97,7 @@ const count = crM.chainRec<never, never, never, number, string>(
     },
     10
 );
-type _4b = Assert<typeof count, Maybe<string>>;
+type _4b = Expect<Equals<typeof count, Maybe<string>>>;
 
 // Step constructors
 const s1: ChainRecStep<number, never> = ChainRec.next(42);
@@ -105,32 +105,32 @@ const s2: ChainRecStep<never, string> = ChainRec.done("ok");
 
 // ── 5. Contravariant on Function (varies In slot) ────────────────────
 const cF = Contravariant.of("function");
-type _5a = Assert<typeof cF, Contravariant<FunctionTypeLambda>>;
+type _5a = Expect<Equals<typeof cF, Contravariant<FunctionTypeLambda>>>;
 // A predicate on number, contramapped to a predicate on string-length
 declare const isPositive: (n: number) => boolean;
 const isPositiveLen = cF.contramap(
     (s: string) => s.length,
     isPositive
 );
-type _5b = Assert<typeof isPositiveLen, (s: string) => boolean>;
+type _5b = Expect<Equals<typeof isPositiveLen, (s: string) => boolean>>;
 
 // ── 6. Profunctor on Function ────────────────────────────────────────
 const pF = Profunctor.of("function");
-type _6a = Assert<typeof pF, Profunctor<FunctionTypeLambda>>;
+type _6a = Expect<Equals<typeof pF, Profunctor<FunctionTypeLambda>>>;
 declare const lengthFn: (s: string) => number;
 const decoratedFn = pF.promap(
     (n: number) => n.toString(),      // In: number → string (contravariant)
     (n: number) => `[${n}]`,           // Target: number → string
     lengthFn
 );
-type _6b = Assert<typeof decoratedFn, (n: number) => string>;
+type _6b = Expect<Equals<typeof decoratedFn, (n: number) => string>>;
 
 // ── 7. Extend / Comonad on Array ─────────────────────────────────────
 const exA = Extend.of("array");
-type _7a = Assert<typeof exA, Extend<ArrayTypeLambda>>;
+type _7a = Expect<Equals<typeof exA, Extend<ArrayTypeLambda>>>;
 
 const coA = Comonad.of("array");
-type _7b = Assert<typeof coA, Comonad<ArrayTypeLambda>>;
+type _7b = Expect<Equals<typeof coA, Comonad<ArrayTypeLambda>>>;
 
 // ── 8. Bifunctor.of runtime dispatch kinds ───────────────────────────
 // Just demonstrate Kind reduction round-trips.

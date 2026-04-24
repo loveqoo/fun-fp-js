@@ -19,8 +19,8 @@ import { State } from "../data/State";
 import { Free } from "../data/Free";
 import { Applicative } from "../TypeClasses";
 import type { Semigroup, Monoid } from "../TypeClasses";
+import type { Equals, Expect, AssignableTo } from "./_test-utils";
 
-type Assert<T extends U, U> = T;
 
 // ── Maybe.chainRec ───────────────────────────────────────────────────
 const count = Maybe.chainRec<number, string>(
@@ -28,7 +28,7 @@ const count = Maybe.chainRec<number, string>(
         i === 0 ? Maybe.of(done("finished")) : Maybe.of(next(i - 1)),
     10
 );
-type _c1 = Assert<typeof count, Maybe<string>>;
+type _c1 = Expect<Equals<typeof count, Maybe<string>>>;
 
 // ── Maybe.pipeK / composeK ───────────────────────────────────────────
 const parse = (s: string): Maybe<number> =>
@@ -38,11 +38,11 @@ const positive = (n: number): Maybe<number> =>
 const stringify = (n: number): Maybe<string> => Maybe.of(String(n));
 
 const pipeline = Maybe.pipeK(parse, positive, stringify);
-type _p1 = Assert<typeof pipeline, (s: string) => Maybe<string>>;
+type _p1 = Expect<Equals<typeof pipeline, (s: string) => Maybe<string>>>;
 const m1 = pipeline("42");
 
 const composed = Maybe.composeK(stringify, positive, parse);
-type _p2 = Assert<typeof composed, (s: string) => Maybe<string>>;
+type _p2 = Expect<Equals<typeof composed, (s: string) => Maybe<string>>>;
 
 // ── Maybe.traverse ───────────────────────────────────────────────────
 // Note on inference: `Kind<G, ..., B>` is a conditional type, and TS
@@ -55,12 +55,12 @@ const t1 = Maybe.traverse<TaskTypeLambda, string, number>(
     (s) => Task.of(s.length),
     m0
 );
-type _t1 = Assert<typeof t1, import("../data/Task").Task<Maybe<number>>>;
+type _t1 = Expect<Equals<typeof t1, import("../data/Task").Task<Maybe<number>>>>;
 
 // ── Maybe.toEither ───────────────────────────────────────────────────
 declare const m2: Maybe<number>;
 const e1 = Maybe.toEither("missing", m2);
-type _m2 = Assert<typeof e1, Either<string, number>>;
+type _m2 = Expect<Equals<typeof e1, Either<string, number>>>;
 
 // ── Maybe.pipe ───────────────────────────────────────────────────────
 const p1 = Maybe.pipe(
@@ -68,14 +68,14 @@ const p1 = Maybe.pipe(
     (m) => m.map((n) => n + 1),
     (m) => m.chain((n) => (n > 0 ? Maybe.of(String(n)) : Maybe.Nothing()))
 );
-type _m3 = Assert<typeof p1, Maybe<string>>;
+type _m3 = Expect<Equals<typeof p1, Maybe<string>>>;
 
 // ── Maybe.Semigroup / Monoid (via string key) ────────────────────────
 const sgMaybeNum = Maybe.Semigroup("number");
-type _s1 = Assert<typeof sgMaybeNum, Semigroup<Maybe<number>>>;
+type _s1 = Expect<Equals<typeof sgMaybeNum, Semigroup<Maybe<number>>>>;
 
 const mMaybeArr = Maybe.Monoid("array");
-type _s2 = Assert<typeof mMaybeArr, Monoid<Maybe<ReadonlyArray<unknown>>>>;
+type _s2 = Expect<Equals<typeof mMaybeArr, Monoid<Maybe<ReadonlyArray<unknown>>>>>;
 const emptyM = mMaybeArr.empty(); // Maybe<readonly unknown[]>
 
 // ── Either.chainRec / traverse / pipeK ───────────────────────────────
@@ -86,16 +86,16 @@ const ec = Either.chainRec<string, number, string>(
             : Either.Right(next(i - 1)),
     5
 );
-type _e1 = Assert<typeof ec, Either<string, string>>;
+type _e1 = Expect<Equals<typeof ec, Either<string, string>>>;
 
 const parseE = (s: string): Either<string, number> =>
     isNaN(Number(s)) ? Either.Left("nan") : Either.Right(Number(s));
 const ePipe = Either.pipeK(parseE, (n) => Either.Right(n + 1));
-type _e2 = Assert<typeof ePipe, (s: string) => Either<string, number>>;
+type _e2 = Expect<Equals<typeof ePipe, (s: string) => Either<string, number>>>;
 
 // Either.Semigroup (via string key)
 const sgEitherStr = Either.Semigroup<"string", unknown>("string");
-type _e3 = Assert<typeof sgEitherStr, Semigroup<Either<string, unknown>>>;
+type _e3 = Expect<Equals<typeof sgEitherStr, Semigroup<Either<string, unknown>>>>;
 
 // ── Task.chainRec / pipeK ────────────────────────────────────────────
 const tc = Task.chainRec<number, string>(
@@ -103,13 +103,13 @@ const tc = Task.chainRec<number, string>(
         i === 0 ? Task.of(done("end")) : Task.of(next(i - 1)),
     3
 );
-type _tc = Assert<typeof tc, import("../data/Task").Task<string>>;
+type _tc = Expect<Equals<typeof tc, import("../data/Task").Task<string>>>;
 
 const tPipe = Task.pipeK(
     (s: string) => Task.of(s.length),
     (n: number) => Task.of(n * 2)
 );
-type _tp = Assert<typeof tPipe, (s: string) => import("../data/Task").Task<number>>;
+type _tp = Expect<Equals<typeof tPipe, (s: string) => import("../data/Task").Task<number>>>;
 
 // ── Validation.collect ───────────────────────────────────────────────
 const validateName = (s: string): Either<string, string> =>
@@ -120,10 +120,10 @@ const validateAge = (n: number): Either<string, number> =>
 const makeUser = Validation.collect(validateName, validateAge)(
     (name: string, age: number) => ({ name, age })
 );
-type _vc = Assert<
+type _vc = Expect<Equals<
     typeof makeUser,
     (a1: string, a2: number) => Validation<string[], { name: string; age: number }>
->;
+>>;
 
 // ── Reader/Writer/State/Free — pipeK works ───────────────────────────
 const rP = Reader.pipeK(
