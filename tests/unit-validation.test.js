@@ -1,6 +1,6 @@
-const fp = require('../dist/fun-fp.cjs');
+import fp from '../index.js';
 
-const { test, testAsync, assertEquals, assertThrows } = require('./utils.js');
+import { test, assertEquals, assertThrows } from './utils.js';
 
 // Test utilities
 const createMockSemigroup = () => {

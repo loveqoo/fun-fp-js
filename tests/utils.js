@@ -59,7 +59,25 @@ export const test = (name, callback) => {
     }
 };
 
+// testAsync() calls are floating (not awaited) throughout the suite. If one never
+// settles, the event loop drains and the process exits 0 with the assertion silently
+// skipped — a false pass. Track them and fail at exit if any are still pending.
+// Keyed by a unique token, not by name — two tests may share a name.
+const pending = new Map();
+let nextToken = 0;
+
+if (typeof process !== 'undefined' && typeof process.on === 'function') {
+    process.on('exit', () => {
+        if (pending.size === 0) return;
+        for (const name of pending.values()) console.error(`❌ [PENDING] ${name} — never settled`);
+        console.error(`   ${pending.size} async test(s) did not finish before exit`);
+        process.exitCode = 1;
+    });
+}
+
 export const testAsync = async (name, callback) => {
+    const token = nextToken++;
+    pending.set(token, name);
     try {
         await callback();
         console.log(`✅ [PASS] ${name}`);
@@ -69,6 +87,8 @@ export const testAsync = async (name, callback) => {
         if (typeof process !== 'undefined') {
             process.exitCode = 1;
         }
+    } finally {
+        pending.delete(token);
     }
 };
 
