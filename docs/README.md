@@ -29,6 +29,11 @@
 #### 고급
 - [Free](./Free.md) - 스택 안전 재귀, DSL 구축
 
+#### 데이터 다루기
+- [Lens](./Lens.md) - 중첩 불변 데이터의 합성 가능한 접근자
+- [Transducer](./Transducer.md) - 중간 배열 없는 변환 파이프라인
+- [Actor](./Actor.md) - 순차 메시지 처리 상태 컨테이너
+
 ### 3단계: 변환과 합성
 - [Functor](./Functor.md) - 값 변환 (map)
 - [Applicative](./Applicative.md) - 여러 값에 함수 적용 (ap)
@@ -57,6 +62,19 @@
 - [ChainRec](./ChainRec.md) - 스택 안전 재귀
 - [Extend](./Extend.md) - 컨텍스트 기반 변환
 - [Comonad](./Comonad.md) - Monad의 쌍대
+
+### 9단계: Monad Transformer
+
+두 모나드를 합성해 "상태 + 실패", "환경 + 비동기" 같은 조합을 만듭니다.
+[Free](./Free.md) 위에 구현되어 스택 안전합니다.
+
+**[StateT](./StateT.md)를 먼저 읽으십시오** — 4종의 공통 개념(`of`/`lift`, 문자열 M 규칙)이
+거기 정리되어 있고 나머지 셋이 참조합니다.
+
+- [StateT](./StateT.md) - 상태 전이 + 효과 (공통 개념 포함)
+- [EitherT](./EitherT.md) - 에러 처리 + 효과 (`EitherT('task')`가 대표 조합)
+- [ReaderT](./ReaderT.md) - 의존성 주입 + 효과
+- [WriterT](./WriterT.md) - 출력 누적 + 효과
 
 
 ## 추상 함수
@@ -141,6 +159,21 @@ Extend ──> Comonad
 | Writer | 로깅/출력 추적 | 값 + 출력 (Monoid) |
 | State | 상태 변환 | 상태 스레딩 |
 | Free | DSL, 스택 안전 재귀 | Pure / Impure |
+| [Lens](./Lens.md) | 중첩 불변 갱신 | getter + setter 쌍, 합성 가능 |
+| [Transducer](./Transducer.md) | 변환 파이프라인 | 중간 배열 없음, 조기 종료 |
+| [Actor](./Actor.md) | 순차 메시지 처리 | 큐 + 상태, `send`가 Task |
+
+### Monad Transformer
+
+두 모나드를 합성합니다. **`M`은 문자열로 넘기십시오** (`StateT('maybe')`) — 객체를 넘기면
+타입명이 실행 순서에 따라 달라집니다. 자세한 내용은 [StateT](./StateT.md)를 보십시오.
+
+| 타입 | 합성 | 실행 | 결과 |
+|------|------|------|------|
+| [StateT](./StateT.md) | State + M | `runState(s, p)` | `M [a, s]` |
+| [EitherT](./EitherT.md) | Either + M | `runEitherT(p)` | `M (Either e a)` |
+| [ReaderT](./ReaderT.md) | Reader + M | `runReaderT(env, p)` | `M a` |
+| [WriterT](./WriterT.md) | Writer + M | `runWriterT(p)` | `M [a, w]` |
 
 ## 자주 쓰는 패턴
 
