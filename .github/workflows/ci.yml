@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      # Node 20 에서만 깨지는 문제와 양쪽 다 깨지는 문제를 구분하려면 두 결과가 모두 필요하다.
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      # tests/*.test.js 전체 + tsc --noEmit. 하나라도 실패하면 non-zero.
+      - run: npm test
+
+      # 빌드는 "에러 없이 끝나는가" 만 확인하고 산출물은 버린다.
+      #
+      # dist/ 를 커밋된 것과 비교하지 마라. 빌드 헤더의 `Built:` 타임스탬프는 사람이 이
+      # 빌드를 배포하기로 결정한 시점을 기록하는 의도된 설계라 재빌드하면 항상 diff 가
+      # 난다. `git diff --exit-code dist` 를 여기 추가하면 CI 가 영구히 깨진다.
+      - run: node build.js && node build-types.js
