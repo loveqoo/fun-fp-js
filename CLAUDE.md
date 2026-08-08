@@ -21,26 +21,67 @@ node build.js
 
 ### 테스트 실행
 ```bash
-# 전체 테스트
-node tests/*.test.js
+# 전체 검증 — tests/*.test.js 전부 + tsc --noEmit
+npm test
 
-# 개별 테스트 파일
+# 개별 테스트 파일 (디버깅용)
 node tests/maybe.test.js
 node tests/either.test.js
-node tests/task.test.js
-node tests/free.test.js
-node tests/func.test.js
 node tests/statet.test.js
-node tests/eithert.test.js
-node tests/readert.test.js
-node tests/writert.test.js
 
-# 전체 테스트 (셸 루프)
-for f in tests/*.test.js; do node "$f"; done
+# 타입 선언만 검사
+npm run typecheck
 ```
+
+`npm test`는 `tests/run.js` 러너를 실행합니다. 각 테스트 파일을 **별도 자식 프로세스**로
+돌리는데, 일부 파일이 `setStrictMode()`로 전역 상태를 토글하기 때문에 프로세스 격리가
+필요합니다. 하나라도 실패하면 요약에 파일명과 종료 사유가 나오고 non-zero로 종료합니다.
+
+전체 실행을 셸 루프(`for f in tests/*.test.js; do node "$f"; done`)로 대체하지 마십시오 —
+실패를 집계하지 않아 exit code가 항상 0입니다. `node tests/*.test.js`도 안 됩니다 —
+node가 첫 인자만 실행하므로 1개 파일만 돌아갑니다.
 
 ### 브라우저 테스트
 `test.html`을 브라우저에서 열어 UMD 번들의 브라우저 호환성 테스트를 실행합니다.
+
+### CI
+
+`.github/workflows/ci.yml` 이 `main` 으로의 push 와 모든 pull request 에서 돌아갑니다.
+**Node 20 / 22 매트릭스**로 각각 `npm ci` → `npm test` → `node build.js && node build-types.js`
+를 실행합니다. 즉 CI가 검증하는 것은 세 가지입니다 — 전체 테스트, 타입 선언(`tsc --noEmit`,
+`npm test` 안에 포함), 그리고 **빌드 스크립트가 에러 없이 끝나는지**입니다.
+
+**CI는 `dist/` 를 커밋하거나 업로드하지 않습니다.** 빌드가 성공하는지만 확인하고 산출물은
+버립니다. `dist/` 를 갱신해 배포하는 것은 사람의 결정이며, 빌드 헤더의 `Built:` 타임스탬프가
+그 시점을 기록합니다. 이 타임스탬프는 의도된 설계이므로 재빌드 후 `git diff dist` 가
+타임스탬프 줄만 보여주는 것은 정상입니다 — 드리프트가 아닙니다.
+
+지원 런타임은 `package.json` 의 `engines` (`node >=20`) 가 기준입니다. Node 15 미만에서는
+unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 구멍이 생깁니다.
+
+## 문서 예제 규약
+
+`tests/docs-examples.test.js` 가 `docs/` 문서의 코드 예제를 **추출해 실제로 실행합니다.**
+`npm test` 와 CI 에 함께 돌아가므로, 예제가 코드와 어긋나면 빌드가 빨간색이 됩니다.
+
+- **기본값은 "실행 가능"입니다.** ` ```javascript ` 블록은 실행 대상입니다.
+- 실행할 수 없는 블록(`## 왜 X인가?` 의 문제 코드, 의사코드, 출력 예시)은
+  **` ```javascript no-run `** 으로 명시합니다. 검사기가 스킵 개수를 출력하므로 조용히
+  누락되지 않습니다.
+- 각 블록은 **독립 프로세스**에서 실행됩니다. 앞 블록의 변수를 뒤 블록이 쓸 수 없으니
+  예제는 자기완결적으로 씁니다 — 읽는 사람에게도 그편이 낫습니다.
+- 검사기가 `import FunFP from '<index.js>'` 프리앰블을 주입합니다. 예제는 기존 30종 문서의
+  관례대로 `const { Maybe } = FunFP;` 로 시작하면 됩니다. import 문을 쓰지 마십시오.
+- 비동기 예제(`Task`, `Actor`)는 `fork` 안에서 끝내지 말고 **최상위에서 await 가능한 형태**로
+  쓰거나 `no-run` 으로 표시합니다 — 블록이 예외 없이 끝나야 통과입니다.
+
+**보증 범위**: 검사기는 예제가 **예외 없이 실행되는지**만 봅니다. 주석의 `// Just(43)` 같은
+기대값까지 대조하지는 않습니다. API 이름이 바뀌거나 인자 순서가 틀려 예외가 나는 종류의
+문서 부패를 막는 것이 목적입니다.
+
+현재 검사 대상은 **신규 7종**(Lens, Actor, Transducer, StateT, EitherT, ReaderT, WriterT)
+입니다. 기존 30종은 `FunFP` 전역과 미정의 헬퍼(`fetchUser` 등)를 쓰는 블록이 많아 아직
+대상이 아닙니다.
 
 ## 아키텍처
 
@@ -144,9 +185,12 @@ sequence(Applicative.of('maybe'), maybeArray);
 ```
 
 ### Monad Transformer 사용
+
+**M은 문자열로 넘기십시오** (`StateT('maybe')`). 이유는 아래 주의 항목을 보십시오.
+
 ```javascript
 const { StateT, Maybe } = fp;
-const ST = StateT(Maybe);
+const ST = StateT('maybe');
 
 const program = ST.get
     .chain(s => ST.put(s + 1))
@@ -156,8 +200,31 @@ const program = ST.get
 program.run(0);  // Maybe.Just([42, 1])
 ```
 
+#### 주의: 문자열 M과 객체 M은 서로 다른 타입이다
+
+`resolveMonadType` (`index.js:2355`)이 타입명을 만드는 방식 때문입니다.
+
+| 호출 | `_typeName` | 레지스트리 alias |
+| --- | --- | --- |
+| `StateT('maybe')` | `StateT(Maybe)` | `statet(maybe)` |
+| `StateT(Maybe)` | `StateT(M1)` | `statet(m1)` — **실행 순서에 따라 달라진다** |
+
+객체를 넘기면 `type` 프로퍼티가 없어 `M1`, `M2`... 가 순서대로 붙습니다. 그래서:
+
+- `Functor.of('statet(maybe)')` 같은 레지스트리 조회는 **문자열 형태로 만든 것만** 찾힙니다
+- 두 형태는 **다른 클래스**이고 nominal typing 이 강제되므로 섞으면 `TypeError` 입니다:
+  `StateT('maybe').runState(0, StateT(Maybe).of(1))` → throw
+- 캐시는 인자별입니다 — `StateT('maybe')` 를 두 번 부르면 같은 인스턴스가 나옵니다
+
 ### Transformer 타입 클래스 접근
+
+`StateT('maybe')` / `EitherT('task')` 처럼 **문자열로 만든 transformer 만** 조회됩니다.
+
 ```javascript
 Functor.of('statet(maybe)').map(f, st);
 Monad.of('eithert(task)');
 ```
+
+
+@.claude/harness/POLICY.md
+@.claude/harness/LEARNED.md

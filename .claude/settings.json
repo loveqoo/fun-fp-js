@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(.claude/harness/bin/harness status)",
+      "Bash(.claude/harness/bin/harness advance)",
+      "Bash(.claude/harness/bin/harness loop)",
+      "Bash(.claude/harness/bin/harness help)",
+      "Bash(.claude/harness/bin/harness tidy)",
+      "Bash(.claude/harness/bin/harness promote)",
+      "Bash(.claude/harness/bin/harness metrics)",
+      "Bash(.claude/harness/bin/harness recall:*)",
+      "Bash(.claude/harness/bin/harness stats:*)",
+      "Bash(.claude/harness/bin/harness loop intent:*)",
+      "Bash(.claude/harness/bin/harness promote:*)",
+      "Bash(.claude/harness/bin/harness auto-skip status)"
     ]
   }
 }
