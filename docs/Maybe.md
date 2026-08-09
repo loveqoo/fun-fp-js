@@ -158,15 +158,14 @@ const prop = key => obj =>
 
 const user = { name: 'Alice', address: { city: 'Seoul' } };
 
-prop('address')(user)
-    .chain(prop('city'))
-    .getOrElse('Unknown');
+// getOrElse 는 인스턴스 메서드가 아니다 — 위 "getOrElse 패턴" 의 헬퍼를 쓴다
+const getOrElse = (defaultVal, maybe) => Maybe.fold(() => defaultVal, v => v, maybe);
+
+getOrElse('Unknown', prop('address')(user).chain(prop('city')));
 // 'Seoul'
 
 const noAddress = { name: 'Bob' };
-prop('address')(noAddress)
-    .chain(prop('city'))
-    .getOrElse('Unknown');
+getOrElse('Unknown', prop('address')(noAddress).chain(prop('city')));
 // 'Unknown'
 ```
 
@@ -181,16 +180,17 @@ const parseJson = str => {
     }
 };
 
-parseJson('{"name": "Alice"}')
-    .chain(prop('name'))
-    .map(name => name.toUpperCase())
-    .getOrElse('UNKNOWN');
+// getOrElse 는 인스턴스 메서드가 아니다 — 위 "getOrElse 패턴" 의 헬퍼를 쓴다
+const getOrElse = (defaultVal, maybe) => Maybe.fold(() => defaultVal, v => v, maybe);
+
+getOrElse('UNKNOWN',
+    parseJson('{"name": "Alice"}').chain(prop('name')).map(name => name.toUpperCase())
+);
 // 'ALICE'
 
-parseJson('invalid json')
-    .chain(prop('name'))
-    .map(name => name.toUpperCase())
-    .getOrElse('UNKNOWN');
+getOrElse('UNKNOWN',
+    parseJson('invalid json').chain(prop('name')).map(name => name.toUpperCase())
+);
 // 'UNKNOWN'
 ```
 

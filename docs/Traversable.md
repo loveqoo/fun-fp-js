@@ -172,9 +172,11 @@ const dates = ['2023-01-01', '2023-06-15', '2023-12-31'];
 
 const { traverse } = Traversable.of('array');
 
-traverse(Applicative.of('either'), parseDate, dates).fold(
+// fold 는 정적 메서드다 — Either.fold(onLeft, onRight, either)
+Either.fold(
     err => console.error('Parse error:', err),
-    parsed => console.log('Parsed dates:', parsed)
+    parsed => console.log('Parsed dates:', parsed),
+    traverse(Applicative.of('either'), parseDate, dates)
 );
 ```
 

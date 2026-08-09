@@ -198,14 +198,15 @@ const extractUser = data => {
     return Either.Right(data.user);
 };
 
+// fold 는 정적 메서드다 — Either.fold(onLeft, onRight, either)
 const processApiCall = response =>
-    parseResponse(response)
-        .chain(extractUser)
-        .map(user => ({ ...user, processed: true }))
-        .fold(
-            error => ({ success: false, error }),
-            data => ({ success: true, data })
-        );
+    Either.fold(
+        error => ({ success: false, error }),
+        data => ({ success: true, data }),
+        parseResponse(response)
+            .chain(extractUser)
+            .map(user => ({ ...user, processed: true }))
+    );
 ```
 
 ### 설정 파일 로딩
@@ -219,9 +220,11 @@ const readFile = path => {
     }
 };
 
+// mapLeft 도 메서드가 아니다 — bimap 으로 만든다
+const mapLeft = (f, either) => Either.bimap(f, x => x, either);
+
 const parseConfig = content =>
-    Either.catch(() => JSON.parse(content))
-        .mapLeft(e => `Invalid JSON: ${e.message}`);
+    mapLeft(e => `Invalid JSON: ${e.message}`, Either.catch(() => JSON.parse(content)));
 
 const validateConfig = config => {
     if (!config.database) return Either.Left('Missing database config');
@@ -234,9 +237,10 @@ const loadConfig = path =>
         .chain(parseConfig)
         .chain(validateConfig);
 
-loadConfig('./config.json').fold(
+Either.fold(
     error => console.error('Config error:', error),
-    config => console.log('Loaded config:', config)
+    config => console.log('Loaded config:', config),
+    loadConfig('./config.json')
 );
 ```
 
