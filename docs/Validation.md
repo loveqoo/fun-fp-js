@@ -299,6 +299,7 @@ Validation.fold(
 ### 2. API 파라미터 검증
 
 ```javascript
+const fetchUsers = () => Task.of([{ id: 1, name: 'Alice' }]);
 const { Either, Validation } = FunFP;
 
 // 쿼리 파라미터 검증

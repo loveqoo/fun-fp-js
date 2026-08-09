@@ -12,7 +12,7 @@ Free Monad는 **연산을 데이터로 표현**하여 나중에 해석할 수 �
 
 ## 핵심 구조
 
-```javascript
+```javascript no-run 구조·API 표기
 Pure(value)     // 완료된 값
 Impure(functor) // 다음 연산을 담은 컨테이너
 ```
@@ -171,7 +171,7 @@ await Free.runWithTask(runAPI, getUserWithPosts(1));
 
 ## Thunk 헬퍼
 
-```javascript
+```javascript no-run 구조·API 표기
 const { Thunk } = Free;
 
 Thunk.of(value)       // 지연된 값

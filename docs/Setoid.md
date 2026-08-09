@@ -11,19 +11,19 @@ Setoid는 두 값이 "같은지" 비교할 수 있는 타입을 정의합니다.
 Setoid는 다음 법칙을 만족해야 합니다:
 
 ### 1. 반사성 (Reflexivity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 equals(a, a) === true
 ```
 자기 자신과는 항상 같습니다.
 
 ### 2. 대칭성 (Symmetry)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 equals(a, b) === equals(b, a)
 ```
 비교 순서를 바꿔도 결과가 같습니다.
 
 ### 3. 추이성 (Transitivity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 if (equals(a, b) && equals(b, c)) {
     equals(a, c) === true
 }

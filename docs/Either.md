@@ -16,6 +16,7 @@ Maybe와 달리 **실패의 이유**를 담을 수 있습니다.
 ### 문제: try-catch 지옥
 
 ```javascript
+const handleParseError = e => `파싱 실패: ${e}`;
 let result;
 try {
     const parsed = JSON.parse(data);

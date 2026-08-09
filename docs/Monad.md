@@ -54,7 +54,7 @@ chain(f, of(a)) === f(a)
 값을 of로 감싸고 chain하면 = 그냥 함수 호출
 
 ### 2. 우항등법칙 (Right Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 const { chain } = Chain.of('maybe');
 chain(of, m) === m
 ```
@@ -188,6 +188,7 @@ chain은 중첩을 펴줍니다:
 | 용도 | 단순 변환 | 조건부/순차 실행 |
 
 ```javascript
+const maybe = Maybe.of(42);
 const { map } = Functor.of('maybe');
 const { chain } = Chain.of('maybe');
 
@@ -224,6 +225,10 @@ pipeline('abc');   // Nothing
 ### composeK - 오른쪽에서 왼쪽 합성 (수학적 합성)
 
 ```javascript
+const parse = str => {
+    const n = parseInt(str);
+    return isNaN(n) ? Maybe.Nothing() : Maybe.of(n);
+};
 const double = n => Maybe.of(n * 2);
 const asString = n => Maybe.of(`Result: ${n}`);
 const { Maybe } = FunFP;

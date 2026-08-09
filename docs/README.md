@@ -211,6 +211,7 @@ validate('-5');   // Left('Must be positive')
 
 ### 비동기 순차 실행
 ```javascript
+const fetchUser = id => Task.of({ id, name: 'Alice' });
 const { Chain, Task } = FunFP;
 const { chain } = Chain.of('task');
 
@@ -224,6 +225,9 @@ fetchData(1).fork(console.error, console.log);
 
 ### 병렬 실행 후 결합
 ```javascript
+const fetchComments = postId => Task.of([{ id: 1, postId, body: '댓글' }]);
+const fetchPosts = userId => Task.of([{ id: 1, userId, title: '첫 글' }]);
+const fetchUser = id => Task.of({ id, name: 'Alice' });
 const { Task } = FunFP;
 
 Task.all([
@@ -238,6 +242,8 @@ Task.all([
 
 ### pipe 유틸리티로 가독성 개선
 ```javascript
+const userId = 1;
+const fetchUser = id => Task.of({ id, name: 'Alice' });
 const { pipe, Chain } = FunFP;
 const { chain } = Chain.of('task');
 

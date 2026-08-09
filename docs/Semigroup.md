@@ -72,6 +72,7 @@ concatAll([[1], [2], [3]]);  // [1, 2, 3]
 ### 검증 결과 수집
 
 ```javascript
+const name = 'Alice';
 // 에러 메시지 수집
 const errors = [];
 const validate = (cond, msg) => cond ? [] : [msg];

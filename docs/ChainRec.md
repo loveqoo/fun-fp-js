@@ -42,7 +42,7 @@ sumTo(1000000);  // 스택 오버플로 없이 동작!
 
 ### 대용량 반복
 
-```javascript
+```javascript no-run 문제 상황 — 일부러 스택 오버플로
 // 일반 재귀 - 스택 오버플로!
 const countNormal = n => n === 0 ? 0 : 1 + countNormal(n - 1);
 countNormal(100000);  // RangeError: Maximum call stack size exceeded

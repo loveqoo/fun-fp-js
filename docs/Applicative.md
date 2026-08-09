@@ -8,17 +8,17 @@ Applicative는 **여러 Functor 값에 함수를 적용**할 수 있게 합니�
 
 Functor의 `map`은 인자가 하나인 함수만 적용 가능:
 ```javascript
-const { map } = Functor.of('task');
-map(x => x + 1, Just(5))  // Just(6)
+const { map } = Functor.of('maybe');
+map(x => x + 1, Maybe.Just(5))  // Maybe.Just(6)
 ```
 
 두 개 이상의 인자가 필요하면?
 ```javascript
 const add = a => b => a + b;  // 커리된 함수
-const { map } = Functor.of('task');
-// add = (a, b) => a + b 를 Just(5)와 Just(3)에 적용하려면?
-map(add, Just(5))  // Just(b => 5 + b) - 부분 적용된 함수가 됨
-// 이 함수를 어떻게 Just(3)에 적용하지?
+const { map } = Functor.of('maybe');
+// add = (a, b) => a + b 를 Maybe.Just(5)와 Maybe.Just(3)에 적용하려면?
+map(add, Maybe.Just(5))  // Maybe.Just(b => 5 + b) - 부분 적용된 함수가 됨
+// 이 함수를 어떻게 Maybe.Just(3)에 적용하지?
 ```
 
 여기서 `ap`가 필요합니다!
@@ -33,13 +33,13 @@ Applicative.of(a): Applicative a  // 값을 Applicative로 감싸기
 ## 법칙
 
 ### 항등 (Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 const { ap } = Apply.of('maybe');
 ap(of(x => x), v) === v
 ```
 
 ### 동형사상 (Homomorphism)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 const { ap } = Apply.of('maybe');
 ap(of(f), of(x)) === of(f(x))
 ```
@@ -51,7 +51,7 @@ ap(u, of(y)) === ap(of(f => f(y)), u)
 ```
 
 ### 합성 (Composition)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 const { ap } = Apply.of('maybe');
 ap(ap(ap(of(f => g => x => f(g(x))), u), v), w) === ap(u, ap(v, w))
 ```
@@ -67,14 +67,14 @@ const { Maybe, Apply, Applicative } = FunFP;
 const add = a => b => a + b;  // 커리된 함수
 
 // Maybe에 적용
-const maybeAdd = Maybe.of(add);      // Just(a => b => a + b)
-const maybeA = Maybe.of(5);          // Just(5)
-const maybeB = Maybe.of(3);          // Just(3)
+const maybeAdd = Maybe.of(add);      // Maybe.Just(a => b => a + b)
+const maybeA = Maybe.of(5);          // Maybe.Just(5)
+const maybeB = Maybe.of(3);          // Maybe.Just(3)
 
 const { ap } = Apply.of('maybe');
 
-const step1 = ap(maybeAdd, maybeA);  // Just(b => 5 + b)
-const step2 = ap(step1, maybeB);     // Just(8)
+const step1 = ap(maybeAdd, maybeA);  // Maybe.Just(b => 5 + b)
+const step2 = ap(step1, maybeB);     // Maybe.Just(8)
 ```
 
 ### liftA2 - 두 값에 이항 함수 적용
@@ -86,7 +86,7 @@ const liftA2 = (f, a, b) => ap(a.map(f), b);
 
 // 두 Maybe 값 더하기
 const result = liftA2(a => b => a + b, Maybe.of(5), Maybe.of(3));
-// Just(8)
+// Maybe.Just(8)
 
 // 하나라도 Nothing이면
 const noResult = liftA2(a => b => a + b, Maybe.of(5), Maybe.Nothing());
@@ -103,7 +103,7 @@ const liftA3 = (f, a, b, c) => ap(ap(a.map(f), b), c);
 const fullName = first => middle => last => `${first} ${middle} ${last}`;
 
 const result = liftA3(fullName, Maybe.of('John'), Maybe.of('Michael'), Maybe.of('Smith'));
-// Just('John Michael Smith')
+// Maybe.Just('John Michael Smith')
 ```
 
 ## 실용적 예시
@@ -184,6 +184,7 @@ liftA3(
 | 용도 | 여러 값 결합 | 조건부 분기 |
 
 ```javascript
+const fetchPosts = userId => Task.of([{ id: 1, userId, title: '첫 글' }]);
 const fetchUser = id => Task.of({ id, name: 'Alice' });
 const { ap } = Apply.of('maybe');
 // ap: 두 요청이 서로 독립적 → 병렬 가능

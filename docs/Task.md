@@ -174,6 +174,9 @@ api.get('/api/users/1')
 ### 재시도 로직
 
 ```javascript
+const fetchUser = id => Task.fromPromise(() => 
+    fetch(`/api/users/${id}`).then(r => r.json())
+)();
 const retry = (task, times) => 
     task.fork === undefined ? task :
     new Task((reject, resolve) => {
@@ -201,6 +204,9 @@ retry(fetchUser(1), 3).fork(console.error, console.log);
 ### 타임아웃
 
 ```javascript
+const fetchUser = id => Task.fromPromise(() => 
+    fetch(`/api/users/${id}`).then(r => r.json())
+)();
 const timeout = (ms, task) => Task.race([
     task,
     new Task((reject) => 
@@ -239,6 +245,9 @@ sequence(tasks).fork(
 ### 조건부 실행
 
 ```javascript
+const fetchUser = id => Task.fromPromise(() => 
+    fetch(`/api/users/${id}`).then(r => r.json())
+)();
 const fetchIfNeeded = (cache, id) =>
     cache[id] 
         ? Task.of(cache[id])  // 캐시 있으면 즉시 반환

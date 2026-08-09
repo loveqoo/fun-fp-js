@@ -530,6 +530,7 @@ const [value, finalState] = pipeline(1).run(0);
 ### State.composeK - 오른쪽에서 왼쪽 합성
 
 ```javascript
+const add5 = x => State.of(x + 5);
 const double = state => state * 2;
 const pipeline = State.composeK(toString, double, add5);
 const [value, finalState] = pipeline(1).run(0);

@@ -54,13 +54,13 @@ Traversable.traverse(Applicative, f, t): Applicative (Traversable b)
 ## 법칙
 
 ### 항등 (Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 const { traverse } = Traversable.of('array');
 traverse(Identity, Identity.of, t) === Identity.of(t)
 ```
 
 ### Naturality
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 const { traverse } = Traversable.of('array');
 traverse(G, compose(eta, f), t) === eta(traverse(F, f, t))
 ```
@@ -208,6 +208,7 @@ map(([name, email, phone]) => ({ name, email, phone }), result);
 | 용도 | 단순 변환 | 효과 있는 변환 |
 
 ```javascript
+const MaybeApplicative = Applicative.of('maybe');
 const { traverse } = Traversable.of('array');
 // map: 구조 유지
 [1, 2, 3].map(x => x * 2)  // [2, 4, 6]

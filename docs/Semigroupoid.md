@@ -97,6 +97,8 @@ process(5);  // 'Result: 12'
 ### 조건부 합성
 
 ```javascript
+const double = x => x * 2;
+const shouldDouble = true;
 const when = (cond, f) => cond ? f : id;
 
 const maybeDouble = when(shouldDouble, double);

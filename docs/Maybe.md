@@ -172,6 +172,8 @@ getOrElse('Unknown', prop('address')(noAddress).chain(prop('city')));
 ### 안전한 JSON 파싱
 
 ```javascript
+const prop = key => obj => 
+    obj && obj[key] != null ? Maybe.of(obj[key]) : Maybe.Nothing();
 const parseJson = str => {
     try {
         return Maybe.of(JSON.parse(str));
@@ -226,6 +228,7 @@ validateEmail('');                   // Nothing
 ## Maybe를 Either로 변환
 
 ```javascript
+const maybeValue = Maybe.of(42);
 // Nothing에 에러 메시지 추가하고 싶을 때
 Maybe.toEither('Value not found', maybeValue);
 

@@ -16,13 +16,23 @@ Monoid는 Semigroup에 **항등원(empty)**을 추가한 것입니다. 항등원
 Semigroup의 법칙(결합법칙)에 더해:
 
 ### 1. 우항등원 (Right Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const objectMonoid = new Monoid(
+    new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
+    () => ({}),
+    'Object'
+);
 const { concat, empty } = objectMonoid;
 concat(a, empty) === a
 ```
 
 ### 2. 좌항등원 (Left Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const objectMonoid = new Monoid(
+    new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
+    () => ({}),
+    'Object'
+);
 const { concat, empty } = objectMonoid;
 concat(empty, a) === a
 ```
@@ -83,6 +93,9 @@ foldMonoid([]);         // 0 (안전!)
 ### 조건부 결합
 
 ```javascript
+const hasWarnings = warns => warns.length > 0;
+const errors = [];
+const hasErrors = errs => errs.length > 0;
 const arr = Monoid.of('array');
 
 const concatIf = (condition, value) =>

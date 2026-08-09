@@ -26,7 +26,7 @@ alt(alt(a, b), c) === alt(a, alt(b, c))
 ```
 
 ### 분배법칙 (Distributivity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 map(f, alt(a, b)) === alt(map(f, a), map(f, b))
 ```
 

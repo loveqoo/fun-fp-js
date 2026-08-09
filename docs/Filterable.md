@@ -108,6 +108,7 @@ filter(x => x != null, values);
 ### 설정 정리
 
 ```javascript
+const { filter } = Filterable.of('object');
 const config = {
     host: 'localhost',
     port: undefined,

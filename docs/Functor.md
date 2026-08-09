@@ -145,7 +145,7 @@ map(obj => obj.name, result);
 
 ### 비동기 변환
 
-```javascript
+```javascript no-run 네트워크 fetch 필요 — 실행 대상 아님
 const fetchUser = userId => Task.fromPromise(
     () => fetch(`/api/users/${userId}`).then(r => r.json())
 );

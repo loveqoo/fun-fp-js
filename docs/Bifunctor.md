@@ -65,6 +65,9 @@ bimap(
 ### 에러 정규화
 
 ```javascript
+const { bimap } = Bifunctor.of('either');
+const input = '{"value":1}';
+const parseData = raw => raw ? Either.Right(JSON.parse(raw)) : Either.Left('빈 입력');
 const normalizeError = err => ({
     message: err.message || String(err),
     timestamp: Date.now()
@@ -84,7 +87,9 @@ bimap(normalizeError, formatResult, result);
 
 ### 양쪽에 컨텍스트 추가
 
+const { bimap } = Bifunctor.of('either');
 ```javascript
+const fetchUser = id => Task.of({ id, name: 'Alice' });
 const addContext = context => result =>
     bimap(
         err => ({ ...err, context }),
