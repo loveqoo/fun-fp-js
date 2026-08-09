@@ -4,7 +4,7 @@ Applicative와 Plus를 결합한 타입 클래스. 선택과 병렬 실행 패�
 
 ## 정의
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 class Alternative extends Applicative {
     constructor(applicative, plus, type, registry, ...aliases)
 }
@@ -23,7 +23,7 @@ Alt, Plus, Applicative의 모든 연산을 상속:
 
 ## 법칙
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // distributivity (왼쪽에서 오른쪽)
 ap(alt(a, b), c) ≡ alt(ap(a, c), ap(b, c))
 

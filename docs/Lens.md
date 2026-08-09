@@ -24,7 +24,7 @@ fun-fp-js는 Van Laarhoven 인코딩을 사용합니다 — Lens가 Functor `F`�
 
 깊이가 늘어날수록 스프레드가 중첩되고, 어느 층을 빠뜨렸는지 눈으로 확인해야 합니다.
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // 도시 이름 하나 바꾸려고 세 층을 다시 조립해야 한다
 const updated = {
     ...user,

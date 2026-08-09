@@ -13,7 +13,7 @@ JavaScript의 `Array.filter`와 같은 개념:
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Filterable.filter(pred, a): Filterable a
 // pred: a -> Boolean
 // a: Filterable a
@@ -22,17 +22,20 @@ Filterable.filter(pred, a): Filterable a
 ## 법칙
 
 ### 분배법칙 (Distributivity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { filter } = Filterable.of('array');
 filter(x => p(x) && q(x), a) === filter(q, filter(p, a))
 ```
 
 ### 항등 (Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { filter } = Filterable.of('array');
 filter(x => true, a) === a
 ```
 
 ### 소멸 (Annihilation)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { filter } = Filterable.of('array');
 filter(x => false, a) === empty
 ```
 
@@ -77,6 +80,7 @@ filter(x => typeof x === 'string', { a: 1, b: 'hello', c: true });
 ### 검색 필터
 
 ```javascript
+const { filter } = Filterable.of('array');
 const users = [
     { name: 'Alice', age: 25, role: 'admin' },
     { name: 'Bob', age: 30, role: 'user' },
@@ -94,6 +98,7 @@ const adminOver30 = filter(
 ### null 제거
 
 ```javascript
+const { filter } = Filterable.of('array');
 const values = [1, null, 2, undefined, 3, null];
 
 filter(x => x != null, values);

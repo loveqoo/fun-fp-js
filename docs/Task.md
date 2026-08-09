@@ -37,7 +37,7 @@ task.fork(console.error, console.log);  // 이때 '실행됨!' 출력
 
 ## 생성
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 import FunFP from 'fun-fp-js';
 const { Task } = FunFP;
 

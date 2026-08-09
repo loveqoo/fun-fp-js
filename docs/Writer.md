@@ -510,6 +510,7 @@ const [value, logs] = pipeline(1).run();
 ### Writer.composeK - 오른쪽에서 왼쪽 합성
 
 ```javascript
+const double = x => new Writer(x * 2, [`Doubled ${x}`]);
 const pipeline = Writer.composeK(toString, double, add5);
 const [value, logs] = pipeline(1).run();
 // value: 'Result: 12' (동일한 결과)

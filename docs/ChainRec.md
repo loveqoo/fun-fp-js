@@ -10,7 +10,7 @@ ChainRec은 **무한 재귀를 스택 오버플로 없이 실행**할 수 있게
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 ChainRec.chainRec(f, initial): Monad a
 // f: (next, done, value) -> Monad (Either next done)
 // next: value -> { tag: 'next', value }  (계속)

@@ -8,11 +8,14 @@ Applicative는 **여러 Functor 값에 함수를 적용**할 수 있게 합니�
 
 Functor의 `map`은 인자가 하나인 함수만 적용 가능:
 ```javascript
+const { map } = Functor.of('task');
 map(x => x + 1, Just(5))  // Just(6)
 ```
 
 두 개 이상의 인자가 필요하면?
 ```javascript
+const add = a => b => a + b;  // 커리된 함수
+const { map } = Functor.of('task');
 // add = (a, b) => a + b 를 Just(5)와 Just(3)에 적용하려면?
 map(add, Just(5))  // Just(b => 5 + b) - 부분 적용된 함수가 됨
 // 이 함수를 어떻게 Just(3)에 적용하지?
@@ -22,7 +25,7 @@ map(add, Just(5))  // Just(b => 5 + b) - 부분 적용된 함수가 됨
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Apply.ap(mf, mv): Apply b   // mf: Apply (a -> b), mv: Apply a
 Applicative.of(a): Applicative a  // 값을 Applicative로 감싸기
 ```
@@ -31,21 +34,25 @@ Applicative.of(a): Applicative a  // 값을 Applicative로 감싸기
 
 ### 항등 (Identity)
 ```javascript
+const { ap } = Apply.of('maybe');
 ap(of(x => x), v) === v
 ```
 
 ### 동형사상 (Homomorphism)
 ```javascript
+const { ap } = Apply.of('maybe');
 ap(of(f), of(x)) === of(f(x))
 ```
 
 ### 교환 (Interchange)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { ap } = Apply.of('maybe');
 ap(u, of(y)) === ap(of(f => f(y)), u)
 ```
 
 ### 합성 (Composition)
 ```javascript
+const { ap } = Apply.of('maybe');
 ap(ap(ap(of(f => g => x => f(g(x))), u), v), w) === ap(u, ap(v, w))
 ```
 
@@ -177,6 +184,8 @@ liftA3(
 | 용도 | 여러 값 결합 | 조건부 분기 |
 
 ```javascript
+const fetchUser = id => Task.of({ id, name: 'Alice' });
+const { ap } = Apply.of('maybe');
 // ap: 두 요청이 서로 독립적 → 병렬 가능
 ap(fetchUser, fetchPosts)
 

@@ -36,7 +36,7 @@ try {
 
 ### 해결: Either로 우아하게
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 const { Either, Chain } = FunFP;
 const { chain } = Chain.of('either');
 

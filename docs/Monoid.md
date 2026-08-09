@@ -17,17 +17,19 @@ Semigroup의 법칙(결합법칙)에 더해:
 
 ### 1. 우항등원 (Right Identity)
 ```javascript
+const { concat, empty } = objectMonoid;
 concat(a, empty) === a
 ```
 
 ### 2. 좌항등원 (Left Identity)
 ```javascript
+const { concat, empty } = objectMonoid;
 concat(empty, a) === a
 ```
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Monoid.empty(): a         // 항등원 반환
 Monoid.concat(a, b): a    // Semigroup에서 상속
 ```
@@ -96,7 +98,13 @@ const result = arr.concat(
 ### 객체 기본값 패턴
 
 ```javascript
-const { concat, empty } = Monoid.of('object');
+// 객체 병합 Monoid 는 기본 제공되지 않으므로 직접 만든다
+const objectMonoid = new Monoid(
+    new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
+    () => ({}),
+    'Object'
+);
+const { concat, empty } = objectMonoid;
 
 const withDefaults = (defaults, obj) => concat(defaults, obj);
 

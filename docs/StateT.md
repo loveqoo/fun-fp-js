@@ -28,7 +28,7 @@ fun-fp-js의 Transformer는 [Free](./Free.md) 모나드 위에 구현되어 있�
 
 ### 문제: 상태와 실패를 손으로 엮으면 배관이 코드를 덮는다
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // 상태를 넘기면서 실패도 다뤄야 한다
 function step1(state) {
     const value = state.count;

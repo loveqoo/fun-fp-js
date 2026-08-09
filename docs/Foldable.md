@@ -13,7 +13,7 @@ JavaScript의 `Array.reduce`와 같은 개념:
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Foldable.reduce(f, initial, t): b
 // f: (b, a) -> b  (누적 함수)
 // initial: b     (초기값)
@@ -85,6 +85,7 @@ min([3, 1, 4, 1, 5, 9]);  // 1
 ### 그룹화
 
 ```javascript
+const { reduce } = Foldable.of('array');
 const groupBy = (keyFn, arr) => reduce(
     (acc, x) => {
         const key = keyFn(x);
@@ -107,6 +108,7 @@ groupBy(p => p.dept, people);
 ### 빈도 계산
 
 ```javascript
+const { reduce } = Foldable.of('array');
 const frequencies = arr => reduce(
     (acc, x) => ({ ...acc, [x]: (acc[x] || 0) + 1 }),
     {},
@@ -120,6 +122,7 @@ frequencies(['a', 'b', 'a', 'c', 'b', 'a']);
 ### 파이프라인에서 사용
 
 ```javascript
+const { reduce } = Foldable.of('array');
 const numbers = [1, 2, 3, 4, 5];
 
 // fold로 통계 계산
@@ -159,7 +162,7 @@ const { foldMap, Foldable, Monoid } = FunFP;
 // foldMap(Foldable, Monoid) -> (매핑함수) -> (컨테이너) -> 결과
 
 // 기본 사용
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('sum'));
+const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
 
 sumFold(x => x * x)([1, 2, 3, 4]);
 // 1² + 2² + 3² + 4² = 1 + 4 + 9 + 16 = 30
@@ -188,7 +191,7 @@ const foldMap = (foldable, monoid) => f => container =>
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('sum'));
+const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
 
 // 배열 요소의 제곱 합
 sumFold(x => x * x)([1, 2, 3, 4]);
@@ -204,7 +207,7 @@ sumFold(Math.abs)([-5, 3, -2, 7]);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('sum'));
+const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
 
 const users = [
     { name: 'Alice', score: 10 },
@@ -222,7 +225,7 @@ sumFold(u => u.score)(users);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('sum'));
+const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
 
 const words = ['hello', 'world', 'foo', 'bar'];
 
@@ -254,7 +257,7 @@ arrayFold(n => [n, n * 2])([1, 2, 3]);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('sum'));
+const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
 
 const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -277,6 +280,7 @@ sumFold(n => n > 5 ? n : 0)(numbers);
 | 가독성 | 직관적 | 선언적 |
 
 ```javascript
+const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
 // map + reduce
 [1, 2, 3, 4]
     .map(x => x * x)  // [1, 4, 9, 16] (중간 배열 생성)

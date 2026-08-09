@@ -30,6 +30,8 @@ const tasks = users.map(fetchUser);
 ### 해결: traverse로 뒤집기
 
 ```javascript
+const users = [1, 2, 3];
+const fetchUser = id => Task.fromPromise(() => fetch(`/api/users/${id}`))();
 const { traverse } = Traversable.of('array');
 
 traverse(
@@ -42,7 +44,7 @@ traverse(
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Traversable.traverse(Applicative, f, t): Applicative (Traversable b)
 // Applicative: 목표 Applicative 타입
 // f: a -> Applicative b (각 요소에 적용할 함수)
@@ -53,11 +55,13 @@ Traversable.traverse(Applicative, f, t): Applicative (Traversable b)
 
 ### 항등 (Identity)
 ```javascript
+const { traverse } = Traversable.of('array');
 traverse(Identity, Identity.of, t) === Identity.of(t)
 ```
 
 ### Naturality
 ```javascript
+const { traverse } = Traversable.of('array');
 traverse(G, compose(eta, f), t) === eta(traverse(F, f, t))
 ```
 
@@ -202,6 +206,7 @@ map(([name, email, phone]) => ({ name, email, phone }), result);
 | 용도 | 단순 변환 | 효과 있는 변환 |
 
 ```javascript
+const { traverse } = Traversable.of('array');
 // map: 구조 유지
 [1, 2, 3].map(x => x * 2)  // [2, 4, 6]
 

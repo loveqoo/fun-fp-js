@@ -22,7 +22,7 @@ fun-fp-js의 transducer는 `Symbol.iterator`를 가진 모든 것에 동작합�
 
 ### 문제: 배열 메서드 체이닝은 단계마다 배열을 만든다
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // 각 단계가 새 배열을 할당한다 — 100만 개면 중간 배열도 100만 개씩
 const result = hugeArray
     .map(x => x * 2)        // 새 배열 1

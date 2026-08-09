@@ -31,6 +31,8 @@ const result = map(user => getAddress(user.addressId), getUser(1));
 ### 해결: chain으로 평탄화
 
 ```javascript
+const getAddress = addrId => Maybe.of({ id: addrId, city: 'Seoul' });
+const getUser = id => Maybe.of({ id, name: 'Alice', addressId: 1 });
 const { Chain } = FunFP;
 const { chain } = Chain.of('maybe');
 
@@ -45,26 +47,29 @@ getUserAddress(1);  // Maybe({ city: 'Seoul' })
 ## 법칙
 
 ### 1. 좌항등법칙 (Left Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { chain } = Chain.of('maybe');
 chain(f, of(a)) === f(a)
 ```
 값을 of로 감싸고 chain하면 = 그냥 함수 호출
 
 ### 2. 우항등법칙 (Right Identity)
 ```javascript
+const { chain } = Chain.of('maybe');
 chain(of, m) === m
 ```
 모나드에 of를 chain하면 = 원래 모나드
 
 ### 3. 결합법칙 (Associativity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { chain } = Chain.of('maybe');
 chain(g, chain(f, m)) === chain(x => chain(g, f(x)), m)
 ```
 chain 순서를 바꿔도 결과가 같음
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Monad.of(a): Monad a              // 값을 모나드에 넣기 (Applicative에서 상속)
 Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
                                   // f: a -> Monad b
@@ -219,6 +224,8 @@ pipeline('abc');   // Nothing
 ### composeK - 오른쪽에서 왼쪽 합성 (수학적 합성)
 
 ```javascript
+const double = n => Maybe.of(n * 2);
+const asString = n => Maybe.of(`Result: ${n}`);
 const { Maybe } = FunFP;
 
 // composeK: 우 → 좌 (수학적 합성 순서)

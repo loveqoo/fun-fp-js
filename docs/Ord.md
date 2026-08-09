@@ -11,33 +11,37 @@ Ord는 Setoid를 확장하여 두 값의 **순서**를 비교할 수 있게 합�
 Ord는 Setoid의 법칙에 더해 다음을 만족해야 합니다:
 
 ### 1. 반사성 (Reflexivity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { lte } = Ord.of('number');
 lte(a, a) === true
 ```
 
 ### 2. 반대칭성 (Antisymmetry)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { lte } = Ord.of('number');
 if (lte(a, b) && lte(b, a)) {
     equals(a, b) === true
 }
 ```
 
 ### 3. 추이성 (Transitivity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { lte } = Ord.of('number');
 if (lte(a, b) && lte(b, c)) {
     lte(a, c) === true
 }
 ```
 
 ### 4. 전체성 (Totality)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { lte } = Ord.of('number');
 lte(a, b) === true || lte(b, a) === true
 ```
 모든 두 값은 비교 가능합니다.
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Ord.lte(a, b): boolean  // a ≤ b
 ```
 

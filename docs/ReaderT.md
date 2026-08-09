@@ -24,7 +24,7 @@ ReaderT M env a = env -> M a
 
 ### 문제: 의존성을 함수마다 손으로 넘긴다
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // 모든 함수가 config를 받아 아래로 전달한다
 function getUser(config, id) {
     return query(config.db, `SELECT * FROM users WHERE id=${id}`);

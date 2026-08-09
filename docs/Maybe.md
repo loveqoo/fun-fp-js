@@ -25,6 +25,7 @@ const getCity = user => {
 ### 해결: Maybe로 깔끔하게
 
 ```javascript
+const user = { name: 'Alice', address: { city: 'Seoul' } };
 const { Maybe, Functor, Chain } = FunFP;
 const { map } = Functor.of('maybe');
 const { chain } = Chain.of('maybe');
@@ -248,6 +249,7 @@ Static Land 스타일로 읽기 쉽게 체이닝하기:
 ### Maybe.pipe - 함수들을 순차 적용
 
 ```javascript
+const user = { name: 'Alice', address: { city: 'Seoul' } };
 const { map } = Functor.of('maybe');
 
 Maybe.pipe(

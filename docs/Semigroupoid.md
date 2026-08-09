@@ -17,7 +17,7 @@ const compose = (f, g) => x => f(g(x))
 ### 법칙
 
 #### 결합법칙 (Associativity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 compose(f, compose(g, h)) === compose(compose(f, g), h)
 ```
 
@@ -52,18 +52,20 @@ const id = x => x;
 ### 법칙
 
 #### 좌항등 (Left Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const id = x => x;
 compose(id, f) === f
 ```
 
 #### 우항등 (Right Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
 compose(f, id) === f
 ```
 
 ### 사용 예시
 
 ```javascript
+const double = x => x * 2;
 const { Category } = FunFP;
 
 const { compose, id } = Category.of('function');

@@ -32,7 +32,7 @@ a가 b와 같고, b가 c와 같으면, a와 c도 같습니다.
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Setoid.equals(a, b): boolean
 ```
 
@@ -51,9 +51,13 @@ Setoid.of('number').equals(1, 2);    // false
 // 문자열 비교
 Setoid.of('string').equals('hello', 'hello');  // true
 
-// 배열 비교 (깊은 비교)
-Setoid.of('array').equals([1, 2], [1, 2]);  // true
-Setoid.of('array').equals([1, 2], [1, 3]);  // false
+// 배열·객체 Setoid 는 기본 제공되지 않는다 — 직접 만든다
+const arraySetoid = new Setoid(
+    (a, b) => a.length === b.length && a.every((x, i) => x === b[i]),
+    'Array'
+);
+arraySetoid.equals([1, 2], [1, 2]);  // true
+arraySetoid.equals([1, 2], [1, 3]);  // false
 ```
 
 ### 자동 타입 추론
@@ -80,7 +84,8 @@ uniqueBy([1, 2, 1, 3, 2]);  // [1, 2, 3]
 
 ### 배열에서 요소 찾기
 ```javascript
-const setoid = Setoid.of('object');
+// 객체 Setoid 는 기본 제공되지 않으므로 직접 만든다
+const setoid = new Setoid((a, b) => a.id === b.id, 'Object');
 
 const findBy = (target, arr) => arr.find(x => setoid.equals(x, target));
 

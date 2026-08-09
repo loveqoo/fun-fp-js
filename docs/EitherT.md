@@ -25,7 +25,7 @@ API 호출입니다.
 
 ### 문제: Task 안의 Either는 껍질을 두 번 벗겨야 한다
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // Task<Either<Error, User>> — 단계마다 두 겹을 다룬다
 fetchUser(id)
     .chain(eitherUser =>

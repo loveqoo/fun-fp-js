@@ -4,7 +4,7 @@ Functor에 컨텍스트 기반 변환(extend)을 추가한 타입 클래스.
 
 ## 정의
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 class Extend extends Functor {
     constructor(functor, extend, type, registry, ...aliases)
 }
@@ -20,7 +20,7 @@ class Extend extends Functor {
 
 ## 법칙
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // associativity
 extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 ```

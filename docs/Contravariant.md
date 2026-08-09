@@ -4,7 +4,7 @@
 
 ## 정의
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 class Contravariant extends Algebra {
     constructor(contramap, type, registry, ...aliases)
 }
@@ -20,7 +20,7 @@ Functor의 `map`은 출력을 변환하지만, `contramap`은 **입력**을 변�
 
 ## 법칙
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // identity
 contramap(x => x, u) ≡ u
 

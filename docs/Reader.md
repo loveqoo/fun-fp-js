@@ -475,6 +475,7 @@ pipeline(5).run({ offset: 3 });
 ### Reader.composeK - 오른쪽에서 왼쪽 합성
 
 ```javascript
+const double = x => Reader.of(x * 2);
 // pipeK와 반대 방향
 const pipeline = Reader.composeK(toString, double, addEnv);
 pipeline(5).run({ offset: 3 });

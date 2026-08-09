@@ -19,7 +19,7 @@ handle : (state, msg) -> [result, newState]
 
 ### 문제: 비동기 갱신이 겹치면 상태가 깨진다
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 let balance = 100;
 
 async function withdraw(amount) {

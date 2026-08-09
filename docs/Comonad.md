@@ -4,7 +4,7 @@ Extend에 값 추출(extract)을 추가한 타입 클래스. Monad의 쌍대(dua
 
 ## 정의
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 class Comonad extends Extend {
     constructor(extend, extract, type, registry, ...aliases)
 }
@@ -19,7 +19,7 @@ class Comonad extends Extend {
 
 ## 법칙
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // left identity
 extend(extract, w) ≡ w
 

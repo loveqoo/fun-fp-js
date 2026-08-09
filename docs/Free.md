@@ -40,6 +40,7 @@ sum(10000);  // 50005000 (스택 오버플로우 없음!)
 ### 피보나치 (trampoline)
 
 ```javascript
+const { Thunk } = Free;
 const fib = n => {
     const go = (n, a, b) => n <= 0
         ? Thunk.done(a)

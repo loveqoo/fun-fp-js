@@ -15,20 +15,22 @@ Functor는 **컨테이너 안의 값을 변환**할 수 있는 타입입니다. 
 ## 법칙
 
 ### 1. 항등법칙 (Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { map } = Functor.of('array');
 map(x => x, a) === a
 ```
 항등 함수로 매핑하면 원래 값과 같습니다.
 
 ### 2. 합성법칙 (Composition)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { map } = Functor.of('array');
 map(x => f(g(x)), a) === map(f, map(g, a))
 ```
 합성 함수로 한 번 매핑 = 각각 매핑 두 번
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Functor.map(f, a): Functor a
 ```
 - `f`: 변환 함수 `a -> b`

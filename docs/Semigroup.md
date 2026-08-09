@@ -11,12 +11,13 @@ Semigroup은 두 값을 **결합(combine)**하여 같은 타입의 새 값을 �
 ## 법칙
 
 ### 결합법칙 (Associativity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { concat } = Semigroup.of('array');
 concat(concat(a, b), c) === concat(a, concat(b, c))
 ```
 
 예:
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // 문자열
 ("a" + "b") + "c" === "a" + ("b" + "c")  // "abc" === "abc"
 
@@ -29,7 +30,7 @@ concat(concat(a, b), c) === concat(a, concat(b, c))
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Semigroup.concat(a, b): a  // a와 b를 결합
 ```
 

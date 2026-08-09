@@ -4,7 +4,7 @@ Semigroupoid에 항등 함수(id)를 추가한 타입 클래스.
 
 ## 정의
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 class Category extends Semigroupoid {
     constructor(semigroupoid, id, type, registry, ...aliases)
 }
@@ -19,7 +19,7 @@ class Category extends Semigroupoid {
 
 ## 법칙
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // right identity
 compose(f, id()) ≡ f
 

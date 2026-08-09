@@ -4,7 +4,7 @@
 
 ## 정의
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 class Profunctor extends Algebra {
     constructor(promap, type, registry, ...aliases)
 }
@@ -21,7 +21,7 @@ class Profunctor extends Algebra {
 
 ## 법칙
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 // identity
 promap(x => x, x => x, p) ≡ p
 

@@ -13,7 +13,7 @@ Bifunctor는 **두 개의 타입 파라미터를 가진 컨테이너에서 양�
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Bifunctor.bimap(f, g, a): Bifunctor c d
 // f: a -> c  (Left/첫 번째 값 변환)
 // g: b -> d  (Right/두 번째 값 변환)
@@ -22,12 +22,14 @@ Bifunctor.bimap(f, g, a): Bifunctor c d
 ## 법칙
 
 ### 항등 (Identity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { bimap } = Bifunctor.of('either');
 bimap(x => x, x => x, a) === a
 ```
 
 ### 합성 (Composition)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { bimap } = Bifunctor.of('either');
 bimap(f, g, bimap(h, i, a)) === bimap(x => f(h(x)), x => g(i(x)), a)
 ```
 
@@ -96,6 +98,7 @@ addContext('user-service')(fetchUser(1));
 ## map vs bimap
 
 ```javascript
+const { bimap } = Bifunctor.of('either');
 const { map } = Functor.of('either');
 
 // map은 Right(성공)만 변환
@@ -110,6 +113,7 @@ bimap(e => e.toUpperCase(), x => x * 2, Either.Left('err'));
 ## mapLeft - 왼쪽만 변환
 
 ```javascript
+const { bimap } = Bifunctor.of('either');
 const mapLeft = (f, either) => bimap(f, x => x, either);
 
 mapLeft(err => `Error: ${err}`, Either.Left('oops'));

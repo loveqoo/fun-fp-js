@@ -12,7 +12,7 @@ Alt는 **두 값 중 하나를 선택**하는 능력입니다. 첫 번째가 "�
 
 ## 인터페이스
 
-```javascript
+```javascript no-run 시그니처·의사코드 표기
 Alt.alt(a, b): Alt a
 // a가 "성공"이면 a, 아니면 b
 ```
@@ -20,7 +20,8 @@ Alt.alt(a, b): Alt a
 ## 법칙
 
 ### 결합법칙 (Associativity)
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { alt } = Alt.of('maybe');
 alt(alt(a, b), c) === alt(a, alt(b, c))
 ```
 
@@ -72,6 +73,7 @@ alt(mainServer, backupServer).fork(
 ### 다중 폴백
 
 ```javascript
+const { alt } = Alt.of('maybe');
 const getFromCache = Maybe.Nothing();
 const getFromDB = Maybe.Nothing();
 const getDefault = Maybe.of({ default: true });
@@ -83,6 +85,7 @@ alt(getFromCache, alt(getFromDB, getDefault));
 ### 설정 우선순위
 
 ```javascript
+const { alt } = Alt.of('maybe');
 const envConfig = process.env.CONFIG ? Maybe.of(JSON.parse(process.env.CONFIG)) : Maybe.Nothing();
 const fileConfig = Maybe.of({ port: 3000 });
 const defaultConfig = Maybe.of({ port: 8080 });
@@ -95,7 +98,8 @@ alt(envConfig, alt(fileConfig, defaultConfig));
 
 Plus는 Alt에 **빈 값(zero)**을 추가한 것입니다:
 
-```javascript
+```javascript no-run 대수 법칙 — 자유변수 표기
+const { alt } = Alt.of('maybe');
 const { Plus } = FunFP;
 
 Plus.of('maybe').zero();  // Nothing

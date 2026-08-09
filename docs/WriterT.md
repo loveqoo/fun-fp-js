@@ -27,7 +27,7 @@ String(문자열 연결)이나 Number(합산)로 바꿀 수 있습니다.
 
 ### 문제: 계산 과정을 남기려면 부수효과를 쓰거나 배관을 늘려야 한다
 
-```javascript no-run
+```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // 방법 1: console.log — 테스트에서 잡아내기 어렵고 순수하지 않다
 function calculate(x) {
     console.log(`입력 ${x}`);
