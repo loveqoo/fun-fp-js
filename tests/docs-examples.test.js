@@ -48,24 +48,11 @@ const runBlock = code =>
 
 const firstLine = code => code.trim().split('\n')[0];
 
-// Docs still being repaired for block-independence. Their examples are executed and
-// counted, but failures are reported as pending instead of failing the build — otherwise
-// the gate would be red for the whole repair effort. This list only shrinks; when it hits
-// zero, delete it. The count is printed on every run so it cannot quietly become permanent.
-const PENDING = new Set([
-    'Alt.md', 'Applicative.md', 'Bifunctor.md', 'ChainRec.md', 'Contravariant.md',
-    'Either.md', 'Extend.md', 'Filterable.md', 'Free.md', 'Functor.md', 'Maybe.md',
-    'Monad.md', 'Monoid.md', 'Profunctor.md', 'README.md', 'Reader.md', 'Semigroup.md',
-    'Semigroupoid.md', 'Setoid.md', 'State.md', 'Task.md', 'Traversable.md',
-    'Validation.md', 'Writer.md',
-]);
-
 logSection('Docs examples');
 
 const docs = readdirSync(docsDir).filter(n => n.endsWith('.md')).sort();
 let totalRun = 0;
 let totalSkipped = 0;
-let totalPending = 0;
 
 for (const name of docs) {
     const blocks = extract(readFileSync(join(docsDir, name), 'utf8'));
@@ -89,43 +76,19 @@ for (const name of docs) {
         });
     });
 
-    const pending = PENDING.has(name);
-    let docPending = 0;
-
     runnable.forEach((block, i) => {
-        const check = () => {
+        test(`docs/${name} example ${i + 1}`, () => {
             const { status, signal, error, stderr } = runBlock(block.code);
             if (error) throw new Error(`could not start: ${error.message}`);
             if (signal) throw new Error(`killed by ${signal}`);
             if (status !== 0) {
                 throw new Error(`exit ${status}\n   at: ${firstLine(block.code)}\n${stderr.trim()}`);
             }
-        };
-        if (!pending) {
-            test(`docs/${name} example ${i + 1}`, check);
-            return;
-        }
-        try {
-            check();
-        } catch (e) {
-            docPending++;
-            console.log(`⏳ [PENDING] docs/${name} example ${i + 1} — ${firstLine(block.code)}`);
-        }
+        });
     });
-
-    totalPending += docPending;
-    if (pending && docPending === 0) {
-        console.log(`   ↑ 이 문서는 이제 전부 통과한다 — PENDING 목록에서 빼라`);
-    }
 }
 
 console.log(`\n총 ${totalRun}개 예제 실행, ${totalSkipped}개 스킵(no-run)`);
-if (PENDING.size > 0) {
-    console.log(
-        `⏳ 수리 대기: 문서 ${PENDING.size}개 / 실패 ${totalPending}건 — ` +
-        'tests/docs-examples.test.js 의 PENDING 을 비우는 것이 목표다'
-    );
-}
 
 // A broken extractor would run zero examples and still report green.
 if (totalRun === 0) {

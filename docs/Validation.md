@@ -406,7 +406,12 @@ const loadConfig = configObj => {
 loadConfig({ host: 'localhost', port: 3000 });
 // { host: 'localhost', port: 3000, timeout: 5000 }
 
-loadConfig({ host: '', port: 'abc', timeout: -1 });
+// 실패 시 던지므로 호출부에서 잡는다
+try {
+    loadConfig({ host: '', port: 'abc', timeout: -1 });
+} catch (e) {
+    console.error(e.message);
+}
 // Error: Invalid config:
 // host is required
 // port must be a number

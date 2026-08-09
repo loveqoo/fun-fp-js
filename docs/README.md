@@ -244,15 +244,16 @@ Task.all([
 ```javascript
 const userId = 1;
 const fetchUser = id => Task.of({ id, name: 'Alice' });
+const fetchPosts = uid => Task.of([{ id: 10, uid, title: '첫 글' }]);
+const fetchComments = postId => Task.of([{ id: 100, postId, body: '댓글' }]);
 const { pipe, Chain } = FunFP;
 const { chain } = Chain.of('task');
 
-// pipe를 사용하면 좌에서 우로 읽기 쉬움
+// pipe 는 함수를 돌려준다 — 값이 아니라 함수들을 넘기고 마지막에 적용한다
 pipe(
-    fetchUser(userId),
     task => chain(user => fetchPosts(user.id), task),
     task => chain(posts => fetchComments(posts[0].id), task)
-).fork(console.error, console.log);
+)(fetchUser(userId)).fork(console.error, console.log);
 ```
 
 ## 더 알아보기

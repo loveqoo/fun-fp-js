@@ -132,9 +132,8 @@ const { sequence, Maybe, Applicative } = FunFP;
 // 이미 Maybe가 담긴 배열을 뒤집기
 const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
 
-const { traverse } = Traversable.of('array');
-
-sequence(traverse, Applicative.of('maybe'), maybes);
+// sequence 의 첫 인자는 Traversable 인스턴스다
+sequence(Traversable.of('array'), Applicative.of('maybe'), maybes);
 // Just([1, 2, 3])
 ```
 

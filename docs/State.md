@@ -530,8 +530,10 @@ const [value, finalState] = pipeline(1).run(0);
 ### State.composeK - 오른쪽에서 왼쪽 합성
 
 ```javascript
-const add5 = x => State.of(x + 5);
-const double = state => state * 2;
+const add5 = x => new State(s => [x + 5, s + 1]);
+const double = x => new State(s => [x * 2, s + 1]);
+const toString = x => new State(s => [`Result: ${x}`, s + 1]);
+
 const pipeline = State.composeK(toString, double, add5);
 const [value, finalState] = pipeline(1).run(0);
 // value: 'Result: 12' (동일한 결과)

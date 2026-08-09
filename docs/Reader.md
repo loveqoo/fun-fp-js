@@ -14,8 +14,7 @@ Reader는 **환경(environment)을 암묵적으로 전달하는 계산**을 표�
 
 ### 문제: 파라미터 drilling 또는 전역 변수
 
-```javascript
-const config = { apiUrl: 'https://api.example.com', token: 'T' };
+```javascript no-run 문제 상황 — 네트워크 호출
 // 설정을 모든 함수에 전달해야 함
 const fetchUser = (id, config) => {
     return fetch(`${config.apiUrl}/users/${id}`, {
@@ -41,8 +40,7 @@ getProfile(123, config);
 
 ### 해결: Reader로 환경 전파
 
-```javascript
-const config = { apiUrl: 'https://api.example.com', token: 'T' };
+```javascript no-run 네트워크 호출 — 실행 대상 아님
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.of('reader');
 
@@ -371,8 +369,14 @@ const client = createHttpClient.run(config);
 ### 4. 테스트용 mock 주입
 
 ```javascript
-const realEmailService = { send: (to, body) => ({ to, body, sent: true }) };
-const realUserService = { find: id => ({ id, name: 'Alice' }) };
+// 프로덕션 구현(실제로는 DB·SMTP 를 쓴다). 테스트 환경과 같은 모양이어야 한다.
+const realUserService = {
+    findById: id => ({ id, email: 'alice@example.com', name: 'Alice' })
+};
+const realEmailService = {
+    send: ({ to, subject, body }) => ({ to, subject, body, sent: true })
+};
+
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.of('reader');
 
@@ -480,8 +484,10 @@ pipeline(5).run({ offset: 3 });
 ### Reader.composeK - 오른쪽에서 왼쪽 합성
 
 ```javascript
-const addEnv = x => Reader.of(x + 1);
+const addEnv = x => Reader.asks(env => x + env.offset);
 const double = x => Reader.of(x * 2);
+const toString = x => Reader.of(`Result: ${x}`);
+
 // pipeK와 반대 방향
 const pipeline = Reader.composeK(toString, double, addEnv);
 pipeline(5).run({ offset: 3 });

@@ -74,22 +74,29 @@ Free 구조를 동기적으로 실행.
 ### Free.runWithTask(runner, free)
 Task 기반 비동기 실행. runner가 Task를 반환할 때 사용하며, Promise를 반환하여 async/await 호환성을 제공합니다.
 
-```javascript
+```javascript no-run 네트워크 호출 — 실행 대상 아님
 import FunFP from 'fun-fp-js';
 const { Free, Task } = FunFP;
 
 // 1. DSL 정의 - 명령 타입
+// liftF 는 명령이 Functor 임을 요구한다 — map 과 Functor 심볼이 있어야 한다.
+const FunctorSymbol = Symbol.for('fun-fp-js/Functor');
+
 class FetchCmd {
     constructor(url) {
         this.url = url;
     }
+    map(f) { return this; }   // 명령 자체는 값을 담지 않으므로 그대로
 }
+FetchCmd.prototype[FunctorSymbol] = true;
 
 class LogCmd {
     constructor(message) {
         this.message = message;
     }
+    map(f) { return this; }
 }
+LogCmd.prototype[FunctorSymbol] = true;
 
 // 2. Task 기반 인터프리터 (runner)
 const interpreter = cmd => {
@@ -136,14 +143,22 @@ Free.runWithTask(interpreter, program)
 3. 데이터베이스 쿼리 DSL
 4. 모든 비동기 효과를 순수하게 표현
 
-```javascript
+```javascript no-run 네트워크 호출 — 실행 대상 아님
 // 실용적 예시: API 조합
+// liftF 는 명령이 Functor 임을 요구한다 (위 예시 참조).
+const FunctorSymbol = Symbol.for('fun-fp-js/Functor');
+
 class GetUser {
     constructor(id) { this.id = id; }
+    map(f) { return this; }
 }
+GetUser.prototype[FunctorSymbol] = true;
+
 class GetPosts {
     constructor(userId) { this.userId = userId; }
+    map(f) { return this; }
 }
+GetPosts.prototype[FunctorSymbol] = true;
 
 const runAPI = cmd => {
     if (cmd instanceof GetUser) {

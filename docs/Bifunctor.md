@@ -87,9 +87,14 @@ bimap(normalizeError, formatResult, result);
 
 ### 양쪽에 컨텍스트 추가
 
-const { bimap } = Bifunctor.of('either');
 ```javascript
-const fetchUser = id => Task.of({ id, name: 'Alice' });
+const { bimap } = Bifunctor.of('either');
+
+// Task 에는 Bifunctor 인스턴스가 없다 — 양쪽 변환은 Either 에서 한다
+const fetchUser = id => id > 0
+    ? Either.Right({ id, name: 'Alice' })
+    : Either.Left({ code: 'INVALID_ID' });
+
 const addContext = context => result =>
     bimap(
         err => ({ ...err, context }),

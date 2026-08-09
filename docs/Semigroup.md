@@ -73,6 +73,7 @@ concatAll([[1], [2], [3]]);  // [1, 2, 3]
 
 ```javascript
 const name = 'Alice';
+const email = 'alice@example.com';
 // 에러 메시지 수집
 const errors = [];
 const validate = (cond, msg) => cond ? [] : [msg];

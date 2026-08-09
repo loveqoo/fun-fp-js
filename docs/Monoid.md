@@ -93,9 +93,10 @@ foldMonoid([]);         // 0 (안전!)
 ### 조건부 결합
 
 ```javascript
-const hasWarnings = warns => warns.length > 0;
-const errors = [];
-const hasErrors = errs => errs.length > 0;
+const errors = ['이름은 필수입니다'];
+const warnings = [];
+const hasErrors = errors.length > 0;
+const hasWarnings = warnings.length > 0;
 const arr = Monoid.of('array');
 
 const concatIf = (condition, value) =>

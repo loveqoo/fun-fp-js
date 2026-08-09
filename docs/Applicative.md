@@ -183,10 +183,7 @@ liftA3(
 | 의존성 | 독립적 | 이전 결과에 의존 |
 | 용도 | 여러 값 결합 | 조건부 분기 |
 
-```javascript
-const fetchPosts = userId => Task.of([{ id: 1, userId, title: '첫 글' }]);
-const fetchUser = id => Task.of({ id, name: 'Alice' });
-const { ap } = Apply.of('maybe');
+```javascript no-run 개념 비교 — 의사코드
 // ap: 두 요청이 서로 독립적 → 병렬 가능
 ap(fetchUser, fetchPosts)
 
