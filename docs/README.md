@@ -30,6 +30,7 @@
 - [Free](./Free.md) - 스택 안전 재귀, DSL 구축
 
 #### 데이터 다루기
+- [Optics](./Optics.md) - Lens/Prism/Traversal 개관과 합성 (**여기부터**)
 - [Lens](./Lens.md) - 중첩 불변 데이터의 합성 가능한 접근자
 - [Transducer](./Transducer.md) - 중간 배열 없는 변환 파이프라인
 - [Actor](./Actor.md) - 순차 메시지 처리 상태 컨테이너
@@ -159,7 +160,8 @@ Extend ──> Comonad
 | Writer | 로깅/출력 추적 | 값 + 출력 (Monoid) |
 | State | 상태 변환 | 상태 스레딩 |
 | Free | DSL, 스택 안전 재귀 | Pure / Impure |
-| [Lens](./Lens.md) | 중첩 불변 갱신 | getter + setter 쌍, 합성 가능 |
+| [Optics](./Optics.md) | 부분 접근·갱신 | Lens/Prism/Traversal, `composeOptic` |
+| [Lens](./Lens.md) | 중첩 불변 갱신 | getter + setter 쌍, 대상 정확히 1개 |
 | [Transducer](./Transducer.md) | 변환 파이프라인 | 중간 배열 없음, 조기 종료 |
 | [Actor](./Actor.md) | 순차 메시지 처리 | 큐 + 상태, `send`가 Task |
 

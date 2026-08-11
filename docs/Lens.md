@@ -2,6 +2,10 @@
 
 중첩된 불변 데이터의 특정 부분을 **읽고 쓰는 합성 가능한 접근자**
 
+> Lens는 **대상이 정확히 1개**인 optic입니다. 0개이거나 여러 개일 수 있는 경우
+> ([Prism](./Optics.md#prism--0개-또는-1개), [Traversal](./Optics.md#traversal--0n개))와
+> 셋을 섞어 합성하는 법은 [Optics](./Optics.md) 문서를 보십시오.
+
 ## 개념
 
 Lens는 큰 구조 `s` 안에 있는 작은 값 `a`에 대한 **1급 접근자**입니다. getter와 setter를

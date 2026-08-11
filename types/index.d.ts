@@ -101,8 +101,14 @@ import type { WriterT } from "./data/transformers/WriterT";
 import type { Actor } from "./Actor";
 import type {
     Lens,
+    Prism,
+    traversed,
+    composeOptic,
     composeLens,
     view,
+    preview,
+    toListOf,
+    review,
     set,
     over,
 } from "./Lens";
@@ -197,8 +203,14 @@ declare const fp: {
     readonly Actor: typeof Actor;
 
     readonly Lens: typeof Lens;
+    readonly Prism: typeof Prism;
+    readonly traversed: typeof traversed;
+    readonly composeOptic: typeof composeOptic;
     readonly composeLens: typeof composeLens;
     readonly view: typeof view;
+    readonly preview: typeof preview;
+    readonly toListOf: typeof toListOf;
+    readonly review: typeof review;
     readonly set: typeof set;
     readonly over: typeof over;
 

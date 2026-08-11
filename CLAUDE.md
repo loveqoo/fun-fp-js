@@ -113,8 +113,12 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 6. **핵심 데이터 타입** (1100-1800줄) - Maybe, Either, Task, Free (StateF/EitherF/ReaderF/WriterF Functor 포함)
 7. **순회 & 유틸리티** (1800-1870줄) - `sequence()`, `lift()`, `pipeK()`
 8. **Free Static Land** (1870-2000줄) - FreeFunctor, FreeApply, FreeChain, FreeMonad
-9. **Monad Transformer** (2000-2430줄) - 공통 인프라 + StateT, EitherT, ReaderT, WriterT
-10. **Static Methods & 설정** (2430-2545줄) - Static Land 메서드 wiring, `setStrictMode()`
+9. **Optics** (2255줄~) - 내부 Identity/Const Applicative, Lens/Prism/Traversal, `composeOptic`
+10. **Monad Transformer** (~2290-2620줄) - 공통 인프라 + StateT, EitherT, ReaderT, WriterT
+11. **Actor** - 메시지 큐 + 순차 처리
+12. **Static Methods & 설정** - Static Land 메서드 wiring, `setStrictMode()`
+
+줄 번호는 대략치입니다 — 코드가 늘면 어긋나므로 섹션 주석(`/* Optics */` 등)으로 찾으십시오.
 
 ### 검증 로직 분리 (checkAndSet)
 
@@ -129,6 +133,21 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 - **Either** - 에러 처리를 위한 `Right`/`Left`. Left가 Semigroup일 때 `ap()`가 Left 값을 누적.
 - **Task** - 지연 실행되는 Promise 유사 비동기 모나드. `fork(onError, onSuccess)`로 실행.
 - **Free** - 트램폴린을 통한 스택 안전 재귀. `liftF()`로 펑터를 리프트하고, `runSync`/`runAsync`/`runWithTask`로 실행. Monad Transformer의 내부 표현으로도 사용.
+
+### Optics
+
+Van Laarhoven 인코딩(F-explicit): `Optic s a = F => (a -> F a) -> s -> F s`. F가 첫 인자이므로
+일반 `compose`로는 합성되지 않고 `composeOptic`(별칭 `composeLens`)을 씁니다.
+
+| optic | 대상 수 | 생성 | F 요구 |
+| --- | --- | --- | --- |
+| `Lens` | 정확히 1 | `Lens(getter, setter)` | Functor |
+| `Prism` | 0 또는 1 | `Prism(match, build)` — `match`는 Maybe 반환 | Applicative (`of` 필요) |
+| `Traversal` | 0..n | `traversed(key)` — 기존 Traversable 재사용 | Applicative (`ap` 필요) |
+
+읽기: `view`(Lens 전용) / `preview`(첫 대상, Maybe) / `toListOf`(전부).
+쓰기: `over`, `set` — 세 optic 모두 동작하며, 대상이 없으면 원본을 그대로 돌려줍니다.
+`review(prism, a)`는 Prism으로 값을 거꾸로 만듭니다.
 
 ### Monad Transformer
 
