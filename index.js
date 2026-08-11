@@ -2293,16 +2293,20 @@ const _arrayMonoid = { empty: () => [], concat: (a, b) => [...a, ...b] };
 const _lastMonoid = { empty: () => undefined, concat: (a, b) => (b === undefined ? a : b) };
 
 // ── 구체 Profunctor 3종 ────────────────────────────────────────────
+// dimap은 레지스트리의 Profunctor를 재사용한다 — promap(f, g, fn)이 dimap과 시그니처가 같다.
+const _promap = Profunctor.of('function').promap;
+
 // 함수: p a b = a -> b
 const _PFn = {
-    dimap: (f, g, p) => s => g(p(f(s))),
+    dimap: _promap,
     first: p => ([a, c]) => [p(a), c],
     left: p => e => (e.isLeft() ? Either.Left(p(e.value)) : e),
     wander: (traverse, p) => s => traverse(_Identity, a => _Identity.of(p(a)), s).value,
 };
 // Forget<r>: p a b = a -> r. 출력을 버리고 r을 모은다.
 const _PForget = monoid => ({
-    dimap: (f, _g, p) => s => p(f(s)),
+    // 출력 변환을 버리므로 g 자리에 항등을 넣는다.
+    dimap: (f, _g, p) => _promap(f, x => x, p),
     first: p => ([a, _c]) => p(a),
     left: p => e => (e.isLeft() ? p(e.value) : monoid.empty()),
     wander: (traverse, p) => s => traverse(_Const(monoid), a => ({ value: p(a) }), s).value,
@@ -2310,6 +2314,8 @@ const _PForget = monoid => ({
 // Tagged: p a b = b. 입력을 무시하므로 거꾸로만 쓸 수 있다.
 // first/wander가 없는 것이 의도다 — Lens/Traversal에 review를 막는 유일한 장치다.
 const _PTagged = {
+    // 여기만 _promap에 위임할 수 없다 — Tagged a b = b 이므로 profunctor 값이 함수가 아닌데
+    // Profunctor.promap의 strict 검사가 세 인자 모두 함수일 것을 요구한다.
     dimap: (_f, g, p) => g(p),
     left: p => Either.Left(p),
     // Tagged는 입력을 만들어낼 수 없으므로 곱(first)과 순회(wander)를 구현할 수 없다.

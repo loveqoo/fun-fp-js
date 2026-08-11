@@ -161,8 +161,32 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 **`Tagged`에 `first`와 `wander`가 없다는 것이 타입 안전성을 대신합니다** — Lens나 Traversal에
 `review`를 쓰면 그 자리에서 TypeError가 납니다. 심볼 표식 같은 수동 검사가 필요 없습니다.
 
-`wander`는 기존 `Traversable.of(key).traverse`에 위임합니다. 내부 Applicative(`_Identity`,
-`_Const(monoid)`)는 그 호출에만 쓰입니다.
+`wander`는 기존 `Traversable.of(key).traverse`에 위임하고, `dimap`은 기존
+`Profunctor.of('function').promap`에 위임합니다(`promap`은 시그니처가 `dimap`과 같습니다).
+내부 Applicative(`_Identity`, `_Const(monoid)`)는 `wander` 호출에만 쓰입니다.
+
+단 **`_PTagged`는 위임하지 않습니다** — `Tagged a b = b`라 profunctor 값이 함수가 아닌데,
+`Profunctor.promap`의 strict 검사가 세 인자 모두 함수일 것을 요구합니다.
+
+#### 왜 Strong/Choice/Wander를 타입 클래스로 올리지 않았는가
+
+`first`/`left`/`wander`는 표준 이름이 각각 `Strong`/`Choice`/`Wander`인 타입 클래스의
+연산입니다. 이 라이브러리는 그것들을 **레지스트리에 올리지 않고 사설 딕셔너리로 둡니다.**
+근거(2026-08-11 조사):
+
+- **JS/TS 선례가 만장일치로 내부화입니다.** `optika`는 profunctor 인코딩을 쓰면서도
+  "Internals — Functions which you probably never need to use directly"로 분류하고,
+  `monocle-ts`는 전체 profunctor 버전이 있지만 "only used internally"입니다.
+- **노출해도 실제 확장 용도가 열리지 않습니다.** 커스텀 profunctor의 대표 용도인 indexed
+  optics(위치를 주는 traversal)는 `Indexed`/`StarI`/`ForgetI` 같은 **별도 profunctor 계열과
+  `itraversed` 생성자**를 요구합니다 — 이 셋만으로는 불가능합니다.
+- 참고로 Haskell `well-typed/optics`가 내부화를 택한 주된 이유는 **에러 메시지 품질**인데,
+  그건 타입 추론의 문제라 JS에는 해당하지 않습니다. 우리가 내부화하는 이유는 위 두 가지이지
+  그것이 아닙니다.
+
+바꿔야 할 상황: 사용자가 자기 profunctor를 등록해 optic을 확장하려는 **실제 요구가 생겼을 때**.
+그때는 `Strong`/`Choice`/`Wander`를 타입 클래스로 추가하고 Function/Forget/Tagged를 인스턴스로
+등록하면 됩니다. `Tagged`의 strict 검사 문제도 그때 함께 풀어야 합니다.
 
 읽기: `view`(Lens 전용) / `preview`(첫 대상, Maybe) / `toListOf`(전부).
 쓰기: `over`, `set` — 세 optic 모두 동작하며, 대상이 없으면 원본을 그대로 돌려줍니다.
