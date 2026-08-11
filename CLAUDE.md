@@ -113,7 +113,7 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 6. **핵심 데이터 타입** (1100-1800줄) - Maybe, Either, Task, Free (StateF/EitherF/ReaderF/WriterF Functor 포함)
 7. **순회 & 유틸리티** (1800-1870줄) - `sequence()`, `lift()`, `pipeK()`
 8. **Free Static Land** (1870-2000줄) - FreeFunctor, FreeApply, FreeChain, FreeMonad
-9. **Optics** (2255줄~) - 내부 Identity/Const Applicative, Lens/Prism/Traversal, `composeOptic`
+9. **Optics** (2255줄~) - Profunctor 딕셔너리 3종(함수/Forget/Tagged), Lens/Prism/Traversal, `composeOptic`
 10. **Monad Transformer** (~2290-2620줄) - 공통 인프라 + StateT, EitherT, ReaderT, WriterT
 11. **Actor** - 메시지 큐 + 순차 처리
 12. **Static Methods & 설정** - Static Land 메서드 wiring, `setStrictMode()`
@@ -136,18 +136,33 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 
 ### Optics
 
-Van Laarhoven 인코딩(F-explicit): `Optic s a = F => (a -> F a) -> s -> F s`. F가 첫 인자이므로
-일반 `compose`로는 합성되지 않고 `composeOptic`(별칭 `composeLens`)을 씁니다.
+**Profunctor 인코딩**: `Optic s a = P => P a a -> P s s`. P가 첫 인자이므로 일반 `compose`로는
+합성되지 않고 `composeOptic`을 씁니다.
 
-| optic | 대상 수 | 생성 | F 요구 |
+**어떤 P를 주입하느냐가 연산을 정합니다.** 하나의 optic 정의에서 읽기·쓰기·역생성이 전부
+나오는 이유입니다.
+
+| 주입하는 P | 얻는 연산 | 필요한 메서드 |
+| --- | --- | --- |
+| 함수 (`_PFn`) | `over`, `set` | `dimap`, `first`, `left`, `wander` |
+| `Forget<r>` (`_PForget(monoid)`) | `view`, `preview`, `toListOf` | 같음 (monoid로 누적) |
+| `Tagged` (`_PTagged`) | `review` | `dimap`, `left` **만** |
+
+| optic | 대상 수 | 생성 | P 요구 |
 | --- | --- | --- | --- |
-| `Lens` | 정확히 1 | `Lens(getter, setter)` | Functor |
-| `Prism` | 0 또는 1 | `Prism(match, build)` — `match`는 Maybe 반환 | Applicative (`of` 필요) |
-| `Traversal` | 0..n | `traversed(key)` — 기존 Traversable 재사용 | Applicative (`ap` 필요) |
+| `Lens` | 정확히 1 | `Lens(getter, setter)` | `first` (곱) |
+| `Prism` | 0 또는 1 | `Prism(match, build)` — `match`는 Maybe 반환 | `left` (합) |
+| `Traversal` | 0..n | `traversed(key)` — 기존 Traversable 재사용 | `wander` |
+
+**`Tagged`에 `first`와 `wander`가 없다는 것이 타입 안전성을 대신합니다** — Lens나 Traversal에
+`review`를 쓰면 그 자리에서 TypeError가 납니다. 심볼 표식 같은 수동 검사가 필요 없습니다.
+
+`wander`는 기존 `Traversable.of(key).traverse`에 위임합니다. 내부 Applicative(`_Identity`,
+`_Const(monoid)`)는 그 호출에만 쓰입니다.
 
 읽기: `view`(Lens 전용) / `preview`(첫 대상, Maybe) / `toListOf`(전부).
 쓰기: `over`, `set` — 세 optic 모두 동작하며, 대상이 없으면 원본을 그대로 돌려줍니다.
-`review(prism, a)`는 Prism으로 값을 거꾸로 만듭니다.
+`review(prism, a)` — **합성된 Prism에서도 동작합니다.** optic 합성이 곧 함수 합성이기 때문입니다.
 
 ### Monad Transformer
 

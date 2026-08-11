@@ -18,9 +18,9 @@ Lens s a = { get: s -> a, set: (a, s) -> s }
 핵심은 setter가 원본을 변경하지 않고 **새 구조를 돌려준다**는 점입니다. 그래서 Lens로 하는
 모든 갱신은 불변입니다.
 
-fun-fp-js는 Van Laarhoven 인코딩을 사용합니다 — Lens가 Functor `F`를 받아 동작하는 함수로
-표현되며, `view`/`set`/`over`가 각각 다른 `F`를 주입해 하나의 Lens에서 읽기·쓰기·변환을
-모두 끌어냅니다.
+fun-fp-js는 profunctor 인코딩을 사용합니다 — Lens가 Profunctor 딕셔너리 `P`를 받아 동작하는
+함수로 표현되며, `view`/`set`/`over`가 각각 다른 `P`를 주입해 하나의 Lens에서 읽기·쓰기를
+모두 끌어냅니다. 자세한 내용은 [Optics](./Optics.md)를 보십시오.
 
 ## 왜 Lens인가?
 
@@ -50,11 +50,11 @@ const cityName = user && user.address && user.address.city
 ### 해결: 접근 경로를 값으로 만들어 재사용한다
 
 ```javascript
-const { Lens, view, set, over, composeLens } = FunFP;
+const { Lens, view, set, over, composeOptic } = FunFP;
 
 const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
 const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
-const userCity = composeLens(addressLens, cityLens);
+const userCity = composeOptic(addressLens, cityLens);
 
 const user = { name: 'Anthony', address: { city: 'Seoul', country: 'KR' } };
 
@@ -154,23 +154,23 @@ over(ageLens, n => n + 1, { name: 'A', age: 30 });
 
 `set(lens, b, s)`는 사실 `over(lens, () => b, s)`입니다.
 
-### composeLens - 중첩 경로 합성
+### composeOptic - 중첩 경로 합성
 
-**일반 `compose`로는 Lens를 합성할 수 없습니다.** Lens가 `F => f => s => ...` 형태로
-Functor를 첫 인자로 받는 F-explicit 인코딩이기 때문입니다. `composeLens`는 두 Lens에 같은
-`F`를 먼저 주입한 뒤 그 층에서 함수 합성을 합니다.
+**일반 `compose`로는 Lens를 합성할 수 없습니다.** optic이 `P => pab => ...` 형태로
+Profunctor 딕셔너리를 첫 인자로 받기 때문입니다. `composeOptic`는 두 Lens에 같은 `P`를 먼저
+주입한 뒤 그 층에서 함수 합성을 합니다.
 
 인자 순서는 **바깥에서 안쪽으로**입니다.
 
 ```javascript
-const { Lens, view, set, composeLens } = FunFP;
+const { Lens, view, set, composeOptic } = FunFP;
 
 const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
 const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
 const zipLens = Lens(c => c.zip, (z, c) => ({ ...c, zip: z }));
 
 // 3단계 중첩도 가변 인자로 한 번에
-const userZip = composeLens(addressLens, cityLens, zipLens);
+const userZip = composeOptic(addressLens, cityLens, zipLens);
 
 const user = { address: { city: { name: 'Seoul', zip: '04524' } } };
 view(userZip, user);              // '04524'
@@ -203,16 +203,16 @@ console.log(
 
 ## 타입 체크
 
-`view`/`set`/`over`/`composeLens`는 Lens 자리에 함수가 아닌 값이 오면 `TypeError`를 냅니다.
+`view`/`set`/`over`/`composeOptic`는 Lens 자리에 함수가 아닌 값이 오면 `TypeError`를 냅니다.
 
 ```javascript
-const { view, over, composeLens } = FunFP;
+const { view, over, composeOptic } = FunFP;
 
 const notALens = 42;
 
 try { view(notALens, {}); } catch (e) { console.log('view:', e.constructor.name); }
 try { over(notALens, x => x, {}); } catch (e) { console.log('over:', e.constructor.name); }
-try { composeLens(notALens); } catch (e) { console.log('composeLens:', e.constructor.name); }
+try { composeOptic(notALens); } catch (e) { console.log('composeOptic:', e.constructor.name); }
 ```
 
 ## 실용적 예시
@@ -222,11 +222,11 @@ try { composeLens(notALens); } catch (e) { console.log('composeLens:', e.constru
 기본 설정에서 한 항목만 바꾼 사본을 만들 때, 어느 층도 빠뜨리지 않습니다.
 
 ```javascript
-const { Lens, over, composeLens } = FunFP;
+const { Lens, over, composeOptic } = FunFP;
 
 const serverLens = Lens(c => c.server, (v, c) => ({ ...c, server: v }));
 const portLens = Lens(s => s.port, (v, s) => ({ ...s, port: v }));
-const serverPort = composeLens(serverLens, portLens);
+const serverPort = composeOptic(serverLens, portLens);
 
 const defaults = {
     server: { host: 'localhost', port: 8080 },
@@ -245,7 +245,7 @@ console.log(defaults.server.port);     // 8080 — 원본 불변
 인덱스 Lens와 필드 Lens를 합성하면 "3번째 사용자의 이름"이 하나의 값이 됩니다.
 
 ```javascript
-const { Lens, view, set, composeLens } = FunFP;
+const { Lens, view, set, composeOptic } = FunFP;
 
 const atLens = i => Lens(
     xs => xs[i],
@@ -259,7 +259,7 @@ const users = [
     { id: 3, name: 'Lee' }
 ];
 
-const secondName = composeLens(atLens(1), nameLens);
+const secondName = composeOptic(atLens(1), nameLens);
 
 console.log(view(secondName, users));            // 'Kim'
 const renamed = set(secondName, 'Park', users);
@@ -276,11 +276,11 @@ console.log(renamed[0] === users[0]);            // true — 안 바뀐 항목�
 Lens를 부분 적용하면 "이 갱신"이 이름 있는 함수가 됩니다.
 
 ```javascript
-const { Lens, over, composeLens } = FunFP;
+const { Lens, over, composeOptic } = FunFP;
 
 const profileLens = Lens(u => u.profile, (v, u) => ({ ...u, profile: v }));
 const tagsLens = Lens(p => p.tags, (v, p) => ({ ...p, tags: v }));
-const userTags = composeLens(profileLens, tagsLens);
+const userTags = composeOptic(profileLens, tagsLens);
 
 // 갱신 로직 자체를 값으로
 const addTag = tag => user => over(userTags, tags => [...tags, tag], user);
@@ -316,10 +316,10 @@ console.log(normalize({ name: '  anthony  ', age: -5 }));
 
 ## 관련 타입 클래스
 
-- [Functor](./Functor.md) - Lens 내부는 Functor `map`으로 동작합니다. `view`는 Const
-  Functor(값을 무시하고 보존), `over`/`set`은 Identity Functor(값을 변환)를 주입합니다.
-  하나의 Lens에서 읽기와 쓰기가 모두 나오는 이유입니다.
-- [Semigroupoid](./Semigroupoid.md) - `composeLens`는 Lens에 대한 합성입니다. 다만 F-explicit
+- [Profunctor](./Profunctor.md) - Lens가 받는 `P`입니다. Lens는 그중 `first`(곱)를 씁니다.
+  `view`는 `Forget`을, `over`/`set`은 함수를 주입합니다 — 하나의 Lens에서 읽기와 쓰기가
+  모두 나오는 이유입니다.
+- [Semigroupoid](./Semigroupoid.md) - `composeOptic`는 Lens에 대한 합성입니다. 다만 F-explicit
   인코딩 때문에 일반 `compose`와 호환되지 않아 전용 함수로 제공됩니다.
 
 ## 더 알아보기

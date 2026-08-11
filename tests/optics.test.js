@@ -2,7 +2,7 @@
 import fp from '../index.js';
 import { test, assertEquals, assertDeepEquals, assertThrowsWith, logSection } from './utils.js';
 
-const { Lens, composeLens, view, set, over, Functor, Maybe } = fp;
+const { Lens, composeOptic, view, set, over, Functor, Maybe } = fp;
 
 logSection('Lens');
 
@@ -62,24 +62,24 @@ test('over identity sanity — over(lens, x => x, s) deep-equals s', () => {
 });
 
 // === 합성 ===
-// Lens는 F-explicit Van Laarhoven 인코딩(F => f => s => ...)이므로
-// 일반 compose(outer, inner)로는 합성 불가 — 반드시 composeLens를 사용해야 한다.
-// composeLens는 F를 양쪽 Lens에 주입한 후 concrete-F 레벨에서 함수 합성한다.
-test('composeLens — view on composed lens', () => {
-    const userCity = composeLens(addressLens, cityLens);
+// optic은 P-explicit profunctor 인코딩(P => pab => ...)이므로
+// 일반 compose(outer, inner)로는 합성 불가 — composeOptic을 쓴다.
+// composeOptic은 P를 모든 optic에 주입한 후 그 층에서 함수 합성한다.
+test('composeOptic — view on composed lens', () => {
+    const userCity = composeOptic(addressLens, cityLens);
     assertEquals(view(userCity, { address: { city: 'Seoul' } }), 'Seoul');
 });
 
-test('composeLens — set on composed lens (deep immutable update)', () => {
-    const userCity = composeLens(addressLens, cityLens);
+test('composeOptic — set on composed lens (deep immutable update)', () => {
+    const userCity = composeOptic(addressLens, cityLens);
     const original = { name: 'A', address: { city: 'Seoul', country: 'KR' } };
     const updated = set(userCity, 'Busan', original);
     assertDeepEquals(updated, { name: 'A', address: { city: 'Busan', country: 'KR' } });
     assertDeepEquals(original, { name: 'A', address: { city: 'Seoul', country: 'KR' } });
 });
 
-test('composeLens — over on composed lens', () => {
-    const userCity = composeLens(addressLens, cityLens);
+test('composeOptic — over on composed lens', () => {
+    const userCity = composeOptic(addressLens, cityLens);
     const original = { address: { city: 'seoul' } };
     assertDeepEquals(
         over(userCity, s => s.toUpperCase(), original),
@@ -87,8 +87,8 @@ test('composeLens — over on composed lens', () => {
     );
 });
 
-test('composeLens — 3-level nesting (variadic)', () => {
-    const deep = composeLens(addressLens, cityLens, zipLens);
+test('composeOptic — 3-level nesting (variadic)', () => {
+    const deep = composeOptic(addressLens, cityLens, zipLens);
     const original = { address: { city: { zip: '00000', name: 'Seoul' } } };
     assertEquals(view(deep, original), '00000');
     assertDeepEquals(
@@ -97,13 +97,22 @@ test('composeLens — 3-level nesting (variadic)', () => {
     );
 });
 
-// === Generic Functor 호환성 (Static Land registry 재사용 검증) ===
-test('Lens — works with Maybe Functor from registry', () => {
-    const FMaybe = Functor.of('maybe');
-    // f: a -> Maybe a 로 주입
-    const result = nameLens(FMaybe)(a => Maybe.Just(a.toUpperCase()))({ name: 'a', age: 1 });
-    assertEquals(Maybe.isJust(result), true);
-    assertDeepEquals(result.value, { name: 'A', age: 1 });
+// === Profunctor 인코딩 검증 ===
+// optic은 P를 받는 함수다. 임의의 Profunctor 딕셔너리로 동작해야 한다.
+test('Lens — 임의의 Profunctor 딕셔너리로 동작한다', () => {
+    const calls = [];
+    const spy = {
+        dimap: (f, g, p) => { calls.push('dimap'); return s => g(p(f(s))); },
+        first: p => { calls.push('first'); return ([a, c]) => [p(a), c]; },
+    };
+    const run = nameLens(spy)(a => a.toUpperCase());
+    assertDeepEquals(run({ name: 'a', age: 1 }), { name: 'A', age: 1 });
+    assertDeepEquals(calls, ['first', 'dimap']);
+});
+
+test('optic은 순수 함수다 — 프로퍼티를 이고 다니지 않는다', () => {
+    assertEquals(Object.keys(nameLens).length, 0);
+    assertEquals(Object.getOwnPropertySymbols(nameLens).length, 0);
 });
 
 // === 인자 검증 ===
@@ -115,20 +124,20 @@ test('Lens — setter must be a function', () => {
     assertThrowsWith(() => Lens(s => s, null), 'Lens: setter must be a function');
 });
 
-test('view — lens must be a function', () => {
-    assertThrowsWith(() => view(null, {}), 'view: lens must be a function');
+test('view — optic must be a function', () => {
+    assertThrowsWith(() => view(null, {}), 'view: optic must be a function');
 });
 
-test('set — lens must be a function', () => {
-    assertThrowsWith(() => set(null, 'x', {}), 'set: lens must be a function');
+test('set — optic must be a function', () => {
+    assertThrowsWith(() => set(null, 'x', {}), 'set: optic must be a function');
 });
 
 test('over — f must be a function', () => {
     assertThrowsWith(() => over(nameLens, null, {}), 'over: f must be a function');
 });
 
-test('composeLens — non-function argument throws', () => {
-    assertThrowsWith(() => composeLens(nameLens, null), 'composeLens: argument 1 must be a Lens');
+test('composeOptic — non-function argument throws', () => {
+    assertThrowsWith(() => composeOptic(nameLens, null), 'composeOptic: argument 1 must be an optic');
 });
 
 /* ═══════════════════════════════════════════════════
@@ -136,7 +145,7 @@ test('composeLens — non-function argument throws', () => {
    ═══════════════════════════════════════════════════ */
 logSection('Prism');
 
-const { Prism, traversed, composeOptic, preview, toListOf, review, Either } = fp;
+const { Prism, traversed, preview, toListOf, review, Either } = fp;
 
 // Either의 Right 갈래에 초점을 맞추는 Prism
 const rightPrism = Prism(
@@ -203,8 +212,36 @@ test('Prism — non-function arguments throw', () => {
     assertThrowsWith(() => Prism(s => Maybe.Just(s), null), 'Prism: build must be a function');
 });
 
-test('review — argument must be a Prism', () => {
+test('review — Lens 에는 쓸 수 없다 (Tagged 에 first 가 없다)', () => {
     assertThrowsWith(() => review(nameLens, 'x'), 'review: argument must be a Prism');
+});
+
+test('review — Traversal 에도 쓸 수 없다 (Tagged 에 wander 가 없다)', () => {
+    assertThrowsWith(() => review(traversed('array'), 'x'), 'review: argument must be a Prism');
+});
+
+// profunctor 인코딩으로 옮긴 이유. van Laarhoven + 심볼 표식 방식에서는
+// 합성이 build 를 잃어 이것이 깨졌다.
+test('review — 합성된 Prism 에서도 동작한다', () => {
+    const composed = composeOptic(rightPrism, evenPrism);
+    const built = review(composed, 4);
+    assertEquals(built.isRight(), true);
+    assertEquals(built.value, 4);
+});
+
+test('review 합성 = 바깥 review ∘ 안쪽 review', () => {
+    const composed = composeOptic(rightPrism, evenPrism);
+    assertDeepEquals(
+        review(composed, 6),
+        review(rightPrism, review(evenPrism, 6))
+    );
+});
+
+test('합성된 Prism 도 Prism 법칙을 만족한다', () => {
+    const composed = composeOptic(rightPrism, evenPrism);
+    assertEquals(preview(composed, review(composed, 8)).value, 8);
+    // 홀수는 안쪽 Prism 을 통과하지 못한다
+    assertEquals(preview(composed, Either.Right(7)).isNothing(), true);
 });
 
 /* ═══════════════════════════════════════════════════
@@ -290,8 +327,8 @@ test('composeOptic — 인자가 함수가 아니면 throws', () => {
     assertThrowsWith(() => composeOptic(nameLens, null), 'composeOptic: argument 1 must be an optic');
 });
 
-test('composeLens 는 여전히 Lens 합성으로 동작한다 (하위 호환)', () => {
-    const composed = composeLens(addressLens, cityLens);
+test('composeOptic 은 Lens 끼리도 합성한다', () => {
+    const composed = composeOptic(addressLens, cityLens);
     assertEquals(view(composed, { address: { city: 'Seoul' } }), 'Seoul');
 });
 

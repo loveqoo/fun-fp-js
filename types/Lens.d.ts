@@ -1,46 +1,51 @@
 /**
- * Optics — Van Laarhoven encoding (F-explicit).
+ * Optics — profunctor encoding.
  *
- *   Optic<S, A> = forall F. F → (a → F<a>) → s → F<s>
+ *   Optic<S, A> = P => P<A, A> → P<S, S>
  *
- * The F is an explicit first argument, so plain `compose` cannot combine optics —
- * use `composeOptic` (aliased as `composeLens` for the Lens-only case).
+ * The P is an explicit first argument, so plain `compose` cannot combine optics —
+ * use `composeOptic`. Which P you inject decides the operation, so one definition
+ * yields reading, writing and reverse construction.
  *
- *   Lens      exactly 1 target   needs only a Functor
- *   Prism     0 or 1 target      needs an Applicative (`of` lifts a miss unchanged)
- *   Traversal 0..n targets       needs an Applicative (`ap` combines results)
+ *   Lens      exactly 1 target   reaches for `first`  (product)
+ *   Prism     0 or 1 target      reaches for `left`   (sum)
+ *   Traversal 0..n targets       reaches for `wander` (delegates to Traversable)
  *
- * `Lens<S, A>` is assignable wherever `Optic<S, A>` is expected: it accepts the weaker
- * `Functor<F>` dictionary, and `Applicative<F>` extends `Functor<F>`.
+ * The three share one TypeScript shape — at runtime they differ only in which
+ * Profunctor method they call. `review` is the one helper that narrows to Prism.
  */
 
-import type { Kind, TypeLambda } from "./HKT";
-import type { Applicative, Functor } from "./TypeClasses";
 import type { Maybe } from "./data/Maybe";
 import type { TraversableInstances } from "./TypeClasses";
 
-// Lens<S, A> : forall F : Functor. (a → F<a>) → s → F<s>
-export type Lens<S, A> = <F extends TypeLambda>(
-    F: Functor<F>
-) => (
-    f: (a: A) => Kind<F, never, never, never, A>
-) => (s: S) => Kind<F, never, never, never, S>;
+/**
+ * A Profunctor dictionary. Which one you inject decides the operation:
+ *   function   → over/set        (needs dimap, first, left, wander)
+ *   Forget<r>  → view/preview/toListOf
+ *   Tagged     → review          (has dimap and left only)
+ *
+ * `Tagged` lacking `first`/`wander` is what stops `review` on a Lens or Traversal.
+ */
+export interface Profunctor2 {
+    readonly dimap: (f: (s: any) => any, g: (b: any) => any, p: any) => any;
+    readonly first?: (p: any) => any;
+    readonly left?: (p: any) => any;
+    readonly wander?: (traverse: any, p: any) => any;
+}
 
-// Prism / Traversal need `of` and `ap`, so they take an Applicative dictionary.
-export type Prism<S, A> = <F extends TypeLambda>(
-    F: Applicative<F>
-) => (
-    f: (a: A) => Kind<F, never, never, never, A>
-) => (s: S) => Kind<F, never, never, never, S>;
+// The focus type `A` never appears in the runtime signature, so it is anchored with a
+// phantom member — without it TypeScript cannot infer `A` at call sites like
+// `over(lens, s => s.toUpperCase(), p)`.
+declare const OPTIC_FOCUS: unique symbol;
 
-export type Traversal<S, A> = <F extends TypeLambda>(
-    F: Applicative<F>
-) => (
-    f: (a: A) => Kind<F, never, never, never, A>
-) => (s: S) => Kind<F, never, never, never, S>;
+export interface Optic<S, A> {
+    (P: Profunctor2): (pab: any) => (s: S) => any;
+    readonly [OPTIC_FOCUS]?: (a: A) => A;
+}
 
-// Any of the three. Read/write helpers accept this.
-export type Optic<S, A> = Lens<S, A> | Prism<S, A> | Traversal<S, A>;
+export type Lens<S, A> = Optic<S, A>;
+export type Prism<S, A> = Optic<S, A>;
+export type Traversal<S, A> = Optic<S, A>;
 
 // ── Construction ─────────────────────────────────────────────────────
 
@@ -89,7 +94,8 @@ export declare function set<S, A>(optic: Optic<S, A>, b: A, s: S): S;
 
 // ── Composition ──────────────────────────────────────────────────────
 
-// Compose optics outer-to-inner. Overloads up to arity 4.
+// Compose optics outer-to-inner — this is plain function composition at the P layer.
+// Overloads up to arity 4.
 export declare function composeOptic<S, T, A>(
     o1: Optic<S, T>,
     o2: Optic<T, A>
@@ -105,20 +111,3 @@ export declare function composeOptic<S, T1, T2, T3, A>(
     o3: Optic<T2, T3>,
     o4: Optic<T3, A>
 ): Optic<S, A>;
-
-// Lens-only alias kept for backwards compatibility — same behaviour, Lens-worded errors.
-export declare function composeLens<S, T, A>(
-    l1: Lens<S, T>,
-    l2: Lens<T, A>
-): Lens<S, A>;
-export declare function composeLens<S, T1, T2, A>(
-    l1: Lens<S, T1>,
-    l2: Lens<T1, T2>,
-    l3: Lens<T2, A>
-): Lens<S, A>;
-export declare function composeLens<S, T1, T2, T3, A>(
-    l1: Lens<S, T1>,
-    l2: Lens<T1, T2>,
-    l3: Lens<T2, T3>,
-    l4: Lens<T3, A>
-): Lens<S, A>;

@@ -15,15 +15,24 @@ Optic은 큰 구조 `s` 안의 부분 `a`를 **읽고 쓰는 방법을 값으로
 | **Prism** | 0개 또는 1개 | `Either`의 `Right`, 짝수만, 파싱 성공한 것만 |
 | **Traversal** | 0..n개 | 배열의 모든 원소, `Maybe` 안의 값 |
 
-셋 다 같은 표현을 씁니다 (Van Laarhoven, F-explicit):
+셋 다 같은 표현을 씁니다 (profunctor 인코딩):
 
 ```
-Optic s a = F => (a -> F a) -> s -> F s
+Optic s a = P => P a a -> P s s
 ```
 
-`F`가 무엇이냐에 따라 같은 optic이 읽기가 되기도 하고 쓰기가 되기도 합니다 — `view`는 값을
-보존하는 Const를, `over`는 값을 변환하는 Identity를 주입합니다. **하나의 정의에서 모든
-연산이 나오는 이유**입니다.
+**어떤 `P`를 주입하느냐가 연산을 정합니다.** 하나의 정의에서 읽기·쓰기·역생성이 전부
+나오는 이유입니다.
+
+| 주입하는 `P` | 얻는 연산 |
+| --- | --- |
+| 함수 (`a -> b`) | `over`, `set` |
+| `Forget<r>` (`a -> r`) | `view`, `preview`, `toListOf` |
+| `Tagged` (`b`만 담는다 — 입력을 무시) | `review` |
+
+세 optic은 `P`의 어떤 메서드를 쓰느냐로 갈립니다 — Lens는 `first`(곱), Prism은 `left`(합),
+Traversal은 `wander`(순회)입니다. **`Tagged`에는 `first`와 `wander`가 없고**, 그것이 곧
+"Lens와 Traversal은 `review`할 수 없다"는 제약입니다.
 
 ## 왜 Prism과 Traversal인가?
 
@@ -205,18 +214,38 @@ console.log(built.isRight(), built.value);            // true 42
 console.log(preview(rightP, built).value);            // 42 — 법칙: preview ∘ review = Just
 ```
 
-`review`는 **Prism에만** 있습니다. Van Laarhoven 인코딩만으로는 복원할 수 없어 `Prism`이
-`build`를 따로 들고 다니기 때문입니다.
+`review`는 **Prism에만** 동작합니다. `Tagged`는 입력을 무시하고 출력만 담으므로 `a -> s`
+방향을 만들 수 있지만, 그 대신 곱(`first`)과 순회(`wander`)를 구현할 수 없습니다.
+Lens나 Traversal에 쓰면 그 자리에서 걸립니다.
 
 ```javascript
-const { Lens, review } = FunFP;
+const { Lens, traversed, review } = FunFP;
 
 const nameLens = Lens(p => p.name, (v, p) => ({ ...p, name: v }));
 try {
     review(nameLens, 'x');
 } catch (e) {
-    console.log(e.message);  // 'review: argument must be a Prism'
+    console.log(e.message);  // 'review: argument must be a Prism (a Lens cannot be reviewed)'
 }
+
+try {
+    review(traversed('array'), 'x');
+} catch (e) {
+    console.log(e.message);  // '... (a Traversal cannot be reviewed)'
+}
+```
+
+**합성된 Prism에서도 동작합니다.** optic 합성이 곧 함수 합성이라 `Tagged`가 그대로 흘러갑니다.
+
+```javascript
+const { Prism, composeOptic, preview, review, Maybe, Either } = FunFP;
+
+const rightP = Prism(e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()), v => Either.Right(v));
+const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
+const rightEven = composeOptic(rightP, evenP);
+
+console.log(JSON.stringify(review(rightEven, 4)));   // Right(4)
+console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — 법칙 유지
 ```
 
 ## 합성
@@ -236,20 +265,20 @@ console.log(toListOf(evens, [1, 2, 3, 4]));              // [2, 4]
 console.log(over(evens, x => x * 100, [1, 2, 3, 4]));    // [1, 200, 3, 400]
 ```
 
-`composeLens`는 Lens 전용 별칭으로 남아 있습니다 — 기존 코드는 그대로 동작합니다.
+Lens끼리도 같은 함수로 합성합니다 — 종류별로 다른 이름이 필요 없습니다.
 
 ```javascript
-const { Lens, composeLens, view } = FunFP;
+const { Lens, composeOptic, view } = FunFP;
 
 const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
 const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
 
-console.log(view(composeLens(addressLens, cityLens), { address: { city: 'Seoul' } }));
+console.log(view(composeOptic(addressLens, cityLens), { address: { city: 'Seoul' } }));
 // 'Seoul'
 ```
 
-**일반 `compose`로는 optic을 합성할 수 없습니다.** `F`가 첫 인자인 F-explicit 인코딩이라
-`composeOptic`이 `F`를 모두에 먼저 주입한 뒤 그 층에서 함수 합성을 합니다.
+**일반 `compose`로는 optic을 합성할 수 없습니다.** `P`가 첫 인자이므로 `composeOptic`이
+`P`를 모든 optic에 먼저 주입한 뒤 그 층에서 함수 합성을 합니다.
 
 ## 법칙
 
@@ -378,14 +407,15 @@ console.log(preview(bio, { profile: undefined }).isNothing());      // true
 
 ## 관련 타입 클래스
 
-- [Lens](./Lens.md) - Lens 하나만 자세히 다룹니다. 법칙 3개와 `composeLens` 설명 포함.
-- [Functor](./Functor.md) - Lens가 요구하는 최소 구조. `view`는 Const, `over`는 Identity를
-  주입해 같은 정의에서 읽기와 쓰기를 끌어냅니다.
-- [Applicative](./Applicative.md) - Prism과 Traversal이 요구합니다. Prism은 매칭 실패 시
-  `of`로 원본을 올리고, Traversal은 `ap`로 여러 결과를 모읍니다.
+- [Lens](./Lens.md) - Lens 하나만 자세히 다룹니다. 법칙 3개와 실용 예시 포함.
+- [Profunctor](./Profunctor.md) - optic이 받는 `P`가 바로 이것입니다. `dimap`에 더해
+  `first`(곱) · `left`(합) · `wander`(순회)를 갖춘 딕셔너리를 씁니다.
+- [Traversable](./Traversable.md) - `wander`가 이 레지스트리의 `traverse`에 위임합니다.
+  내부 Applicative(Identity/Const)는 그 호출에만 쓰입니다.
 - [Traversable](./Traversable.md) - `traversed(key)`가 이 레지스트리를 그대로 씁니다.
 - [Maybe](./Maybe.md) - `Prism`의 `match`와 `preview`의 결과 타입.
 
 ## 더 알아보기
 
-- [Van Laarhoven Lenses](https://www.twanvl.nl/blog/haskell/cps-functional-references)
+- [Profunctor Optics: Modular Data Accessors](https://arxiv.org/abs/1703.10857) (Pickering, Gibbons, Wu)
+- [Van Laarhoven Lenses](https://www.twanvl.nl/blog/haskell/cps-functional-references) — 이전 인코딩

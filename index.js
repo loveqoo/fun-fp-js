@@ -54,8 +54,6 @@ const Symbols = {
     Pure: Symbol.for('fun-fp-js/Pure'),
     Impure: Symbol.for('fun-fp-js/Impure'),
     Reduced: Symbol.for('fun-fp-js/Reduced'),
-    // Prism이 build를 숨겨두는 자리 — van Laarhoven 인코딩만으로는 review를 복원할 수 없다
-    PrismReview: Symbol.for('fun-fp-js/PrismReview'),
     Validation: Symbol.for('fun-fp-js/Validation'),
     Reader: Symbol.for('fun-fp-js/Reader'),
     Writer: Symbol.for('fun-fp-js/Writer'),
@@ -2257,15 +2255,19 @@ modules.push(FreeMonad);
 load(...modules);
 
 /* Optics */
-// Van Laarhoven (F-explicit): Optic s a = forall F. F -> (a -> F a) -> s -> F s
-//   Lens      대상 1개    F는 Functor면 충분
-//   Prism     대상 0|1개  매칭 실패 시 F.of(s)로 원본을 올려야 하므로 Applicative 필요
-//   Traversal 대상 0..n개 여러 결과를 모으려면 F.ap이 필요하므로 Applicative 필요
-// F가 첫 인자이므로 plain compose로는 합성 불가 → composeOptic 제공
+// Profunctor 인코딩: Optic s a = P => P a a -> P s s
+//
+// 어떤 P를 주입하느냐가 연산을 정한다 — 하나의 정의에서 읽기·쓰기·역생성이 모두 나온다.
+//   함수      → over/set        (dimap, first, left, wander)
+//   Forget<r> → view/preview/toListOf  (같음. monoid로 누적)
+//   Tagged    → review          (dimap, left 만)
+//
+// Tagged에 first와 wander가 없다는 사실이 타입 안전성을 대신한다 —
+// Lens나 Traversal에 review를 쓰면 그 자리에서 TypeError가 난다.
+// P가 첫 인자이므로 plain compose로는 합성 불가 → composeOptic 제공.
 
-// 내부 전용 Identity/Const (Static Land 형태, public registry 미노출).
-// 레지스트리의 Traversable이 applicative.of/map/ap를 호출하므로 그 세 가지를 갖춘다.
-// Traversable.traverse가 strict 모드에서 Applicative 심볼을 요구하므로 표식을 붙인다.
+// wander 위임에 쓰는 내부 Applicative. Traversable.traverse가 strict 모드에서
+// Applicative 심볼을 요구하므로 표식을 붙인다.
 const _asApplicative = dict => {
     dict[Symbols.Functor] = true;
     dict[Symbols.Apply] = true;
@@ -2277,84 +2279,99 @@ const _Identity = _asApplicative({
     map: (f, x) => ({ value: f(x.value) }),
     ap: (ff, fa) => ({ value: ff.value(fa.value) }),
 });
-// Const는 값을 버리고 Monoid로 누적한다 — 어떤 Monoid를 주느냐가 읽기 방식을 정한다.
 const _Const = monoid => _asApplicative({
     of: () => ({ value: monoid.empty() }),
     map: (_, x) => x,
     ap: (a, b) => ({ value: monoid.concat(a.value, b.value) }),
 });
-const _wrap = v => ({ value: v });
-// 첫 대상만 남기는 Monoid (preview용). 왼쪽 우선.
 const _firstMonoid = {
     empty: () => Maybe.Nothing(),
     concat: (a, b) => (a.isJust() ? a : b),
 };
 const _arrayMonoid = { empty: () => [], concat: (a, b) => [...a, ...b] };
-// Prism이 돌려준 함수에서 build를 되찾기 위한 표식.
-// van Laarhoven 인코딩만으로는 review를 복원할 수 없다(Choice profunctor가 필요).
-const _reviewKey = Symbols.PrismReview;
+// view 전용: 대상이 정확히 1개라는 전제 아래 마지막으로 본 값을 그대로 남긴다.
+const _lastMonoid = { empty: () => undefined, concat: (a, b) => (b === undefined ? a : b) };
 
+// ── 구체 Profunctor 3종 ────────────────────────────────────────────
+// 함수: p a b = a -> b
+const _PFn = {
+    dimap: (f, g, p) => s => g(p(f(s))),
+    first: p => ([a, c]) => [p(a), c],
+    left: p => e => (e.isLeft() ? Either.Left(p(e.value)) : e),
+    wander: (traverse, p) => s => traverse(_Identity, a => _Identity.of(p(a)), s).value,
+};
+// Forget<r>: p a b = a -> r. 출력을 버리고 r을 모은다.
+const _PForget = monoid => ({
+    dimap: (f, _g, p) => s => p(f(s)),
+    first: p => ([a, _c]) => p(a),
+    left: p => e => (e.isLeft() ? p(e.value) : monoid.empty()),
+    wander: (traverse, p) => s => traverse(_Const(monoid), a => ({ value: p(a) }), s).value,
+});
+// Tagged: p a b = b. 입력을 무시하므로 거꾸로만 쓸 수 있다.
+// first/wander가 없는 것이 의도다 — Lens/Traversal에 review를 막는 유일한 장치다.
+const _PTagged = {
+    dimap: (_f, g, p) => g(p),
+    left: p => Either.Left(p),
+    // Tagged는 입력을 만들어낼 수 없으므로 곱(first)과 순회(wander)를 구현할 수 없다.
+    // 이것이 곧 "Lens/Traversal은 review할 수 없다"는 제약이다 — 명시적으로 거부한다.
+    first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
+    wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
+};
+
+// ── optic 생성자 ───────────────────────────────────────────────────
 const Lens = (getter, setter) => {
     typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
     typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
-    return F => f => s => F.map(b => setter(b, s), f(getter(s)));
+    return P => pab => P.dimap(s => [getter(s), s], ([b, s]) => setter(b, s), P.first(pab));
 };
 // match: s -> Maybe a,  build: a -> s
 const Prism = (match, build) => {
     typeof match !== 'function' && raise(new TypeError('Prism: match must be a function'));
     typeof build !== 'function' && raise(new TypeError('Prism: build must be a function'));
-    const optic = F => f => s => {
-        const m = match(s);
-        Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
-        return m.isJust() ? F.map(build, f(m.value)) : F.of(s);
-    };
-    optic[_reviewKey] = build;
-    return optic;
+    return P => pab => P.dimap(
+        s => {
+            const m = match(s);
+            Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
+            return Maybe.fold(() => Either.Right(s), a => Either.Left(a), m);
+        },
+        e => (e.isLeft() ? build(e.value) : e.value),
+        P.left(pab)
+    );
 };
 // 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
 const traversed = key => {
     const instance = Traversable.of(key);
-    return F => f => s => instance.traverse(F, f, s);
+    return P => pab => P.wander((F, f, s) => instance.traverse(F, f, s), pab);
 };
 
-const view = (lens, s) => {
-    typeof lens !== 'function' && raise(new TypeError('view: lens must be a function'));
-    // Lens는 map만 쓰므로 Monoid는 쓰이지 않는다. 대상이 0개인 optic에 쓰면 undefined가 나온다.
-    return lens(_Const(_firstMonoid))(_wrap)(s).value;
+// ── 연산: P를 고르는 것이 전부 ─────────────────────────────────────
+const _runOptic = (name, optic, P, pab, s) => {
+    typeof optic !== 'function' && raise(new TypeError(`${name}: optic must be a function`));
+    return optic(P)(pab)(s);
 };
-const preview = (optic, s) => {
-    typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
-    return optic(_Const(_firstMonoid))(a => _wrap(Maybe.Just(a)))(s).value;
+const view = (lens, s) => _runOptic('view', lens, _PForget(_lastMonoid), a => a, s);
+const preview = (optic, s) => _runOptic('preview', optic, _PForget(_firstMonoid), a => Maybe.Just(a), s);
+const toListOf = (optic, s) => _runOptic('toListOf', optic, _PForget(_arrayMonoid), a => [a], s);
+const over = (optic, f, s) => {
+    typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
+    return _runOptic('over', optic, _PFn, f, s);
 };
-const toListOf = (optic, s) => {
-    typeof optic !== 'function' && raise(new TypeError('toListOf: optic must be a function'));
-    return optic(_Const(_arrayMonoid))(a => _wrap([a]))(s).value;
+const set = (optic, b, s) => {
+    typeof optic !== 'function' && raise(new TypeError('set: optic must be a function'));
+    return over(optic, () => b, s);
 };
+// review는 Tagged를 주입한다. Lens/Traversal이면 first/wander가 없어 여기서 실패한다.
 const review = (prism, a) => {
     typeof prism !== 'function' && raise(new TypeError('review: prism must be a function'));
-    const build = prism[_reviewKey];
-    typeof build !== 'function' && raise(new TypeError('review: argument must be a Prism'));
-    return build(a);
+    return prism(_PTagged)(a);
 };
-const over = (lens, f, s) => {
-    typeof lens !== 'function' && raise(new TypeError('over: lens must be a function'));
-    typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
-    return lens(_Identity)(a => _Identity.of(f(a)))(s).value;
-};
-const set = (lens, b, s) => {
-    typeof lens !== 'function' && raise(new TypeError('set: lens must be a function'));
-    return over(lens, () => b, s);
-};
-// optic 합성: F를 모두에 주입한 후 concrete-F 레벨에서 함수 합성.
-// composeLens는 기존 에러 메시지를 그대로 유지해야 하므로 이름과 명사를 매개변수화한다.
-const _makeCompose = (name, noun) => (...optics) => {
+// optic 합성 = 함수 합성. P를 모두에 주입한 뒤 그 층에서 잇는다.
+const composeOptic = (...optics) => {
     optics.forEach((o, i) => {
-        typeof o !== 'function' && raise(new TypeError(`${name}: argument ${i} must be ${noun}`));
+        typeof o !== 'function' && raise(new TypeError(`composeOptic: argument ${i} must be an optic`));
     });
-    return F => compose(...optics.map(o => o(F)));
+    return P => pab => optics.reduceRight((acc, o) => o(P)(acc), pab);
 };
-const composeOptic = _makeCompose('composeOptic', 'an optic');
-const composeLens = _makeCompose('composeLens', 'a Lens');
 
 /* ═══════════════════════════════════════════════════════════════
    Monad Transformer
@@ -2796,7 +2813,7 @@ export default {
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
-    Lens, Prism, traversed, composeOptic, composeLens,
+    Lens, Prism, traversed, composeOptic,
     view, preview, toListOf, review, set, over,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,

@@ -104,7 +104,6 @@ import type {
     Prism,
     traversed,
     composeOptic,
-    composeLens,
     view,
     preview,
     toListOf,
@@ -206,7 +205,6 @@ declare const fp: {
     readonly Prism: typeof Prism;
     readonly traversed: typeof traversed;
     readonly composeOptic: typeof composeOptic;
-    readonly composeLens: typeof composeLens;
     readonly view: typeof view;
     readonly preview: typeof preview;
     readonly toListOf: typeof toListOf;
