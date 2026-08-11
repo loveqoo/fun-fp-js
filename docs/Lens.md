@@ -2,9 +2,31 @@
 
 중첩된 불변 데이터의 특정 부분을 **읽고 쓰는 합성 가능한 접근자**
 
-> Lens는 **대상이 정확히 1개**인 optic입니다. 0개이거나 여러 개일 수 있는 경우
-> ([Prism](./Optics.md#prism--0개-또는-1개), [Traversal](./Optics.md#traversal--0n개))와
-> 셋을 섞어 합성하는 법은 [Optics](./Optics.md) 문서를 보십시오.
+> Lens는 **대상이 정확히 1개**인 optic입니다. 0개이거나 여러 개일 수 있는 경우와
+> 종류를 섞어 합성하는 법은 [Optics](./Optics.md)를 보십시오.
+
+## 빠르게 보기
+
+```javascript
+const { Lens, view, set, over, composeOptic } = FunFP;
+
+const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
+const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
+const userCity = composeOptic(addressLens, cityLens);
+
+const user = { name: 'Anthony', address: { city: 'Seoul', country: 'KR' } };
+
+view(userCity, user);              // 'Seoul'
+set(userCity, 'Busan', user);      // { name, address: { city: 'Busan', country: 'KR' } }
+over(userCity, s => s.toUpperCase(), user);
+
+// 원본은 그대로다
+console.log(user.address.city);    // 'Seoul'
+```
+
+한 번 만든 `userCity`는 읽기·쓰기·변환 **세 가지 모두에 쓰입니다.**
+
+한 번 만든 `userCity`는 읽기·쓰기·변환 **세 가지 모두에 쓰입니다.**
 
 ## 개념
 
@@ -17,10 +39,6 @@ Lens s a = { get: s -> a, set: (a, s) -> s }
 
 핵심은 setter가 원본을 변경하지 않고 **새 구조를 돌려준다**는 점입니다. 그래서 Lens로 하는
 모든 갱신은 불변입니다.
-
-fun-fp-js는 profunctor 인코딩을 사용합니다 — Lens가 Profunctor 딕셔너리 `P`를 받아 동작하는
-함수로 표현되며, `view`/`set`/`over`가 각각 다른 `P`를 주입해 하나의 Lens에서 읽기·쓰기를
-모두 끌어냅니다. 자세한 내용은 [Optics](./Optics.md)를 보십시오.
 
 ## 왜 Lens인가?
 
@@ -46,27 +64,6 @@ const cityName = user && user.address && user.address.city
     ? user.address.city.name
     : undefined;
 ```
-
-### 해결: 접근 경로를 값으로 만들어 재사용한다
-
-```javascript
-const { Lens, view, set, over, composeOptic } = FunFP;
-
-const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
-const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
-const userCity = composeOptic(addressLens, cityLens);
-
-const user = { name: 'Anthony', address: { city: 'Seoul', country: 'KR' } };
-
-view(userCity, user);              // 'Seoul'
-set(userCity, 'Busan', user);      // { name, address: { city: 'Busan', country: 'KR' } }
-over(userCity, s => s.toUpperCase(), user);
-
-// 원본은 그대로다
-console.log(user.address.city);    // 'Seoul'
-```
-
-한 번 만든 `userCity`는 읽기·쓰기·변환 **세 가지 모두에 쓰입니다.**
 
 ## 생성
 

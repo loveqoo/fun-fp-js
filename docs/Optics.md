@@ -1,69 +1,20 @@
 # Optics
 
-**데이터의 일부를 가리키는 합성 가능한 접근자** — Lens, Prism, Traversal
+**데이터의 일부를 가리키는 합성 가능한 접근자** — Iso, Lens, Prism, Traversal
 
-## 개념
+Optic은 큰 구조 안의 부분을 **읽고 쓰는 방법을 값으로 만든 것**입니다. 값이므로 합성할 수
+있고, 한 번 만들면 읽기·쓰기에 모두 씁니다.
 
-Optic은 큰 구조 `s` 안의 부분 `a`를 **읽고 쓰는 방법을 값으로 만든 것**입니다. 값이므로
-합성할 수 있고, 한 번 만들면 읽기·쓰기·변환에 모두 씁니다.
+## 어느 것을 쓸까 — 대상 수로 고른다
 
-세 종류는 **대상이 몇 개냐**로 갈립니다.
-
-| optic | 대상 수 | 예 |
+| 대상 | optic | 예 |
 | --- | --- | --- |
-| **Iso** | 정확히 1개 (무손실) | 섭씨 ↔ 화씨, 문자열 ↔ 문자 배열 |
-| [Lens](./Lens.md) | 정확히 1개 | 객체의 필드, 배열의 특정 인덱스 |
-| **Prism** | 0개 또는 1개 | `Either`의 `Right`, 짝수만, 파싱 성공한 것만 |
-| **Traversal** | 0..n개 | 배열의 모든 원소, `Maybe` 안의 값 |
+| 정확히 1개 (무손실 변환) | **Iso** | 섭씨 ↔ 화씨, 문자열 ↔ 문자 배열 |
+| 정확히 1개 | [Lens](./Lens.md) | 객체의 필드, 배열의 특정 인덱스 |
+| 0개 또는 1개 | **Prism** | `Either`의 `Right`, 짝수만, 파싱 성공한 것만 |
+| 0..n개 | **Traversal** | 배열의 모든 원소, `Maybe` 안의 값 |
 
-셋 다 같은 표현을 씁니다 (profunctor 인코딩):
-
-```
-Optic s a = P => P a a -> P s s
-```
-
-**어떤 `P`를 주입하느냐가 연산을 정합니다.** 하나의 정의에서 읽기·쓰기·역생성이 전부
-나오는 이유입니다.
-
-| 주입하는 `P` | 얻는 연산 |
-| --- | --- |
-| 함수 (`a -> b`) | `over`, `set` |
-| `Forget<r>` (`a -> r`) | `view`, `preview`, `toListOf` |
-| `Tagged` (`b`만 담는다 — 입력을 무시) | `review` |
-
-네 optic은 `P`의 어떤 메서드를 쓰느냐로 갈립니다.
-
-| optic | 쓰는 메서드 |
-| --- | --- |
-| `Iso` | `dimap`만 |
-| `Lens` | `first` (곱) |
-| `Prism` | `left` (합) |
-| `Traversal` | `wander` (순회) |
-
-**`Tagged`에는 `first`와 `wander`가 없고**, 그것이 곧 "Lens와 Traversal은 `review`할 수
-없다"는 제약입니다. 반대로 **`Iso`는 `dimap`만 쓰므로 모든 `P`에서 동작합니다** — Lens이자
-Prism이라 `view`도 `review`도 됩니다. 요구하는 것이 가장 적어 optic 계층의 최상단입니다.
-
-## 왜 Prism과 Traversal인가?
-
-### 문제: Lens만으로는 "없을 수도 있는 것"과 "여러 개"를 못 다룬다
-
-```javascript no-run 문제 상황 — Lens 로는 표현할 수 없다
-// Lens 는 대상이 반드시 1개여야 한다.
-// Either 의 Right 는 없을 수도 있다 → getter 가 무엇을 돌려줘야 하나?
-const rightLens = Lens(
-    e => e.value,              // Left 일 때는? 거짓말이 된다
-    (v, e) => Either.Right(v)  // Left 를 Right 로 바꿔버린다
-);
-
-// 배열 전체를 바꾸려면 매번 map 을 손으로 쓴다
-const updated = {
-    ...db,
-    users: db.users.map(u => ({ ...u, name: u.name.toUpperCase() }))
-};
-```
-
-### 해결: 대상 수에 맞는 optic을 쓰고 합성한다
+## 빠르게 보기
 
 ```javascript
 const { Lens, Prism, traversed, composeOptic, preview, toListOf, over, Maybe, Either } = FunFP;
@@ -91,6 +42,27 @@ const db = { users: [{ name: 'a' }, { name: 'b' }] };
 console.log(toListOf(allNames, db));                          // ['a', 'b']
 console.log(JSON.stringify(over(allNames, s => s.toUpperCase(), db)));
 // {"users":[{"name":"A"},{"name":"B"}]}
+```
+
+종류가 달라도 `composeOptic`으로 섞어 씁니다. 나머지는 이 네 가지의 변주입니다.
+
+## 왜 여러 종류가 필요한가?
+
+### 문제: Lens만으로는 "없을 수도 있는 것"과 "여러 개"를 못 다룬다
+
+```javascript no-run 문제 상황 — Lens 로는 표현할 수 없다
+// Lens 는 대상이 반드시 1개여야 한다.
+// Either 의 Right 는 없을 수도 있다 → getter 가 무엇을 돌려줘야 하나?
+const rightLens = Lens(
+    e => e.value,              // Left 일 때는? 거짓말이 된다
+    (v, e) => Either.Right(v)  // Left 를 Right 로 바꿔버린다
+);
+
+// 배열 전체를 바꾸려면 매번 map 을 손으로 쓴다
+const updated = {
+    ...db,
+    users: db.users.map(u => ({ ...u, name: u.name.toUpperCase() }))
+};
 ```
 
 ## 생성
@@ -465,6 +437,42 @@ const bio = composeOptic(profileL, definedP, bioL);
 console.log(preview(bio, { profile: { bio: '안녕' } }).value);      // '안녕'
 console.log(preview(bio, { profile: undefined }).isNothing());      // true
 ```
+
+## 내부 구조
+
+여기부터는 optic을 **쓰는 데는 필요 없습니다.** `review`가 왜 Lens에서 안 되는지 같은
+질문의 답이 궁금할 때 보십시오.
+
+셋 다 같은 표현을 씁니다 (profunctor 인코딩):
+
+```
+Optic s a = P => P a a -> P s s
+```
+
+**어떤 `P`를 주입하느냐가 연산을 정합니다.** 하나의 정의에서 읽기·쓰기·역생성이 전부
+나오는 이유입니다.
+
+| 주입하는 `P` | 얻는 연산 |
+| --- | --- |
+| 함수 (`a -> b`) | `over`, `set` |
+| `Forget<r>` (`a -> r`) | `view`, `preview`, `toListOf` |
+| `Tagged` (`b`만 담는다 — 입력을 무시) | `review` |
+
+네 optic은 `P`의 어떤 메서드를 쓰느냐로 갈립니다.
+
+| optic | 쓰는 메서드 |
+| --- | --- |
+| `Iso` | `dimap`만 |
+| `Lens` | `first` (곱) |
+| `Prism` | `left` (합) |
+| `Traversal` | `wander` (순회) |
+
+**`Tagged`에는 `first`와 `wander`가 없고**, 그것이 곧 "Lens와 Traversal은 `review`할 수
+없다"는 제약입니다. 반대로 **`Iso`는 `dimap`만 쓰므로 모든 `P`에서 동작합니다** — Lens이자
+Prism이라 `view`도 `review`도 됩니다. 요구하는 것이 가장 적어 optic 계층의 최상단입니다.
+
+`wander`는 [Traversable](./Traversable.md) 레지스트리의 `traverse`에, `dimap`은
+[Profunctor](./Profunctor.md) 레지스트리의 `promap`에 위임합니다.
 
 ## 관련 타입 클래스
 
