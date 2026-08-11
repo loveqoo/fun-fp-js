@@ -150,9 +150,13 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 
 | optic | 대상 수 | 생성 | P 요구 |
 | --- | --- | --- | --- |
+| `Iso` | 정확히 1 (무손실) | `Iso(to, from)` | `dimap`만 |
 | `Lens` | 정확히 1 | `Lens(getter, setter)` | `first` (곱) |
 | `Prism` | 0 또는 1 | `Prism(match, build)` — `match`는 Maybe 반환 | `left` (합) |
 | `Traversal` | 0..n | `traversed(key)` — 기존 Traversable 재사용 | `wander` |
+
+`Iso`는 `dimap`만 쓰므로 **모든 P에서 동작합니다** — Lens이자 Prism이라 `view`도 `review`도
+됩니다. 세 P가 전부 `dimap`을 갖기 때문이며, 이것이 optic 계층의 최상단인 이유입니다.
 
 **`Tagged`에 `first`와 `wander`가 없다는 것이 타입 안전성을 대신합니다** — Lens나 Traversal에
 `review`를 쓰면 그 자리에서 TypeError가 납니다. 심볼 표식 같은 수동 검사가 필요 없습니다.

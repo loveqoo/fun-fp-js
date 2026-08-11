@@ -7,6 +7,8 @@
  * use `composeOptic`. Which P you inject decides the operation, so one definition
  * yields reading, writing and reverse construction.
  *
+ *   Iso       exactly 1 target   reaches for `dimap` only — works with every P,
+ *                                so it is both a Lens and a Prism
  *   Lens      exactly 1 target   reaches for `first`  (product)
  *   Prism     0 or 1 target      reaches for `left`   (sum)
  *   Traversal 0..n targets       reaches for `wander` (delegates to Traversable)
@@ -43,11 +45,16 @@ export interface Optic<S, A> {
     readonly [OPTIC_FOCUS]?: (a: A) => A;
 }
 
+export type Iso<S, A> = Optic<S, A>;
 export type Lens<S, A> = Optic<S, A>;
 export type Prism<S, A> = Optic<S, A>;
 export type Traversal<S, A> = Optic<S, A>;
 
 // ── Construction ─────────────────────────────────────────────────────
+
+// Construct an Iso from a lossless conversion pair.
+// Laws: from(to(s)) === s and to(from(a)) === a
+export declare function Iso<S, A>(to: (s: S) => A, from: (a: A) => S): Iso<S, A>;
 
 // Construct a Lens from a plain getter + setter pair.
 export declare function Lens<S, A>(
@@ -77,8 +84,8 @@ export declare function preview<S, A>(optic: Optic<S, A>, s: S): Maybe<A>;
 // Every target, in order. Works for every optic.
 export declare function toListOf<S, A>(optic: Optic<S, A>, s: S): A[];
 
-// Build an S back from a focus. Prism only — other optics throw at runtime.
-export declare function review<S, A>(prism: Prism<S, A>, a: A): S;
+// Build an S back from a focus. Prism and Iso only — Lens/Traversal throw at runtime.
+export declare function review<S, A>(prism: Prism<S, A> | Iso<S, A>, a: A): S;
 
 // ── Writing ──────────────────────────────────────────────────────────
 

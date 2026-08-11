@@ -2319,6 +2319,14 @@ const _PTagged = {
 };
 
 // ── optic 생성자 ───────────────────────────────────────────────────
+// dimap만 쓴다 — 세 P가 모두 dimap을 가지므로 Iso는 모든 연산에서 동작한다.
+// Lens이자 Prism이라 view도 review도 되며, 그래서 optic 계층의 최상단이다.
+// 법칙: from(to(s)) === s, to(from(a)) === a (무손실 변환)
+const Iso = (to, from) => {
+    typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
+    typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
+    return P => pab => P.dimap(to, from, pab);
+};
 const Lens = (getter, setter) => {
     typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
     typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
@@ -2813,7 +2821,7 @@ export default {
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
-    Lens, Prism, traversed, composeOptic,
+    Iso, Lens, Prism, traversed, composeOptic,
     view, preview, toListOf, review, set, over,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,

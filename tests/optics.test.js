@@ -2,7 +2,11 @@
 import fp from '../index.js';
 import { test, assertEquals, assertDeepEquals, assertThrowsWith, logSection } from './utils.js';
 
-const { Lens, composeOptic, view, set, over, Functor, Maybe } = fp;
+const {
+    Iso, Lens, Prism, traversed, composeOptic,
+    view, preview, toListOf, review, set, over,
+    Functor, Maybe, Either
+} = fp;
 
 logSection('Lens');
 
@@ -141,11 +145,51 @@ test('composeOptic — non-function argument throws', () => {
 });
 
 /* ═══════════════════════════════════════════════════
+   Iso — dimap만 쓰므로 모든 P에서 동작한다 (Lens이자 Prism)
+   ═══════════════════════════════════════════════════ */
+logSection('Iso');
+
+// 섭씨 ↔ 화씨. 무손실이므로 Iso가 맞다.
+const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
+
+test('Iso — view 는 정방향 변환이다', () => {
+    assertEquals(view(fahrenheit, 100), 212);
+});
+
+test('Iso — review 는 역방향 변환이다 (Prism 이기도 하다)', () => {
+    assertEquals(review(fahrenheit, 212), 100);
+});
+
+test('Iso — over 는 변환한 값에 적용하고 되돌린다', () => {
+    assertEquals(over(fahrenheit, f => f + 18, 100), 110);
+});
+
+test('Iso — set 은 초점을 교체한다', () => {
+    assertEquals(set(fahrenheit, 32, 100), 0);
+});
+
+test('Iso — preview 는 항상 Just, toListOf 는 항상 1개', () => {
+    assertEquals(preview(fahrenheit, 0).value, 32);
+    assertDeepEquals(toListOf(fahrenheit, 0), [32]);
+});
+
+test('Iso law: review(iso, view(iso, s)) === s', () => {
+    assertEquals(review(fahrenheit, view(fahrenheit, 37)), 37);
+});
+
+test('Iso law: view(iso, review(iso, a)) === a', () => {
+    assertEquals(Number(view(fahrenheit, review(fahrenheit, 98.6)).toFixed(1)), 98.6);
+});
+
+test('Iso — 인자가 함수가 아니면 throws', () => {
+    assertThrowsWith(() => Iso(null, x => x), 'Iso: to must be a function');
+    assertThrowsWith(() => Iso(x => x, null), 'Iso: from must be a function');
+});
+
+/* ═══════════════════════════════════════════════════
    Prism
    ═══════════════════════════════════════════════════ */
 logSection('Prism');
-
-const { Prism, traversed, preview, toListOf, review, Either } = fp;
 
 // Either의 Right 갈래에 초점을 맞추는 Prism
 const rightPrism = Prism(
@@ -321,6 +365,28 @@ test('composeOptic — Traversal + Prism 은 통과한 것만 바꾼다', () => 
     const evens = composeOptic(each, evenPrism);
     assertDeepEquals(toListOf(evens, [1, 2, 3, 4]), [2, 4]);
     assertDeepEquals(over(evens, x => x * 100, [1, 2, 3, 4]), [1, 200, 3, 400]);
+});
+
+test('composeOptic — Lens + Iso', () => {
+    const tempLens = Lens(o => o.temp, (v, o) => ({ ...o, temp: v }));
+    const inF = composeOptic(tempLens, fahrenheit);
+
+    assertEquals(view(inF, { temp: 100, city: 'Seoul' }), 212);
+    assertDeepEquals(over(inF, f => f - 32, { temp: 100, city: 'Seoul' }), {
+        temp: 100 - 32 * 5 / 9, city: 'Seoul'
+    });
+});
+
+test('composeOptic — Traversal + Iso 는 모든 원소를 변환한다', () => {
+    const inF = composeOptic(each, fahrenheit);
+    assertDeepEquals(toListOf(inF, [0, 100]), [32, 212]);
+    assertDeepEquals(over(inF, f => f + 0, [0, 100]), [0, 100]);
+});
+
+test('composeOptic — Prism + Iso 는 review 가 이어진다', () => {
+    const composed = composeOptic(rightPrism, fahrenheit);
+    assertEquals(preview(composed, Either.Right(100)).value, 212);
+    assertEquals(review(composed, 212).value, 100);
 });
 
 test('composeOptic — 인자가 함수가 아니면 throws', () => {

@@ -11,6 +11,7 @@ Optic은 큰 구조 `s` 안의 부분 `a`를 **읽고 쓰는 방법을 값으로
 
 | optic | 대상 수 | 예 |
 | --- | --- | --- |
+| **Iso** | 정확히 1개 (무손실) | 섭씨 ↔ 화씨, 문자열 ↔ 문자 배열 |
 | [Lens](./Lens.md) | 정확히 1개 | 객체의 필드, 배열의 특정 인덱스 |
 | **Prism** | 0개 또는 1개 | `Either`의 `Right`, 짝수만, 파싱 성공한 것만 |
 | **Traversal** | 0..n개 | 배열의 모든 원소, `Maybe` 안의 값 |
@@ -30,9 +31,18 @@ Optic s a = P => P a a -> P s s
 | `Forget<r>` (`a -> r`) | `view`, `preview`, `toListOf` |
 | `Tagged` (`b`만 담는다 — 입력을 무시) | `review` |
 
-세 optic은 `P`의 어떤 메서드를 쓰느냐로 갈립니다 — Lens는 `first`(곱), Prism은 `left`(합),
-Traversal은 `wander`(순회)입니다. **`Tagged`에는 `first`와 `wander`가 없고**, 그것이 곧
-"Lens와 Traversal은 `review`할 수 없다"는 제약입니다.
+네 optic은 `P`의 어떤 메서드를 쓰느냐로 갈립니다.
+
+| optic | 쓰는 메서드 |
+| --- | --- |
+| `Iso` | `dimap`만 |
+| `Lens` | `first` (곱) |
+| `Prism` | `left` (합) |
+| `Traversal` | `wander` (순회) |
+
+**`Tagged`에는 `first`와 `wander`가 없고**, 그것이 곧 "Lens와 Traversal은 `review`할 수
+없다"는 제약입니다. 반대로 **`Iso`는 `dimap`만 쓰므로 모든 `P`에서 동작합니다** — Lens이자
+Prism이라 `view`도 `review`도 됩니다. 요구하는 것이 가장 적어 optic 계층의 최상단입니다.
 
 ## 왜 Prism과 Traversal인가?
 
@@ -84,6 +94,57 @@ console.log(JSON.stringify(over(allNames, s => s.toUpperCase(), db)));
 ```
 
 ## 생성
+
+### Iso — 무손실 양방향 변환
+
+`Iso(to, from)` — 두 표현이 정보 손실 없이 오갈 때 씁니다.
+
+```javascript
+const { Iso, view, review, over } = FunFP;
+
+const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
+
+console.log(view(fahrenheit, 100));            // 212  — 정방향
+console.log(review(fahrenheit, 212));          // 100  — 역방향
+console.log(over(fahrenheit, f => f + 18, 100)); // 110 — 화씨에서 더하고 섭씨로 돌아온다
+```
+
+**법칙 두 개**가 무손실을 보장합니다. 깨지면 Iso가 아닙니다.
+
+```javascript
+const { Iso, view, review } = FunFP;
+
+const chars = Iso(s => s.split(''), a => a.join(''));
+
+console.log(review(chars, view(chars, 'abc')) === 'abc');            // true
+console.log(view(chars, review(chars, ['x', 'y'])).join('') === 'xy'); // true
+```
+
+`Iso`는 **Lens이자 Prism**이므로 여섯 연산이 전부 동작합니다.
+
+```javascript
+const { Iso, view, preview, toListOf, over, set, review } = FunFP;
+
+const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
+
+console.log(view(fahrenheit, 0));              // 32
+console.log(preview(fahrenheit, 0).value);     // 32   — 항상 Just
+console.log(toListOf(fahrenheit, 0));          // [32] — 항상 1개
+console.log(set(fahrenheit, 212, 0));          // 100
+console.log(review(fahrenheit, 32));           // 0
+```
+
+**뒤집은 Iso는 따로 만들 필요가 없습니다** — `view`와 `review`로 유도됩니다.
+
+```javascript
+const { Iso, view, review } = FunFP;
+
+const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
+const celsius = Iso(f => review(fahrenheit, f), c => view(fahrenheit, c));
+
+console.log(view(celsius, 212));    // 100
+console.log(review(celsius, 100));  // 212
+```
 
 ### Lens — 정확히 1개
 
@@ -153,12 +214,12 @@ console.log(toListOf(inMaybe, Maybe.Nothing()));  // [] — 대상 없음
 
 | 연산 | 결과 | 대상 0개일 때 |
 | --- | --- | --- |
-| `view(lens, s)` | `a` | Lens 전용 — 쓰지 마십시오 |
+| `view(lens, s)` | `a` | Lens·Iso 전용 — 쓰지 마십시오 |
 | `preview(optic, s)` | `Maybe a` | `Nothing` |
 | `toListOf(optic, s)` | `[a]` | `[]` |
 | `over(optic, f, s)` | `s` | 원본 그대로 |
 | `set(optic, b, s)` | `s` | 원본 그대로 |
-| `review(prism, a)` | `s` | Prism 전용 |
+| `review(prism, a)` | `s` | Prism·Iso 전용 |
 
 ### preview - 첫 대상
 

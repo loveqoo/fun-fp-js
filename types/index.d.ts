@@ -100,6 +100,7 @@ import type { ReaderT } from "./data/transformers/ReaderT";
 import type { WriterT } from "./data/transformers/WriterT";
 import type { Actor } from "./Actor";
 import type {
+    Iso,
     Lens,
     Prism,
     traversed,
@@ -201,6 +202,7 @@ declare const fp: {
 
     readonly Actor: typeof Actor;
 
+    readonly Iso: typeof Iso;
     readonly Lens: typeof Lens;
     readonly Prism: typeof Prism;
     readonly traversed: typeof traversed;
