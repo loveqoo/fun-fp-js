@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-04-24T05:08:57.342Z
+ * Built: 2026-08-12T16:44:20.546Z
  * Static Land specification compliant
  */
 const polyfills = {
@@ -76,6 +76,9 @@ const types = {
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
         if (typeof expected !== 'string') return false;
+        // 'any' 는 "이 인스턴스는 값 타입을 보지 않는다"는 뜻이다 (first/last 처럼).
+        // 인자끼리 같은 타입이어야 한다는 검사는 types.equals 가 따로 하므로 여전히 살아 있다.
+        if (expected === 'any') return true;
         const actual = types.of(val);
         return actual === expected || actual.toLowerCase() === expected.toLowerCase();
     },
@@ -173,25 +176,32 @@ const setTapErrorHandler = (handler) => {
     types.checkFunction(handler, 'setTapErrorHandler');
     config.tapErrorHandler = handler;
 };
+// type 이 'any' 인 인스턴스는 값 타입을 보지 않으므로 "match any" 라고 하면 원인을 가린다.
+// 그때 남는 실패 이유는 "두 인자의 타입이 다르다" 하나뿐이다.
+const binaryTypeError = (label, type) => new TypeError(
+    type === 'any'
+        ? `${label}: arguments must be the same type`
+        : `${label}: arguments must be the same type and match ${type}`
+);
 const checkAndSet = (config => {
     const rules = {
         Setoid: {
             strict: (instance, equals) => {
                 typeof equals !== 'function' && raise(new TypeError('Setoid.equals: equals must be a function'));
-                instance.equals = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? equals(a, b) : raise(new TypeError(`Setoid.equals: arguments must be the same type and match ${instance.type}`));
+                instance.equals = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? equals(a, b) : raise(binaryTypeError('Setoid.equals', instance.type));
             }, loose: (instance, equals) => { instance.equals = (a, b) => equals(a, b); }
         },
         Ord: {
             strict: (instance, lte) => {
                 typeof lte !== 'function' && raise(new TypeError('Ord.lte: lte must be a function'));
-                instance.lte = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? lte(a, b) : raise(new TypeError(`Ord.lte: arguments must be the same type and match ${instance.type}`));
+                instance.lte = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? lte(a, b) : raise(binaryTypeError('Ord.lte', instance.type));
             },
             loose: (instance, lte) => { instance.lte = (a, b) => lte(a, b); }
         },
         Semigroup: {
             strict: (instance, concat) => {
                 typeof concat !== 'function' && raise(new TypeError('Semigroup.concat: concat must be a function'));
-                instance.concat = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? concat(a, b) : raise(new TypeError(`Semigroup.concat: arguments must be the same type and match ${instance.type}`));
+                instance.concat = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? concat(a, b) : raise(binaryTypeError('Semigroup.concat', instance.type));
             },
             loose: (instance, concat) => { instance.concat = (a, b) => concat(a, b); }
         },
@@ -423,6 +433,19 @@ const checkAndSet = (config => {
     };
 })(config);
 class Algebra { constructor(type) { this.type = type; } }
+// 상위 클래스에 넘기는 map/ap 은 이미 검사가 씌워진 것이다. 같은 type 이면 상위가 씌우는
+// 검사가 **글자 그대로 같으므로**(둘 다 types.isFunction(f) && types.check(a, instance.type))
+// 바깥 겹은 안전성을 더하지 않는다. 그것이 벗기는 유일한 근거다.
+// Alternative 가 this.alt = plus.alt 로 재래핑을 피하는 것과 같은 처리다.
+// type 이 다르면 바깥 검사가 다른 것이므로 그대로 둔다.
+//
+// 성능을 근거로 삼지 마라 — 같은 회차가 first/left 를 Bifunctor.bimap 위임으로 바꿔
+// 원소마다 레지스트리 조회를 새로 넣었고, 그쪽이 벗긴 겹보다 크다(실측 1.37~1.60배).
+// 레지스트리 재사용은 POLICY 6 에 따른 옳은 선택이고 되돌리지 않는다.
+const unwrapIfSameType = (instance, source, ...methods) => {
+    if (instance.type !== source.type) return;
+    for (const m of methods) { if (source[m]) instance[m] = source[m]; }
+};
 Algebra.prototype[Symbols.Algebra] = true;
 class Setoid extends Algebra {
     constructor(equals, type, registry, ...registryKeys) {
@@ -455,6 +478,7 @@ class Monoid extends Semigroup {
     constructor(semigroup, empty, type, registry, ...aliases) {
         checkAndSet('Monoid.super')(semigroup);
         super(semigroup.concat, type);
+        unwrapIfSameType(this, semigroup, 'concat');
         checkAndSet('Monoid')(this, semigroup, empty);
         registry && register(registry, this, ...aliases);
     }
@@ -539,6 +563,7 @@ class Apply extends Functor { // F(a -> b) => F(a) => F(b)
     constructor(functor, ap, type, registry, ...aliases) {
         checkAndSet('Apply.super')(functor);
         super(functor.map, type);
+        unwrapIfSameType(this, functor, 'map');
         checkAndSet('Apply')(this, functor, ap);
         registry && register(registry, this, ...aliases);
     }
@@ -549,6 +574,7 @@ class Applicative extends Apply {
     constructor(apply, of, type, registry, ...aliases) {
         checkAndSet('Applicative.super')(apply);
         super(apply, apply.ap, type);
+        unwrapIfSameType(this, apply, 'map', 'ap');
         checkAndSet('Applicative')(this, apply, of);
         registry && register(registry, this, ...aliases);
     }
@@ -559,18 +585,44 @@ class Alt extends Functor {
     constructor(functor, alt, type, registry, ...aliases) {
         checkAndSet('Alt.super')(functor);
         super(functor.map, type);
+        unwrapIfSameType(this, functor, 'map');
         checkAndSet('Alt')(this, functor, alt);
         registry && register(registry, this, ...aliases);
     }
     alt() { raise(new Error('Alt: alt is not implemented')); }
 }
 Alt.prototype[Symbols.Alt] = true;
+// Plus 는 alt(결합 이항 연산)와 zero(항등원)를 둘 다 갖고 있어 구조적으로 Monoid 다 —
+// 태그만 없다. 그래서 등록된 Plus 는 전부 짝 Semigroup/Monoid 를 plus(<alias>) 키로 얻는다.
+// 특례를 손으로 쓰지 않는다: Plus 를 새로 등록하면 짝도 자동으로 따라온다.
+//
+// 이렇게 얻은 Monoid 는 컨테이너를 열지 않고 한쪽을 통째로 고른다. Maybe 의 경우
+// Maybe.Monoid(innerSG)(= maybe(first))와 대비된다 — 그쪽은 둘 다 Just 일 때 안쪽 값을
+// innerSG.concat 으로 합치므로 안의 타입이 같아야 한다. payload 타입이 같으면 결과도
+// 같고, 섞였을 때만 갈린다 — 앞엣것은 던지고 이쪽은 고른다.
+//
+// register() 를 쓰지 않는 이유: 그것은 instance.constructor.name 도 키로 넣으므로
+// Monoid.types['Monoid'] 가 생기고 Plus 들이 서로 덮는다. Maybe.Monoid 의 선례대로
+// 키를 직접 넣는다.
+const deriveFromPlus = (plus, type, aliases) => {
+    const semigroup = new Semigroup(plus.alt, type);
+    const monoid = new Monoid(semigroup, plus.zero, type);
+    for (const alias of aliases) {
+        const key = `plus(${alias.toLowerCase()})`;
+        Semigroup.types[key] = semigroup;
+        Monoid.types[key] = monoid;
+    }
+};
 class Plus extends Alt {
     constructor(alt, zero, type, registry, ...aliases) {
         checkAndSet('Plus.super')(alt);
         super(alt, alt.alt, type);
+        unwrapIfSameType(this, alt, 'map', 'alt');
         checkAndSet('Plus')(this, alt, zero);
-        registry && register(registry, this, ...aliases);
+        if (registry) {
+            register(registry, this, ...aliases);
+            deriveFromPlus(this, type, aliases);
+        }
     }
     zero() { raise(new Error('Plus: zero is not implemented')); }
 }
@@ -657,11 +709,15 @@ class Traversable extends Functor {
 }
 Traversable.prototype[Symbols.Traversable] = true;
 
+// 타입클래스의 정적 조회는 `lookup` 이다 — `of` 가 아니다.
+// `of` 는 값을 컨테이너에 넣는 생성자 하나만 뜻한다(`Maybe.of(1)` === `Just(1)`,
+// `Applicative.lookup('maybe').of(1)`). 한 이름이 조회와 주입을 겸하면 읽는 쪽이
+// `Maybe.of('array')` 를 조회로 오해한다 — 그건 `Just('array')` 다.
 const withTypeRegistry = (TypeClass, defaultResolver = null) => {
     TypeClass.types = {};
     TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
-    TypeClass.of = key => TypeClass.resolver(key)
-        || raise(new TypeError(`${TypeClass.name}.of: unsupported key ${key}`));
+    TypeClass.lookup = key => TypeClass.resolver(key)
+        || raise(new TypeError(`${TypeClass.name}.lookup: unsupported key ${key}`));
 };
 const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
@@ -895,31 +951,114 @@ class StringMonoid extends Monoid {
     }
 }
 modules.push(StringMonoid);
-/* Object */
+/* Polymorphic — 값 타입을 보지 않는 인스턴스 ('any') */
+// first/last 는 (a,b) => a · (a,b) => b 라 값의 타입과 무관하다. 한때 /* Object */ 섹션에
+// 있어 'object' 로 등록돼 있었는데, 그건 위치를 따라간 것이고 types/data/builtins.d.ts 의
+// 선언(readonly first: unknown)이 처음부터 모든 타입이었다.
+// 이 둘은 Monoid 가 아니다 — 항등원이 없다 (commit e3d2b82 에서 FirstMonoid/LastMonoid 제거).
+// Monoid 가 필요하면 Maybe 로 감싸는데, 무엇을 원하느냐에 따라 둘로 갈린다:
+//   Maybe.Monoid('first')     = maybe(first)  — 둘 다 Just 면 안쪽 값을 first 로 합친다
+//   Monoid.lookup('plus(maybe)')  = Alt/Plus 유도 — 안을 열지 않고 첫 Just 를 통째로 고른다
+// 둘은 payload 타입이 같으면 결과도 같다. 갈리는 것은 타입이 섞였을 때뿐이고, 그때
+// 앞엣것은 안쪽 concat 의 타입 검사에 걸려 던진다. "합치기" 면 앞, "고르기" 면 뒤.
 class FirstSemigroup extends Semigroup {
     constructor() {
-        super(x => x, 'object', Semigroup.types, 'first');
+        super(x => x, 'any', Semigroup.types, 'first');
     }
 }
 modules.push(FirstSemigroup);
 class LastSemigroup extends Semigroup {
     constructor() {
-        super((x, y) => y, 'object', Semigroup.types, 'last');
+        super((x, y) => y, 'any', Semigroup.types, 'last');
     }
 }
 modules.push(LastSemigroup);
+/* Object */
 class ObjectFilterable extends Filterable {
     constructor() {
-        super((pred, obj) => polyfills.object.filter(pred, obj), 'object', Filterable.types, 'object');
+        super((pred, obj) => polyfills.object.filter(pred, obj), 'Object', Filterable.types, 'object');
     }
 }
 modules.push(ObjectFilterable);
 class ObjectFoldable extends Foldable {
     constructor() {
-        super((f, init, obj) => polyfills.object.values(obj).reduce(f, init), 'object', Foldable.types, 'object');
+        super((f, init, obj) => polyfills.object.values(obj).reduce(f, init), 'Object', Foldable.types, 'object');
     }
 }
 modules.push(ObjectFoldable);
+// 키 문자열이든 인스턴스든 { key, instance } 로 정규화한다.
+// key 는 등록된 소문자 alias 중 가장 짧은 것이고, 등록 안 된 인스턴스면 null 이다.
+// 그 null 이 "레지스트리에 올릴 수 없다 → 인스턴스로 캐시한다" 의 신호가 된다.
+const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
+    const instance = typeof x === 'string' ? TypeClass.lookup(x) : x;
+    if (typeof x !== 'string' && !(x && x[symbol] === true)) {
+        raise(new TypeError(`${label}: argument must be a string or ${TypeClass.name} instance`));
+    }
+    const ctorName = instance.constructor?.name?.toLowerCase?.() || '';
+    let best = null;
+    for (const [k, v] of Object.entries(TypeClass.types)) {
+        if (v === instance && k === k.toLowerCase() && k !== ctorName) {
+            if (best === null || k.length < best.length || (k.length === best.length && k < best)) best = k;
+        }
+    }
+    return { key: best, instance };
+};
+/* Identity / Const — traverse 에 넘기는 Applicative 두 개 */
+// Identity: 값을 그대로 나른다. traverse 를 "그냥 매핑" 으로 쓰고 싶을 때 쓴다 (optics 의 over).
+// Const<r>: 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓴다 (optics 의 preview).
+// 담는 모양은 { value } 이므로 type 은 'Object' 다 — types.of({}) 가 'Object' 를 준다.
+// 등록된 다른 모든 Applicative 와 같은 3단이다 — Functor → Apply → Applicative.
+// type 이 'Object' (대문자) 인 것은 types.of({}) 가 'Object' 를 주기 때문이고,
+// **여기를 소문자로 바꾸면 optics 가 전부 죽는다** — Identity/Const 는 Apply.ap 를 지나고
+// 거기 쓰이는 types.equals(a, b, instance.type) 는 types.check 와 달리 대소문자 폴백이
+// 없다. 그 3인자형을 쓰는 곳은 파일 전체에서 Apply.ap 와 Alt.alt 둘뿐이다.
+// (2026-08-13 이전에는 ObjectFilterable/ObjectFoldable 이 소문자 'object' 를 써서 이 자리가
+//  "예외" 처럼 보였다. 그쪽은 폴백이 있는 types.check 만 지나 우연히 살아 있었던 것이고,
+//  지금은 넷 다 정규 태그다. tests/algebra-type.test.js 가 전수로 강제한다.)
+class IdentityFunctor extends Functor {
+    constructor() {
+        super((f, x) => ({ value: f(x.value) }), 'Object', Functor.types, 'identity');
+    }
+}
+modules.push(IdentityFunctor);
+class IdentityApply extends Apply {
+    constructor() {
+        super(Functor.types.IdentityFunctor,
+              (ff, fa) => ({ value: ff.value(fa.value) }), 'Object', Apply.types, 'identity');
+    }
+}
+modules.push(IdentityApply);
+class IdentityApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.IdentityApply, v => ({ value: v }), 'Object', Applicative.types, 'identity');
+    }
+}
+modules.push(IdentityApplicative);
+// Const 는 monoid 마다 다르므로 매개변수화한다 — Maybe.Monoid(innerSG) 와 같은 모양이다.
+// 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
+const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
+Applicative.Const = monoid => {
+    const { key, instance: m } = normalizeConstMonoid(monoid);
+    if (key !== null && Applicative.Const._keyCache.has(key)) return Applicative.Const._keyCache.get(key);
+    if (key === null && Applicative.Const._instanceCache.has(m)) return Applicative.Const._instanceCache.get(m);
+    const result = new Applicative(
+        new Apply(new Functor((_f, x) => x, 'Object'),
+                  (a, b) => ({ value: m.concat(a.value, b.value) }), 'Object'),
+        () => ({ value: m.empty() }), 'Object');
+    if (key !== null) {
+        // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')
+        // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
+        Functor.types[`const(${key})`] = result;
+        Apply.types[`const(${key})`] = result;
+        Applicative.types[`const(${key})`] = result;
+        Applicative.Const._keyCache.set(key, result);
+    } else {
+        Applicative.Const._instanceCache.set(m, result);
+    }
+    return result;
+};
+Applicative.Const._keyCache = new Map();
+Applicative.Const._instanceCache = new WeakMap();
 /* Array */
 class ArraySemigroup extends Semigroup {
     constructor() {
@@ -1044,13 +1183,13 @@ modules.push(ArrayTraversable);
 /* Date */
 class DateSetoid extends Setoid {
     constructor() {
-        super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'date', Setoid.types, 'date');
+        super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'Date', Setoid.types, 'date');
     }
 }
 modules.push(DateSetoid);
 class DateOrd extends Ord {
     constructor() {
-        super((x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'date', Ord.types, 'date');
+        super((x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'Date', Ord.types, 'date');
     }
 }
 modules.push(DateOrd);
@@ -1064,16 +1203,16 @@ class Just extends Maybe {
         super(); this.value = value; this._typeName = 'Maybe';
     }
     isJust() { return true; }
-    map(f) { return Functor.of('maybe').map(f, this); }
-    chain(f) { return Chain.of('maybe').chain(f, this); }
+    map(f) { return Functor.lookup('maybe').map(f, this); }
+    chain(f) { return Chain.lookup('maybe').chain(f, this); }
 }
 class Nothing extends Maybe {
     constructor() {
         super(); this._typeName = 'Maybe';
     }
     isNothing() { return true; }
-    map(f) { return Functor.of('maybe').map(f, this); }
-    chain(f) { return Chain.of('maybe').chain(f, this); }
+    map(f) { return Functor.lookup('maybe').map(f, this); }
+    chain(f) { return Chain.lookup('maybe').chain(f, this); }
 }
 Maybe.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
@@ -1085,15 +1224,17 @@ Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
 Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
+// Kleisli 합성이므로 compose 가 받는 것은 a -> Maybe b 꼴의 **함수**다. 'Maybe' 는 합성
+// 결과가 품는 타입이지 인자의 타입이 아니다 — Either/Task 쪽과 같이 'function' 이다.
 class MaybeSemigroupoid extends Semigroupoid {
     constructor() {
-        super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'Maybe', Semigroupoid.types, 'maybe');
+        super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'function', Semigroupoid.types, 'maybe');
     }
 }
 modules.push(MaybeSemigroupoid);
 class MaybeCategory extends Category {
     constructor() {
-        super(Semigroupoid.types.MaybeSemigroupoid, Maybe.Just, 'Maybe', Category.types, 'maybe');
+        super(Semigroupoid.types.MaybeSemigroupoid, Maybe.Just, 'function', Category.types, 'maybe');
     }
 }
 modules.push(MaybeCategory);
@@ -1187,14 +1328,14 @@ class Either {
 class Left extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isLeft() { return true; }
-    map(f) { return Functor.of('either').map(f, this); }
-    chain(f) { return Chain.of('either').chain(f, this); }
+    map(f) { return Functor.lookup('either').map(f, this); }
+    chain(f) { return Chain.lookup('either').chain(f, this); }
 }
 class Right extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isRight() { return true; }
-    map(f) { return Functor.of('either').map(f, this); }
-    chain(f) { return Chain.of('either').chain(f, this); }
+    map(f) { return Functor.lookup('either').map(f, this); }
+    chain(f) { return Chain.lookup('either').chain(f, this); }
 }
 Either.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
@@ -1296,20 +1437,7 @@ class EitherTraversable extends Traversable {
 }
 modules.push(EitherTraversable);
 /* Container Semigroup / Monoid */
-const normalizeSemigroupKey = x => {
-    const instance = typeof x === 'string' ? Semigroup.of(x) : x;
-    if (typeof x !== 'string' && !(x && x[Symbols.Semigroup] === true)) {
-        raise(new TypeError('normalizeSemigroupKey: argument must be a string or Semigroup instance'));
-    }
-    const ctorName = instance.constructor?.name?.toLowerCase?.() || '';
-    let best = null;
-    for (const [k, v] of Object.entries(Semigroup.types)) {
-        if (v === instance && k === k.toLowerCase() && k !== ctorName) {
-            if (best === null || k.length < best.length || (k.length === best.length && k < best)) best = k;
-        }
-    }
-    return { key: best, instance };
-};
+const normalizeSemigroupKey = normalizeTypeClassKey(Semigroup, Symbols.Semigroup, 'normalizeSemigroupKey');
 const resolveInnerSemigroup = (label, innerSG) => {
     if (typeof innerSG === 'string') return normalizeSemigroupKey(innerSG);
     try { return normalizeSemigroupKey(innerSG); }
@@ -1389,6 +1517,12 @@ addResolver(Monoid, key => {
     const m = /^maybe\((.+)\)$/.exec(key);
     return m ? Maybe.Monoid(m[1]) : null;
 });
+// Applicative.Const(monoid) 의 지연 해석 — 팩토리를 부르기 전에도 const(<키>) 로 꺼낼 수 있다.
+// key => 클로저 안에서 부르므로 Applicative.Const 정의(위쪽)와의 순서는 문제되지 않는다.
+addResolver(Applicative, key => {
+    const m = /^const\((.+)\)$/.exec(key);
+    return m ? Applicative.Const(m[1]) : null;
+});
 /* Task */
 class Task {
     constructor(computation) {
@@ -1406,8 +1540,8 @@ class Task {
         };
         this._typeName = 'Task';
     }
-    map(f) { return Functor.of('task').map(f, this); }
-    chain(f) { return Chain.of('task').chain(f, this); }
+    map(f) { return Functor.lookup('task').map(f, this); }
+    chain(f) { return Chain.lookup('task').chain(f, this); }
     catchError(handler) { return Task.catchError(handler, this); }
 }
 Task.prototype[Symbols.Task] = true;
@@ -1598,10 +1732,10 @@ class Validation {
 class Valid extends Validation {
     constructor(value) { super(); this.value = value; this._typeName = 'Validation'; }
     isValid() { return true; }
-    map(f) { return Functor.of('validation').map(f, this); }
+    map(f) { return Functor.lookup('validation').map(f, this); }
 }
 class Invalid extends Validation {
-    constructor(errors, monoid = Monoid.of('array')) {
+    constructor(errors, monoid = Monoid.lookup('array')) {
         super();
         this.errors = errors;
         this.monoid = monoid;
@@ -1625,21 +1759,21 @@ Validation.prototype.toEither = function () {
 };
 Validation.fold = (onInvalid, onValid, v) =>
     v.isValid() ? onValid(v.value) : onInvalid(v.errors);
-Validation.map = (f, v) => Functor.of('validation').map(f, v);
-Validation.ap = (vf, va) => Apply.of('validation').ap(vf, va);
-Validation.bimap = (f, g, v) => Bifunctor.of('validation').bimap(f, g, v);
-Validation.reduce = (f, init, v) => Foldable.of('validation').reduce(f, init, v);
+Validation.map = (f, v) => Functor.lookup('validation').map(f, v);
+Validation.ap = (vf, va) => Apply.lookup('validation').ap(vf, va);
+Validation.bimap = (f, g, v) => Bifunctor.lookup('validation').bimap(f, g, v);
+Validation.reduce = (f, init, v) => Foldable.lookup('validation').reduce(f, init, v);
 Validation.collect = (...validators) => f => (...args) => {
     if (validators.length === 0) return Validation.Valid(f());
     const validations = validators.map((validator, i) => {
         const result = validator(args[i]);
         return result.isRight()
             ? Validation.Valid(result.value)
-            : Validation.Invalid([result.value]); // wrap in array for Monoid.of('array')
+            : Validation.Invalid([result.value]); // wrap in array for Monoid.lookup('array')
     });
     const curriedF = curry(f, validators.length);
     return validations.reduce(
-        (acc, v) => Apply.of('validation').ap(acc, v),
+        (acc, v) => Apply.lookup('validation').ap(acc, v),
         Validation.Valid(curriedF)
     );
 };
@@ -1700,8 +1834,8 @@ class Reader {
         this._typeName = 'Reader';
     }
     run(env) { return this._run(env); }
-    map(f) { return Functor.of('reader').map(f, this); }
-    chain(f) { return Chain.of('reader').chain(f, this); }
+    map(f) { return Functor.lookup('reader').map(f, this); }
+    chain(f) { return Chain.lookup('reader').chain(f, this); }
 }
 Reader.prototype[Symbols.Reader] = true;
 Reader.of = x => new Reader(_ => x);
@@ -1745,7 +1879,7 @@ class ReaderMonad extends Monad {
 modules.push(ReaderMonad);
 /* Writer */
 class Writer {
-    constructor(value, output, monoid = Monoid.of('array')) {
+    constructor(value, output, monoid = Monoid.lookup('array')) {
         this.value = value;
         this.output = output;
         this.monoid = monoid;
@@ -1753,13 +1887,13 @@ class Writer {
     }
     run() { return [this.value, this.output]; }
     exec() { return this.value; }
-    map(f) { return Functor.of('writer').map(f, this); }
-    chain(f) { return Chain.of('writer').chain(f, this); }
+    map(f) { return Functor.lookup('writer').map(f, this); }
+    chain(f) { return Chain.lookup('writer').chain(f, this); }
 }
 Writer.prototype[Symbols.Writer] = true;
-Writer.of = (x, monoid = Monoid.of('array')) => new Writer(x, monoid.empty(), monoid);
+Writer.of = (x, monoid = Monoid.lookup('array')) => new Writer(x, monoid.empty(), monoid);
 Writer.isWriter = x => x != null && x[Symbols.Writer] === true;
-Writer.tell = (output, monoid = Monoid.of('array')) => new Writer(undefined, output, monoid);
+Writer.tell = (output, monoid = Monoid.lookup('array')) => new Writer(undefined, output, monoid);
 Writer.listen = w => new Writer([w.value, w.output], w.output, w.monoid);
 Writer.listens = (f, w) => new Writer([w.value, f(w.output)], w.output, w.monoid);
 Writer.pass = w => {
@@ -1814,8 +1948,8 @@ class State {
     run(s) { return this._run(s); }
     eval(s) { return this.run(s)[0]; }
     exec(s) { return this.run(s)[1]; }
-    map(f) { return Functor.of('state').map(f, this); }
-    chain(f) { return Chain.of('state').chain(f, this); }
+    map(f) { return Functor.lookup('state').map(f, this); }
+    chain(f) { return Chain.lookup('state').chain(f, this); }
 }
 State.prototype[Symbols.State] = true;
 State.of = x => new State(s => [x, s]);
@@ -1901,7 +2035,7 @@ const lift = applicative => {
         return args.slice(1).reduce((acc, arg) => applicative.ap(acc, arg), applicative.map(curry(f, args.length), args[0]));
     };
 };
-const pipeK = (monad, foldable = Foldable.of('array')) => {
+const pipeK = (monad, foldable = Foldable.lookup('array')) => {
     if (!(monad && monad[Symbols.Monad] === true)) {
         raise(new TypeError('pipeK: first argument must be a Monad'));
     }
@@ -1910,7 +2044,7 @@ const pipeK = (monad, foldable = Foldable.of('array')) => {
     }
     return fns => x => foldable.reduce((acc, fn) => monad.chain(types.checkFunction(fn, 'pipeK'), acc), monad.of(x), fns);
 };
-const composeK = (monad, foldable = Foldable.of('array')) => {
+const composeK = (monad, foldable = Foldable.lookup('array')) => {
     if (!(monad && monad[Symbols.Monad] === true)) {
         raise(new TypeError('composeK: first argument must be a Monad'));
     }
@@ -2075,8 +2209,8 @@ const { Free, trampoline } = (() => {
             this[Symbol.toStringTag] = 'Pure';
             this[Symbols.Pure] = true;
         }
-        map(f) { return Functor.of('free').map(f, this); }
-        chain(f) { return Chain.of('free').chain(f, this); }
+        map(f) { return Functor.lookup('free').map(f, this); }
+        chain(f) { return Chain.lookup('free').chain(f, this); }
     }
     class Impure extends Free {
         constructor(functor) {
@@ -2087,8 +2221,8 @@ const { Free, trampoline } = (() => {
             this[Symbol.toStringTag] = 'Impure';
             this[Symbols.Impure] = true;
         }
-        map(f) { return Functor.of('free').map(f, this); }
-        chain(f) { return Chain.of('free').chain(f, this); }
+        map(f) { return Functor.lookup('free').map(f, this); }
+        chain(f) { return Chain.lookup('free').chain(f, this); }
     }
     Free.prototype[Symbols.Free] = true;
     class Thunk {
@@ -2217,7 +2351,7 @@ class FreeFunctor extends Functor {
         super(
             (f, free) => Free.isPure(free)
                 ? Free.pure(f(free.value))
-                : Free.impure(free.functor.map(prevFree => Functor.of('free').map(f, prevFree))),
+                : Free.impure(free.functor.map(prevFree => Functor.lookup('free').map(f, prevFree))),
             'Free', Functor.types, 'free'
         );
     }
@@ -2227,7 +2361,7 @@ class FreeApply extends Apply {
     constructor() {
         super(
             Functor.types.FreeFunctor,
-            (mf, mx) => Chain.of('free').chain(f => Functor.of('free').map(f, mx), mf),
+            (mf, mx) => Chain.lookup('free').chain(f => Functor.lookup('free').map(f, mx), mf),
             'Free', Apply.types, 'free'
         );
     }
@@ -2245,7 +2379,7 @@ class FreeChain extends Chain {
             Apply.types.FreeApply,
             (f, free) => Free.isPure(free)
                 ? f(free.value)
-                : Free.impure(free.functor.map(prevFree => Chain.of('free').chain(f, prevFree))),
+                : Free.impure(free.functor.map(prevFree => Chain.lookup('free').chain(f, prevFree))),
             'Free', Chain.types, 'free'
         );
     }
@@ -2260,45 +2394,171 @@ modules.push(FreeMonad);
 load(...modules);
 
 /* Optics */
-// 내부 전용 Identity/Const Functor (Static Land 형태, public registry 미노출)
-const _Identity = { of: v => ({ value: v }), map: (f, x) => ({ value: f(x.value) }) };
-const _Const = { of: v => ({ value: v }), map: (_, x) => x };
-// Van Laarhoven Lens (F-explicit): Lens s a = forall F. Functor F => F -> (a -> F a) -> s -> F s
-// F 파라미터가 첫 인자이므로 plain compose로는 합성 불가 → composeLens 제공
-const Lens = (getter, setter) => {
-    typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
-    typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
-    return F => f => s => F.map(b => setter(b, s), f(getter(s)));
-};
-const view = (lens, s) => {
-    typeof lens !== 'function' && raise(new TypeError('view: lens must be a function'));
-    return lens(_Const)(_Const.of)(s).value;
-};
-const over = (lens, f, s) => {
-    typeof lens !== 'function' && raise(new TypeError('over: lens must be a function'));
-    typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
-    return lens(_Identity)(a => _Identity.of(f(a)))(s).value;
-};
-const set = (lens, b, s) => {
-    typeof lens !== 'function' && raise(new TypeError('set: lens must be a function'));
-    return over(lens, () => b, s);
-};
-// Lens 합성: F를 양쪽에 주입한 후 concrete-F 레벨에서 함수 합성
-const composeLens = (...lenses) => {
-    lenses.forEach((l, i) => {
-        typeof l !== 'function' && raise(new TypeError(`composeLens: argument ${i} must be a Lens`));
-    });
-    return F => compose(...lenses.map(l => l(F)));
-};
+// transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
+const { Optics } = (() => {
+    // Profunctor 인코딩: Optic s a = P => P a a -> P s s
+    //
+    // 어떤 P를 주입하느냐가 연산을 정한다 — 하나의 정의에서 읽기·쓰기·역생성이 모두 나온다.
+    //   함수      → over/set        (dimap, first, left, wander)
+    //   Forget<r> → view/preview/toList/foldMapOf  (같음. monoid로 누적)
+    //   Tagged    → review          (dimap, left 만)
+    //
+    // Tagged에 first와 wander가 없다는 사실이 타입 안전성을 대신한다 —
+    // Lens나 Traversal에 review를 쓰면 그 자리에서 TypeError가 난다.
+    // P가 첫 인자이므로 plain compose로는 합성 불가 → Optics.compose 제공.
 
+    // ── 구체 Profunctor 3종 ────────────────────────────────────────────
+    // 세 딕셔너리가 공유하는 메서드가 optic 의 종류를 정한다:
+    //   first  = 곱   — 짝 [a, c] 의 한쪽만 건드린다        → Lens
+    //   left   = 합   — Either 의 Left 만 건드린다          → Prism
+    //   wander = 순회 — 컨테이너 안의 모든 자리를 건드린다   → Traversal
+    // 어느 것을 요구하느냐가 그 optic 에 무엇을 쓸 수 있는지를 정한다.
+
+    // 함수: p a b = a -> b.  over/set 이 쓴다.
+    const functionProfunctor = {
+        dimap: Profunctor.lookup('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
+        first: p => t => Bifunctor.lookup('tuple').bimap(p, identity, t),
+        left: p => e => Bifunctor.lookup('either').bimap(p, identity, e),
+        wander: (traverse, p) => s =>
+            traverse(Applicative.lookup('identity'), a => ({ value: p(a) }), s).value,
+    };
+    // Forget<r>: p a b = a -> r.  출력을 버리고 r 을 모은다. view/preview/toList/foldMapOf 가 쓴다.
+    const forgetProfunctor = monoid => ({
+        // 출력 변환을 버리므로 g 자리에 항등을 넣는다.
+        dimap: (f, _g, p) => Profunctor.lookup('function').promap(f, identity, p),
+        // Comonad.lookup('array').extract 가 배열의 head 라 2-튜플에서는 fst 다.
+        first: p => t => p(Comonad.lookup('array').extract(t)),
+        left: p => e => Either.fold(p, () => monoid.empty(), e),
+        wander: (traverse, p) => s =>
+            traverse(Applicative.Const(monoid), a => ({ value: p(a) }), s).value,
+    });
+    // Tagged: p a b = b.  입력을 무시하므로 거꾸로만 쓸 수 있다. review 가 쓴다.
+    const taggedProfunctor = {
+        // 여기만 Profunctor.promap 에 위임할 수 없다 — Tagged a b = b 라 profunctor 값이
+        // 함수가 아닌데 promap 의 strict 검사가 세 인자 모두 함수일 것을 요구한다.
+        dimap: (_f, g, p) => g(p),
+        left: Either.Left,
+        // Tagged 는 입력을 만들어낼 수 없으므로 곱(first)과 순회(wander)를 구현할 수 없다.
+        // 그 부재가 곧 "Lens/Traversal 은 review 할 수 없다" 는 제약이다 — 명시적으로 거부한다.
+        first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
+        wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
+    };
+
+    // ── optic 생성자 ───────────────────────────────────────────────────
+    // dimap만 쓴다 — 세 P가 모두 dimap을 가지므로 Iso는 모든 연산에서 동작한다.
+    // Lens이자 Prism이라 view도 review도 되며, 그래서 optic 계층의 최상단이다.
+    // 법칙: from(to(s)) === s, to(from(a)) === a (무손실 변환)
+    const Iso = (to, from) => {
+        typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
+        typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
+        return P => pab => P.dimap(to, from, pab);
+    };
+    const Lens = (getter, setter) => {
+        typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
+        typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
+        return P => pab => P.dimap(s => [getter(s), s], ([b, s]) => setter(b, s), P.first(pab));
+    };
+    // match: s -> Maybe a,  build: a -> s
+    const Prism = (match, build) => {
+        typeof match !== 'function' && raise(new TypeError('Prism: match must be a function'));
+        typeof build !== 'function' && raise(new TypeError('Prism: build must be a function'));
+        return P => pab => P.dimap(
+            s => {
+                const m = match(s);
+                Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
+                return Maybe.fold(() => Either.Right(s), a => Either.Left(a), m);
+            },
+            e => (e.isLeft() ? build(e.value) : e.value),
+            P.left(pab)
+        );
+    };
+    // 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
+    const traversed = key => {
+        const instance = Traversable.lookup(key);
+        return P => pab => P.wander(instance.traverse, pab);
+    };
+
+    // ── 연산: P를 고르는 것이 전부 ─────────────────────────────────────
+    const runOptic = (name, optic, P, pab, s) => {
+        typeof optic !== 'function' && raise(new TypeError(`${name}: optic must be a function`));
+        return optic(P)(pab)(s);
+    };
+    const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
+    // 읽기 셋은 전부 foldMapOf 의 특수 경우다 — 어떤 Monoid 로 모으느냐만 다르다.
+    // 인자 순서는 over(optic, f, s) 에 맞추고 monoid 를 앞에 둔다.
+    // monoid 는 first 경로(Lens/Iso)에서 한 번도 안 쓰이므로, 검사하지 않으면 optic 종류에
+    // 따라 통과 여부가 갈린다. 기존 foldMap(foldable, monoid) 과 같은 규칙으로 요구한다 —
+    // 등록은 필요 없고 new Monoid(...) 로 만든 것이면 된다.
+    const foldMapOf = (monoid, optic, f, s) => {
+        // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그러므로
+        // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
+        const { instance: m } = resolveFoldMonoid(monoid);
+        typeof f !== 'function' && raise(new TypeError('foldMapOf: f must be a function'));
+        return runOptic('foldMapOf', optic, forgetProfunctor(m), f, s);
+    };
+    // 읽기 셋은 각자의 이름으로 던져야 한다 — foldMapOf 에 위임하면 귀속을 잃는다.
+    const toList = (optic, s) => {
+        typeof optic !== 'function' && raise(new TypeError('toList: optic must be a function'));
+        return foldMapOf(Monoid.lookup('array'), optic, a => [a], s);
+    };
+    // preview 는 대상을 "합치는" 게 아니라 "고르는" 것이므로 컨테이너를 열지 않는 Monoid 를
+    // 쓴다 — plus(maybe) 다. maybe(first) 를 쓰면 안쪽 값을 합치려 들어 [1, 'a'] 처럼 타입이
+    // 섞인 대상에서 던진다. 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 한다.
+    const preview = (optic, s) => {
+        typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
+        return foldMapOf(Monoid.lookup('plus(maybe)'), optic, Maybe.Just, s);
+    };
+    // Lens/Iso 전용 — "정확히 1대상" 을 문서가 아니라 코드가 강제한다.
+    // forgetProfunctor 에는 wander 가 있어서 Traversal 을 넘겨도 실행은 된다(review 와 달리
+    // 구조가 막지 못한다). 그래서 대상 수를 세는 것이 유일한 방법이다. 0개면 undefined 를
+    // 흘리지 않고, 2개 이상이면 첫 값을 조용히 주지 않는다.
+    const view = (lens, s) => {
+        typeof lens !== 'function' && raise(new TypeError('view: optic must be a function'));
+        const targets = toList(lens, s);
+        targets.length !== 1 && raise(new TypeError(
+            `view: expected exactly one target, got ${targets.length} — use preview or toList`));
+        return targets[0];
+    };
+    const over = (optic, f, s) => {
+        typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
+        return runOptic('over', optic, functionProfunctor, f, s);
+    };
+    const set = (optic, b, s) => {
+        typeof optic !== 'function' && raise(new TypeError('set: optic must be a function'));
+        return over(optic, constant(b), s);
+    };
+    // review는 Tagged를 주입한다. Lens/Traversal이면 first/wander가 없어 여기서 실패한다.
+    const review = (prism, a) => {
+        typeof prism !== 'function' && raise(new TypeError('review: prism must be a function'));
+        return prism(taggedProfunctor)(a);
+    };
+    // optic 합성 = 함수 합성. P를 모두에 주입한 뒤 그 층에서 잇는다.
+    const composeOptic = (...optics) => {
+        optics.forEach((o, i) => {
+            typeof o !== 'function' && raise(new TypeError(`Optics.compose: argument ${i} must be an optic`));
+        });
+        // P를 모두에 주입하면 평범한 함수 N개가 되므로 이 파일의 compose 를 그대로 쓴다.
+        return P => compose(...optics.map(o => o(P)));
+    };
+
+    // 내부 이름을 compose 로 두면 이 함수가 의존하는 최상위 compose 를 가린다.
+    // 그래서 정의는 composeOptic 으로 두고 모듈 키에서만 compose 로 낸다.
+    return {
+        Optics: {
+            Iso, Lens, Prism, traversed,
+            compose: composeOptic, view, preview, toList, foldMapOf,
+            over, set, review,
+        },
+    };
+})();
 /* ═══════════════════════════════════════════════════════════════
    Monad Transformer
-   - load() 이후에 위치: Monad.of(), Functor.of() 등이 로드된 상태 필요
+   - load() 이후에 위치: Monad.lookup(), Functor.lookup() 등이 로드된 상태 필요
    - 타입 클래스 인스턴스를 동적 생성하여 레지스트리에 등록
    ═══════════════════════════════════════════════════════════════ */
 
 const normalizeMonad = M => {
-    if (typeof M === 'string') return Monad.of(M);
+    if (typeof M === 'string') return Monad.lookup(M);
     if (!M || typeof M.of !== 'function' || typeof M.chain !== 'function' || typeof M.map !== 'function') {
         raise(new TypeError(
             'normalizeMonad: M must be a static-land style object with of(a), map(f, ma), chain(f, ma)'
@@ -2324,20 +2584,20 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
         if (!(val instanceof XT)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
     };
     const tFunctor = new Functor(
-        (f, t) => { check(t, 'map'); return new XT(Functor.of('free').map(f, t._program)); },
+        (f, t) => { check(t, 'map'); return new XT(Functor.lookup('free').map(f, t._program)); },
         typeName, null
     );
     Functor.types[alias] = tFunctor;
     const tApply = new Apply(tFunctor, (tf, ta) => {
         check(tf, 'ap'); check(ta, 'ap');
-        return new XT(Chain.of('free').chain(f => Functor.of('free').map(f, ta._program), tf._program));
+        return new XT(Chain.lookup('free').chain(f => Functor.lookup('free').map(f, ta._program), tf._program));
     }, typeName, null);
     Apply.types[alias] = tApply;
     const tApplicative = new Applicative(tApply, XT.of, typeName, null);
     Applicative.types[alias] = tApplicative;
     const tChain = new Chain(tApply, (f, t) => {
         check(t, 'chain');
-        return new XT(Chain.of('free').chain(x => {
+        return new XT(Chain.lookup('free').chain(x => {
             const result = f(x);
             check(result, 'chain callback');
             return result._program;
@@ -2354,7 +2614,7 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
 };
 
 // type 없는 커스텀 모나드에 자동 부여되는 alias는 프로세스 실행 순서에 따라 달라진다.
-// 이 alias를 외부에서 Functor.of('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
+// 이 alias를 외부에서 Functor.lookup('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
 // 문자열 M (예: 'maybe', 'either')이나 type 프로퍼티가 있는 객체 M을 사용하면 결정적 alias를 얻을 수 있다.
 let _transformerAutoId = 0;
 const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
@@ -2380,8 +2640,8 @@ const StateT = (M) => {
             if (!(this instanceof ST)) raise(new TypeError(`${typeName}.exec: must be called on a ${typeName} instance`));
             return nm.map(([_, s2]) => s2, this.run(s));
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     ST.of = x => new ST(Free.pure(x));
     ST.get = new ST(Free.liftF(new GetF(s => s)));
@@ -2426,8 +2686,8 @@ const EitherT = (M) => {
             if (!(this instanceof ET)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return ET.runEitherT(this);
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     ET.of = x => new ET(Free.pure(x));
     ET.throwError = e => new ET(Free.liftF(new ThrowF(e)));
@@ -2485,8 +2745,8 @@ const ReaderT = (M) => {
             if (!(this instanceof RT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return RT.runReaderT(env, this);
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     RT.of = x => new RT(Free.pure(x));
     RT.ask = new RT(Free.liftF(new AskF(env => env)));
@@ -2525,7 +2785,7 @@ ReaderT._cache = new Map();
 
 /* ── WriterT ── */
 const WriterT = (M, writerMonoid) => {
-    if (!writerMonoid) writerMonoid = Monoid.of('array');
+    if (!writerMonoid) writerMonoid = Monoid.lookup('array');
     if (typeof writerMonoid.empty !== 'function' || typeof writerMonoid.concat !== 'function') {
         raise(new TypeError('WriterT: monoid must have empty() and concat(a, b) methods'));
     }
@@ -2543,8 +2803,8 @@ const WriterT = (M, writerMonoid) => {
             if (!(this instanceof WT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return WT.runWriterT(this);
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     WT.of = x => new WT(Free.pure(x));
     WT.tell = output => new WT(Free.liftF(new TellF(output, undefined)));
@@ -2625,95 +2885,95 @@ const Actor = ({ init, handle }) => {
 
 /* ═══════════════════════════════════════════════════════════════
    Static Methods (Eta Reduced)
-   - load() 이후에 정의해야 TypeClass.of()가 정상 작동
+   - load() 이후에 정의해야 TypeClass.lookup()가 정상 작동
    ═══════════════════════════════════════════════════════════════ */
 
 // Functor
-Maybe.map = Functor.of('maybe').map;
-Either.map = Functor.of('either').map;
-Task.map = Functor.of('task').map;
-Reader.map = Functor.of('reader').map;
-Writer.map = Functor.of('writer').map;
-State.map = Functor.of('state').map;
-Free.map = Functor.of('free').map;
+Maybe.map = Functor.lookup('maybe').map;
+Either.map = Functor.lookup('either').map;
+Task.map = Functor.lookup('task').map;
+Reader.map = Functor.lookup('reader').map;
+Writer.map = Functor.lookup('writer').map;
+State.map = Functor.lookup('state').map;
+Free.map = Functor.lookup('free').map;
 
 // Apply
-Maybe.ap = Apply.of('maybe').ap;
-Either.ap = Apply.of('either').ap;
-Task.ap = Apply.of('task').ap;
-Reader.ap = Apply.of('reader').ap;
-Writer.ap = Apply.of('writer').ap;
-State.ap = Apply.of('state').ap;
-Free.ap = Apply.of('free').ap;
+Maybe.ap = Apply.lookup('maybe').ap;
+Either.ap = Apply.lookup('either').ap;
+Task.ap = Apply.lookup('task').ap;
+Reader.ap = Apply.lookup('reader').ap;
+Writer.ap = Apply.lookup('writer').ap;
+State.ap = Apply.lookup('state').ap;
+Free.ap = Apply.lookup('free').ap;
 
 // Chain
-Maybe.chain = Chain.of('maybe').chain;
-Either.chain = Chain.of('either').chain;
-Task.chain = Chain.of('task').chain;
-Reader.chain = Chain.of('reader').chain;
-Writer.chain = Chain.of('writer').chain;
-State.chain = Chain.of('state').chain;
-Free.chain = Chain.of('free').chain;
+Maybe.chain = Chain.lookup('maybe').chain;
+Either.chain = Chain.lookup('either').chain;
+Task.chain = Chain.lookup('task').chain;
+Reader.chain = Chain.lookup('reader').chain;
+Writer.chain = Chain.lookup('writer').chain;
+State.chain = Chain.lookup('state').chain;
+Free.chain = Chain.lookup('free').chain;
 
 // Alt
-Maybe.alt = Alt.of('maybe').alt;
-Either.alt = Alt.of('either').alt;
-Task.alt = Alt.of('task').alt;
+Maybe.alt = Alt.lookup('maybe').alt;
+Either.alt = Alt.lookup('either').alt;
+Task.alt = Alt.lookup('task').alt;
 
 // Plus
-Maybe.zero = () => Plus.of('maybe').zero();
+Maybe.zero = () => Plus.lookup('maybe').zero();
 
 // Filterable
-Maybe.filter = Filterable.of('maybe').filter;
-Task.filter = Filterable.of('task').filter;
+Maybe.filter = Filterable.lookup('maybe').filter;
+Task.filter = Filterable.lookup('task').filter;
 
 // Foldable (3+ args - no eta reduction)
-Maybe.reduce = (f, init, m) => Foldable.of('maybe').reduce(f, init, m);
-Either.reduce = (f, init, e) => Foldable.of('either').reduce(f, init, e);
+Maybe.reduce = (f, init, m) => Foldable.lookup('maybe').reduce(f, init, m);
+Either.reduce = (f, init, e) => Foldable.lookup('either').reduce(f, init, e);
 
 // Traversable (3+ args - no eta reduction)
-Maybe.traverse = (applicative, f, m) => Traversable.of('maybe').traverse(applicative, f, m);
-Either.traverse = (applicative, f, e) => Traversable.of('either').traverse(applicative, f, e);
+Maybe.traverse = (applicative, f, m) => Traversable.lookup('maybe').traverse(applicative, f, m);
+Either.traverse = (applicative, f, e) => Traversable.lookup('either').traverse(applicative, f, e);
 
 // Bifunctor (3 args - no eta reduction)
-Either.bimap = (f, g, e) => Bifunctor.of('either').bimap(f, g, e);
+Either.bimap = (f, g, e) => Bifunctor.lookup('either').bimap(f, g, e);
 
 // Filterable with 3 args (no eta reduction)
-Either.filter = (pred, e, onFalse) => Filterable.of('either').filter(pred, e, onFalse);
+Either.filter = (pred, e, onFalse) => Filterable.lookup('either').filter(pred, e, onFalse);
 
 // ChainRec
-Maybe.chainRec = ChainRec.of('maybe').chainRec;
-Either.chainRec = ChainRec.of('either').chainRec;
-Task.chainRec = ChainRec.of('task').chainRec;
+Maybe.chainRec = ChainRec.lookup('maybe').chainRec;
+Either.chainRec = ChainRec.lookup('either').chainRec;
+Task.chainRec = ChainRec.lookup('task').chainRec;
 
 // pipeK (현재 API 유지 - variadic)
-Maybe.pipeK = (...fns) => pipeK(Monad.of('maybe'))(fns);
-Either.pipeK = (...fns) => pipeK(Monad.of('either'))(fns);
-Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
-Reader.pipeK = (...fns) => pipeK(Monad.of('reader'))(fns);
-Writer.pipeK = (...fns) => pipeK(Monad.of('writer'))(fns);
-State.pipeK = (...fns) => pipeK(Monad.of('state'))(fns);
-Free.pipeK = (...fns) => pipeK(Monad.of('free'))(fns);
+Maybe.pipeK = (...fns) => pipeK(Monad.lookup('maybe'))(fns);
+Either.pipeK = (...fns) => pipeK(Monad.lookup('either'))(fns);
+Task.pipeK = (...fns) => pipeK(Monad.lookup('task'))(fns);
+Reader.pipeK = (...fns) => pipeK(Monad.lookup('reader'))(fns);
+Writer.pipeK = (...fns) => pipeK(Monad.lookup('writer'))(fns);
+State.pipeK = (...fns) => pipeK(Monad.lookup('state'))(fns);
+Free.pipeK = (...fns) => pipeK(Monad.lookup('free'))(fns);
 
 // composeK (현재 API 유지 - variadic)
-Maybe.composeK = (...fns) => composeK(Monad.of('maybe'))(fns);
-Either.composeK = (...fns) => composeK(Monad.of('either'))(fns);
-Task.composeK = (...fns) => composeK(Monad.of('task'))(fns);
-Reader.composeK = (...fns) => composeK(Monad.of('reader'))(fns);
-Writer.composeK = (...fns) => composeK(Monad.of('writer'))(fns);
-State.composeK = (...fns) => composeK(Monad.of('state'))(fns);
-Free.composeK = (...fns) => composeK(Monad.of('free'))(fns);
+Maybe.composeK = (...fns) => composeK(Monad.lookup('maybe'))(fns);
+Either.composeK = (...fns) => composeK(Monad.lookup('either'))(fns);
+Task.composeK = (...fns) => composeK(Monad.lookup('task'))(fns);
+Reader.composeK = (...fns) => composeK(Monad.lookup('reader'))(fns);
+Writer.composeK = (...fns) => composeK(Monad.lookup('writer'))(fns);
+State.composeK = (...fns) => composeK(Monad.lookup('state'))(fns);
+Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
 
 // lift (eta reduced)
-Reader.lift = lift(Applicative.of('reader'));
-Writer.lift = lift(Applicative.of('writer'));
-State.lift = lift(Applicative.of('state'));
-Free.lift = lift(Applicative.of('free'));
+Reader.lift = lift(Applicative.lookup('reader'));
+Writer.lift = lift(Applicative.lookup('writer'));
+State.lift = lift(Applicative.lookup('state'));
+Free.lift = lift(Applicative.lookup('free'));
 
 // lift (with error handling - cannot eta reduce)
-Maybe.lift = f => runCatch(lift(Applicative.of('maybe'))(f), Maybe.Nothing);
-Either.lift = f => runCatch(lift(Applicative.of('either'))(f), Either.Left);
-Task.lift = f => runCatch(lift(Applicative.of('task'))(f), Task.rejected);
+Maybe.lift = f => runCatch(lift(Applicative.lookup('maybe'))(f), Maybe.Nothing);
+Either.lift = f => runCatch(lift(Applicative.lookup('either'))(f), Either.Left);
+Task.lift = f => runCatch(lift(Applicative.lookup('task'))(f), Task.rejected);
 
 const extra = (() => {
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
@@ -2731,7 +2991,7 @@ export default {
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
-    Lens, composeLens, view, set, over,
+    Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
