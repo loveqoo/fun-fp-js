@@ -86,16 +86,39 @@ const stProg = SM.of<number, { count: number }>(42);
 const ET = fp.EitherT("task");
 const etProg = ET.throwError<string, number>("err");
 
-// ── Lens via default ─────────────────────────────────────────────────
+// ── Optics via default ───────────────────────────────────────────────
+// 최상위에는 Optics 하나만 있다 — view/set/over 는 모듈 안으로 들어갔다.
 type Person = { name: string; age: number };
-const nameLens: Lens<Person, string> = fp.Lens(
+const nameLens: Lens<Person, string> = fp.Optics.Lens(
     (p) => p.name,
     (s, p) => ({ ...p, name: s })
 );
 declare const p: Person;
-const n1: string = fp.view(nameLens, p);
-const p2: Person = fp.set(nameLens, "alice", p);
-const p3: Person = fp.over(nameLens, (s) => s.toUpperCase(), p);
+const n1: string = fp.Optics.view(nameLens, p);
+const p2: Person = fp.Optics.set(nameLens, "alice", p);
+const p3: Person = fp.Optics.over(nameLens, (s) => s.toUpperCase(), p);
+const names: string[] = fp.Optics.toList(nameLens, p);
+// 12키를 전부 건드려야 d.ts 에서 키를 지웠을 때 tsc 가 잡는다.
+// (뮤테이션 실측: 이 줄들이 없으면 Iso/Prism/traversed/compose/preview/review 는 안 잡힌다)
+const iso1 = fp.Optics.Iso<number, string>(
+    (n) => String(n),
+    (s) => Number(s)
+);
+declare const someMaybe: Maybe<number>;
+const prism1 = fp.Optics.Prism<number, number>((n) => someMaybe, (n) => n);
+const each1 = fp.Optics.traversed("array");
+const composed1 = fp.Optics.compose(nameLens, fp.Optics.Lens<string, number>(
+    (s) => s.length,
+    (v, s) => s
+));
+const first1: Maybe<string> = fp.Optics.preview(nameLens, p);
+const built1: number = fp.Optics.review(prism1, 7);
+const total: number = fp.Optics.foldMapOf(
+    fp.Monoid.of("number"),
+    nameLens,
+    (s) => s.length,
+    p
+);
 
 // ── Core utilities ───────────────────────────────────────────────────
 const id1: number = fp.identity(42);

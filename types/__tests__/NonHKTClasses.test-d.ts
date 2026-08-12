@@ -9,11 +9,14 @@ import {
     Ord,
     Semigroup,
     Monoid,
+    Functor,
+    Applicative,
     Group,
     Semigroupoid,
     Category,
 } from "../TypeClasses";
 import type { FunctionTypeLambda } from "../TypeLambdas";
+import type { Maybe } from "../data/Maybe";
 // Trigger builtins registration.
 import "../data/builtins";
 
@@ -60,6 +63,28 @@ const add: number = mN.concat(zero, 5);
 
 const mA = Monoid.of("array");
 const empty: ReadonlyArray<unknown> = mA.empty();
+
+// Plus 에서 유도된 Monoid/Semigroup — 등록된 Plus 마다 plus(<alias>) 키가 생긴다.
+// 이 줄들이 있어야 builtins.d.ts 의 선언이 지워졌을 때 tsc 가 잡는다.
+const mPlusA = Monoid.of("plus(array)");
+type _4c = Expect<Equals<typeof mPlusA, Monoid<ReadonlyArray<unknown>>>>;
+const emptyPlusA: ReadonlyArray<unknown> = mPlusA.empty();
+
+// identity 3단 — 선언만 하고 고정 안 하면 조용히 되돌아간다(회차 1 리뷰 #4).
+const fId = Functor.of("identity");
+const aId = Applicative.of("identity");
+const idVal: { readonly value: number } = aId.of(42);
+
+// Applicative.Const — 키/인스턴스 양쪽 오버로드가 선언돼 있어야 한다(Maybe.Monoid 선례).
+const cArr = Applicative.Const("array");
+const cUser = Applicative.Const(Monoid.of("number"));
+
+const mPlusM = Monoid.of("plus(maybe)");
+type _4d = Expect<Equals<typeof mPlusM, Monoid<Maybe<unknown>>>>;
+const emptyPlusM: Maybe<unknown> = mPlusM.empty();
+
+const sgPlusM = Semigroup.of("plus(maybe)");
+type _4e = Expect<Equals<typeof sgPlusM, Semigroup<Maybe<unknown>>>>;
 
 // ── 5. Group (Monoid + invert) ───────────────────────────────────────
 const gN = Group.of("number");

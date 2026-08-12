@@ -51,7 +51,24 @@ Alt ──> Plus ──> Alternative
          zero (항등원)
 ```
 
+## Monoid 를 공짜로 얻는다
+
+`Plus` 는 `alt`(결합 연산)와 `zero`(항등원)를 **둘 다** 가집니다 — 그것이 Monoid 의 정의입니다.
+그래서 **등록된 `Plus` 마다 짝 `Semigroup`/`Monoid` 가 `plus(<alias>)` 키로 자동으로 생깁니다.**
+
+```javascript
+const { Plus, Monoid, Maybe } = FunFP;
+
+console.log(Plus.of('maybe').alt(Maybe.Just(1), Maybe.Just(2)).value);      // 1
+console.log(Monoid.of('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1 — 같다
+console.log(Monoid.of('plus(maybe)').empty().isNothing());                 // true
+```
+
+`Plus` 를 새로 등록하면 짝도 따라옵니다 — 손으로 만들 필요가 없습니다.
+자세한 내용과 `maybe(first)` 와의 차이는 [Monoid](./Monoid.md) 문서를 보십시오.
+
 ## 참고
 
 - [Alt](./Alt.md) - 부모 타입 클래스
 - [Alternative](./Alternative.md) - Applicative + Plus
+- [Monoid](./Monoid.md) - `plus(<타입>)` 키로 유도된다

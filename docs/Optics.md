@@ -17,7 +17,8 @@ Optic은 큰 구조 안의 부분을 **읽고 쓰는 방법을 값으로 만든 
 ## 빠르게 보기
 
 ```javascript
-const { Lens, Prism, traversed, composeOptic, preview, toListOf, over, Maybe, Either } = FunFP;
+const { Maybe, Either } = FunFP;
+const { Lens, Prism, traversed, compose, preview, toList, over } = FunFP.Optics;
 
 // Prism — 있을 수도, 없을 수도
 const rightP = Prism(
@@ -36,15 +37,15 @@ console.log(over(each, x => x * 10, [1, 2, 3]));   // [10, 20, 30]
 // 합성 — 셋을 자유롭게 섞는다
 const usersL = Lens(o => o.users, (v, o) => ({ ...o, users: v }));
 const nameL = Lens(u => u.name, (v, u) => ({ ...u, name: v }));
-const allNames = composeOptic(usersL, each, nameL);
+const allNames = compose(usersL, each, nameL);
 
 const db = { users: [{ name: 'a' }, { name: 'b' }] };
-console.log(toListOf(allNames, db));                          // ['a', 'b']
+console.log(toList(allNames, db));                          // ['a', 'b']
 console.log(JSON.stringify(over(allNames, s => s.toUpperCase(), db)));
 // {"users":[{"name":"A"},{"name":"B"}]}
 ```
 
-종류가 달라도 `composeOptic`으로 섞어 씁니다. 나머지는 이 네 가지의 변주입니다.
+종류가 달라도 `compose`으로 섞어 씁니다. 나머지는 이 네 가지의 변주입니다.
 
 ## 왜 여러 종류가 필요한가?
 
@@ -72,7 +73,7 @@ const updated = {
 `Iso(to, from)` — 두 표현이 정보 손실 없이 오갈 때 씁니다.
 
 ```javascript
-const { Iso, view, review, over } = FunFP;
+const { Iso, view, review, over } = FunFP.Optics;
 
 const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
 
@@ -84,7 +85,7 @@ console.log(over(fahrenheit, f => f + 18, 100)); // 110 — 화씨에서 더하�
 **법칙 두 개**가 무손실을 보장합니다. 깨지면 Iso가 아닙니다.
 
 ```javascript
-const { Iso, view, review } = FunFP;
+const { Iso, view, review } = FunFP.Optics;
 
 const chars = Iso(s => s.split(''), a => a.join(''));
 
@@ -95,13 +96,13 @@ console.log(view(chars, review(chars, ['x', 'y'])).join('') === 'xy'); // true
 `Iso`는 **Lens이자 Prism**이므로 여섯 연산이 전부 동작합니다.
 
 ```javascript
-const { Iso, view, preview, toListOf, over, set, review } = FunFP;
+const { Iso, view, preview, toList, over, set, review } = FunFP.Optics;
 
 const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
 
 console.log(view(fahrenheit, 0));              // 32
 console.log(preview(fahrenheit, 0).value);     // 32   — 항상 Just
-console.log(toListOf(fahrenheit, 0));          // [32] — 항상 1개
+console.log(toList(fahrenheit, 0));          // [32] — 항상 1개
 console.log(set(fahrenheit, 212, 0));          // 100
 console.log(review(fahrenheit, 32));           // 0
 ```
@@ -109,7 +110,7 @@ console.log(review(fahrenheit, 32));           // 0
 **뒤집은 Iso는 따로 만들 필요가 없습니다** — `view`와 `review`로 유도됩니다.
 
 ```javascript
-const { Iso, view, review } = FunFP;
+const { Iso, view, review } = FunFP.Optics;
 
 const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
 const celsius = Iso(f => review(fahrenheit, f), c => view(fahrenheit, c));
@@ -123,7 +124,7 @@ console.log(review(celsius, 100));  // 212
 자세한 내용은 [Lens](./Lens.md) 문서를 보십시오.
 
 ```javascript
-const { Lens, view } = FunFP;
+const { Lens, view } = FunFP.Optics;
 
 const nameLens = Lens(
     p => p.name,
@@ -138,7 +139,8 @@ console.log(view(nameLens, { name: 'Anthony', age: 30 }));  // 'Anthony'
 `Prism(match, build)` — `match`는 **`Maybe`를 돌려줘야** 합니다.
 
 ```javascript
-const { Prism, preview, review, Maybe } = FunFP;
+const { Maybe } = FunFP;
+const { Prism, preview, review } = FunFP.Optics;
 
 // 짝수만 통과시키는 Prism
 const evenP = Prism(
@@ -154,7 +156,7 @@ console.log(review(evenP, 8));                // 8 — 거꾸로 만들기
 `match`가 `Maybe`가 아니면 즉시 `TypeError`입니다.
 
 ```javascript
-const { Prism, preview } = FunFP;
+const { Prism, preview } = FunFP.Optics;
 
 const bad = Prism(() => 42, v => v);
 try {
@@ -170,49 +172,120 @@ try {
 끌어옵니다. 새로 정의할 필요가 없습니다.
 
 ```javascript
-const { traversed, toListOf, over, Maybe } = FunFP;
+const { Maybe } = FunFP;
+const { traversed, toList, over } = FunFP.Optics;
 
 const each = traversed('array');
-console.log(toListOf(each, [1, 2, 3]));       // [1, 2, 3]
+console.log(toList(each, [1, 2, 3]));       // [1, 2, 3]
 
 const inMaybe = traversed('maybe');
-console.log(toListOf(inMaybe, Maybe.Just(5)));    // [5]
-console.log(toListOf(inMaybe, Maybe.Nothing()));  // [] — 대상 없음
+console.log(toList(inMaybe, Maybe.Just(5)));    // [5]
+console.log(toList(inMaybe, Maybe.Nothing()));  // [] — 대상 없음
 ```
 
 ## 주요 연산
 
 읽기 셋과 쓰기 둘입니다. **`view`만 Lens 전용**이고 나머지는 세 optic 모두 동작합니다.
 
-| 연산 | 결과 | 대상 0개일 때 |
-| --- | --- | --- |
-| `view(lens, s)` | `a` | Lens·Iso 전용 — 쓰지 마십시오 |
-| `preview(optic, s)` | `Maybe a` | `Nothing` |
-| `toListOf(optic, s)` | `[a]` | `[]` |
-| `over(optic, f, s)` | `s` | 원본 그대로 |
-| `set(optic, b, s)` | `s` | 원본 그대로 |
-| `review(prism, a)` | `s` | Prism·Iso 전용 |
+| 연산 | 결과 | 대상 0개일 때 | 대상 2개 이상일 때 |
+| --- | --- | --- | --- |
+| `view(lens, s)` | `a` | **`TypeError`** | **`TypeError`** |
+| `preview(optic, s)` | `Maybe a` | `Nothing` | 첫 대상 |
+| `toList(optic, s)` | `[a]` | `[]` | 전부 |
+| `foldMapOf(monoid, optic, f, s)` | `r` | `monoid.empty()` | 전부 모음 |
+| `over(optic, f, s)` | `s` | 원본 그대로 | 전부 변환 |
+| `set(optic, b, s)` | `s` | 원본 그대로 | 전부 교체 |
+| `review(prism, a)` | `s` | Prism·Iso 전용 | 해당 없음 |
+
+**`view`는 대상이 정확히 1개일 때만 동작합니다** — 대상 수를 세어 그 외에는 던집니다.
+
+```javascript
+const { view, traversed } = FunFP.Optics;
+
+try {
+    view(traversed('array'), [1, 2, 3]);
+} catch (e) {
+    console.log(e.message);
+    // view: expected exactly one target, got 3 — use preview or toList
+}
+```
+
+세는 것은 **대상 수**이지 값이 아닙니다. 대상이 1개이고 그 값이 `undefined` 면 그대로
+돌려줍니다. 대상 수가 1이 아닐 수 있는 자리에는 `preview` 나 `toList` 를 쓰십시오.
 
 ### preview - 첫 대상
 
 ```javascript
-const { traversed, preview } = FunFP;
+const { traversed, preview } = FunFP.Optics;
 
 const each = traversed('array');
 console.log(preview(each, [7, 8, 9]).value);   // 7 — 첫 번째만
 console.log(preview(each, []).isNothing());    // true
 ```
 
-### toListOf - 모든 대상
+### toList - 모든 대상
 
 ```javascript
-const { Lens, traversed, composeOptic, toListOf } = FunFP;
+const { Lens, traversed, compose, toList } = FunFP.Optics;
 
 const each = traversed('array');
 const scoreL = Lens(x => x.score, (v, x) => ({ ...x, score: v }));
 
-const scores = composeOptic(each, scoreL);
-console.log(toListOf(scores, [{ score: 10 }, { score: 20 }]));  // [10, 20]
+const scores = compose(each, scoreL);
+console.log(toList(scores, [{ score: 10 }, { score: 20 }]));  // [10, 20]
+```
+
+### foldMapOf - Monoid 를 골라 모으기
+
+`preview` 와 `toList` 는 모으는 방식이 정해져 있습니다 — 각각 "첫 대상" 과 "배열". 다르게
+모으려면 `foldMapOf(monoid, optic, f, s)` 로 **Monoid 를 직접 고릅니다.**
+
+```javascript
+const { Monoid } = FunFP;
+const { traversed, foldMapOf } = FunFP.Optics;
+
+const each = traversed('array');
+
+console.log(foldMapOf(Monoid.of('number'), each, x => x, [1, 2, 3]));            // 6  합계
+console.log(foldMapOf(Monoid.of('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24 곱
+console.log(foldMapOf(Monoid.of('NumberMaxMonoid'), each, x => x, [2, 9, 4]));   // 9  최대
+console.log(foldMapOf(Monoid.of('string'), each, String, [1, 2, 3]));            // '123'
+```
+
+**대상이 없으면 Monoid 의 항등원**입니다.
+
+```javascript
+const { Monoid } = FunFP;
+const { traversed, foldMapOf } = FunFP.Optics;
+
+console.log(foldMapOf(Monoid.of('number'), traversed('array'), x => x, []));  // 0
+```
+
+`toList` 와 `preview` 는 이것의 특수 경우입니다 — Monoid 가 각각 `array` 와 `plus(maybe)` 로
+고정된 것입니다.
+
+```javascript
+const { Monoid, Maybe } = FunFP;
+const { traversed, foldMapOf, toList } = FunFP.Optics;
+
+const each = traversed('array');
+console.log(JSON.stringify(foldMapOf(Monoid.of('array'), each, a => [a], [1, 2, 3])));
+console.log(JSON.stringify(toList(each, [1, 2, 3])));   // 위와 같다
+```
+
+**등록하지 않은 Monoid 도 받습니다.** 다만 `{ empty, concat }` 리터럴이 아니라 `Monoid` 여야
+합니다 — 기존 [`foldMap`](./Foldable.md) 과 같은 규칙입니다.
+
+```javascript
+const { Monoid, Semigroup } = FunFP;
+const { traversed, foldMapOf } = FunFP.Optics;
+
+const commaJoin = new Monoid(
+    new Semigroup((a, b) => (a && b ? a + ',' + b : a + b), 'string'),
+    () => '',
+    'string'
+);
+console.log(foldMapOf(commaJoin, traversed('array'), String, [1, 2, 3]));  // '1,2,3'
 ```
 
 ### over / set - 모든 대상 변경
@@ -220,7 +293,8 @@ console.log(toListOf(scores, [{ score: 10 }, { score: 20 }]));  // [10, 20]
 **대상이 없으면 원본을 그대로 돌려줍니다.** 이것이 Prism·Traversal의 핵심 성질입니다.
 
 ```javascript
-const { Prism, traversed, over, set, Maybe } = FunFP;
+const { Maybe } = FunFP;
+const { Prism, traversed, over, set } = FunFP.Optics;
 
 const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
 
@@ -235,7 +309,8 @@ console.log(over(each, x => x + 1, []));     // [] — 빈 배열도 안전
 ### review - Prism으로 거꾸로 만들기
 
 ```javascript
-const { Prism, review, preview, Maybe, Either } = FunFP;
+const { Maybe, Either } = FunFP;
+const { Prism, review, preview } = FunFP.Optics;
 
 const rightP = Prism(
     e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()),
@@ -252,7 +327,7 @@ console.log(preview(rightP, built).value);            // 42 — 법칙: preview 
 Lens나 Traversal에 쓰면 그 자리에서 걸립니다.
 
 ```javascript
-const { Lens, traversed, review } = FunFP;
+const { Lens, traversed, review } = FunFP.Optics;
 
 const nameLens = Lens(p => p.name, (v, p) => ({ ...p, name: v }));
 try {
@@ -271,11 +346,12 @@ try {
 **합성된 Prism에서도 동작합니다.** optic 합성이 곧 함수 합성이라 `Tagged`가 그대로 흘러갑니다.
 
 ```javascript
-const { Prism, composeOptic, preview, review, Maybe, Either } = FunFP;
+const { Maybe, Either } = FunFP;
+const { Prism, compose, preview, review } = FunFP.Optics;
 
 const rightP = Prism(e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()), v => Either.Right(v));
 const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
-const rightEven = composeOptic(rightP, evenP);
+const rightEven = compose(rightP, evenP);
 
 console.log(JSON.stringify(review(rightEven, 4)));   // Right(4)
 console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — 법칙 유지
@@ -283,34 +359,35 @@ console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — 법칙 �
 
 ## 합성
 
-`composeOptic(...)`은 **바깥에서 안쪽으로** 받습니다. 종류가 달라도 섞을 수 있고, 결과의
+`compose(...)`은 **바깥에서 안쪽으로** 받습니다. 종류가 달라도 섞을 수 있고, 결과의
 대상 수는 **곱**입니다 — Lens(1개) × Traversal(n개) = n개.
 
 ```javascript
-const { Lens, Prism, traversed, composeOptic, toListOf, over, Maybe } = FunFP;
+const { Maybe } = FunFP;
+const { Lens, Prism, traversed, compose, toList, over } = FunFP.Optics;
 
 const each = traversed('array');
 const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
 
 // Traversal + Prism — 통과한 것만 바꾼다
-const evens = composeOptic(each, evenP);
-console.log(toListOf(evens, [1, 2, 3, 4]));              // [2, 4]
+const evens = compose(each, evenP);
+console.log(toList(evens, [1, 2, 3, 4]));              // [2, 4]
 console.log(over(evens, x => x * 100, [1, 2, 3, 4]));    // [1, 200, 3, 400]
 ```
 
 Lens끼리도 같은 함수로 합성합니다 — 종류별로 다른 이름이 필요 없습니다.
 
 ```javascript
-const { Lens, composeOptic, view } = FunFP;
+const { Lens, compose, view } = FunFP.Optics;
 
 const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
 const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
 
-console.log(view(composeOptic(addressLens, cityLens), { address: { city: 'Seoul' } }));
+console.log(view(compose(addressLens, cityLens), { address: { city: 'Seoul' } }));
 // 'Seoul'
 ```
 
-**일반 `compose`로는 optic을 합성할 수 없습니다.** `P`가 첫 인자이므로 `composeOptic`이
+**일반 `compose`로는 optic을 합성할 수 없습니다.** `P`가 첫 인자이므로 `compose`이
 `P`를 모든 optic에 먼저 주입한 뒤 그 층에서 함수 합성을 합니다.
 
 ## 법칙
@@ -318,7 +395,8 @@ console.log(view(composeOptic(addressLens, cityLens), { address: { city: 'Seoul'
 Prism이 올바른지 확인하려면 두 가지를 봅니다.
 
 ```javascript
-const { Prism, preview, review, Maybe, Either } = FunFP;
+const { Maybe, Either } = FunFP;
+const { Prism, preview, review } = FunFP.Optics;
 
 const rightP = Prism(
     e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()),
@@ -337,7 +415,7 @@ console.log(review(rightP, focus).value === s.value);            // true
 Traversal은 항등 함수로 훑으면 원본이 나와야 합니다.
 
 ```javascript
-const { traversed, over } = FunFP;
+const { traversed, over } = FunFP.Optics;
 
 const each = traversed('array');
 const s = [1, 2, 3];
@@ -349,13 +427,13 @@ console.log(JSON.stringify(over(each, x => x, s)) === JSON.stringify(s));  // tr
 ### 1. 중첩 컬렉션의 일괄 갱신
 
 ```javascript
-const { Lens, traversed, composeOptic, over, toListOf } = FunFP;
+const { Lens, traversed, compose, over, toList } = FunFP.Optics;
 
 const each = traversed('array');
 const itemsL = Lens(o => o.items, (v, o) => ({ ...o, items: v }));
 const priceL = Lens(i => i.price, (v, i) => ({ ...i, price: v }));
 
-const allPrices = composeOptic(itemsL, each, priceL);
+const allPrices = compose(itemsL, each, priceL);
 
 const cart = {
     items: [
@@ -364,7 +442,7 @@ const cart = {
     ]
 };
 
-console.log(toListOf(allPrices, cart));                    // [15000, 2000]
+console.log(toList(allPrices, cart));                    // [15000, 2000]
 const taxed = over(allPrices, p => Math.round(p * 1.1), cart);
 console.log(taxed.items.map(i => i.price));                // [16500, 2200]
 console.log(cart.items.map(i => i.price));                 // [15000, 2000] — 원본 불변
@@ -375,18 +453,19 @@ console.log(cart.items.map(i => i.price));                 // [15000, 2000] — 
 `Either` 배열에서 `Right`만 변환합니다. 실패는 손대지 않습니다.
 
 ```javascript
-const { Prism, traversed, composeOptic, toListOf, over, Maybe, Either } = FunFP;
+const { Maybe, Either } = FunFP;
+const { Prism, traversed, compose, toList, over } = FunFP.Optics;
 
 const each = traversed('array');
 const rightP = Prism(
     e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()),
     v => Either.Right(v)
 );
-const successes = composeOptic(each, rightP);
+const successes = compose(each, rightP);
 
 const results = [Either.Right(1), Either.Left('실패'), Either.Right(3)];
 
-console.log(toListOf(successes, results));          // [1, 3] — 성공만
+console.log(toList(successes, results));          // [1, 3] — 성공만
 const doubled = over(successes, x => x * 2, results);
 console.log(doubled.map(e => e.value));             // [2, '실패', 6] — 실패는 그대로
 ```
@@ -396,7 +475,8 @@ console.log(doubled.map(e => e.value));             // [2, '실패', 6] — 실�
 Prism으로 "조건에 맞는 것만"을 값으로 만들어 재사용합니다.
 
 ```javascript
-const { Lens, Prism, traversed, composeOptic, over, toListOf, Maybe } = FunFP;
+const { Maybe } = FunFP;
+const { Lens, Prism, traversed, compose, over, toList } = FunFP.Optics;
 
 const each = traversed('array');
 const activeOnly = Prism(
@@ -405,7 +485,7 @@ const activeOnly = Prism(
 );
 const nameL = Lens(u => u.name, (v, u) => ({ ...u, name: v }));
 
-const activeNames = composeOptic(each, activeOnly, nameL);
+const activeNames = compose(each, activeOnly, nameL);
 
 const users = [
     { name: 'alice', active: true },
@@ -413,7 +493,7 @@ const users = [
     { name: 'carol', active: true }
 ];
 
-console.log(toListOf(activeNames, users));                       // ['alice', 'carol']
+console.log(toList(activeNames, users));                       // ['alice', 'carol']
 const shouted = over(activeNames, s => s.toUpperCase(), users);
 console.log(shouted.map(u => u.name));                           // ['ALICE', 'bob', 'CAROL']
 ```
@@ -423,7 +503,8 @@ console.log(shouted.map(u => u.name));                           // ['ALICE', 'b
 `preview`는 경로 어디가 비어도 `Nothing`을 돌려줍니다 — 방어 코드가 필요 없습니다.
 
 ```javascript
-const { Lens, Prism, composeOptic, preview, Maybe } = FunFP;
+const { Maybe } = FunFP;
+const { Lens, Prism, compose, preview } = FunFP.Optics;
 
 const profileL = Lens(u => u.profile, (v, u) => ({ ...u, profile: v }));
 const definedP = Prism(
@@ -432,7 +513,7 @@ const definedP = Prism(
 );
 const bioL = Lens(p => p.bio, (v, p) => ({ ...p, bio: v }));
 
-const bio = composeOptic(profileL, definedP, bioL);
+const bio = compose(profileL, definedP, bioL);
 
 console.log(preview(bio, { profile: { bio: '안녕' } }).value);      // '안녕'
 console.log(preview(bio, { profile: undefined }).isNothing());      // true
@@ -455,7 +536,7 @@ Optic s a = P => P a a -> P s s
 | 주입하는 `P` | 얻는 연산 |
 | --- | --- |
 | 함수 (`a -> b`) | `over`, `set` |
-| `Forget<r>` (`a -> r`) | `view`, `preview`, `toListOf` |
+| `Forget<r>` (`a -> r`) | `view`, `preview`, `toList` |
 | `Tagged` (`b`만 담는다 — 입력을 무시) | `review` |
 
 네 optic은 `P`의 어떤 메서드를 쓰느냐로 갈립니다.

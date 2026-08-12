@@ -11,6 +11,8 @@ import type {
     ArrayTypeLambda,
     FunctionTypeLambda,
 } from "../TypeLambdas";
+import type { Maybe } from "./Maybe";
+import type { IdentityTypeLambda } from "../TypeLambdas";
 
 // ─── Array ───────────────────────────────────────────────────────────
 // Runtime: Semigroup (str-style concat), Monoid, Filterable, Functor,
@@ -20,6 +22,7 @@ declare module "../TypeClasses" {
     interface FunctorInstances      { readonly array: ArrayTypeLambda }
     interface ApplyInstances        { readonly array: ArrayTypeLambda }
     interface ApplicativeInstances  { readonly array: ArrayTypeLambda }
+    // Identity / Const 는 Array 절이 아니지만 같은 declare module 블록에 둔다 — 파일 하단 참조.
     interface ChainInstances        { readonly array: ArrayTypeLambda }
     interface ChainRecInstances     { readonly array: ArrayTypeLambda }
     interface MonadInstances        { readonly array: ArrayTypeLambda }
@@ -54,8 +57,12 @@ declare module "../TypeClasses" {
 //   array   → ArraySemigroup (concat)
 //   function→ FunctionSemigroup (compose2)
 //   first   → FirstSemigroup, last → LastSemigroup
+//     Both are type-agnostic (registered with type 'any'), hence `unknown`
+//     below. Arguments must still match each other's type.
 // Monoid default aliases mirror Semigroup for the combinations that have
-// an identity element.
+// an identity element. first/last have none, so they are absent from
+// MonoidInstances — wrap them in Maybe when a Monoid is needed
+// (Maybe.Monoid('first'); Nothing supplies the identity).
 // Group:
 //   number  → NumberSumGroup (additive inverse)
 declare module "../TypeClasses" {
@@ -76,6 +83,8 @@ declare module "../TypeClasses" {
         readonly function: (x: never) => unknown;
         readonly first: unknown;
         readonly last: unknown;
+        readonly "plus(array)": ReadonlyArray<unknown>;
+        readonly "plus(maybe)": Maybe<unknown>;
     }
     interface MonoidInstances {
         readonly boolean: boolean;
@@ -83,8 +92,19 @@ declare module "../TypeClasses" {
         readonly string: string;
         readonly array: ReadonlyArray<unknown>;
         readonly function: (x: never) => unknown;
+        readonly "plus(array)": ReadonlyArray<unknown>;
+        readonly "plus(maybe)": Maybe<unknown>;
     }
     interface GroupInstances {
         readonly number: number;
     }
+}
+
+// ─── Identity / Const — traverse 에 넘기는 Applicative ────────────────
+// Identity 는 값을 그대로 나르고, Const<r> 은 값을 버리고 monoid 로 r 만 모은다.
+// optics 의 over(Identity) / preview·toList·foldMapOf(Const) 가 쓴다.
+declare module "../TypeClasses" {
+    interface FunctorInstances      { readonly identity: IdentityTypeLambda }
+    interface ApplyInstances        { readonly identity: IdentityTypeLambda }
+    interface ApplicativeInstances  { readonly identity: IdentityTypeLambda }
 }

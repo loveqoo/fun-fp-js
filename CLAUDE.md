@@ -113,7 +113,7 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 6. **핵심 데이터 타입** (1100-1800줄) - Maybe, Either, Task, Free (StateF/EitherF/ReaderF/WriterF Functor 포함)
 7. **순회 & 유틸리티** (1800-1870줄) - `sequence()`, `lift()`, `pipeK()`
 8. **Free Static Land** (1870-2000줄) - FreeFunctor, FreeApply, FreeChain, FreeMonad
-9. **Optics** (2255줄~) - Profunctor 딕셔너리 3종(함수/Forget/Tagged), Lens/Prism/Traversal, `composeOptic`
+9. **Optics** (2340줄~) - IIFE 로 감싼 `Optics` 모듈 객체 하나. Profunctor 딕셔너리 3종(함수/Forget/Tagged), Lens/Prism/Traversal, `compose`, `foldMapOf`
 10. **Monad Transformer** (~2290-2620줄) - 공통 인프라 + StateT, EitherT, ReaderT, WriterT
 11. **Actor** - 메시지 큐 + 순차 처리
 12. **Static Methods & 설정** - Static Land 메서드 wiring, `setStrictMode()`
@@ -127,6 +127,45 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 - 타입 클래스는 핵심 동작만 표현하도록 유지
 - 검증 로직은 한 곳에서 일관되게 관리
 
+#### `type: 'any'` — 값 타입 검사를 끄는 탈출구
+
+`types.check(val, 'any')` 는 **항상 `true`** 입니다(`null`/`undefined` 포함). 인스턴스가
+`'any'` 로 등록되면 그 인스턴스의 값 타입 검사가 사라집니다.
+
+**이항 연산(`Setoid`/`Ord`/`Semigroup`)에만 쓰십시오.** 그 셋은 `types.check` 와 별개로
+`types.equals(a, b)` 로 **두 인자가 서로 같은 타입인지**를 검사하므로, `'any'` 를 써도
+`first.concat(1, 'a')` 는 여전히 거부됩니다. 끄는 것은 "무슨 타입이어야 하는가" 하나입니다.
+
+**단항 검사에는 쓰지 마십시오.** `Functor.map`, `Comonad.extract`, `Traversable.traverse`,
+`Chain.chain` 등은 `types.check` 하나로 컨테이너를 확인하므로 `'any'` 를 주면 **검사가
+통째로 사라집니다.** `types.check` 를 쓰는 지점은 13곳입니다 — Setoid·Ord·Semigroup·Group·
+Filterable·Functor·Bifunctor·Chain·Foldable·Extend·Comonad·Traversable·`sequence`.
+
+현재 `'any'` 인 인스턴스는 `first`/`last` 둘뿐입니다. `(a,b) => a` 와 `(a,b) => b` 라
+값의 타입을 볼 이유가 없습니다. 레지스트리 키 네임스페이스와는 무관합니다 — `register()` 가
+`instance.type` 을 쓰지 않으므로 `Semigroup.of('any')` 같은 조회는 생기지 않습니다.
+
+**`first`/`last` 는 Monoid 가 아닙니다** — 항등원이 없습니다(commit `e3d2b82` 에서
+`FirstMonoid`/`LastMonoid` 제거). Monoid 가 필요하면 `Maybe` 로 감싸는데, **레지스트리에
+두 가지가 있고 골라야 합니다.**
+
+#### `maybe(first)` 와 `plus(maybe)` — 안을 여느냐
+
+| 키 | 얻는 법 | `Just(1), Just('a')` |
+| --- | --- | --- |
+| `maybe(first)` | `Maybe.Monoid('first')` | **`TypeError`** — 안쪽 값을 `first.concat` 으로 합치려 든다 |
+| `plus(maybe)` | `Monoid.of('plus(maybe)')` | `Just(1)` — 안을 열지 않고 봉투째 고른다 |
+
+둘 다 항등원은 `Nothing` 이고, **payload 타입이 같으면 결과도 같습니다.** 갈리는 것은
+타입이 섞였을 때뿐입니다 — 앞엣것은 던지고 뒤엣것은 고릅니다.
+
+**"합치기" 면 `maybe(first)`, "고르기" 면 `plus(maybe)`.** optics 의 `preview` 는 첫 대상을
+**고르는** 것이므로 후자를 씁니다. 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 합니다.
+
+`plus(<타입>)` 은 **`Plus` 에서 유도한 Monoid** 의 키 관례입니다 — `Plus` 가 `alt`(결합)와
+`zero`(항등원)를 둘 다 가지므로 구조적으로 Monoid 입니다. 현재 `plus(maybe)`/`plus(array)`
+둘이 있습니다.
+
 ### 핵심 데이터 타입
 
 - **Maybe** - nullable 값을 위한 `Just`/`Nothing`. Functor, Monad, Foldable, Traversable, Filterable 구현.
@@ -137,16 +176,16 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 ### Optics
 
 **Profunctor 인코딩**: `Optic s a = P => P a a -> P s s`. P가 첫 인자이므로 일반 `compose`로는
-합성되지 않고 `composeOptic`을 씁니다.
+합성되지 않고 `Optics.compose`를 씁니다.
 
 **어떤 P를 주입하느냐가 연산을 정합니다.** 하나의 optic 정의에서 읽기·쓰기·역생성이 전부
 나오는 이유입니다.
 
 | 주입하는 P | 얻는 연산 | 필요한 메서드 |
 | --- | --- | --- |
-| 함수 (`_PFn`) | `over`, `set` | `dimap`, `first`, `left`, `wander` |
-| `Forget<r>` (`_PForget(monoid)`) | `view`, `preview`, `toListOf` | 같음 (monoid로 누적) |
-| `Tagged` (`_PTagged`) | `review` | `dimap`, `left` **만** |
+| 함수 (`functionProfunctor`) | `over`, `set` | `dimap`, `first`, `left`, `wander` |
+| `Forget<r>` (`forgetProfunctor(monoid)`) | `view`, `preview`, `toList`, `foldMapOf` | 같음 (monoid로 누적) |
+| `Tagged` (`taggedProfunctor`) | `review` | `dimap`, `left` **만** |
 
 | optic | 대상 수 | 생성 | P 요구 |
 | --- | --- | --- | --- |
@@ -163,10 +202,33 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 
 `wander`는 기존 `Traversable.of(key).traverse`에 위임하고, `dimap`은 기존
 `Profunctor.of('function').promap`에 위임합니다(`promap`은 시그니처가 `dimap`과 같습니다).
-내부 Applicative(`_Identity`, `_Const(monoid)`)는 `wander` 호출에만 쓰입니다.
+`wander` 에 넘기는 Applicative 둘은 **더 이상 내부가 아니라 레지스트리 시민**입니다 —
+`Applicative.of('identity')` 와 `Applicative.Const(monoid)`. 심볼을 손으로 찍어 검증을
+건너뛰던 것을 생성자 체인으로 바꾸면서 등록했습니다.
 
-단 **`_PTagged`는 위임하지 않습니다** — `Tagged a b = b`라 profunctor 값이 함수가 아닌데,
+단 **`taggedProfunctor`는 위임하지 않습니다** — `Tagged a b = b`라 profunctor 값이 함수가 아닌데,
 `Profunctor.promap`의 strict 검사가 세 인자 모두 함수일 것을 요구합니다.
+
+#### 폐기된 판단 — 왜 이걸 읽으면 안 되는가
+
+아래 절은 **틀린 결정의 기록**입니다. Strong/Choice/Wander를 타입 클래스로 올리지 않기로
+했던 근거인데, **결론이 뒤집혔습니다.** 남겨두는 이유는 같은 함정을 다시 밟지 않기 위해서입니다.
+
+무엇이 틀렸나: 근거로 든 "JS 선례 만장일치 내부화"(`optika`, `monocle-ts`)는
+**그 라이브러리들에 타입 클래스 레지스트리가 없기 때문**이었습니다. 넣을 곳이 없어서
+감춘 것이지 감추는 게 옳아서가 아닙니다. 이 라이브러리는 `Functor.of('maybe')`로 돌아가는
+Static Land 라이브러리라 전제가 다릅니다. **전제가 다른 라이브러리의 결론을 가져왔습니다.**
+
+그리고 YAGNI를 앞세운 대가는 "안 만듦"이 아니라 **"만들어놓고 아무도 못 쓰게 가둠"**이었습니다
+— 사설 Applicative 2개, 사설 Monoid 3개(하나는 `Monoid.of('array')`와 완전 중복),
+최상위 bare export 11개. 아끼려던 비용은 처음부터 없었고 구조만 잃었습니다.
+
+**청구서는 전부 갚았습니다** (2026-08-12): 사설 Monoid 3개는 레지스트리로,
+사설 Applicative 2개는 `Applicative.of('identity')`/`Applicative.Const(monoid)` 로 등록,
+bare export 11개는 `Optics` 모듈 객체로. 남은 것은 Strong/Choice/Wander 뿐입니다.
+
+<details>
+<summary>폐기된 근거 (열어보지 않아도 됩니다)</summary>
 
 #### 왜 Strong/Choice/Wander를 타입 클래스로 올리지 않았는가
 
@@ -188,7 +250,38 @@ unhandled rejection 이 프로세스를 죽이지 않아 테스트 게이트에 
 그때는 `Strong`/`Choice`/`Wander`를 타입 클래스로 추가하고 Function/Forget/Tagged를 인스턴스로
 등록하면 됩니다. `Tagged`의 strict 검사 문제도 그때 함께 풀어야 합니다.
 
-읽기: `view`(Lens 전용) / `preview`(첫 대상, Maybe) / `toListOf`(전부).
+</details>
+
+**optics 는 `Optics` 모듈 객체 하나로 나옵니다** — `set`·`over`·`view` 는 최상위에 두면
+안 되는 흔한 이름이라 전부 모듈 안에 있습니다.
+
+```javascript
+const { Optics, Monoid } = FunFP;
+
+const nameLens = Optics.Lens(p => p.name, (v, p) => ({ ...p, name: v }));
+console.log(Optics.view(nameLens, { name: 'A' }));                              // 'A'
+console.log(Optics.foldMapOf(Monoid.of('number'), Optics.traversed('array'), x => x, [1, 2, 3]));  // 6
+```
+
+읽기: `view`(Lens·Iso 전용 — **대상이 정확히 1개가 아니면 `TypeError`**) /
+`preview`(첫 대상, Maybe) / `toList`(전부) / `foldMapOf(monoid, optic, f, s)`(Monoid 를 골라 모은다 —
+`toList`/`preview` 는 그 특수 경우).
+
+```javascript no-run 출력 예시
+view(traversed('array'), [1, 2, 3])
+// TypeError: view: expected exactly one target, got 3 — use preview or toList
+```
+
+**문서가 아니라 코드가 강제합니다.** 대상 수를 세어 1이 아니면 던집니다 — 0개일 때
+`undefined` 를 흘리지도, 2개 이상일 때 첫 값을 조용히 주지도 않습니다. 여럿이면 `preview`
+나 `toList` 를 쓰십시오. (참고: 참조 구현 Haskell `lens` 는 그 경우 전부 `mconcat` 합니다 —
+이 구현은 그 길을 택하지 않고 거부합니다.)
+
+다만 **대상 1개의 값이 `undefined` 면 그대로 돌려줍니다** — 세는 것은 대상 수이지 값이
+아닙니다.
+
+`preview` 는 `Monoid.of('plus(maybe)')` 로 모읍니다 — 대상을 **고르는** 것이라 컨테이너를
+열지 않아야 하기 때문입니다. 위 「`maybe(first)` 와 `plus(maybe)`」 절을 보십시오.
 쓰기: `over`, `set` — 세 optic 모두 동작하며, 대상이 없으면 원본을 그대로 돌려줍니다.
 `review(prism, a)` — **합성된 Prism에서도 동작합니다.** optic 합성이 곧 함수 합성이기 때문입니다.
 
@@ -208,6 +301,62 @@ Free Monad 기반으로 구현. 각 transformer는 XxxF Functor(명령) + XT 컨
 - `liftCont(f)` - `_mapChain` + `cont` 해석 공통 헬퍼
 - 각 transformer는 `Functor.of('statet(maybe)')` 같은 방식으로 타입 클래스 레지스트리의 1급 시민
 
+### 이름 규칙 — 새 export 를 만들기 전에 읽어라
+
+**이 절이 없어서 세 번 틀렸습니다** (`_PFn` 계열, `maybe-first`, `optics` 소문자).
+셋 다 사람이 잡았습니다. 아래는 추측이 아니라 **실측한 분포**입니다.
+
+| 형태 | 무엇 | 개수 | 예 |
+| --- | --- | --- | --- |
+| 대문자 + **`.types`** | **타입 클래스** — 레지스트리를 가진다 | 24 | `Functor`, `Monoid`, `Traversable` |
+| 대문자, `.types` 없음 | **데이터 타입·네임스페이스·팩토리** | 15 | `Maybe`, `Either`, `Task`, `StateT`, `Actor`, `Optics` |
+| 소문자 객체 | **순수 유틸 묶음** — IIFE 로 묶는다 | 2 | `transducer`, `extra` |
+| 소문자 함수 | 최상위 유틸 | 40 | `compose`, `curry`, `identity` |
+
+합계 81 = 전체 export 수. 확인하는 법 — **추측하지 말고 돌리십시오:**
+
+```javascript no-run 관례 조회
+const k = Object.keys(fp);
+k.filter(x => fp[x] && typeof fp[x].types === 'object');            // 타입 클래스 24
+k.filter(x => x[0] === x[0].toUpperCase() && !(fp[x]?.types));      // 타입·네임스페이스 15
+k.filter(x => x[0] !== x[0].toUpperCase() && typeof fp[x] === 'object');  // 유틸 묶음 2
+```
+
+**판별에 `.of` 를 쓰지 마십시오** — `.of` 는 이 라이브러리에서 **두 가지 뜻**입니다:
+
+| | 예 | 뜻 |
+| --- | --- | --- |
+| 타입 클래스의 `.of(key)` | `Monoid.of('array')` | **레지스트리 조회** |
+| Applicative 의 `.of(value)` | `Maybe.of(1)` → `Just(1)` | **값 리프트** |
+
+`.of` 로 거르면 `Maybe`·`Either`·`Task`·`Free`·`Validation`·`Reader`·`Writer`·`State`
+**8개가 타입 클래스로 잘못 잡힙니다**(`Maybe.types` 는 `undefined` 입니다).
+이 절의 앞 판(2026-08-12)이 정확히 그렇게 틀렸습니다 — 숫자는 맞고 의미가 틀렸습니다.
+
+**`Optics` 가 대문자인 이유**: 안의 `Lens`·`Prism`·`Iso` 생성자가 주인공이라
+`Actor`/`StateT` 와 같은 부류입니다. `transducer`/`extra` 는 생성자 없이 함수만 있습니다.
+
+#### 레지스트리 키
+
+| 형태 | 뜻 | 예 |
+| --- | --- | --- |
+| `<타입>` | 그 타입의 기본 인스턴스 | `array`, `maybe`, `number` |
+| `<클래스이름>` | 같은 타입의 다른 인스턴스 | `NumberProductMonoid`, `NumberMaxMonoid` |
+| `<바깥>(<안>)` | **매개변수화 — 조립된다** | `maybe(first)`, `statet(maybe)`, `plus(maybe)` |
+
+**괄호 형식은 중첩됩니다** — `maybe(maybe(first))` 가 실제로 만들어집니다.
+`maybe-first` 같은 하이픈은 조립이 안 되므로 쓰지 마십시오(commit 이력에 그 실수가 있습니다).
+
+`register()` 가 alias 를 **소문자화**하므로 `maybeFirst` 같은 카멜케이스는 키로 못 씁니다.
+
+#### 내부 이름
+
+`index.js` 는 모듈 레벨 `const` 에 **언더스코어 접두사를 쓰지 않습니다** —
+`emptyFunc`, `identity`, `compose2`, `raise`, `runCatch`. 약자보다 서술형이 관례입니다
+(`functionProfunctor`, `forgetProfunctor`, `deriveFromPlus`, `unwrapIfSameType`).
+
+**이름 하나에 주석이 5줄 이상 붙으면 이름이 틀린 것입니다.**
+
 ### 타입 클래스 계층 구조
 
 ```
@@ -218,7 +367,19 @@ Functor ──> Apply ──> Applicative ──> Monad
 Chain ──> ChainRec ──> Monad
 
 Foldable ──> Traversable <── Functor
+
+Profunctor                    (등록된 인스턴스: function 하나뿐)
 ```
+
+**`Strong`/`Choice`/`Wander` 는 레지스트리에 없습니다.** optics 가 쓰는 `first`/`left`/
+`wander` 는 `index.js` 의 **사설 딕셔너리**(`functionProfunctor`/`forgetProfunctor`/
+`taggedProfunctor`)에 들어 있어
+`Strong.of('function')` 같은 조회가 되지 않습니다. 어느 연산을 요구하느냐가 optic 의 종류를
+정한다는 설명은 [Optics](./docs/Optics.md) 에 있지만, 그것은 **타입 클래스 계층이 아니라
+사설 딕셔너리의 메서드 유무**입니다.
+
+올리는 것이 옳다는 판단은 위 「폐기된 판단」 절에서 이미 뒤집혔습니다 — 아직 **안 했을
+뿐입니다.** 여기에 계층도를 그려두면 다음 사람이 없는 API 를 부릅니다.
 
 ## 테스트 프레임워크
 

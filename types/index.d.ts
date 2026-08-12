@@ -99,19 +99,7 @@ import type { EitherT } from "./data/transformers/EitherT";
 import type { ReaderT } from "./data/transformers/ReaderT";
 import type { WriterT } from "./data/transformers/WriterT";
 import type { Actor } from "./Actor";
-import type {
-    Iso,
-    Lens,
-    Prism,
-    traversed,
-    composeOptic,
-    view,
-    preview,
-    toListOf,
-    review,
-    set,
-    over,
-} from "./Lens";
+import type { Optics } from "./Lens";
 import type {
     identity,
     compose,
@@ -202,17 +190,7 @@ declare const fp: {
 
     readonly Actor: typeof Actor;
 
-    readonly Iso: typeof Iso;
-    readonly Lens: typeof Lens;
-    readonly Prism: typeof Prism;
-    readonly traversed: typeof traversed;
-    readonly composeOptic: typeof composeOptic;
-    readonly view: typeof view;
-    readonly preview: typeof preview;
-    readonly toListOf: typeof toListOf;
-    readonly review: typeof review;
-    readonly set: typeof set;
-    readonly over: typeof over;
+    readonly Optics: typeof Optics;
 
     readonly identity: typeof identity;
     readonly compose: typeof compose;

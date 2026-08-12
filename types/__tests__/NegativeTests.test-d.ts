@@ -140,10 +140,10 @@ Monoid.of("task");
 // ═══════════════════════════════════════════════════════════════════
 
 // @ts-expect-error — Lens requires BOTH getter and setter
-fp.Lens<{ x: number }, number>((s) => s.x);
+fp.Optics.Lens<{ x: number }, number>((s) => s.x);
 
 // setter must return the parent S, not the child A
-fp.Lens<{ x: number }, number>(
+fp.Optics.Lens<{ x: number }, number>(
     (s) => s.x,
     // @ts-expect-error — returned value is number, not { x: number }
     (v, s) => v

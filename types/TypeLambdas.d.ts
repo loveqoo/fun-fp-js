@@ -26,6 +26,17 @@ export interface ArrayTypeLambda extends TypeLambda {
     readonly type: ReadonlyArray<this["Target"]>;
 }
 
+// Identity — traverse 에 넘겨 "그냥 매핑" 으로 쓰는 Applicative. 담는 모양은 { value }.
+export interface IdentityTypeLambda extends TypeLambda {
+    readonly type: { readonly value: this["Target"] };
+}
+
+// Const<r> — 담는 모양은 Identity 와 같은 { value } 지만 map 이 값을 버린다.
+// 목표 타입이 r 로 고정되므로 Target 을 쓰지 않는다.
+export interface ConstTypeLambda extends TypeLambda {
+    readonly type: { readonly value: unknown };
+}
+
 export interface FunctionTypeLambda extends TypeLambda {
     readonly type: (a: this["In"]) => this["Target"];
 }

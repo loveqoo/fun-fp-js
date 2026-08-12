@@ -106,6 +106,53 @@ const result = liftA3(fullName, Maybe.of('John'), Maybe.of('Michael'), Maybe.of(
 // Maybe.Just('John Michael Smith')
 ```
 
+## `identity` 와 `Const` — traverse 에 넘기는 두 Applicative
+
+`Traversable.traverse(applicative, f, ta)` 는 **어떤 Applicative 를 넘기느냐**에 따라 하는 일이
+달라집니다. 그 자리에 넣으려고 있는 것이 이 둘입니다.
+
+| 넘기는 것 | traverse 가 하는 일 |
+| --- | --- |
+| `Applicative.of('identity')` | 값을 그대로 나른다 → **그냥 매핑** |
+| `Applicative.Const(monoid)` | 값을 버리고 monoid 로 모은다 → **접기** |
+
+[Optics](./Optics.md) 의 `over` 가 앞엣것을, `foldMapOf`/`toList`/`preview` 가 뒤엣것을 씁니다.
+
+### identity — 값을 그대로 나른다
+
+```javascript
+const { Applicative, Functor } = FunFP;
+
+const Id = Applicative.of('identity');
+console.log(Id.of(1));                              // { value: 1 }
+console.log(Id.ap({ value: x => x * 3 }, Id.of(2))); // { value: 6 }
+
+// Functor / Apply 층도 같은 키로 등록돼 있습니다
+console.log(Functor.of('identity').map(x => x + 1, { value: 1 }));  // { value: 2 }
+```
+
+### Const — 값을 버리고 monoid 로 모은다
+
+`Applicative.Const(monoid)` 는 **매개변수화 팩토리**입니다. 키를 주면 `const(<키>)` 로
+레지스트리에 등록되고, 등록되지 않은 `Monoid` 인스턴스를 주면 인스턴스별로 캐시됩니다
+(`Maybe.Monoid(innerSG)` 와 같은 모양입니다).
+
+```javascript
+const { Applicative } = FunFP;
+
+const C = Applicative.Const('array');
+
+console.log(C.of());                                     // { value: [] }   — monoid 의 항등원
+console.log(C.ap({ value: [1] }, { value: [2] }));       // { value: [1, 2] } — monoid 로 합침
+console.log(C.map(x => x + 1, { value: [9] }));          // { value: [9] }  — 값을 버린다
+
+// 키로 만든 것은 레지스트리에서도 꺼낼 수 있습니다
+console.log(Applicative.of('const(array)') === C);       // true
+```
+
+`map` 이 값을 버리는 것이 핵심입니다 — 그래서 `traverse` 가 "구조를 훑으며 monoid 로 모으는"
+동작이 됩니다. `Optics.foldMapOf(monoid, optic, f, s)` 가 정확히 그것입니다.
+
 ## 실용적 예시
 
 ### 폼 검증

@@ -8,6 +8,7 @@
     "types": "./dist/fun-fp.d.ts",
     "scripts": {
         "test": "node tests/run.js",
+        "baseline": "node tests/baseline-report.js",
         "build": "node build.js && node build-types.js",
         "build:js": "node build.js",
         "build:types": "node build-types.js",

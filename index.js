@@ -71,6 +71,9 @@ const types = {
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
         if (typeof expected !== 'string') return false;
+        // 'any' 는 "이 인스턴스는 값 타입을 보지 않는다"는 뜻이다 (first/last 처럼).
+        // 인자끼리 같은 타입이어야 한다는 검사는 types.equals 가 따로 하므로 여전히 살아 있다.
+        if (expected === 'any') return true;
         const actual = types.of(val);
         return actual === expected || actual.toLowerCase() === expected.toLowerCase();
     },
@@ -168,25 +171,32 @@ const setTapErrorHandler = (handler) => {
     types.checkFunction(handler, 'setTapErrorHandler');
     config.tapErrorHandler = handler;
 };
+// type 이 'any' 인 인스턴스는 값 타입을 보지 않으므로 "match any" 라고 하면 원인을 가린다.
+// 그때 남는 실패 이유는 "두 인자의 타입이 다르다" 하나뿐이다.
+const binaryTypeError = (label, type) => new TypeError(
+    type === 'any'
+        ? `${label}: arguments must be the same type`
+        : `${label}: arguments must be the same type and match ${type}`
+);
 const checkAndSet = (config => {
     const rules = {
         Setoid: {
             strict: (instance, equals) => {
                 typeof equals !== 'function' && raise(new TypeError('Setoid.equals: equals must be a function'));
-                instance.equals = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? equals(a, b) : raise(new TypeError(`Setoid.equals: arguments must be the same type and match ${instance.type}`));
+                instance.equals = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? equals(a, b) : raise(binaryTypeError('Setoid.equals', instance.type));
             }, loose: (instance, equals) => { instance.equals = (a, b) => equals(a, b); }
         },
         Ord: {
             strict: (instance, lte) => {
                 typeof lte !== 'function' && raise(new TypeError('Ord.lte: lte must be a function'));
-                instance.lte = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? lte(a, b) : raise(new TypeError(`Ord.lte: arguments must be the same type and match ${instance.type}`));
+                instance.lte = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? lte(a, b) : raise(binaryTypeError('Ord.lte', instance.type));
             },
             loose: (instance, lte) => { instance.lte = (a, b) => lte(a, b); }
         },
         Semigroup: {
             strict: (instance, concat) => {
                 typeof concat !== 'function' && raise(new TypeError('Semigroup.concat: concat must be a function'));
-                instance.concat = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? concat(a, b) : raise(new TypeError(`Semigroup.concat: arguments must be the same type and match ${instance.type}`));
+                instance.concat = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? concat(a, b) : raise(binaryTypeError('Semigroup.concat', instance.type));
             },
             loose: (instance, concat) => { instance.concat = (a, b) => concat(a, b); }
         },
@@ -418,6 +428,19 @@ const checkAndSet = (config => {
     };
 })(config);
 class Algebra { constructor(type) { this.type = type; } }
+// 상위 클래스에 넘기는 map/ap 은 이미 검사가 씌워진 것이다. 같은 type 이면 상위가 씌우는
+// 검사가 **글자 그대로 같으므로**(둘 다 types.isFunction(f) && types.check(a, instance.type))
+// 바깥 겹은 안전성을 더하지 않는다. 그것이 벗기는 유일한 근거다.
+// Alternative 가 this.alt = plus.alt 로 재래핑을 피하는 것과 같은 처리다.
+// type 이 다르면 바깥 검사가 다른 것이므로 그대로 둔다.
+//
+// 성능을 근거로 삼지 마라 — 같은 회차가 first/left 를 Bifunctor.bimap 위임으로 바꿔
+// 원소마다 레지스트리 조회를 새로 넣었고, 그쪽이 벗긴 겹보다 크다(실측 1.37~1.60배).
+// 레지스트리 재사용은 POLICY 6 에 따른 옳은 선택이고 되돌리지 않는다.
+const unwrapIfSameType = (instance, source, ...methods) => {
+    if (instance.type !== source.type) return;
+    for (const m of methods) { if (source[m]) instance[m] = source[m]; }
+};
 Algebra.prototype[Symbols.Algebra] = true;
 class Setoid extends Algebra {
     constructor(equals, type, registry, ...registryKeys) {
@@ -450,6 +473,7 @@ class Monoid extends Semigroup {
     constructor(semigroup, empty, type, registry, ...aliases) {
         checkAndSet('Monoid.super')(semigroup);
         super(semigroup.concat, type);
+        unwrapIfSameType(this, semigroup, 'concat');
         checkAndSet('Monoid')(this, semigroup, empty);
         registry && register(registry, this, ...aliases);
     }
@@ -534,6 +558,7 @@ class Apply extends Functor { // F(a -> b) => F(a) => F(b)
     constructor(functor, ap, type, registry, ...aliases) {
         checkAndSet('Apply.super')(functor);
         super(functor.map, type);
+        unwrapIfSameType(this, functor, 'map');
         checkAndSet('Apply')(this, functor, ap);
         registry && register(registry, this, ...aliases);
     }
@@ -544,6 +569,7 @@ class Applicative extends Apply {
     constructor(apply, of, type, registry, ...aliases) {
         checkAndSet('Applicative.super')(apply);
         super(apply, apply.ap, type);
+        unwrapIfSameType(this, apply, 'map', 'ap');
         checkAndSet('Applicative')(this, apply, of);
         registry && register(registry, this, ...aliases);
     }
@@ -554,18 +580,44 @@ class Alt extends Functor {
     constructor(functor, alt, type, registry, ...aliases) {
         checkAndSet('Alt.super')(functor);
         super(functor.map, type);
+        unwrapIfSameType(this, functor, 'map');
         checkAndSet('Alt')(this, functor, alt);
         registry && register(registry, this, ...aliases);
     }
     alt() { raise(new Error('Alt: alt is not implemented')); }
 }
 Alt.prototype[Symbols.Alt] = true;
+// Plus 는 alt(결합 이항 연산)와 zero(항등원)를 둘 다 갖고 있어 구조적으로 Monoid 다 —
+// 태그만 없다. 그래서 등록된 Plus 는 전부 짝 Semigroup/Monoid 를 plus(<alias>) 키로 얻는다.
+// 특례를 손으로 쓰지 않는다: Plus 를 새로 등록하면 짝도 자동으로 따라온다.
+//
+// 이렇게 얻은 Monoid 는 컨테이너를 열지 않고 한쪽을 통째로 고른다. Maybe 의 경우
+// Maybe.Monoid(innerSG)(= maybe(first))와 대비된다 — 그쪽은 둘 다 Just 일 때 안쪽 값을
+// innerSG.concat 으로 합치므로 안의 타입이 같아야 한다. payload 타입이 같으면 결과도
+// 같고, 섞였을 때만 갈린다 — 앞엣것은 던지고 이쪽은 고른다.
+//
+// register() 를 쓰지 않는 이유: 그것은 instance.constructor.name 도 키로 넣으므로
+// Monoid.types['Monoid'] 가 생기고 Plus 들이 서로 덮는다. Maybe.Monoid 의 선례대로
+// 키를 직접 넣는다.
+const deriveFromPlus = (plus, type, aliases) => {
+    const semigroup = new Semigroup(plus.alt, type);
+    const monoid = new Monoid(semigroup, plus.zero, type);
+    for (const alias of aliases) {
+        const key = `plus(${alias.toLowerCase()})`;
+        Semigroup.types[key] = semigroup;
+        Monoid.types[key] = monoid;
+    }
+};
 class Plus extends Alt {
     constructor(alt, zero, type, registry, ...aliases) {
         checkAndSet('Plus.super')(alt);
         super(alt, alt.alt, type);
+        unwrapIfSameType(this, alt, 'map', 'alt');
         checkAndSet('Plus')(this, alt, zero);
-        registry && register(registry, this, ...aliases);
+        if (registry) {
+            register(registry, this, ...aliases);
+            deriveFromPlus(this, type, aliases);
+        }
     }
     zero() { raise(new Error('Plus: zero is not implemented')); }
 }
@@ -890,19 +942,29 @@ class StringMonoid extends Monoid {
     }
 }
 modules.push(StringMonoid);
-/* Object */
+/* Polymorphic — 값 타입을 보지 않는 인스턴스 ('any') */
+// first/last 는 (a,b) => a · (a,b) => b 라 값의 타입과 무관하다. 한때 /* Object */ 섹션에
+// 있어 'object' 로 등록돼 있었는데, 그건 위치를 따라간 것이고 types/data/builtins.d.ts 의
+// 선언(readonly first: unknown)이 처음부터 모든 타입이었다.
+// 이 둘은 Monoid 가 아니다 — 항등원이 없다 (commit e3d2b82 에서 FirstMonoid/LastMonoid 제거).
+// Monoid 가 필요하면 Maybe 로 감싸는데, 무엇을 원하느냐에 따라 둘로 갈린다:
+//   Maybe.Monoid('first')     = maybe(first)  — 둘 다 Just 면 안쪽 값을 first 로 합친다
+//   Monoid.of('plus(maybe)')  = Alt/Plus 유도 — 안을 열지 않고 첫 Just 를 통째로 고른다
+// 둘은 payload 타입이 같으면 결과도 같다. 갈리는 것은 타입이 섞였을 때뿐이고, 그때
+// 앞엣것은 안쪽 concat 의 타입 검사에 걸려 던진다. "합치기" 면 앞, "고르기" 면 뒤.
 class FirstSemigroup extends Semigroup {
     constructor() {
-        super(x => x, 'object', Semigroup.types, 'first');
+        super(x => x, 'any', Semigroup.types, 'first');
     }
 }
 modules.push(FirstSemigroup);
 class LastSemigroup extends Semigroup {
     constructor() {
-        super((x, y) => y, 'object', Semigroup.types, 'last');
+        super((x, y) => y, 'any', Semigroup.types, 'last');
     }
 }
 modules.push(LastSemigroup);
+/* Object */
 class ObjectFilterable extends Filterable {
     constructor() {
         super((pred, obj) => polyfills.object.filter(pred, obj), 'object', Filterable.types, 'object');
@@ -915,6 +977,76 @@ class ObjectFoldable extends Foldable {
     }
 }
 modules.push(ObjectFoldable);
+// 키 문자열이든 인스턴스든 { key, instance } 로 정규화한다.
+// key 는 등록된 소문자 alias 중 가장 짧은 것이고, 등록 안 된 인스턴스면 null 이다.
+// 그 null 이 "레지스트리에 올릴 수 없다 → 인스턴스로 캐시한다" 의 신호가 된다.
+const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
+    const instance = typeof x === 'string' ? TypeClass.of(x) : x;
+    if (typeof x !== 'string' && !(x && x[symbol] === true)) {
+        raise(new TypeError(`${label}: argument must be a string or ${TypeClass.name} instance`));
+    }
+    const ctorName = instance.constructor?.name?.toLowerCase?.() || '';
+    let best = null;
+    for (const [k, v] of Object.entries(TypeClass.types)) {
+        if (v === instance && k === k.toLowerCase() && k !== ctorName) {
+            if (best === null || k.length < best.length || (k.length === best.length && k < best)) best = k;
+        }
+    }
+    return { key: best, instance };
+};
+/* Identity / Const — traverse 에 넘기는 Applicative 두 개 */
+// Identity: 값을 그대로 나른다. traverse 를 "그냥 매핑" 으로 쓰고 싶을 때 쓴다 (optics 의 over).
+// Const<r>: 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓴다 (optics 의 preview).
+// 담는 모양은 { value } 이므로 type 은 'Object' 다 — types.of({}) 가 'Object' 를 준다.
+// 등록된 다른 모든 Applicative 와 같은 3단이다 — Functor → Apply → Applicative.
+// type 이 'Object' (대문자) 인 것은 types.of({}) 가 'Object' 를 주기 때문이고,
+// types.equals(a, b, 'Object') 는 types.check 와 달리 **대소문자 폴백이 없다**.
+// 같은 파일의 ObjectFilterable/ObjectFoldable 은 'object'(소문자)를 쓰지만 그쪽은
+// types.check 만 쓴다 — "일관성" 을 이유로 여기를 소문자로 바꾸면 optics 가 전부 죽는다.
+class IdentityFunctor extends Functor {
+    constructor() {
+        super((f, x) => ({ value: f(x.value) }), 'Object', Functor.types, 'identity');
+    }
+}
+modules.push(IdentityFunctor);
+class IdentityApply extends Apply {
+    constructor() {
+        super(Functor.types.IdentityFunctor,
+              (ff, fa) => ({ value: ff.value(fa.value) }), 'Object', Apply.types, 'identity');
+    }
+}
+modules.push(IdentityApply);
+class IdentityApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.IdentityApply, v => ({ value: v }), 'Object', Applicative.types, 'identity');
+    }
+}
+modules.push(IdentityApplicative);
+// Const 는 monoid 마다 다르므로 매개변수화한다 — Maybe.Monoid(innerSG) 와 같은 모양이다.
+// 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
+const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
+Applicative.Const = monoid => {
+    const { key, instance: m } = normalizeConstMonoid(monoid);
+    if (key !== null && Applicative.Const._keyCache.has(key)) return Applicative.Const._keyCache.get(key);
+    if (key === null && Applicative.Const._instanceCache.has(m)) return Applicative.Const._instanceCache.get(m);
+    const result = new Applicative(
+        new Apply(new Functor((_f, x) => x, 'Object'),
+                  (a, b) => ({ value: m.concat(a.value, b.value) }), 'Object'),
+        () => ({ value: m.empty() }), 'Object');
+    if (key !== null) {
+        // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.of('const(array)')
+        // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
+        Functor.types[`const(${key})`] = result;
+        Apply.types[`const(${key})`] = result;
+        Applicative.types[`const(${key})`] = result;
+        Applicative.Const._keyCache.set(key, result);
+    } else {
+        Applicative.Const._instanceCache.set(m, result);
+    }
+    return result;
+};
+Applicative.Const._keyCache = new Map();
+Applicative.Const._instanceCache = new WeakMap();
 /* Array */
 class ArraySemigroup extends Semigroup {
     constructor() {
@@ -1291,20 +1423,7 @@ class EitherTraversable extends Traversable {
 }
 modules.push(EitherTraversable);
 /* Container Semigroup / Monoid */
-const normalizeSemigroupKey = x => {
-    const instance = typeof x === 'string' ? Semigroup.of(x) : x;
-    if (typeof x !== 'string' && !(x && x[Symbols.Semigroup] === true)) {
-        raise(new TypeError('normalizeSemigroupKey: argument must be a string or Semigroup instance'));
-    }
-    const ctorName = instance.constructor?.name?.toLowerCase?.() || '';
-    let best = null;
-    for (const [k, v] of Object.entries(Semigroup.types)) {
-        if (v === instance && k === k.toLowerCase() && k !== ctorName) {
-            if (best === null || k.length < best.length || (k.length === best.length && k < best)) best = k;
-        }
-    }
-    return { key: best, instance };
-};
+const normalizeSemigroupKey = normalizeTypeClassKey(Semigroup, Symbols.Semigroup, 'normalizeSemigroupKey');
 const resolveInnerSemigroup = (label, innerSG) => {
     if (typeof innerSG === 'string') return normalizeSemigroupKey(innerSG);
     try { return normalizeSemigroupKey(innerSG); }
@@ -1383,6 +1502,12 @@ addResolver(Semigroup, key => {
 addResolver(Monoid, key => {
     const m = /^maybe\((.+)\)$/.exec(key);
     return m ? Maybe.Monoid(m[1]) : null;
+});
+// Applicative.Const(monoid) 의 지연 해석 — 팩토리를 부르기 전에도 const(<키>) 로 꺼낼 수 있다.
+// key => 클로저 안에서 부르므로 Applicative.Const 정의(위쪽)와의 순서는 문제되지 않는다.
+addResolver(Applicative, key => {
+    const m = /^const\((.+)\)$/.exec(key);
+    return m ? Applicative.Const(m[1]) : null;
 });
 /* Task */
 class Task {
@@ -2255,138 +2380,163 @@ modules.push(FreeMonad);
 load(...modules);
 
 /* Optics */
-// Profunctor 인코딩: Optic s a = P => P a a -> P s s
-//
-// 어떤 P를 주입하느냐가 연산을 정한다 — 하나의 정의에서 읽기·쓰기·역생성이 모두 나온다.
-//   함수      → over/set        (dimap, first, left, wander)
-//   Forget<r> → view/preview/toListOf  (같음. monoid로 누적)
-//   Tagged    → review          (dimap, left 만)
-//
-// Tagged에 first와 wander가 없다는 사실이 타입 안전성을 대신한다 —
-// Lens나 Traversal에 review를 쓰면 그 자리에서 TypeError가 난다.
-// P가 첫 인자이므로 plain compose로는 합성 불가 → composeOptic 제공.
+// transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
+const { Optics } = (() => {
+    // Profunctor 인코딩: Optic s a = P => P a a -> P s s
+    //
+    // 어떤 P를 주입하느냐가 연산을 정한다 — 하나의 정의에서 읽기·쓰기·역생성이 모두 나온다.
+    //   함수      → over/set        (dimap, first, left, wander)
+    //   Forget<r> → view/preview/toList/foldMapOf  (같음. monoid로 누적)
+    //   Tagged    → review          (dimap, left 만)
+    //
+    // Tagged에 first와 wander가 없다는 사실이 타입 안전성을 대신한다 —
+    // Lens나 Traversal에 review를 쓰면 그 자리에서 TypeError가 난다.
+    // P가 첫 인자이므로 plain compose로는 합성 불가 → Optics.compose 제공.
 
-// wander 위임에 쓰는 내부 Applicative. Traversable.traverse가 strict 모드에서
-// Applicative 심볼을 요구하므로 표식을 붙인다.
-const _asApplicative = dict => {
-    dict[Symbols.Functor] = true;
-    dict[Symbols.Apply] = true;
-    dict[Symbols.Applicative] = true;
-    return dict;
-};
-const _Identity = _asApplicative({
-    of: v => ({ value: v }),
-    map: (f, x) => ({ value: f(x.value) }),
-    ap: (ff, fa) => ({ value: ff.value(fa.value) }),
-});
-const _Const = monoid => _asApplicative({
-    of: () => ({ value: monoid.empty() }),
-    map: (_, x) => x,
-    ap: (a, b) => ({ value: monoid.concat(a.value, b.value) }),
-});
-const _firstMonoid = {
-    empty: () => Maybe.Nothing(),
-    concat: (a, b) => (a.isJust() ? a : b),
-};
-const _arrayMonoid = { empty: () => [], concat: (a, b) => [...a, ...b] };
-// view 전용: 대상이 정확히 1개라는 전제 아래 마지막으로 본 값을 그대로 남긴다.
-const _lastMonoid = { empty: () => undefined, concat: (a, b) => (b === undefined ? a : b) };
+    // ── 구체 Profunctor 3종 ────────────────────────────────────────────
+    // 세 딕셔너리가 공유하는 메서드가 optic 의 종류를 정한다:
+    //   first  = 곱   — 짝 [a, c] 의 한쪽만 건드린다        → Lens
+    //   left   = 합   — Either 의 Left 만 건드린다          → Prism
+    //   wander = 순회 — 컨테이너 안의 모든 자리를 건드린다   → Traversal
+    // 어느 것을 요구하느냐가 그 optic 에 무엇을 쓸 수 있는지를 정한다.
 
-// ── 구체 Profunctor 3종 ────────────────────────────────────────────
-// dimap은 레지스트리의 Profunctor를 재사용한다 — promap(f, g, fn)이 dimap과 시그니처가 같다.
-const _promap = Profunctor.of('function').promap;
-
-// 함수: p a b = a -> b
-const _PFn = {
-    dimap: _promap,
-    first: p => ([a, c]) => [p(a), c],
-    left: p => e => (e.isLeft() ? Either.Left(p(e.value)) : e),
-    wander: (traverse, p) => s => traverse(_Identity, a => _Identity.of(p(a)), s).value,
-};
-// Forget<r>: p a b = a -> r. 출력을 버리고 r을 모은다.
-const _PForget = monoid => ({
-    // 출력 변환을 버리므로 g 자리에 항등을 넣는다.
-    dimap: (f, _g, p) => _promap(f, x => x, p),
-    first: p => ([a, _c]) => p(a),
-    left: p => e => (e.isLeft() ? p(e.value) : monoid.empty()),
-    wander: (traverse, p) => s => traverse(_Const(monoid), a => ({ value: p(a) }), s).value,
-});
-// Tagged: p a b = b. 입력을 무시하므로 거꾸로만 쓸 수 있다.
-// first/wander가 없는 것이 의도다 — Lens/Traversal에 review를 막는 유일한 장치다.
-const _PTagged = {
-    // 여기만 _promap에 위임할 수 없다 — Tagged a b = b 이므로 profunctor 값이 함수가 아닌데
-    // Profunctor.promap의 strict 검사가 세 인자 모두 함수일 것을 요구한다.
-    dimap: (_f, g, p) => g(p),
-    left: p => Either.Left(p),
-    // Tagged는 입력을 만들어낼 수 없으므로 곱(first)과 순회(wander)를 구현할 수 없다.
-    // 이것이 곧 "Lens/Traversal은 review할 수 없다"는 제약이다 — 명시적으로 거부한다.
-    first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
-    wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
-};
-
-// ── optic 생성자 ───────────────────────────────────────────────────
-// dimap만 쓴다 — 세 P가 모두 dimap을 가지므로 Iso는 모든 연산에서 동작한다.
-// Lens이자 Prism이라 view도 review도 되며, 그래서 optic 계층의 최상단이다.
-// 법칙: from(to(s)) === s, to(from(a)) === a (무손실 변환)
-const Iso = (to, from) => {
-    typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
-    typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
-    return P => pab => P.dimap(to, from, pab);
-};
-const Lens = (getter, setter) => {
-    typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
-    typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
-    return P => pab => P.dimap(s => [getter(s), s], ([b, s]) => setter(b, s), P.first(pab));
-};
-// match: s -> Maybe a,  build: a -> s
-const Prism = (match, build) => {
-    typeof match !== 'function' && raise(new TypeError('Prism: match must be a function'));
-    typeof build !== 'function' && raise(new TypeError('Prism: build must be a function'));
-    return P => pab => P.dimap(
-        s => {
-            const m = match(s);
-            Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
-            return Maybe.fold(() => Either.Right(s), a => Either.Left(a), m);
-        },
-        e => (e.isLeft() ? build(e.value) : e.value),
-        P.left(pab)
-    );
-};
-// 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
-const traversed = key => {
-    const instance = Traversable.of(key);
-    return P => pab => P.wander((F, f, s) => instance.traverse(F, f, s), pab);
-};
-
-// ── 연산: P를 고르는 것이 전부 ─────────────────────────────────────
-const _runOptic = (name, optic, P, pab, s) => {
-    typeof optic !== 'function' && raise(new TypeError(`${name}: optic must be a function`));
-    return optic(P)(pab)(s);
-};
-const view = (lens, s) => _runOptic('view', lens, _PForget(_lastMonoid), a => a, s);
-const preview = (optic, s) => _runOptic('preview', optic, _PForget(_firstMonoid), a => Maybe.Just(a), s);
-const toListOf = (optic, s) => _runOptic('toListOf', optic, _PForget(_arrayMonoid), a => [a], s);
-const over = (optic, f, s) => {
-    typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
-    return _runOptic('over', optic, _PFn, f, s);
-};
-const set = (optic, b, s) => {
-    typeof optic !== 'function' && raise(new TypeError('set: optic must be a function'));
-    return over(optic, () => b, s);
-};
-// review는 Tagged를 주입한다. Lens/Traversal이면 first/wander가 없어 여기서 실패한다.
-const review = (prism, a) => {
-    typeof prism !== 'function' && raise(new TypeError('review: prism must be a function'));
-    return prism(_PTagged)(a);
-};
-// optic 합성 = 함수 합성. P를 모두에 주입한 뒤 그 층에서 잇는다.
-const composeOptic = (...optics) => {
-    optics.forEach((o, i) => {
-        typeof o !== 'function' && raise(new TypeError(`composeOptic: argument ${i} must be an optic`));
+    // 함수: p a b = a -> b.  over/set 이 쓴다.
+    const functionProfunctor = {
+        dimap: Profunctor.of('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
+        first: p => t => Bifunctor.of('tuple').bimap(p, identity, t),
+        left: p => e => Bifunctor.of('either').bimap(p, identity, e),
+        wander: (traverse, p) => s =>
+            traverse(Applicative.of('identity'), a => ({ value: p(a) }), s).value,
+    };
+    // Forget<r>: p a b = a -> r.  출력을 버리고 r 을 모은다. view/preview/toList/foldMapOf 가 쓴다.
+    const forgetProfunctor = monoid => ({
+        // 출력 변환을 버리므로 g 자리에 항등을 넣는다.
+        dimap: (f, _g, p) => Profunctor.of('function').promap(f, identity, p),
+        // Comonad.of('array').extract 가 배열의 head 라 2-튜플에서는 fst 다.
+        first: p => t => p(Comonad.of('array').extract(t)),
+        left: p => e => Either.fold(p, () => monoid.empty(), e),
+        wander: (traverse, p) => s =>
+            traverse(Applicative.Const(monoid), a => ({ value: p(a) }), s).value,
     });
-    return P => pab => optics.reduceRight((acc, o) => o(P)(acc), pab);
-};
+    // Tagged: p a b = b.  입력을 무시하므로 거꾸로만 쓸 수 있다. review 가 쓴다.
+    const taggedProfunctor = {
+        // 여기만 Profunctor.promap 에 위임할 수 없다 — Tagged a b = b 라 profunctor 값이
+        // 함수가 아닌데 promap 의 strict 검사가 세 인자 모두 함수일 것을 요구한다.
+        dimap: (_f, g, p) => g(p),
+        left: Either.Left,
+        // Tagged 는 입력을 만들어낼 수 없으므로 곱(first)과 순회(wander)를 구현할 수 없다.
+        // 그 부재가 곧 "Lens/Traversal 은 review 할 수 없다" 는 제약이다 — 명시적으로 거부한다.
+        first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
+        wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
+    };
 
+    // ── optic 생성자 ───────────────────────────────────────────────────
+    // dimap만 쓴다 — 세 P가 모두 dimap을 가지므로 Iso는 모든 연산에서 동작한다.
+    // Lens이자 Prism이라 view도 review도 되며, 그래서 optic 계층의 최상단이다.
+    // 법칙: from(to(s)) === s, to(from(a)) === a (무손실 변환)
+    const Iso = (to, from) => {
+        typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
+        typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
+        return P => pab => P.dimap(to, from, pab);
+    };
+    const Lens = (getter, setter) => {
+        typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
+        typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
+        return P => pab => P.dimap(s => [getter(s), s], ([b, s]) => setter(b, s), P.first(pab));
+    };
+    // match: s -> Maybe a,  build: a -> s
+    const Prism = (match, build) => {
+        typeof match !== 'function' && raise(new TypeError('Prism: match must be a function'));
+        typeof build !== 'function' && raise(new TypeError('Prism: build must be a function'));
+        return P => pab => P.dimap(
+            s => {
+                const m = match(s);
+                Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
+                return Maybe.fold(() => Either.Right(s), a => Either.Left(a), m);
+            },
+            e => (e.isLeft() ? build(e.value) : e.value),
+            P.left(pab)
+        );
+    };
+    // 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
+    const traversed = key => {
+        const instance = Traversable.of(key);
+        return P => pab => P.wander(instance.traverse, pab);
+    };
+
+    // ── 연산: P를 고르는 것이 전부 ─────────────────────────────────────
+    const runOptic = (name, optic, P, pab, s) => {
+        typeof optic !== 'function' && raise(new TypeError(`${name}: optic must be a function`));
+        return optic(P)(pab)(s);
+    };
+    const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
+    // 읽기 셋은 전부 foldMapOf 의 특수 경우다 — 어떤 Monoid 로 모으느냐만 다르다.
+    // 인자 순서는 over(optic, f, s) 에 맞추고 monoid 를 앞에 둔다.
+    // monoid 는 first 경로(Lens/Iso)에서 한 번도 안 쓰이므로, 검사하지 않으면 optic 종류에
+    // 따라 통과 여부가 갈린다. 기존 foldMap(foldable, monoid) 과 같은 규칙으로 요구한다 —
+    // 등록은 필요 없고 new Monoid(...) 로 만든 것이면 된다.
+    const foldMapOf = (monoid, optic, f, s) => {
+        // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그러므로
+        // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
+        const { instance: m } = resolveFoldMonoid(monoid);
+        typeof f !== 'function' && raise(new TypeError('foldMapOf: f must be a function'));
+        return runOptic('foldMapOf', optic, forgetProfunctor(m), f, s);
+    };
+    // 읽기 셋은 각자의 이름으로 던져야 한다 — foldMapOf 에 위임하면 귀속을 잃는다.
+    const toList = (optic, s) => {
+        typeof optic !== 'function' && raise(new TypeError('toList: optic must be a function'));
+        return foldMapOf(Monoid.of('array'), optic, a => [a], s);
+    };
+    // preview 는 대상을 "합치는" 게 아니라 "고르는" 것이므로 컨테이너를 열지 않는 Monoid 를
+    // 쓴다 — plus(maybe) 다. maybe(first) 를 쓰면 안쪽 값을 합치려 들어 [1, 'a'] 처럼 타입이
+    // 섞인 대상에서 던진다. 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 한다.
+    const preview = (optic, s) => {
+        typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
+        return foldMapOf(Monoid.of('plus(maybe)'), optic, Maybe.Just, s);
+    };
+    // Lens/Iso 전용 — "정확히 1대상" 을 문서가 아니라 코드가 강제한다.
+    // forgetProfunctor 에는 wander 가 있어서 Traversal 을 넘겨도 실행은 된다(review 와 달리
+    // 구조가 막지 못한다). 그래서 대상 수를 세는 것이 유일한 방법이다. 0개면 undefined 를
+    // 흘리지 않고, 2개 이상이면 첫 값을 조용히 주지 않는다.
+    const view = (lens, s) => {
+        typeof lens !== 'function' && raise(new TypeError('view: optic must be a function'));
+        const targets = toList(lens, s);
+        targets.length !== 1 && raise(new TypeError(
+            `view: expected exactly one target, got ${targets.length} — use preview or toList`));
+        return targets[0];
+    };
+    const over = (optic, f, s) => {
+        typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
+        return runOptic('over', optic, functionProfunctor, f, s);
+    };
+    const set = (optic, b, s) => {
+        typeof optic !== 'function' && raise(new TypeError('set: optic must be a function'));
+        return over(optic, constant(b), s);
+    };
+    // review는 Tagged를 주입한다. Lens/Traversal이면 first/wander가 없어 여기서 실패한다.
+    const review = (prism, a) => {
+        typeof prism !== 'function' && raise(new TypeError('review: prism must be a function'));
+        return prism(taggedProfunctor)(a);
+    };
+    // optic 합성 = 함수 합성. P를 모두에 주입한 뒤 그 층에서 잇는다.
+    const composeOptic = (...optics) => {
+        optics.forEach((o, i) => {
+            typeof o !== 'function' && raise(new TypeError(`Optics.compose: argument ${i} must be an optic`));
+        });
+        // P를 모두에 주입하면 평범한 함수 N개가 되므로 이 파일의 compose 를 그대로 쓴다.
+        return P => compose(...optics.map(o => o(P)));
+    };
+
+    // 내부 이름을 compose 로 두면 이 함수가 의존하는 최상위 compose 를 가린다.
+    // 그래서 정의는 composeOptic 으로 두고 모듈 키에서만 compose 로 낸다.
+    return {
+        Optics: {
+            Iso, Lens, Prism, traversed,
+            compose: composeOptic, view, preview, toList, foldMapOf,
+            over, set, review,
+        },
+    };
+})();
 /* ═══════════════════════════════════════════════════════════════
    Monad Transformer
    - load() 이후에 위치: Monad.of(), Functor.of() 등이 로드된 상태 필요
@@ -2827,8 +2977,7 @@ export default {
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
-    Iso, Lens, Prism, traversed, composeOptic,
-    view, preview, toListOf, review, set, over,
+    Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,

@@ -4,7 +4,7 @@
  *   Optic<S, A> = P => P<A, A> → P<S, S>
  *
  * The P is an explicit first argument, so plain `compose` cannot combine optics —
- * use `composeOptic`. Which P you inject decides the operation, so one definition
+ * use `Optics.compose`. Which P you inject decides the operation, so one definition
  * yields reading, writing and reverse construction.
  *
  *   Iso       exactly 1 target   reaches for `dimap` only — works with every P,
@@ -18,12 +18,12 @@
  */
 
 import type { Maybe } from "./data/Maybe";
-import type { TraversableInstances } from "./TypeClasses";
+import type { TraversableInstances, Monoid } from "./TypeClasses";
 
 /**
  * A Profunctor dictionary. Which one you inject decides the operation:
  *   function   → over/set        (needs dimap, first, left, wander)
- *   Forget<r>  → view/preview/toListOf
+ *   Forget<r>  → view/preview/toList
  *   Tagged     → review          (has dimap and left only)
  *
  * `Tagged` lacking `first`/`wander` is what stops `review` on a Lens or Traversal.
@@ -54,67 +54,95 @@ export type Traversal<S, A> = Optic<S, A>;
 
 // Construct an Iso from a lossless conversion pair.
 // Laws: from(to(s)) === s and to(from(a)) === a
-export declare function Iso<S, A>(to: (s: S) => A, from: (a: A) => S): Iso<S, A>;
+declare function Iso<S, A>(to: (s: S) => A, from: (a: A) => S): Iso<S, A>;
 
 // Construct a Lens from a plain getter + setter pair.
-export declare function Lens<S, A>(
+declare function Lens<S, A>(
     getter: (s: S) => A,
     setter: (b: A, s: S) => S
 ): Lens<S, A>;
 
 // Construct a Prism. `match` reports whether the branch applies; `build` goes back.
-export declare function Prism<S, A>(
+declare function Prism<S, A>(
     match: (s: S) => Maybe<A>,
     build: (a: A) => S
 ): Prism<S, A>;
 
 // Lift an existing Traversable instance into a Traversal ('array' | 'maybe' | 'either' | ...).
-export declare function traversed<K extends keyof TraversableInstances>(
+declare function traversed<K extends keyof TraversableInstances>(
     key: K
 ): Traversal<any, any>;
 
 // ── Reading ──────────────────────────────────────────────────────────
 
-// View through a Lens. Only meaningful for optics with exactly one target.
-export declare function view<S, A>(lens: Lens<S, A>, s: S): A;
+// View through a Lens or Iso — exactly one target.
+// Zero or 2+ targets throw at runtime; use preview/toList instead.
+declare function view<S, A>(lens: Lens<S, A>, s: S): A;
 
 // First target, if any. Works for every optic.
-export declare function preview<S, A>(optic: Optic<S, A>, s: S): Maybe<A>;
+declare function preview<S, A>(optic: Optic<S, A>, s: S): Maybe<A>;
 
 // Every target, in order. Works for every optic.
-export declare function toListOf<S, A>(optic: Optic<S, A>, s: S): A[];
+declare function toList<S, A>(optic: Optic<S, A>, s: S): A[];
 
 // Build an S back from a focus. Prism and Iso only — Lens/Traversal throw at runtime.
-export declare function review<S, A>(prism: Prism<S, A> | Iso<S, A>, a: A): S;
+declare function review<S, A>(prism: Prism<S, A> | Iso<S, A>, a: A): S;
 
 // ── Writing ──────────────────────────────────────────────────────────
 
 // Modify every target via a function. No targets ⇒ the source is returned unchanged.
-export declare function over<S, A>(
+declare function over<S, A>(
     optic: Optic<S, A>,
     f: (a: A) => A,
     s: S
 ): S;
 
 // Replace every target with a constant.
-export declare function set<S, A>(optic: Optic<S, A>, b: A, s: S): S;
+declare function set<S, A>(optic: Optic<S, A>, b: A, s: S): S;
 
 // ── Composition ──────────────────────────────────────────────────────
 
 // Compose optics outer-to-inner — this is plain function composition at the P layer.
 // Overloads up to arity 4.
-export declare function composeOptic<S, T, A>(
+declare function composeOptics<S, T, A>(
     o1: Optic<S, T>,
     o2: Optic<T, A>
 ): Optic<S, A>;
-export declare function composeOptic<S, T1, T2, A>(
+declare function composeOptics<S, T1, T2, A>(
     o1: Optic<S, T1>,
     o2: Optic<T1, T2>,
     o3: Optic<T2, A>
 ): Optic<S, A>;
-export declare function composeOptic<S, T1, T2, T3, A>(
+declare function composeOptics<S, T1, T2, T3, A>(
     o1: Optic<S, T1>,
     o2: Optic<T1, T2>,
     o3: Optic<T2, T3>,
     o4: Optic<T3, A>
 ): Optic<S, A>;
+
+// ── The Optics module object ─────────────────────────────────────────
+// Everything above is namespaced under a single export — `set`, `over` and
+// `view` are far too common to sit at the top level (Static Land's first
+// benefit is "no name clashes"). Inside the module the short names are safe,
+// so the composer is exposed as `compose` and the fold as `toList`.
+export declare const Optics: {
+    readonly Iso: typeof Iso;
+    readonly Lens: typeof Lens;
+    readonly Prism: typeof Prism;
+    readonly traversed: typeof traversed;
+    readonly compose: typeof composeOptics;
+    readonly view: typeof view;
+    readonly preview: typeof preview;
+    readonly toList: typeof toList;
+    // Fold every target with a Monoid you choose. `toList` and `preview` are
+    // the special cases where the Monoid is fixed.
+    readonly foldMapOf: <S, A, R>(
+        monoid: Monoid<R>,
+        optic: Optic<S, A>,
+        f: (a: A) => R,
+        s: S
+    ) => R;
+    readonly over: typeof over;
+    readonly set: typeof set;
+    readonly review: typeof review;
+};

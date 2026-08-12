@@ -68,6 +68,54 @@ num.empty();  // 0
 num.concat(5, num.empty());  // 5
 ```
 
+## `plus(<타입>)` — Plus 에서 유도된 Monoid
+
+`Plus` 는 `alt`(결합 연산)와 `zero`(항등원)를 **둘 다** 가집니다. 즉 구조적으로 Monoid 인데
+태그만 없습니다. 그래서 **등록된 `Plus` 마다 짝 `Semigroup`/`Monoid` 가 `plus(<alias>)` 키로
+자동으로 생깁니다.**
+
+```javascript
+const { Monoid, Semigroup, Maybe } = FunFP;
+
+console.log(Monoid.of('plus(array)').concat([1], [2]));   // [1, 2]
+console.log(Monoid.of('plus(array)').empty());            // []
+
+const pm = Monoid.of('plus(maybe)');
+console.log(pm.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 첫 Just 를 고른다
+console.log(pm.empty().isNothing());                         // true
+
+// Semigroup 짝도 함께 등록됩니다
+console.log(Semigroup.of('plus(array)').concat([1], [2]));   // [1, 2]
+```
+
+### `plus(maybe)` 와 `maybe(first)` — 안을 여느냐
+
+이름이 비슷하지만 **다른 모노이드**입니다. 갈리는 지점은 **payload 타입이 섞였을 때**입니다.
+
+```javascript
+const { Monoid, Maybe } = FunFP;
+
+const plus = Monoid.of('plus(maybe)');    // 봉투째 고른다 — 안을 열지 않는다
+const inner = Maybe.Monoid('first');       // 안을 열어 first 로 합친다
+
+// payload 타입이 같으면 결과도 같다
+console.log(plus.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1
+console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1
+
+// 섞이면 갈린다
+console.log(plus.concat(Maybe.Just(1), Maybe.Just('a')).value);  // 1
+try {
+    inner.concat(Maybe.Just(1), Maybe.Just('a'));
+} catch (e) {
+    console.log(e.message);  // Semigroup.concat: arguments must be the same type
+}
+```
+
+**"합치기" 면 `maybe(first)`, "고르기" 면 `plus(maybe)`** 입니다.
+`Optics.preview` 가 후자를 씁니다 — 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 하니까요.
+
+항등원은 양쪽 다 `Nothing` 입니다.
+
 ## 실용적 활용
 
 ### 안전한 fold (빈 배열 처리)

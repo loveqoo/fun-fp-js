@@ -148,6 +148,22 @@ Extend ──> Comonad
 | Extend | extend | 컨텍스트 변환 |
 | Comonad | extract | 값 추출 |
 
+### 레지스트리 키 — 매개변수화된 것들
+
+`Functor.of('array')` 처럼 **타입 이름**이 기본이지만, 조립된 키도 있습니다.
+
+| 키 형태 | 뜻 | 예 | 문서 |
+| --- | --- | --- | --- |
+| `<타입>` | 그 타입의 기본 인스턴스 | `array`, `maybe`, `number` | 각 타입 문서 |
+| `<클래스이름>` | 같은 타입의 다른 인스턴스 | `NumberProductMonoid`, `NumberMaxMonoid` | [Monoid](./Monoid.md) |
+| `maybe(<inner>)` | 안쪽 Semigroup 을 지정한 Maybe | `maybe(first)`, `maybe(array)` | [Monoid](./Monoid.md) |
+| `plus(<타입>)` | **`Plus` 에서 유도된 Monoid** | `plus(maybe)`, `plus(array)` | [Plus](./Plus.md) |
+| `const(<monoid>)` | **`Const` Applicative** | `const(array)`, `const(number)` | [Applicative](./Applicative.md) |
+| `statet(<M>)` 등 | Transformer | `statet(maybe)`, `eithert(task)` | [StateT](./StateT.md) |
+
+`identity` 도 `Functor`/`Apply`/`Applicative` 세 곳에 등록돼 있습니다 —
+`traverse` 에 넘겨 "그냥 매핑" 으로 쓰는 것입니다([Applicative](./Applicative.md)).
+
 ### 데이터 타입
 
 | 타입 | 주요 용도 | 핵심 특징 |
@@ -160,7 +176,7 @@ Extend ──> Comonad
 | Writer | 로깅/출력 추적 | 값 + 출력 (Monoid) |
 | State | 상태 변환 | 상태 스레딩 |
 | Free | DSL, 스택 안전 재귀 | Pure / Impure |
-| [Optics](./Optics.md) | 부분 접근·갱신 | Lens/Prism/Traversal, `composeOptic` |
+| [Optics](./Optics.md) | 부분 접근·갱신 | `Optics` 모듈 — Lens/Prism/Traversal, `compose`, `foldMapOf` |
 | [Lens](./Lens.md) | 중첩 불변 갱신 | getter + setter 쌍, 대상 정확히 1개 |
 | [Transducer](./Transducer.md) | 변환 파이프라인 | 중간 배열 없음, 조기 종료 |
 | [Actor](./Actor.md) | 순차 메시지 처리 | 큐 + 상태, `send`가 Task |

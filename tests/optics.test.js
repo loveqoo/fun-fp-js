@@ -2,11 +2,12 @@
 import fp from '../index.js';
 import { test, assertEquals, assertDeepEquals, assertThrowsWith, logSection } from './utils.js';
 
+const { Functor, Maybe, Either, Monoid } = fp;
+// optics 는 모듈 객체 하나로 나온다 — 최상위에 view/set/over 같은 흔한 이름을 두지 않는다.
 const {
-    Iso, Lens, Prism, traversed, composeOptic,
-    view, preview, toListOf, review, set, over,
-    Functor, Maybe, Either
-} = fp;
+    Iso, Lens, Prism, traversed, compose,
+    view, preview, toList, foldMapOf, review, set, over,
+} = fp.Optics;
 
 logSection('Lens');
 
@@ -69,21 +70,21 @@ test('over identity sanity — over(lens, x => x, s) deep-equals s', () => {
 // optic은 P-explicit profunctor 인코딩(P => pab => ...)이므로
 // 일반 compose(outer, inner)로는 합성 불가 — composeOptic을 쓴다.
 // composeOptic은 P를 모든 optic에 주입한 후 그 층에서 함수 합성한다.
-test('composeOptic — view on composed lens', () => {
-    const userCity = composeOptic(addressLens, cityLens);
+test('compose — view on composed lens', () => {
+    const userCity = compose(addressLens, cityLens);
     assertEquals(view(userCity, { address: { city: 'Seoul' } }), 'Seoul');
 });
 
-test('composeOptic — set on composed lens (deep immutable update)', () => {
-    const userCity = composeOptic(addressLens, cityLens);
+test('compose — set on composed lens (deep immutable update)', () => {
+    const userCity = compose(addressLens, cityLens);
     const original = { name: 'A', address: { city: 'Seoul', country: 'KR' } };
     const updated = set(userCity, 'Busan', original);
     assertDeepEquals(updated, { name: 'A', address: { city: 'Busan', country: 'KR' } });
     assertDeepEquals(original, { name: 'A', address: { city: 'Seoul', country: 'KR' } });
 });
 
-test('composeOptic — over on composed lens', () => {
-    const userCity = composeOptic(addressLens, cityLens);
+test('compose — over on composed lens', () => {
+    const userCity = compose(addressLens, cityLens);
     const original = { address: { city: 'seoul' } };
     assertDeepEquals(
         over(userCity, s => s.toUpperCase(), original),
@@ -91,8 +92,8 @@ test('composeOptic — over on composed lens', () => {
     );
 });
 
-test('composeOptic — 3-level nesting (variadic)', () => {
-    const deep = composeOptic(addressLens, cityLens, zipLens);
+test('compose — 3-level nesting (variadic)', () => {
+    const deep = compose(addressLens, cityLens, zipLens);
     const original = { address: { city: { zip: '00000', name: 'Seoul' } } };
     assertEquals(view(deep, original), '00000');
     assertDeepEquals(
@@ -132,6 +133,38 @@ test('view — optic must be a function', () => {
     assertThrowsWith(() => view(null, {}), 'view: optic must be a function');
 });
 
+// view 는 Lens 전용이고 전역(total) 함수다 — types/Lens.d.ts:78-79 가 반환을 A 로 선언한다.
+// 대상이 없을 수 있으면 preview 를 쓰라는 뜻이므로, 없을 때 undefined 를 흘리지 않고 던진다.
+test('view — Prism 이 매치하지 않으면 throws (undefined 를 흘리지 않는다)', () => {
+    const bigP = Prism(x => (x > 10 ? Maybe.Just(x) : Maybe.Nothing()), x => x);
+    assertThrowsWith(() => view(bigP, 5), 'view: expected exactly one target, got 0');
+});
+
+test('view — 대상이 0개인 Traversal 이면 throws', () => {
+    assertThrowsWith(() => view(traversed('array'), []), 'view: expected exactly one target, got 0');
+});
+
+// "정확히 1대상" 을 문서가 아니라 코드가 강제한다. 미보증 동작으로 남겨두면 다음 사람이
+// 의존하게 되고, 회차 1·2의 회귀가 둘 다 그 자리에서 나왔다.
+test('view — 대상이 여럿이면 throws (첫 값을 조용히 주지 않는다)', () => {
+    assertThrowsWith(
+        () => view(traversed('array'), [1, 2, 3]),
+        'view: expected exactly one target, got 3'
+    );
+});
+
+test('view — 대상이 정확히 1개인 Traversal 은 그 값을 준다', () => {
+    assertEquals(view(traversed('array'), [7]), 7);
+});
+
+// preview 는 대상을 고르는 것이지 합치는 것이 아니다 — 안을 열면 안 된다.
+// (회귀 방지: maybe(first) 로 모으면 타입이 섞인 대상에서 던졌다)
+test('preview — 대상들의 타입이 섞여도 첫 대상을 준다', () => {
+    assertEquals(preview(traversed('array'), [1, 'a']).value, 1);
+    assertEquals(preview(traversed('array'), [null, 1]).value, null);
+    assertDeepEquals(preview(traversed('array'), [{ a: 1 }, [2]]).value, { a: 1 });
+});
+
 test('set — optic must be a function', () => {
     assertThrowsWith(() => set(null, 'x', {}), 'set: optic must be a function');
 });
@@ -140,8 +173,8 @@ test('over — f must be a function', () => {
     assertThrowsWith(() => over(nameLens, null, {}), 'over: f must be a function');
 });
 
-test('composeOptic — non-function argument throws', () => {
-    assertThrowsWith(() => composeOptic(nameLens, null), 'composeOptic: argument 1 must be an optic');
+test('compose — non-function argument throws', () => {
+    assertThrowsWith(() => compose(nameLens, null), 'Optics.compose: argument 1 must be an optic');
 });
 
 /* ═══════════════════════════════════════════════════
@@ -168,9 +201,9 @@ test('Iso — set 은 초점을 교체한다', () => {
     assertEquals(set(fahrenheit, 32, 100), 0);
 });
 
-test('Iso — preview 는 항상 Just, toListOf 는 항상 1개', () => {
+test('Iso — preview 는 항상 Just, toList 는 항상 1개', () => {
     assertEquals(preview(fahrenheit, 0).value, 32);
-    assertDeepEquals(toListOf(fahrenheit, 0), [32]);
+    assertDeepEquals(toList(fahrenheit, 0), [32]);
 });
 
 test('Iso law: review(iso, view(iso, s)) === s', () => {
@@ -241,9 +274,9 @@ test('Prism law: match 성공 시 review(p, focus) 가 원본과 같다', () => 
     assertEquals(review(rightPrism, focus).value, s.value);
 });
 
-test('Prism — toListOf gives 0 or 1 element', () => {
-    assertDeepEquals(toListOf(rightPrism, Either.Right(1)), [1]);
-    assertDeepEquals(toListOf(rightPrism, Either.Left('e')), []);
+test('Prism — toList gives 0 or 1 element', () => {
+    assertDeepEquals(toList(rightPrism, Either.Right(1)), [1]);
+    assertDeepEquals(toList(rightPrism, Either.Left('e')), []);
 });
 
 test('Prism — match must return a Maybe', () => {
@@ -267,14 +300,14 @@ test('review — Traversal 에도 쓸 수 없다 (Tagged 에 wander 가 없다)'
 // profunctor 인코딩으로 옮긴 이유. van Laarhoven + 심볼 표식 방식에서는
 // 합성이 build 를 잃어 이것이 깨졌다.
 test('review — 합성된 Prism 에서도 동작한다', () => {
-    const composed = composeOptic(rightPrism, evenPrism);
+    const composed = compose(rightPrism, evenPrism);
     const built = review(composed, 4);
     assertEquals(built.isRight(), true);
     assertEquals(built.value, 4);
 });
 
 test('review 합성 = 바깥 review ∘ 안쪽 review', () => {
-    const composed = composeOptic(rightPrism, evenPrism);
+    const composed = compose(rightPrism, evenPrism);
     assertDeepEquals(
         review(composed, 6),
         review(rightPrism, review(evenPrism, 6))
@@ -282,7 +315,7 @@ test('review 합성 = 바깥 review ∘ 안쪽 review', () => {
 });
 
 test('합성된 Prism 도 Prism 법칙을 만족한다', () => {
-    const composed = composeOptic(rightPrism, evenPrism);
+    const composed = compose(rightPrism, evenPrism);
     assertEquals(preview(composed, review(composed, 8)).value, 8);
     // 홀수는 안쪽 Prism 을 통과하지 못한다
     assertEquals(preview(composed, Either.Right(7)).isNothing(), true);
@@ -295,8 +328,8 @@ logSection('Traversal');
 
 const each = traversed('array');
 
-test('Traversal — toListOf collects every target', () => {
-    assertDeepEquals(toListOf(each, [1, 2, 3]), [1, 2, 3]);
+test('Traversal — toList collects every target', () => {
+    assertDeepEquals(toList(each, [1, 2, 3]), [1, 2, 3]);
 });
 
 test('Traversal — over maps every target', () => {
@@ -325,8 +358,8 @@ test('Traversal law: over(t, x => x, s) deep-equals s', () => {
 
 test('Traversal — works on Maybe via the registry', () => {
     const inMaybe = traversed('maybe');
-    assertDeepEquals(toListOf(inMaybe, Maybe.Just(5)), [5]);
-    assertDeepEquals(toListOf(inMaybe, Maybe.Nothing()), []);
+    assertDeepEquals(toList(inMaybe, Maybe.Just(5)), [5]);
+    assertDeepEquals(toList(inMaybe, Maybe.Nothing()), []);
     assertEquals(over(inMaybe, x => x * 2, Maybe.Just(5)).value, 10);
 });
 
@@ -337,11 +370,11 @@ logSection('Optic composition');
 
 const usersLens = Lens(o => o.users, (v, o) => ({ ...o, users: v }));
 
-test('composeOptic — Lens + Traversal + Lens', () => {
-    const allNames = composeOptic(usersLens, each, nameLens);
+test('compose — Lens + Traversal + Lens', () => {
+    const allNames = compose(usersLens, each, nameLens);
     const db = { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] };
 
-    assertDeepEquals(toListOf(allNames, db), ['a', 'b', 'c']);
+    assertDeepEquals(toList(allNames, db), ['a', 'b', 'c']);
     assertDeepEquals(over(allNames, s => s.toUpperCase(), db), {
         users: [{ name: 'A' }, { name: 'B' }, { name: 'C' }]
     });
@@ -349,9 +382,9 @@ test('composeOptic — Lens + Traversal + Lens', () => {
     assertDeepEquals(db, { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] });
 });
 
-test('composeOptic — Lens + Prism, 매칭 실패 시 원본 보존', () => {
+test('compose — Lens + Prism, 매칭 실패 시 원본 보존', () => {
     const boxLens = Lens(o => o.box, (v, o) => ({ ...o, box: v }));
-    const inBox = composeOptic(boxLens, rightPrism);
+    const inBox = compose(boxLens, rightPrism);
 
     assertEquals(preview(inBox, { box: Either.Right(1) }).value, 1);
     assertEquals(preview(inBox, { box: Either.Left('e') }).isNothing(), true);
@@ -361,15 +394,15 @@ test('composeOptic — Lens + Prism, 매칭 실패 시 원본 보존', () => {
     assertEquals(missed.box.value, 'e');
 });
 
-test('composeOptic — Traversal + Prism 은 통과한 것만 바꾼다', () => {
-    const evens = composeOptic(each, evenPrism);
-    assertDeepEquals(toListOf(evens, [1, 2, 3, 4]), [2, 4]);
+test('compose — Traversal + Prism 은 통과한 것만 바꾼다', () => {
+    const evens = compose(each, evenPrism);
+    assertDeepEquals(toList(evens, [1, 2, 3, 4]), [2, 4]);
     assertDeepEquals(over(evens, x => x * 100, [1, 2, 3, 4]), [1, 200, 3, 400]);
 });
 
-test('composeOptic — Lens + Iso', () => {
+test('compose — Lens + Iso', () => {
     const tempLens = Lens(o => o.temp, (v, o) => ({ ...o, temp: v }));
-    const inF = composeOptic(tempLens, fahrenheit);
+    const inF = compose(tempLens, fahrenheit);
 
     assertEquals(view(inF, { temp: 100, city: 'Seoul' }), 212);
     assertDeepEquals(over(inF, f => f - 32, { temp: 100, city: 'Seoul' }), {
@@ -377,25 +410,112 @@ test('composeOptic — Lens + Iso', () => {
     });
 });
 
-test('composeOptic — Traversal + Iso 는 모든 원소를 변환한다', () => {
-    const inF = composeOptic(each, fahrenheit);
-    assertDeepEquals(toListOf(inF, [0, 100]), [32, 212]);
+test('compose — Traversal + Iso 는 모든 원소를 변환한다', () => {
+    const inF = compose(each, fahrenheit);
+    assertDeepEquals(toList(inF, [0, 100]), [32, 212]);
     assertDeepEquals(over(inF, f => f + 0, [0, 100]), [0, 100]);
 });
 
-test('composeOptic — Prism + Iso 는 review 가 이어진다', () => {
-    const composed = composeOptic(rightPrism, fahrenheit);
+test('compose — Prism + Iso 는 review 가 이어진다', () => {
+    const composed = compose(rightPrism, fahrenheit);
     assertEquals(preview(composed, Either.Right(100)).value, 212);
     assertEquals(review(composed, 212).value, 100);
 });
 
-test('composeOptic — 인자가 함수가 아니면 throws', () => {
-    assertThrowsWith(() => composeOptic(nameLens, null), 'composeOptic: argument 1 must be an optic');
+test('compose — 인자가 함수가 아니면 throws', () => {
+    assertThrowsWith(() => compose(nameLens, null), 'Optics.compose: argument 1 must be an optic');
 });
 
-test('composeOptic 은 Lens 끼리도 합성한다', () => {
-    const composed = composeOptic(addressLens, cityLens);
+test('compose 은 Lens 끼리도 합성한다', () => {
+    const composed = compose(addressLens, cityLens);
     assertEquals(view(composed, { address: { city: 'Seoul' } }), 'Seoul');
+});
+
+/* ═══════════════════════════════════════════════════
+   foldMapOf — 사용자가 Monoid 를 골라 모은다
+   ═══════════════════════════════════════════════════ */
+logSection('foldMapOf');
+
+// 읽기 셋(preview·toList·view)은 Monoid 가 함수 안에 박혀 있어 배열/첫대상밖에 못 모은다.
+// foldMapOf 는 그 Monoid 를 사용자가 고르게 하는 입구다.
+test('foldMapOf — Monoid.of(number) 로 합계를 낸다', () => {
+    assertEquals(foldMapOf(Monoid.of('number'), traversed('array'), x => x, [1, 2, 3]), 6);
+});
+
+test('foldMapOf — Monoid 를 바꾸면 모으는 방식이 바뀐다', () => {
+    const t = traversed('array');
+    assertEquals(foldMapOf(Monoid.of('NumberProductMonoid'), t, x => x, [2, 3, 4]), 24);
+    assertEquals(foldMapOf(Monoid.of('NumberMaxMonoid'), t, x => x, [2, 9, 4]), 9);
+    assertEquals(foldMapOf(Monoid.of('string'), t, String, [1, 2, 3]), '123');
+});
+
+test('foldMapOf — 대상이 없으면 Monoid 의 항등원', () => {
+    assertEquals(foldMapOf(Monoid.of('number'), traversed('array'), x => x, []), 0);
+    assertDeepEquals(foldMapOf(Monoid.of('array'), traversed('array'), a => [a], []), []);
+});
+
+// toList 와 preview 가 foldMapOf 의 특수 경우라는 것을 고정한다.
+test('foldMapOf — toList 와 preview 가 그 특수 경우다', () => {
+    const t = traversed('array');
+    assertDeepEquals(foldMapOf(Monoid.of('array'), t, a => [a], [1, 2, 3]), toList(t, [1, 2, 3]));
+    assertEquals(
+        foldMapOf(Monoid.of('plus(maybe)'), t, Maybe.Just, [1, 2, 3]).value,
+        preview(t, [1, 2, 3]).value
+    );
+});
+
+test('foldMapOf — Lens 와 Prism 에서도 동작한다', () => {
+    assertEquals(foldMapOf(Monoid.of('number'), nameLens, s => s.length, { name: 'abcd' }), 4);
+    const bigP = Prism(x => (x > 10 ? Maybe.Just(x) : Maybe.Nothing()), x => x);
+    assertEquals(foldMapOf(Monoid.of('number'), bigP, x => x, 20), 20);
+    assertEquals(foldMapOf(Monoid.of('number'), bigP, x => x, 5), 0);   // 매치 실패 → 항등원
+});
+
+// 에러가 호출한 연산에 귀속돼야 한다 — foldMapOf 로 재정의하면서 preview/toList 가
+// 'foldMapOf:' 로 던지는 회귀가 있었다. 메시지 단언이 0건이라 잠복했었다.
+test('읽기 셋의 에러는 각자의 이름으로 던진다', () => {
+    assertThrowsWith(() => preview(null, []), 'preview: optic must be a function');
+    assertThrowsWith(() => toList(null, []), 'toList: optic must be a function');
+    assertThrowsWith(() => view(null, []), 'view: optic must be a function');
+});
+
+// foldMapOf 는 monoid 를 first 경로에서 안 만지므로 Lens/Iso 는 무검사 통과했다.
+// 검사 여부가 optic 종류에 따라 갈리면 안 된다.
+test('foldMapOf — Monoid 가 아니면 optic 종류와 무관하게 거부한다', () => {
+    const bigP = Prism(x => (x > 10 ? Maybe.Just(x) : Maybe.Nothing()), x => x);
+    const msg = 'foldMapOf: argument must be a string or Monoid instance';
+    assertThrowsWith(() => foldMapOf({ hello: 'world' }, nameLens, x => x, { name: 'a' }), msg);
+    assertThrowsWith(() => foldMapOf({ hello: 'world' }, bigP, x => x, 20), msg);
+    assertThrowsWith(() => foldMapOf(null, traversed('array'), x => x, [1]), msg);
+});
+
+test('foldMapOf — f 가 함수가 아니면 거부한다', () => {
+    assertThrowsWith(() => foldMapOf(Monoid.of('array'), nameLens, 42, { name: 'a' }), 'foldMapOf: f must be a function');
+});
+
+// 사용자가 만든 Monoid 는 등록하지 않아도 받는다 — 다만 리터럴이 아니라 Monoid 여야 한다.
+// 기존 foldMap(foldable, monoid) 도 같은 규칙이다(Symbols.Monoid 요구).
+// 리터럴이 Lens 에서만 통과했던 것은 우연이었다 — first 경로가 monoid 를 안 만져서다.
+test('foldMapOf — 등록 안 된 사용자 Monoid 를 받는다', () => {
+    const { Semigroup } = fp;
+    const mine = new Monoid(new Semigroup((a, b) => a + b, 'number'), () => 0, 'number');
+    assertEquals(foldMapOf(mine, traversed('array'), x => x, [1, 2, 3]), 6);
+    assertEquals(foldMapOf(mine, nameLens, s => s.length, { name: 'abcd' }), 4);
+});
+
+// foldMapOf 가 부르는 Applicative.Const 는 키를 받는데 foldMapOf 만 안 받았다 —
+// 호출 체인의 아래쪽은 되는데 사용자가 만지는 입구가 안 되는 상태였다.
+test('foldMapOf — Monoid 키도 받는다', () => {
+    assertEquals(foldMapOf('number', traversed('array'), x => x, [1, 2, 3]), 6);
+    assertDeepEquals(foldMapOf('array', traversed('array'), a => [a], [1, 2]), [1, 2]);
+});
+
+// runOptic 이 name 을 받는 유일한 이유가 호출자 귀속인데, preview/toList/view 가 자기 검사를
+// 갖게 되면서 runOptic 의 에러 가지에 도달하는 경로가 over/foldMapOf 만 남았다.
+// 그 둘에 단언이 없어 name 인자가 뮤테이션을 생존했다.
+test('runOptic 의 라벨이 호출자에 귀속된다', () => {
+    assertThrowsWith(() => over(null, x => x, {}), 'over: optic must be a function');
+    assertThrowsWith(() => foldMapOf(Monoid.of('array'), null, a => [a], {}), 'foldMapOf: optic must be a function');
 });
 
 console.log('\n✅ Optics tests completed');

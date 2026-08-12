@@ -18,6 +18,7 @@
  */
 
 import type { Kind, TypeClass, TypeLambda } from "./HKT";
+import type { ConstTypeLambda } from "./TypeLambdas";
 
 // ── Algebra — base class for every type-class instance at runtime ────
 // Exposed for completeness (the default export includes `Algebra`);
@@ -289,6 +290,12 @@ export declare const Applicative: {
     readonly of: <K extends keyof ApplicativeInstances>(
         name: K
     ) => Applicative<ApplicativeInstances[K]>;
+    // Const<r> — 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓸 때 넘긴다.
+    // Maybe.Monoid(innerSG) 와 같은 모양: 키면 const(<키>) 로 등록하고, 인스턴스면 캐시한다.
+    readonly Const: {
+        <K extends keyof MonoidInstances>(monoid: K): Applicative<ConstTypeLambda>;
+        <R>(monoid: Monoid<R>): Applicative<ConstTypeLambda>;
+    };
 };
 
 export declare const Chain: {
