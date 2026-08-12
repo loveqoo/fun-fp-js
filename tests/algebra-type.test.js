@@ -6,8 +6,9 @@
 //   types.check(val, type)              대소문자 폴백 있음 → 'date' 도 통과한다
 //   types.equals(a, b, instance.type)   폴백 없음 → 'Date' 여야 한다
 //
-// 후자는 Apply.ap 와 Alt.alt 두 곳뿐이므로, Apply/Alt 인스턴스가 없는 타입은 소문자로
-// 적어도 오늘은 통과한다. **그 타입에 Apply 나 Alt 가 생기는 순간 조용히 깨진다.**
+// 던지는 것은 Apply.ap 와 Alt.alt 둘이지만, .type 을 글자 그대로 비교하는 자리는 셋이다 —
+// unwrapIfSameType 은 어긋나면 던지지 않고 조용히 검사 겹을 안 벗긴다(값은 같다).
+// 그래서 "Apply/Alt 를 안 지나니 소문자라도 안전" 은 틀린 추론이다 — docs/internals.md#type
 //
 // ── 이 파일이 잡는 것과 못 잡는 것 ──────────────────────────────────────
 //

@@ -514,8 +514,14 @@ instance.compose = (f, g) => types.equals(f, g, 'function') ? compose(f, g) : ra
 
 같은 조사에서 `DateSetoid`/`DateOrd` 가 `'date'`, `ObjectFilterable`/`ObjectFoldable` 이
 `'object'` 였다(정규 태그는 `'Date'`/`'Object'`). **넷 다 오늘은 동작한다** —
-`types.check` 에 대소문자 폴백이 있기 때문이다. 폴백이 **없는** 검사는 파일 전체에서
-`Apply.ap`(289줄)와 `Alt.alt`(313줄) 둘뿐이고, 그 넷은 거기를 안 지난다.
+`types.check` 에 대소문자 폴백이 있기 때문이다. 어긋났을 때 **던지는** 자리는 `Apply.ap`
+(289줄)와 `Alt.alt`(313줄) 둘이고, 그 넷은 거기를 안 지난다.
+
+> **회차 중 이 문장이 "폴백 없는 곳은 두 곳뿐" 이었고 리뷰어가 틀렸다고 잡았다.**
+> `.type` 을 글자 그대로 비교하는 자리는 셋이다 — 세 번째인 `unwrapIfSameType`(432줄)은
+> 어긋나면 **던지지 않고 조용히 검사 겹을 안 벗긴다**(값은 같다). `Monoid`·`Apply`·
+> `Applicative`·`Alt`·`Plus` 생성자가 부르므로 앞의 둘보다 훨씬 넓다.
+> **"던지는 곳" 을 세어 놓고 "비교하는 곳" 이라고 적었다** — 세는 대상을 한 번 더 확인하라.
 
 **즉 "그 타입에 Apply 나 Alt 인스턴스가 생기는 순간" 조용히 깨지는 지뢰였다.**
 

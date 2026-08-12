@@ -28,14 +28,39 @@ console.log(Semigroupoid.lookup('maybe').type); // 'function'  Kleisli 합성이
 
 검사 경로가 둘인데 하나에만 폴백이 있습니다.
 
-| 검사 | 대소문자 폴백 | 쓰는 곳 |
-| --- | --- | --- |
-| `types.check(val, type)` | **있음** — `'date'` 도 통과 | 대부분 |
-| `types.equals(a, b, instance.type)` | **없음** — `'Date'` 여야 함 | `Apply.ap`, `Alt.alt` **둘뿐** |
+대부분의 검사는 `types.check(val, type)` 를 지나고 **여기엔 대소문자 폴백이 있습니다** —
+`'date'` 라고 적어도 통과합니다. 하지만 `.type` 을 **글자 그대로** 비교하는 자리가 셋 있고,
+셋의 결과가 다릅니다.
 
-그래서 `Apply`/`Alt` 인스턴스가 없는 타입은 소문자로 적어도 오늘은 통과합니다. **그 타입에
-`Apply` 나 `Alt` 가 생기는 순간 조용히 깨집니다.** 2026-08-13 에 `DateSetoid`·`DateOrd`(`'date'`),
-`ObjectFilterable`·`ObjectFoldable`(`'object'`) 네 개가 그 상태로 발견됐습니다.
+| 자리 | 비교 | 어긋나면 |
+| --- | --- | --- |
+| `Apply.ap` | `types.equals(fs, values, instance.type)` | **던진다** |
+| `Alt.alt` | `types.equals(a, b, instance.type)` | **던진다** |
+| `unwrapIfSameType` | `instance.type !== source.type` | **조용히 겹을 안 벗긴다** — 값은 같다 |
+
+앞의 둘만 보고 "내 인스턴스는 `Apply`/`Alt` 를 안 지나니 소문자로 적어도 안전하다" 고
+판단하면 안 됩니다. 세 번째는 `Monoid`·`Apply`·`Applicative`·`Alt`·`Plus` **생성자가**
+부르므로 훨씬 넓게 걸립니다.
+
+```javascript
+const { Functor, Apply } = FunFP;
+
+const build = (fType, aType) => {
+    const f = new Functor((g, x) => ({ value: g(x.value) }), fType);
+    const a = new Apply(f, (ff, fa) => ({ value: ff.value(fa.value) }), aType);
+    return a.map === f.map;              // 겹이 벗겨졌나
+};
+
+console.log(build('Object', 'Object'));  // true   같으면 벗긴다
+console.log(build('object', 'Object'));  // false  대소문자만 달라도 안 벗긴다
+```
+
+**세 번째는 버그를 만들지 않습니다** — 검사가 한 겹 더 남을 뿐 값도 에러도 같습니다.
+그래서 더 위험합니다: 앞의 둘은 던져서 알려주지만 이쪽은 아무 말도 안 합니다.
+
+`Apply`/`Alt` 인스턴스가 없는 타입은 소문자로 적어도 **던지지는** 않습니다. 2026-08-13 에
+`DateSetoid`·`DateOrd`(`'date'`), `ObjectFilterable`·`ObjectFoldable`(`'object'`) 네 개가
+그 상태로 발견됐습니다 — 그 타입에 `Apply` 나 `Alt` 가 생기는 순간 깨질 지뢰였습니다.
 
 `tests/algebra-type.test.js` 가 등록 인스턴스 전부에 대해 두 가지를 강제합니다 — ① 태그가
 `Apply.ap` 를 실제로 통과하는가 ② 이름 접두사·예외표와 맞는가.
