@@ -271,8 +271,10 @@ export interface MonoidInstances {}
 export interface GroupInstances {}
 
 // ─── Dispatch entry points ──────────────────────────────────────────
-// Signature mirrors the runtime: `TypeClass.of('name')` returns the
+// Signature mirrors the runtime: `TypeClass.lookup('name')` returns the
 // instance for that name. The TS side resolves via the *Instances maps.
+// Type classes have no `of` — that name means value injection (`Maybe.of(1)`,
+// and the `of` on an Applicative *instance*).
 
 export declare const Functor: {
     readonly lookup: <K extends keyof FunctorInstances>(

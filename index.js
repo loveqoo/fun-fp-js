@@ -1004,9 +1004,12 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
 // 담는 모양은 { value } 이므로 type 은 'Object' 다 — types.of({}) 가 'Object' 를 준다.
 // 등록된 다른 모든 Applicative 와 같은 3단이다 — Functor → Apply → Applicative.
 // type 이 'Object' (대문자) 인 것은 types.of({}) 가 'Object' 를 주기 때문이고,
-// types.equals(a, b, 'Object') 는 types.check 와 달리 **대소문자 폴백이 없다**.
-// 같은 파일의 ObjectFilterable/ObjectFoldable 은 'object'(소문자)를 쓰지만 그쪽은
-// types.check 만 쓴다 — "일관성" 을 이유로 여기를 소문자로 바꾸면 optics 가 전부 죽는다.
+// **여기를 소문자로 바꾸면 optics 가 전부 죽는다** — Identity/Const 는 Apply.ap 를 지나고
+// 거기 쓰이는 types.equals(a, b, instance.type) 는 types.check 와 달리 대소문자 폴백이
+// 없다. 그 3인자형을 쓰는 곳은 파일 전체에서 Apply.ap 와 Alt.alt 둘뿐이다.
+// (2026-08-13 이전에는 ObjectFilterable/ObjectFoldable 이 소문자 'object' 를 써서 이 자리가
+//  "예외" 처럼 보였다. 그쪽은 폴백이 있는 types.check 만 지나 우연히 살아 있었던 것이고,
+//  지금은 넷 다 정규 태그다. tests/algebra-type.test.js 가 전수로 강제한다.)
 class IdentityFunctor extends Functor {
     constructor() {
         super((f, x) => ({ value: f(x.value) }), 'Object', Functor.types, 'identity');
