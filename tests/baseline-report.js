@@ -103,6 +103,14 @@ const cases = [
     ['array Monoid', f => L(f, 'Monoid')('array').concat([1], [2])],
     ['array Monoid empty', f => L(f, 'Monoid')('array').empty()],
 
+    // ── .type 이 새어 나가는 곳 — 사용자가 보는 에러 문자열 ─────────────────
+    // `.type` 을 고치면 여기가 따라 바뀐다. 격자에 없으면 "관측 가능한 동작이 그대로다" 가
+    // 거짓이 된다 — 실제로 `match date` -> `match Date` 변경을 격자가 못 봤다.
+    ['Setoid.equals 타입 불일치 메시지', f => L(f, 'Setoid')('date').equals(1, 2)],
+    ['Ord.lte 타입 불일치 메시지', f => L(f, 'Ord')('date').lte(1, 2)],
+    ['Filterable.filter 타입 불일치 메시지', f => L(f, 'Filterable')('object').filter(x => x, [1])],
+    ['Foldable.reduce 타입 불일치 메시지', f => L(f, 'Foldable')('object').reduce((a) => a, 0, [1])],
+
     // ── 레지스트리 자체 — 키가 사라지거나 늘어난 것을 본다 ────────────────
     ['Functor.types 키', f => Object.keys(f.Functor.types).sort()],
     ['Apply.types 키', f => Object.keys(f.Apply.types).sort()],
@@ -113,7 +121,14 @@ const cases = [
 
     // 타입클래스의 **정적 표면** — `of` -> `lookup` 같은 이름 변경은 여기서만 보인다.
     // 「최상위 export 키」는 타입클래스 이름만 보므로 그 안쪽이 바뀐 것을 못 잡는다.
-    ['타입클래스 정적 표면', f => ['Setoid', 'Semigroup', 'Functor', 'Applicative', 'Monad', 'Traversable']
+    //
+    // **24개 전부를 본다.** 처음에 6개만 표본으로 뒀다가, 표본 안의 `Setoid.of` 를
+    // 되살려 보고 "격자가 잡는다" 고 판정했다. 표본 밖의 `Comonad.of` 를 되살리면
+    // 「차이 없음」이 나온다(실측) — 규칙 31-1.
+    ['타입클래스 정적 표면', f => ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid',
+        'Category', 'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
+        'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'Foldable',
+        'Extend', 'Comonad', 'Traversable']
         .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
 
     // ── 인스턴스의 .type — 값으로는 관측되지 않는 자리다 ──────────────────
