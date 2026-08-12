@@ -200,10 +200,10 @@ Thunk.suspend(thunk)  // 다음 단계 (Impure 반환)
 const { Functor, Chain } = FunFP;
 
 // map
-Functor.of('free').map(x => x + 1, Free.pure(5));  // Pure(6)
+Functor.lookup('free').map(x => x + 1, Free.pure(5));  // Pure(6)
 
 // chain
-Chain.of('free').chain(x => Free.pure(x * 2), Free.pure(5));  // Pure(10)
+Chain.lookup('free').chain(x => Free.pure(x * 2), Free.pure(5));  // Pure(10)
 ```
 
 ## 관련 타입 클래스

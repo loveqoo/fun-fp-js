@@ -23,13 +23,13 @@ Bifunctor.bimap(f, g, a): Bifunctor c d
 
 ### 항등 (Identity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 bimap(x => x, x => x, a) === a
 ```
 
 ### 합성 (Composition)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 bimap(f, g, bimap(h, i, a)) === bimap(x => f(h(x)), x => g(i(x)), a)
 ```
 
@@ -41,7 +41,7 @@ bimap(f, g, bimap(h, i, a)) === bimap(x => f(h(x)), x => g(i(x)), a)
 import FunFP from 'fun-fp-js';
 const { Bifunctor, Either } = FunFP;
 
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 
 // Right 변환
 bimap(
@@ -65,7 +65,7 @@ bimap(
 ### 에러 정규화
 
 ```javascript
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 const input = '{"value":1}';
 const parseData = raw => raw ? Either.Right(JSON.parse(raw)) : Either.Left('빈 입력');
 const normalizeError = err => ({
@@ -88,7 +88,7 @@ bimap(normalizeError, formatResult, result);
 ### 양쪽에 컨텍스트 추가
 
 ```javascript
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 
 // Task 에는 Bifunctor 인스턴스가 없다 — 양쪽 변환은 Either 에서 한다
 const fetchUser = id => id > 0
@@ -108,8 +108,8 @@ addContext('user-service')(fetchUser(1));
 ## map vs bimap
 
 ```javascript
-const { bimap } = Bifunctor.of('either');
-const { map } = Functor.of('either');
+const { bimap } = Bifunctor.lookup('either');
+const { map } = Functor.lookup('either');
 
 // map은 Right(성공)만 변환
 map(x => x * 2, Either.Right(5));     // Right(10)
@@ -123,7 +123,7 @@ bimap(e => e.toUpperCase(), x => x * 2, Either.Left('err'));
 ## mapLeft - 왼쪽만 변환
 
 ```javascript
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 const mapLeft = (f, either) => bimap(f, x => x, either);
 
 mapLeft(err => `Error: ${err}`, Either.Left('oops'));

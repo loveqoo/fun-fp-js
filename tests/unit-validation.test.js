@@ -217,28 +217,28 @@ test('Plus (loose mode): accepts any value as zero', () => {
 test('Integration: FunctionMonoid has function empty', () => {
     fp.setStrictMode(true);
     // FunctionMonoid should work normally with function empty
-    const monoid = fp.Monoid.of('function');
+    const monoid = fp.Monoid.lookup('function');
     assertEquals(typeof monoid.empty, 'function');
 });
 
 test('Integration: FunctionCategory has function id', () => {
     fp.setStrictMode(true);
     // FunctionCategory should work normally with function id
-    const category = fp.Category.of('function');
+    const category = fp.Category.lookup('function');
     assertEquals(typeof category.id, 'function');
 });
 
-test('Integration: Monoid.of("string") has function empty', () => {
+test('Integration: Monoid.lookup("string") has function empty', () => {
     fp.setStrictMode(true);
     // StringMonoid should have function empty
-    const monoid = fp.Monoid.of('string');
+    const monoid = fp.Monoid.lookup('string');
     assertEquals(typeof monoid.empty, 'function');
     assertEquals(monoid.empty(), '');
 });
 
 test('Integration: Array monoid operations work correctly', () => {
     fp.setStrictMode(true);
-    const arrayMonoid = fp.Monoid.of('array');
+    const arrayMonoid = fp.Monoid.lookup('array');
 
     // empty should return a function that produces empty array
     const emptyResult = arrayMonoid.empty();

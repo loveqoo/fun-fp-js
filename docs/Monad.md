@@ -18,7 +18,7 @@ Monad는 함수형 프로그래밍에서 **부수 효과를 안전하게 다루�
 
 ```javascript
 const { Maybe, Functor } = FunFP;
-const { map } = Functor.of('maybe');
+const { map } = Functor.lookup('maybe');
 
 const getUser = id => Maybe.of({ id, name: 'Alice', addressId: 1 });
 const getAddress = addrId => Maybe.of({ id: addrId, city: 'Seoul' });
@@ -34,7 +34,7 @@ const result = map(user => getAddress(user.addressId), getUser(1));
 const getAddress = addrId => Maybe.of({ id: addrId, city: 'Seoul' });
 const getUser = id => Maybe.of({ id, name: 'Alice', addressId: 1 });
 const { Chain } = FunFP;
-const { chain } = Chain.of('maybe');
+const { chain } = Chain.lookup('maybe');
 
 const result = chain(user => getAddress(user.addressId), getUser(1));
 // Maybe({ city: 'Seoul' })  ← 깔끔!
@@ -48,21 +48,21 @@ getUserAddress(1);  // Maybe({ city: 'Seoul' })
 
 ### 1. 좌항등법칙 (Left Identity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { chain } = Chain.of('maybe');
+const { chain } = Chain.lookup('maybe');
 chain(f, of(a)) === f(a)
 ```
 값을 of로 감싸고 chain하면 = 그냥 함수 호출
 
 ### 2. 우항등법칙 (Right Identity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { chain } = Chain.of('maybe');
+const { chain } = Chain.lookup('maybe');
 chain(of, m) === m
 ```
 모나드에 of를 chain하면 = 원래 모나드
 
 ### 3. 결합법칙 (Associativity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { chain } = Chain.of('maybe');
+const { chain } = Chain.lookup('maybe');
 chain(g, chain(f, m)) === chain(x => chain(g, f(x)), m)
 ```
 chain 순서를 바꿔도 결과가 같음
@@ -70,7 +70,7 @@ chain 순서를 바꿔도 결과가 같음
 ## 인터페이스
 
 ```javascript no-run 시그니처·의사코드 표기
-Monad.of(a): Monad a              // 값을 모나드에 넣기 (Applicative에서 상속)
+Monad.lookup(a): Monad a              // 값을 모나드에 넣기 (Applicative에서 상속)
 Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
                                   // f: a -> Monad b
 ```
@@ -82,8 +82,8 @@ Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
 ```javascript
 import FunFP from 'fun-fp-js';
 const { Maybe, Functor, Chain } = FunFP;
-const { map } = Functor.of('maybe');
-const { chain } = Chain.of('maybe');
+const { map } = Functor.lookup('maybe');
+const { chain } = Chain.lookup('maybe');
 
 const db = {
     users: { 1: { name: 'Alice', teamId: 10 } },
@@ -112,7 +112,7 @@ map(team => team.name, getTeamName(1));  // Just('Dev Team')
 
 ```javascript
 const { Either, Chain } = FunFP;
-const { chain } = Chain.of('either');
+const { chain } = Chain.lookup('either');
 
 const parseNumber = str => {
     const n = parseInt(str);
@@ -142,8 +142,8 @@ validate('200');   // Left('Must be ≤ 100')
 
 ```javascript
 const { Task, Chain, Functor } = FunFP;
-const { chain } = Chain.of('task');
-const { map } = Functor.of('task');
+const { chain } = Chain.lookup('task');
+const { map } = Functor.lookup('task');
 
 const fetchUser = id => Task.fromPromise(() => 
     fetch(`/api/users/${id}`).then(r => r.json())
@@ -189,8 +189,8 @@ chain은 중첩을 펴줍니다:
 
 ```javascript
 const maybe = Maybe.of(42);
-const { map } = Functor.of('maybe');
-const { chain } = Chain.of('maybe');
+const { map } = Functor.lookup('maybe');
+const { chain } = Chain.lookup('maybe');
 
 // map: 항상 성공하는 단순 변환
 map(x => x + 1, maybe);

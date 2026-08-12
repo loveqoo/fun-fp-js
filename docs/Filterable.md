@@ -23,19 +23,19 @@ Filterable.filter(pred, a): Filterable a
 
 ### 분배법칙 (Distributivity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { filter } = Filterable.of('array');
+const { filter } = Filterable.lookup('array');
 filter(x => p(x) && q(x), a) === filter(q, filter(p, a))
 ```
 
 ### 항등 (Identity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { filter } = Filterable.of('array');
+const { filter } = Filterable.lookup('array');
 filter(x => true, a) === a
 ```
 
 ### 소멸 (Annihilation)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { filter } = Filterable.of('array');
+const { filter } = Filterable.lookup('array');
 filter(x => false, a) === empty
 ```
 
@@ -47,7 +47,7 @@ filter(x => false, a) === empty
 import FunFP from 'fun-fp-js';
 const { Filterable } = FunFP;
 
-const { filter } = Filterable.of('array');
+const { filter } = Filterable.lookup('array');
 
 filter(x => x > 2, [1, 2, 3, 4, 5]);
 // [3, 4, 5]
@@ -66,7 +66,7 @@ filter(x => x.active, [
 ### 객체 필터링
 
 ```javascript
-const { filter } = Filterable.of('object');
+const { filter } = Filterable.lookup('object');
 
 filter(x => x > 1, { a: 1, b: 2, c: 3 });
 // { b: 2, c: 3 }
@@ -80,7 +80,7 @@ filter(x => typeof x === 'string', { a: 1, b: 'hello', c: true });
 ### 검색 필터
 
 ```javascript
-const { filter } = Filterable.of('array');
+const { filter } = Filterable.lookup('array');
 const users = [
     { name: 'Alice', age: 25, role: 'admin' },
     { name: 'Bob', age: 30, role: 'user' },
@@ -98,7 +98,7 @@ const adminOver30 = filter(
 ### null 제거
 
 ```javascript
-const { filter } = Filterable.of('array');
+const { filter } = Filterable.lookup('array');
 const values = [1, null, 2, undefined, 3, null];
 
 filter(x => x != null, values);
@@ -108,7 +108,7 @@ filter(x => x != null, values);
 ### 설정 정리
 
 ```javascript
-const { filter } = Filterable.of('object');
+const { filter } = Filterable.lookup('object');
 const config = {
     host: 'localhost',
     port: undefined,
@@ -123,7 +123,7 @@ filter(x => x != null, config);
 ### Maybe 필터링
 
 ```javascript
-const { filter } = Filterable.of('maybe');
+const { filter } = Filterable.lookup('maybe');
 
 filter(x => x > 0, Maybe.Just(5));   // Just(5)
 filter(x => x > 0, Maybe.Just(-1));  // Nothing
@@ -133,7 +133,7 @@ filter(x => x > 0, Maybe.Nothing()); // Nothing
 ### Either 필터링
 
 ```javascript
-const { filter } = Filterable.of('either');
+const { filter } = Filterable.lookup('either');
 
 filter(x => x > 0, Either.Right(5));   // Right(5)
 filter(x => x > 0, Either.Right(-1));  // Left(-1) - 값 보존
@@ -143,7 +143,7 @@ filter(x => x > 0, Either.Left('err')); // Left('err')
 ### Task 필터링
 
 ```javascript
-const { filter } = Filterable.of('task');
+const { filter } = Filterable.lookup('task');
 
 filter(x => x > 0, Task.of(5))
     .fork(console.error, console.log);  // 5

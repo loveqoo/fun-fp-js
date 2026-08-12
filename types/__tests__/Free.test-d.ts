@@ -43,11 +43,11 @@ const val2: number = Free.trampoline(t2);
 
 // ── 6. Registry dispatch (F is abstract TypeLambda) ──────────────────
 import type { TypeLambda } from "../HKT";
-const fFree = Functor.of("free");
+const fFree = Functor.lookup("free");
 type _7 = Expect<Equals<typeof fFree, Functor<FreeTypeLambda<TypeLambda>>>>;
 
-const mFree = Monad.of("free");
-const aFree = Applicative.of("free");
+const mFree = Monad.lookup("free");
+const aFree = Applicative.lookup("free");
 
 // ── 7. Kind reduction ─────────────────────────────────────────────────
 type KF = Kind<FreeTypeLambda<MaybeTypeLambda>, never, never, never, string>;

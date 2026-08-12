@@ -36,19 +36,19 @@ if (m3.isNothing()) {
     type _3b = Expect<Equals<typeof m3, Nothing>>;
 }
 
-// ── 4. Functor.of('maybe') resolves via FunctorInstances registry ────
-const fMaybe = Functor.of("maybe");
+// ── 4. Functor.lookup('maybe') resolves via FunctorInstances registry ────
+const fMaybe = Functor.lookup("maybe");
 type _4 = Expect<Equals<typeof fMaybe, Functor<MaybeTypeLambda>>>;
 const m4 = fMaybe.map((x: string) => x.length, Maybe.of("hi"));
 type _4b = Expect<Equals<typeof m4, Maybe<number>>>;
 
-// ── 5. Monad.of('maybe').chain threads types ──────────────────────────
-const monadMaybe = Monad.of("maybe");
+// ── 5. Monad.lookup('maybe').chain threads types ──────────────────────────
+const monadMaybe = Monad.lookup("maybe");
 const m5 = monadMaybe.chain((x: number) => Maybe.of(x + 1), Maybe.of(1));
 type _5 = Expect<Equals<typeof m5, Maybe<number>>>;
 
-// ── 6. Applicative.of('maybe').of ─────────────────────────────────────
-const appMaybe = Applicative.of("maybe");
+// ── 6. Applicative.lookup('maybe').of ─────────────────────────────────────
+const appMaybe = Applicative.lookup("maybe");
 const m6 = appMaybe.of(42);
 type _6 = Expect<Equals<typeof m6, Maybe<number>>>;
 

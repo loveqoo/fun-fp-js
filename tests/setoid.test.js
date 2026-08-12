@@ -7,7 +7,7 @@ const { Setoid } = fp;
 logSection('Setoid Laws');
 
 // === Number Setoid ===
-const numSetoid = Setoid.of('number');
+const numSetoid = Setoid.lookup('number');
 
 test('Number Setoid - Reflexivity: equals(a, a) === true', () => {
     assertEquals(numSetoid.equals(5, 5), true);
@@ -28,7 +28,7 @@ test('Number Setoid - Transitivity: equals(a, b) && equals(b, c) => equals(a, c)
 });
 
 // === String Setoid ===
-const strSetoid = Setoid.of('string');
+const strSetoid = Setoid.lookup('string');
 
 test('String Setoid - Reflexivity', () => {
     assertEquals(strSetoid.equals('hello', 'hello'), true);
@@ -47,7 +47,7 @@ test('String Setoid - Transitivity', () => {
 });
 
 // === Boolean Setoid ===
-const boolSetoid = Setoid.of('boolean');
+const boolSetoid = Setoid.lookup('boolean');
 
 test('Boolean Setoid - Reflexivity', () => {
     assertEquals(boolSetoid.equals(true, true), true);
@@ -59,7 +59,7 @@ test('Boolean Setoid - Symmetry', () => {
 });
 
 // === Date Setoid ===
-const dateSetoid = Setoid.of('date');
+const dateSetoid = Setoid.lookup('date');
 
 test('Date Setoid - Reflexivity', () => {
     const d = new Date('2024-01-01');
@@ -79,7 +79,7 @@ test('Date Setoid - Equal dates by value', () => {
 });
 
 // === Default Setoid (reference equality) ===
-const defaultSetoid = Setoid.of('default');
+const defaultSetoid = Setoid.lookup('default');
 
 test('Default Setoid - Reference equality', () => {
     assertEquals(defaultSetoid.equals(1, 1), true);

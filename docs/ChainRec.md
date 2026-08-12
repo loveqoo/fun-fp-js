@@ -25,7 +25,7 @@ ChainRec.chainRec(f, initial): Monad a
 import FunFP from 'fun-fp-js';
 const { ChainRec, Either } = FunFP;
 
-const { chainRec } = ChainRec.of('either');
+const { chainRec } = ChainRec.lookup('either');
 
 // 1부터 n까지 합
 const sumTo = n => chainRec(
@@ -47,7 +47,7 @@ sumTo(1000000);  // 스택 오버플로 없이 동작!
 const countNormal = n => n === 0 ? 0 : 1 + countNormal(n - 1);
 countNormal(100000);  // RangeError: Maximum call stack size exceeded
 
-const { chainRec } = ChainRec.of('either');
+const { chainRec } = ChainRec.lookup('either');
 
 const countSafe = n => chainRec(
     (next, done, i) =>
@@ -65,8 +65,8 @@ countSafe(100000);  // Right(100000)
 ### 페이지네이션 루프
 
 ```javascript
-const { map } = Functor.of('task');
-const { chainRec } = ChainRec.of('task');
+const { map } = Functor.lookup('task');
+const { chainRec } = ChainRec.lookup('task');
 
 const fetchAllPages = () => chainRec(
     (next, done, { page, items }) =>
@@ -91,7 +91,7 @@ fetchAllPages().fork(
 ### 파일 라인 처리
 
 ```javascript
-const { chainRec } = ChainRec.of('either');
+const { chainRec } = ChainRec.lookup('either');
 
 const processLines = (lines) => chainRec(
     (next, done, { remaining, results }) => {

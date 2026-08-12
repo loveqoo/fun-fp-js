@@ -50,7 +50,7 @@ test('Writer.tell adds output with undefined value', () => {
 });
 
 test('Writer.tell with custom monoid (string)', () => {
-    const stringMonoid = Monoid.of('string');
+    const stringMonoid = Monoid.lookup('string');
     const writer = Writer.tell('hello', stringMonoid);
     const [value, output] = writer.run();
     assertEquals(value, undefined);
@@ -201,7 +201,7 @@ test('Functor Law - Composition: map(f . g) === map(f) . map(g)', () => {
 
 // === Custom Monoids ===
 test('Writer with String Monoid', () => {
-    const stringMonoid = Monoid.of('string');
+    const stringMonoid = Monoid.lookup('string');
     const w1 = new Writer(1, 'Hello', stringMonoid);
     const w2 = w1.chain(x => new Writer(x + 1, ' World', stringMonoid));
     const [value, output] = w2.run();
@@ -210,7 +210,7 @@ test('Writer with String Monoid', () => {
 });
 
 test('Writer with Number Sum Monoid', () => {
-    const numberMonoid = Monoid.of('number');
+    const numberMonoid = Monoid.lookup('number');
     const w1 = new Writer('result', 10, numberMonoid);
     const w2 = w1.chain(x => new Writer(x + '!', 5, numberMonoid));
     const [value, output] = w2.run();
@@ -219,30 +219,30 @@ test('Writer with Number Sum Monoid', () => {
 });
 
 // === Type class instances ===
-test('Functor.of("writer") returns WriterFunctor', () => {
-    const functor = Functor.of('writer');
+test('Functor.lookup("writer") returns WriterFunctor', () => {
+    const functor = Functor.lookup('writer');
     const writer = new Writer(21, ['log']);
     const mapped = functor.map(x => x * 2, writer);
     assertEquals(mapped.exec(), 42);
 });
 
-test('Apply.of("writer") returns WriterApply', () => {
-    const apply = Apply.of('writer');
+test('Apply.lookup("writer") returns WriterApply', () => {
+    const apply = Apply.lookup('writer');
     const wf = new Writer(x => x + 1, ['f']);
     const wa = new Writer(41, ['a']);
     const result = apply.ap(wf, wa);
     assertEquals(result.exec(), 42);
 });
 
-test('Chain.of("writer") returns WriterChain', () => {
-    const chain = Chain.of('writer');
+test('Chain.lookup("writer") returns WriterChain', () => {
+    const chain = Chain.lookup('writer');
     const writer = new Writer(5, ['start']);
     const result = chain.chain(x => new Writer(x * 2, ['doubled']), writer);
     assertEquals(result.run(), [10, ['start', 'doubled']]);
 });
 
-test('Monad.of("writer") returns WriterMonad', () => {
-    const monad = Monad.of('writer');
+test('Monad.lookup("writer") returns WriterMonad', () => {
+    const monad = Monad.lookup('writer');
     assertEquals(monad.of(42).exec(), 42);
 });
 
@@ -297,7 +297,7 @@ test('Writer.lift lifts ternary function', () => {
 });
 
 test('Writer.lift with string monoid', () => {
-    const stringMonoid = Monoid.of('string');
+    const stringMonoid = Monoid.lookup('string');
     const concat = (a, b) => a + b;
     const liftedConcat = Writer.lift(concat);
 
@@ -329,7 +329,7 @@ test('Writer for logging computation steps', () => {
 });
 
 test('Writer for accumulating costs', () => {
-    const numberMonoid = Monoid.of('number');
+    const numberMonoid = Monoid.lookup('number');
 
     const step1 = new Writer('data', 10, numberMonoid);
     const step2 = step1.chain(d => new Writer(d + ' processed', 25, numberMonoid));

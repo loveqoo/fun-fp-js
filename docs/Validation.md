@@ -18,7 +18,7 @@ Either와 달리 `ap` 연산에서 모든 에러를 수집하여 병렬 검증�
 ```javascript
 // Either는 fail-fast: 첫 번째 Left에서 멈춤
 const { Either, Apply } = FunFP;
-const { ap } = Apply.of('either');
+const { ap } = Apply.lookup('either');
 
 const validateEmail = email =>
     /.+@.+/.test(email) ? Either.Right(email) : Either.Left('Invalid email');
@@ -39,7 +39,7 @@ ap(Either.Right(x => y => [x, y]), e1);
 
 ```javascript
 const { Validation, Apply } = FunFP;
-const { ap } = Apply.of('validation');
+const { ap } = Apply.lookup('validation');
 
 const v1 = Validation.Invalid(['Invalid email']);
 const v2 = Validation.Invalid(['Must be 18+']);
@@ -67,7 +67,7 @@ const invalid = Validation.Invalid(['error1', 'error2']);
 
 // 커스텀 Monoid 지정
 const { Monoid } = FunFP;
-const stringMonoid = Monoid.of('string');
+const stringMonoid = Monoid.lookup('string');
 const stringInvalid = Validation.Invalid('error, ', stringMonoid);
 // Invalid('error, ', stringMonoid) - String Monoid 사용
 
@@ -83,7 +83,7 @@ Validation.fromEither(Either.Left(['err'])); // Invalid(['err'])
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.of('validation');
+const { map } = Functor.lookup('validation');
 
 map(x => x * 2, Validation.Valid(5));          // Valid(10)
 map(x => x * 2, Validation.Invalid(['error'])); // Invalid(['error']) - 함수 실행 안 됨
@@ -98,7 +98,7 @@ Validation.map(x => x * 2, Validation.Valid(5)); // Valid(10)
 
 ```javascript
 const { Apply } = FunFP;
-const { ap } = Apply.of('validation');
+const { ap } = Apply.lookup('validation');
 
 // 둘 다 Valid: 정상 적용
 const vf = Validation.Valid(x => x * 2);
@@ -126,7 +126,7 @@ Validation.ap(vf, va); // Valid(10)
 
 ```javascript
 const { Bifunctor } = FunFP;
-const { bimap } = Bifunctor.of('validation');
+const { bimap } = Bifunctor.lookup('validation');
 
 // Valid는 오른쪽 함수 적용
 bimap(
@@ -422,10 +422,10 @@ try {
 
 ```javascript
 const { Monoid, Validation, Apply } = FunFP;
-const { ap } = Apply.of('validation');
+const { ap } = Apply.lookup('validation');
 
 // String Monoid로 에러 메시지를 문자열로 연결
-const stringMonoid = Monoid.of('string');
+const stringMonoid = Monoid.lookup('string');
 
 const v1 = Validation.Invalid('Invalid email. ', stringMonoid);
 const v2 = Validation.Invalid('Password too short. ', stringMonoid);
@@ -489,7 +489,7 @@ const validateUserWithAddress = (name, email, street, city, zip) => {
 
     // 모든 검증 결과 조합
     const { Apply } = FunFP;
-    const { ap } = Apply.of('validation');
+    const { ap } = Apply.lookup('validation');
 
     return ap(
         ap(
@@ -586,7 +586,7 @@ Validation.collect = (...validators) => f => (...args) => {
 
     // ap를 연속 적용하여 에러 누적
     return validations.reduce(
-        (acc, v) => Apply.of('validation').ap(acc, v),
+        (acc, v) => Apply.lookup('validation').ap(acc, v),
         initialValidation
     );
 };

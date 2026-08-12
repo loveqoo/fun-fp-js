@@ -31,7 +31,7 @@ contramap(f, contramap(g, u)) ≡ contramap(x => g(f(x)), u)
 ## 예시: Predicate
 
 ```javascript
-const { contramap } = Contravariant.of('predicate');
+const { contramap } = Contravariant.lookup('predicate');
 // Predicate는 대표적인 Contravariant 예시
 // Predicate<A> = A → boolean
 

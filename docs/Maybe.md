@@ -27,8 +27,8 @@ const getCity = user => {
 ```javascript
 const user = { name: 'Alice', address: { city: 'Seoul' } };
 const { Maybe, Functor, Chain } = FunFP;
-const { map } = Functor.of('maybe');
-const { chain } = Chain.of('maybe');
+const { map } = Functor.lookup('maybe');
+const { chain } = Chain.lookup('maybe');
 
 const getCity = user =>
     map(
@@ -75,7 +75,7 @@ safe(undefined); // Nothing
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.of('maybe');
+const { map } = Functor.lookup('maybe');
 
 map(x => x * 2, Maybe.of(5));       // Just(10)
 map(x => x * 2, Maybe.Nothing());   // Nothing (함수 실행 안 됨)
@@ -85,7 +85,7 @@ map(x => x * 2, Maybe.Nothing());   // Nothing (함수 실행 안 됨)
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.of('maybe');
+const { chain } = Chain.lookup('maybe');
 
 const double = x => x > 0 ? Maybe.of(x * 2) : Maybe.Nothing();
 
@@ -253,7 +253,7 @@ Static Land 스타일로 읽기 쉽게 체이닝하기:
 
 ```javascript
 const user = { name: 'Alice', address: { city: 'Seoul' } };
-const { map } = Functor.of('maybe');
+const { map } = Functor.lookup('maybe');
 
 Maybe.pipe(
     Maybe.of(user),

@@ -76,15 +76,15 @@ test('run instance method works', () => {
    ═══════════════════════════════════════════════════ */
 logSection('ReaderT - Type Class Integration');
 
-test('Functor.of(alias).map works', () => {
+test('Functor.lookup(alias).map works', () => {
     const alias = 'readert(identity)';
-    const mapped = Functor.of(alias).map(x => x * 2, RT.of(5));
+    const mapped = Functor.lookup(alias).map(x => x * 2, RT.of(5));
     const result = RT.runReaderT('env', mapped);
     assertEquals(result.value, 10);
 });
 
-test('Monad.of(alias) exists', () => {
-    const monad = Monad.of('readert(identity)');
+test('Monad.lookup(alias) exists', () => {
+    const monad = Monad.lookup('readert(identity)');
     assert(monad != null, 'should exist');
     assert(typeof monad.of === 'function', 'should have of');
 });

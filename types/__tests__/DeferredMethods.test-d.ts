@@ -51,7 +51,7 @@ type _p2 = Expect<Equals<typeof composed, (s: string) => Maybe<string>>>;
 declare const m0: Maybe<string>;
 import type { TaskTypeLambda } from "../data/Task";
 const t1 = Maybe.traverse<TaskTypeLambda, string, number>(
-    Applicative.of("task"),
+    Applicative.lookup("task"),
     (s) => Task.of(s.length),
     m0
 );

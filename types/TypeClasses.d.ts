@@ -6,7 +6,7 @@
  * `map` only varies Target; `bimap` varies Out2 + Target; `contramap` varies
  * Target contravariantly; etc.
  *
- * Dispatch entry points (`Functor.of(name)`, `Monad.of(name)`) resolve a
+ * Dispatch entry points (`Functor.lookup(name)`, `Monad.lookup(name)`) resolve a
  * literal string key to a TypeLambda via per-type-class `*Instances` maps.
  * Users register new runtime-dispatch keys by module-augmenting those maps.
  * (Registering a *new TypeLambda* needs no augmentation — just declare
@@ -275,19 +275,19 @@ export interface GroupInstances {}
 // instance for that name. The TS side resolves via the *Instances maps.
 
 export declare const Functor: {
-    readonly of: <K extends keyof FunctorInstances>(
+    readonly lookup: <K extends keyof FunctorInstances>(
         name: K
     ) => Functor<FunctorInstances[K]>;
 };
 
 export declare const Apply: {
-    readonly of: <K extends keyof ApplyInstances>(
+    readonly lookup: <K extends keyof ApplyInstances>(
         name: K
     ) => Apply<ApplyInstances[K]>;
 };
 
 export declare const Applicative: {
-    readonly of: <K extends keyof ApplicativeInstances>(
+    readonly lookup: <K extends keyof ApplicativeInstances>(
         name: K
     ) => Applicative<ApplicativeInstances[K]>;
     // Const<r> — 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓸 때 넘긴다.
@@ -299,73 +299,73 @@ export declare const Applicative: {
 };
 
 export declare const Chain: {
-    readonly of: <K extends keyof ChainInstances>(
+    readonly lookup: <K extends keyof ChainInstances>(
         name: K
     ) => Chain<ChainInstances[K]>;
 };
 
 export declare const Monad: {
-    readonly of: <K extends keyof MonadInstances>(
+    readonly lookup: <K extends keyof MonadInstances>(
         name: K
     ) => Monad<MonadInstances[K]>;
 };
 
 export declare const Alt: {
-    readonly of: <K extends keyof AltInstances>(
+    readonly lookup: <K extends keyof AltInstances>(
         name: K
     ) => Alt<AltInstances[K]>;
 };
 
 export declare const Plus: {
-    readonly of: <K extends keyof PlusInstances>(
+    readonly lookup: <K extends keyof PlusInstances>(
         name: K
     ) => Plus<PlusInstances[K]>;
 };
 
 export declare const Alternative: {
-    readonly of: <K extends keyof AlternativeInstances>(
+    readonly lookup: <K extends keyof AlternativeInstances>(
         name: K
     ) => Alternative<AlternativeInstances[K]>;
 };
 
 export declare const Foldable: {
-    readonly of: <K extends keyof FoldableInstances>(
+    readonly lookup: <K extends keyof FoldableInstances>(
         name: K
     ) => Foldable<FoldableInstances[K]>;
 };
 
 export declare const Traversable: {
-    readonly of: <K extends keyof TraversableInstances>(
+    readonly lookup: <K extends keyof TraversableInstances>(
         name: K
     ) => Traversable<TraversableInstances[K]>;
 };
 
 export declare const Bifunctor: {
-    readonly of: <K extends keyof BifunctorInstances>(
+    readonly lookup: <K extends keyof BifunctorInstances>(
         name: K
     ) => Bifunctor<BifunctorInstances[K]>;
 };
 
 export declare const Contravariant: {
-    readonly of: <K extends keyof ContravariantInstances>(
+    readonly lookup: <K extends keyof ContravariantInstances>(
         name: K
     ) => Contravariant<ContravariantInstances[K]>;
 };
 
 export declare const Profunctor: {
-    readonly of: <K extends keyof ProfunctorInstances>(
+    readonly lookup: <K extends keyof ProfunctorInstances>(
         name: K
     ) => Profunctor<ProfunctorInstances[K]>;
 };
 
 export declare const Filterable: {
-    readonly of: <K extends keyof FilterableInstances>(
+    readonly lookup: <K extends keyof FilterableInstances>(
         name: K
     ) => Filterable<FilterableInstances[K]>;
 };
 
 export declare const ChainRec: {
-    readonly of: <K extends keyof ChainRecInstances>(
+    readonly lookup: <K extends keyof ChainRecInstances>(
         name: K
     ) => ChainRec<ChainRecInstances[K]>;
     // Step constructors — used by chainRec callbacks.
@@ -374,25 +374,25 @@ export declare const ChainRec: {
 };
 
 export declare const Extend: {
-    readonly of: <K extends keyof ExtendInstances>(
+    readonly lookup: <K extends keyof ExtendInstances>(
         name: K
     ) => Extend<ExtendInstances[K]>;
 };
 
 export declare const Comonad: {
-    readonly of: <K extends keyof ComonadInstances>(
+    readonly lookup: <K extends keyof ComonadInstances>(
         name: K
     ) => Comonad<ComonadInstances[K]>;
 };
 
 export declare const Semigroupoid: {
-    readonly of: <K extends keyof SemigroupoidInstances>(
+    readonly lookup: <K extends keyof SemigroupoidInstances>(
         name: K
     ) => Semigroupoid<SemigroupoidInstances[K]>;
 };
 
 export declare const Category: {
-    readonly of: <K extends keyof CategoryInstances>(
+    readonly lookup: <K extends keyof CategoryInstances>(
         name: K
     ) => Category<CategoryInstances[K]>;
 };
@@ -401,31 +401,31 @@ export declare const Category: {
 // These return instances keyed by concrete type (not TypeLambda).
 
 export declare const Setoid: {
-    readonly of: <K extends keyof SetoidInstances>(
+    readonly lookup: <K extends keyof SetoidInstances>(
         name: K
     ) => Setoid<SetoidInstances[K]>;
 };
 
 export declare const Ord: {
-    readonly of: <K extends keyof OrdInstances>(
+    readonly lookup: <K extends keyof OrdInstances>(
         name: K
     ) => Ord<OrdInstances[K]>;
 };
 
 export declare const Semigroup: {
-    readonly of: <K extends keyof SemigroupInstances>(
+    readonly lookup: <K extends keyof SemigroupInstances>(
         name: K
     ) => Semigroup<SemigroupInstances[K]>;
 };
 
 export declare const Monoid: {
-    readonly of: <K extends keyof MonoidInstances>(
+    readonly lookup: <K extends keyof MonoidInstances>(
         name: K
     ) => Monoid<MonoidInstances[K]>;
 };
 
 export declare const Group: {
-    readonly of: <K extends keyof GroupInstances>(
+    readonly lookup: <K extends keyof GroupInstances>(
         name: K
     ) => Group<GroupInstances[K]>;
 };

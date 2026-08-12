@@ -36,7 +36,7 @@ ap(zero(), a) ≡ zero()
 ```javascript
 const { Maybe, Alt, Applicative } = FunFP;
 
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 
 // 첫 번째 성공 값 선택
 const result = alt(Maybe.Nothing(), Maybe.of(42));  // Just(42)

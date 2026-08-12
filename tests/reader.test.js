@@ -164,30 +164,30 @@ test('Functor Law - Composition: map(f . g) === map(f) . map(g)', () => {
 });
 
 // === Type class instances ===
-test('Functor.of("reader") returns ReaderFunctor', () => {
-    const functor = Functor.of('reader');
+test('Functor.lookup("reader") returns ReaderFunctor', () => {
+    const functor = Functor.lookup('reader');
     const reader = Reader.of(21);
     const mapped = functor.map(x => x * 2, reader);
     assertEquals(mapped.run(null), 42);
 });
 
-test('Apply.of("reader") returns ReaderApply', () => {
-    const apply = Apply.of('reader');
+test('Apply.lookup("reader") returns ReaderApply', () => {
+    const apply = Apply.lookup('reader');
     const rf = Reader.of(x => x + 1);
     const ra = Reader.of(41);
     const result = apply.ap(rf, ra);
     assertEquals(result.run(null), 42);
 });
 
-test('Chain.of("reader") returns ReaderChain', () => {
-    const chain = Chain.of('reader');
+test('Chain.lookup("reader") returns ReaderChain', () => {
+    const chain = Chain.lookup('reader');
     const reader = Reader.of(5);
     const result = chain.chain(x => Reader.of(x * 2), reader);
     assertEquals(result.run(null), 10);
 });
 
-test('Monad.of("reader") returns ReaderMonad', () => {
-    const monad = Monad.of('reader');
+test('Monad.lookup("reader") returns ReaderMonad', () => {
+    const monad = Monad.lookup('reader');
     assertEquals(monad.of(42).run(null), 42);
 });
 

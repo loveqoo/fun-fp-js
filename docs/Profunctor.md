@@ -32,7 +32,7 @@ promap(f, g, promap(h, i, p)) ≡ promap(x => h(f(x)), x => g(i(x)), p)
 ## 예시: 함수
 
 ```javascript
-const { promap } = Profunctor.of('function');
+const { promap } = Profunctor.lookup('function');
 // 함수 (a → b)는 Profunctor의 대표적인 예시
 // 입력은 contravariant, 출력은 covariant
 

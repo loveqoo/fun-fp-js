@@ -43,31 +43,31 @@ import type { MaybeTypeLambda } from "../data/Maybe";
 // ═══════════════════════════════════════════════════════════════════
 
 // @ts-expect-error — 'bogus' is not a FunctorInstances key
-Functor.of("bogus");
+Functor.lookup("bogus");
 
 // @ts-expect-error — typo — 'maybee'
-Functor.of("maybee");
+Functor.lookup("maybee");
 
 // @ts-expect-error — Validation is not a Monad (no chain)
-Monad.of("validation");
+Monad.lookup("validation");
 
 // @ts-expect-error — Task has no Plus instance (no zero)
-Plus.of("task");
+Plus.lookup("task");
 
 // @ts-expect-error — Either has no Plus instance
-Plus.of("either");
+Plus.lookup("either");
 
 // @ts-expect-error — Either has no Alternative instance
-Alternative.of("either");
+Alternative.lookup("either");
 
 // @ts-expect-error — Task has no Traversable (can't fold async)
-Traversable.of("task");
+Traversable.lookup("task");
 
 // @ts-expect-error — Validation has no ChainRec
-ChainRec.of("validation");
+ChainRec.lookup("validation");
 
 // @ts-expect-error — Reader has no Bifunctor
-Bifunctor.of("reader");
+Bifunctor.lookup("reader");
 
 // ═══════════════════════════════════════════════════════════════════
 // 2. Subtype assignment misuse (Just ≠ Nothing, Left ≠ Right)
@@ -117,23 +117,23 @@ Validation.chain;
 // ═══════════════════════════════════════════════════════════════════
 
 // @ts-expect-error — 'task' is not a SetoidInstances key
-Setoid.of("task");
+Setoid.lookup("task");
 
 // @ts-expect-error — 'maybe' is not in OrdInstances
-Ord.of("maybe");
+Ord.lookup("maybe");
 
 // @ts-expect-error — 'boolean' is not in OrdInstances (only number/string)
-Ord.of("boolean");
+Ord.lookup("boolean");
 
 // @ts-expect-error — Group only has 'number' alias (BooleanXorGroup
 // lacks explicit alias)
-Group.of("boolean");
+Group.lookup("boolean");
 
 // @ts-expect-error — 'task' is not a SemigroupInstances key
-Semigroup.of("task");
+Semigroup.lookup("task");
 
 // @ts-expect-error — 'task' is not a MonoidInstances key
-Monoid.of("task");
+Monoid.lookup("task");
 
 // ═══════════════════════════════════════════════════════════════════
 // 6. Lens construction misuse
@@ -206,16 +206,16 @@ Maybe.of();
 // ═══════════════════════════════════════════════════════════════════
 
 // @ts-expect-error — no statet(reader) registration
-Monad.of("statet(reader)");
+Monad.lookup("statet(reader)");
 
 // @ts-expect-error — no readert(either) registration
-Monad.of("readert(either)");
+Monad.lookup("readert(either)");
 
 // @ts-expect-error — no eithert(state) registration
-Monad.of("eithert(state)");
+Monad.lookup("eithert(state)");
 
 // @ts-expect-error — writert(task,string) not pre-registered (only ,array)
-Monad.of("writert(task,string)");
+Monad.lookup("writert(task,string)");
 
 // ═══════════════════════════════════════════════════════════════════
 // 13. Writer output type mismatch

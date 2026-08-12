@@ -95,8 +95,8 @@ try {
 const { WriterT, Monoid } = FunFP;
 
 const WA = WriterT('maybe');                          // Array (기본)
-const WS = WriterT('maybe', Monoid.of('string'));     // String
-const WN = WriterT('maybe', Monoid.of('number'));     // Number (합산)
+const WS = WriterT('maybe', Monoid.lookup('string'));     // String
+const WN = WriterT('maybe', Monoid.lookup('number'));     // Number (합산)
 
 console.log(WA.of(1)._typeName);   // 'WriterT(Maybe,Array)'
 console.log(WS.of(1)._typeName);   // 'WriterT(Maybe,string)'
@@ -201,7 +201,7 @@ console.log(WT.runWriterT(program).isNothing());   // true — '시작' 로그�
 ```javascript
 const { WriterT, Monoid } = FunFP;
 
-const WT = WriterT('maybe', Monoid.of('string'));
+const WT = WriterT('maybe', Monoid.lookup('string'));
 
 const program = WT.tell('시작 → ')
     .chain(() => WT.tell('처리 → '))
@@ -219,7 +219,7 @@ console.log(value, '/', log);   // ok / 시작 → 처리 → 완료
 ```javascript
 const { WriterT, Monoid } = FunFP;
 
-const WT = WriterT('maybe', Monoid.of('number'));
+const WT = WriterT('maybe', Monoid.lookup('number'));
 
 // 각 단계의 비용을 누적한다
 const step = (name, cost, value) => WT.tell(cost).chain(() => WT.of(value));
@@ -338,7 +338,7 @@ warnings.forEach(w => console.log('  ' + w));
 ```javascript
 const { WriterT, Monoid } = FunFP;
 
-const WT = WriterT('maybe', Monoid.of('number'));
+const WT = WriterT('maybe', Monoid.lookup('number'));
 
 // 각 연산이 소비한 가상의 쿼리 수를 누적한다
 const query = (n, result) => WT.tell(n).chain(() => WT.of(result));

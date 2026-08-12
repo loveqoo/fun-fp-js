@@ -240,7 +240,7 @@ export declare function rangeBy(start: number, end: number): number[];
 // ─── 10. Global type-class combinators ────────────────────────────────
 // sequence: distribute G through a Traversable T. Slots pinned to
 // `never` — advanced usage with non-trivial slots should go through
-// `Traversable.of(...).traverse` directly.
+// `Traversable.lookup(...).traverse` directly.
 export declare function sequence<
     T extends TypeLambda,
     G extends TypeLambda,

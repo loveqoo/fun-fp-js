@@ -98,25 +98,25 @@ test('exec extracts state only', () => {
    ═══════════════════════════════════════════════════ */
 logSection('StateT - Type Class Integration');
 
-test('Functor.of(alias).map works', () => {
+test('Functor.lookup(alias).map works', () => {
     const alias = 'statet(identity)';
     const st = ST.of(5);
-    const mapped = Functor.of(alias).map(x => x * 2, st);
+    const mapped = Functor.lookup(alias).map(x => x * 2, st);
     const result = ST.runState(0, mapped);
     assertEquals(result.value, [10, 0]);
 });
 
-test('Chain.of(alias).chain works', () => {
+test('Chain.lookup(alias).chain works', () => {
     const alias = 'statet(identity)';
     const st = ST.of(5);
-    const chained = Chain.of(alias).chain(x => ST.of(x + 1), st);
+    const chained = Chain.lookup(alias).chain(x => ST.of(x + 1), st);
     const result = ST.runState(0, chained);
     assertEquals(result.value, [6, 0]);
 });
 
-test('Monad.of(alias) exists', () => {
+test('Monad.lookup(alias) exists', () => {
     const alias = 'statet(identity)';
-    const monad = Monad.of(alias);
+    const monad = Monad.lookup(alias);
     assert(monad != null, 'Monad instance should exist');
     assert(typeof monad.of === 'function', 'should have of');
     assert(typeof monad.chain === 'function', 'should have chain');
@@ -436,7 +436,7 @@ test('Type class nominal typing: map rejects non-ST instance', () => {
     const alias = 'statet(identity)';
     const fake = { _program: Free.pure(1), _typeName: 'StateT(Identity)' };
     assertThrows(
-        () => Functor.of(alias).map(x => x, fake),
+        () => Functor.lookup(alias).map(x => x, fake),
         'Fake structural match should be rejected by map'
     );
 });
@@ -445,7 +445,7 @@ test('Type class nominal typing: chain rejects non-ST instance', () => {
     const alias = 'statet(identity)';
     const fake = { _program: Free.pure(1), _typeName: 'StateT(Identity)' };
     assertThrows(
-        () => Chain.of(alias).chain(x => ST.of(x), fake),
+        () => Chain.lookup(alias).chain(x => ST.of(x), fake),
         'Fake structural match should be rejected by chain'
     );
 });
@@ -453,12 +453,12 @@ test('Type class nominal typing: chain rejects non-ST instance', () => {
 test('Registry: generic keys not polluted', () => {
     // StateT 생성 후에도 기존 generic 키가 보존되어야 함
     StateT(Identity); // 등록 트리거
-    const maybeFunctor = Functor.of('maybe');
-    assert(maybeFunctor != null, 'Functor.of(maybe) should still work');
+    const maybeFunctor = Functor.lookup('maybe');
+    assert(maybeFunctor != null, 'Functor.lookup(maybe) should still work');
     assert(maybeFunctor.type === 'Maybe', 'Maybe Functor type should be preserved');
 
-    const freeChain = Chain.of('free');
-    assert(freeChain != null, 'Chain.of(free) should still work');
+    const freeChain = Chain.lookup('free');
+    assert(freeChain != null, 'Chain.lookup(free) should still work');
     assert(freeChain.type === 'Free', 'Free Chain type should be preserved');
 });
 

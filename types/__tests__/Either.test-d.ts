@@ -38,14 +38,14 @@ if (e3.isRight()) {
     const val: number = e3.value;
 }
 
-// ── 4. Functor.of('either') resolves via registry ─────────────────────
-const fEither = Functor.of("either");
+// ── 4. Functor.lookup('either') resolves via registry ─────────────────────
+const fEither = Functor.lookup("either");
 type _4 = Expect<Equals<typeof fEither, Functor<EitherTypeLambda>>>;
 const e4 = fEither.map((s: string) => s.length, Either.Right("hi"));
 type _4b = Expect<Equals<typeof e4, Either<never, number>>>;
 
-// ── 5. Monad.of('either').chain preserves E ───────────────────────────
-const mEither = Monad.of("either");
+// ── 5. Monad.lookup('either').chain preserves E ───────────────────────────
+const mEither = Monad.lookup("either");
 declare const e5: Either<string, number>;
 const e5b = mEither.chain(
     (n: number) => Either.Right(n + 1) as Either<string, number>,
@@ -53,8 +53,8 @@ const e5b = mEither.chain(
 );
 type _5 = Expect<Equals<typeof e5b, Either<string, number>>>;
 
-// ── 6. Applicative.of('either').of ────────────────────────────────────
-const aEither = Applicative.of("either");
+// ── 6. Applicative.lookup('either').of ────────────────────────────────────
+const aEither = Applicative.lookup("either");
 const e6 = aEither.of(42);
 type _6 = Expect<Equals<typeof e6, Either<never, number>>>;
 

@@ -32,10 +32,10 @@ const tasks = users.map(fetchUser);
 ```javascript
 const users = [1, 2, 3];
 const fetchUser = id => Task.fromPromise(() => fetch(`/api/users/${id}`))();
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 
 traverse(
-    Applicative.of('task'),
+    Applicative.lookup('task'),
     fetchUser,
     users
 );
@@ -55,13 +55,13 @@ Traversable.traverse(Applicative, f, t): Applicative (Traversable b)
 
 ### 항등 (Identity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 traverse(Identity, Identity.of, t) === Identity.of(t)
 ```
 
 ### Naturality
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 traverse(G, compose(eta, f), t) === eta(traverse(F, f, t))
 ```
 
@@ -73,16 +73,16 @@ traverse(G, compose(eta, f), t) === eta(traverse(F, f, t))
 import FunFP from 'fun-fp-js';
 const { Traversable, Applicative, Maybe, Either, Task } = FunFP;
 
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 
 // Array[Maybe] → Maybe[Array]
 const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
-traverse(Applicative.of('maybe'), x => x, maybes);
+traverse(Applicative.lookup('maybe'), x => x, maybes);
 // Just([1, 2, 3])
 
 // 하나라도 Nothing이면 전체가 Nothing
 const hasNothing = [Maybe.of(1), Maybe.Nothing(), Maybe.of(3)];
-traverse(Applicative.of('maybe'), x => x, hasNothing);
+traverse(Applicative.lookup('maybe'), x => x, hasNothing);
 // Nothing
 ```
 
@@ -92,14 +92,14 @@ traverse(Applicative.of('maybe'), x => x, hasNothing);
 const validatePositive = n =>
     n > 0 ? Either.Right(n) : Either.Left(`${n} is not positive`);
 
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 
 const numbers = [1, 2, 3, 4, 5];
-traverse(Applicative.of('either'), validatePositive, numbers);
+traverse(Applicative.lookup('either'), validatePositive, numbers);
 // Right([1, 2, 3, 4, 5])
 
 const withNegative = [1, -2, 3];
-traverse(Applicative.of('either'), validatePositive, withNegative);
+traverse(Applicative.lookup('either'), validatePositive, withNegative);
 // Left('-2 is not positive')
 ```
 
@@ -112,9 +112,9 @@ const fetchUser = id => Task.fromPromise(() =>
 
 const userIds = [1, 2, 3, 4, 5];
 
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 
-traverse(Applicative.of('task'), fetchUser, userIds).fork(
+traverse(Applicative.lookup('task'), fetchUser, userIds).fork(
     err => console.error('Failed:', err),
     users => console.log('All users:', users)
 );
@@ -133,7 +133,7 @@ const { sequence, Maybe, Applicative } = FunFP;
 const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
 
 // sequence 의 첫 인자는 Traversable 인스턴스다
-sequence(Traversable.of('array'), Applicative.of('maybe'), maybes);
+sequence(Traversable.lookup('array'), Applicative.lookup('maybe'), maybes);
 // Just([1, 2, 3])
 ```
 
@@ -148,9 +148,9 @@ const readFile = path => Task.fromPromise(() =>
 
 const configFiles = ['./config.json', './env.json', './secrets.json'];
 
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 
-traverse(Applicative.of('task'), readFile, configFiles).fork(
+traverse(Applicative.lookup('task'), readFile, configFiles).fork(
     err => console.error('Failed to read config:', err),
     contents => {
         const [config, env, secrets] = contents.map(JSON.parse);
@@ -169,21 +169,21 @@ const parseDate = str => {
 
 const dates = ['2023-01-01', '2023-06-15', '2023-12-31'];
 
-const { traverse } = Traversable.of('array');
+const { traverse } = Traversable.lookup('array');
 
 // fold 는 정적 메서드다 — Either.fold(onLeft, onRight, either)
 Either.fold(
     err => console.error('Parse error:', err),
     parsed => console.log('Parsed dates:', parsed),
-    traverse(Applicative.of('either'), parseDate, dates)
+    traverse(Applicative.lookup('either'), parseDate, dates)
 );
 ```
 
 ### 옵셔널 필드 처리
 
 ```javascript
-const { map } = Functor.of('maybe');
-const { traverse } = Traversable.of('array');
+const { map } = Functor.lookup('maybe');
+const { traverse } = Traversable.lookup('array');
 
 const user = {
     name: Maybe.of('Alice'),
@@ -192,7 +192,7 @@ const user = {
 };
 
 const fields = [user.name, user.email, user.phone];
-const result = traverse(Applicative.of('maybe'), x => x, fields);
+const result = traverse(Applicative.lookup('maybe'), x => x, fields);
 
 map(([name, email, phone]) => ({ name, email, phone }), result);
 // Nothing (phone이 Nothing이므로)
@@ -207,8 +207,8 @@ map(([name, email, phone]) => ({ name, email, phone }), result);
 | 용도 | 단순 변환 | 효과 있는 변환 |
 
 ```javascript
-const MaybeApplicative = Applicative.of('maybe');
-const { traverse } = Traversable.of('array');
+const MaybeApplicative = Applicative.lookup('maybe');
+const { traverse } = Traversable.lookup('array');
 // map: 구조 유지
 [1, 2, 3].map(x => x * 2)  // [2, 4, 6]
 

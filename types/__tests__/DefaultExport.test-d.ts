@@ -67,16 +67,16 @@ const w1: Writer<string[], number> = fp.Writer.of(42);
 const st1: State<number, string> = fp.State.of("hi");
 
 // ── Type classes via default export ──────────────────────────────────
-const fMaybe = fp.Functor.of("maybe");
+const fMaybe = fp.Functor.lookup("maybe");
 type _fm = Expect<Equals<typeof fMaybe, Functor<MaybeTypeLambda>>>;
 
-const mTask = fp.Monad.of("task");
+const mTask = fp.Monad.lookup("task");
 type _mt = Expect<Equals<typeof mTask, Monad<TaskTypeLambda>>>;
 
-const sgN = fp.Semigroup.of("number");
+const sgN = fp.Semigroup.lookup("number");
 type _sn = Expect<Equals<typeof sgN, Semigroup<number>>>;
 
-const mN = fp.Monoid.of("number");
+const mN = fp.Monoid.lookup("number");
 type _mn = Expect<Equals<typeof mN, Monoid<number>>>;
 
 // ── Transformers via default ─────────────────────────────────────────
@@ -114,7 +114,7 @@ const composed1 = fp.Optics.compose(nameLens, fp.Optics.Lens<string, number>(
 const first1: Maybe<string> = fp.Optics.preview(nameLens, p);
 const built1: number = fp.Optics.review(prism1, 7);
 const total: number = fp.Optics.foldMapOf(
-    fp.Monoid.of("number"),
+    fp.Monoid.lookup("number"),
     nameLens,
     (s) => s.length,
     p

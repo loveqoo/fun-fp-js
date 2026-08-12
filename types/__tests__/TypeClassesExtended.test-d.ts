@@ -35,7 +35,7 @@ import "../data/builtins";
 
 
 // ── 1. Bifunctor on Either ───────────────────────────────────────────
-const biE = Bifunctor.of("either");
+const biE = Bifunctor.lookup("either");
 type _1a = Expect<Equals<typeof biE, Bifunctor<EitherTypeLambda>>>;
 declare const e1: Either<string, number>;
 const e1b = biE.bimap(
@@ -54,7 +54,7 @@ const e1c = Either.bimap(
 type _1c = Expect<Equals<typeof e1c, Either<string[], number>>>;
 
 // ── 2. Bifunctor on Validation ───────────────────────────────────────
-const biV = Bifunctor.of("validation");
+const biV = Bifunctor.lookup("validation");
 type _2 = Expect<Equals<typeof biV, Bifunctor<ValidationTypeLambda>>>;
 declare const v2: Validation<string[], number>;
 const v2b = biV.bimap(
@@ -65,16 +65,16 @@ const v2b = biV.bimap(
 type _2b = Expect<Equals<typeof v2b, Validation<number, string>>>;
 
 // ── 3. Filterable on Maybe / Either / Task / Array ───────────────────
-const fM = Filterable.of("maybe");
+const fM = Filterable.lookup("maybe");
 type _3a = Expect<Equals<typeof fM, Filterable<MaybeTypeLambda>>>;
 
-const fE = Filterable.of("either");
+const fE = Filterable.lookup("either");
 type _3b = Expect<Equals<typeof fE, Filterable<EitherTypeLambda>>>;
 
-const fT = Filterable.of("task");
+const fT = Filterable.lookup("task");
 type _3c = Expect<Equals<typeof fT, Filterable<TaskTypeLambda>>>;
 
-const fA = Filterable.of("array");
+const fA = Filterable.lookup("array");
 type _3d = Expect<Equals<typeof fA, Filterable<ArrayTypeLambda>>>;
 
 // Actual use — narrowing via type-guard
@@ -86,7 +86,7 @@ const m3b = fM.filter(
 type _3e = Expect<Equals<typeof m3b, Maybe<string>>>;
 
 // ── 4. ChainRec on Maybe / Either / Task ─────────────────────────────
-const crM = ChainRec.of("maybe");
+const crM = ChainRec.lookup("maybe");
 type _4a = Expect<Equals<typeof crM, ChainRec<MaybeTypeLambda>>>;
 
 // Count down from n to 0 using chainRec — must return Maybe of a Step.
@@ -104,7 +104,7 @@ const s1: ChainRecStep<number, never> = ChainRec.next(42);
 const s2: ChainRecStep<never, string> = ChainRec.done("ok");
 
 // ── 5. Contravariant on Function (varies In slot) ────────────────────
-const cF = Contravariant.of("function");
+const cF = Contravariant.lookup("function");
 type _5a = Expect<Equals<typeof cF, Contravariant<FunctionTypeLambda>>>;
 // A predicate on number, contramapped to a predicate on string-length
 declare const isPositive: (n: number) => boolean;
@@ -115,7 +115,7 @@ const isPositiveLen = cF.contramap(
 type _5b = Expect<Equals<typeof isPositiveLen, (s: string) => boolean>>;
 
 // ── 6. Profunctor on Function ────────────────────────────────────────
-const pF = Profunctor.of("function");
+const pF = Profunctor.lookup("function");
 type _6a = Expect<Equals<typeof pF, Profunctor<FunctionTypeLambda>>>;
 declare const lengthFn: (s: string) => number;
 const decoratedFn = pF.promap(
@@ -126,13 +126,13 @@ const decoratedFn = pF.promap(
 type _6b = Expect<Equals<typeof decoratedFn, (n: number) => string>>;
 
 // ── 7. Extend / Comonad on Array ─────────────────────────────────────
-const exA = Extend.of("array");
+const exA = Extend.lookup("array");
 type _7a = Expect<Equals<typeof exA, Extend<ArrayTypeLambda>>>;
 
-const coA = Comonad.of("array");
+const coA = Comonad.lookup("array");
 type _7b = Expect<Equals<typeof coA, Comonad<ArrayTypeLambda>>>;
 
-// ── 8. Bifunctor.of runtime dispatch kinds ───────────────────────────
+// ── 8. Bifunctor.lookup runtime dispatch kinds ───────────────────────────
 // Just demonstrate Kind reduction round-trips.
 type KE = Kind<EitherTypeLambda, never, string, never, number>;
 declare const ke: KE;

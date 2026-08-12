@@ -7,7 +7,7 @@ const { Semigroup, Maybe, Either } = fp;
 logSection('Semigroup Laws');
 
 // === String Semigroup ===
-const strSemigroup = Semigroup.of('string');
+const strSemigroup = Semigroup.lookup('string');
 
 test('String Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
     const a = 'Hello', b = ' ', c = 'World';
@@ -18,7 +18,7 @@ test('String Semigroup - Associativity: concat(concat(a, b), c) === concat(a, co
 });
 
 // === Array Semigroup ===
-const arrSemigroup = Semigroup.of('array');
+const arrSemigroup = Semigroup.lookup('array');
 
 test('Array Semigroup - Associativity', () => {
     const a = [1, 2], b = [3], c = [4, 5];
@@ -29,7 +29,7 @@ test('Array Semigroup - Associativity', () => {
 });
 
 // === Number Sum Semigroup ===
-const numSumSemigroup = Semigroup.of('number');
+const numSumSemigroup = Semigroup.lookup('number');
 
 test('Number Sum Semigroup - Associativity: (a + b) + c === a + (b + c)', () => {
     const a = 1, b = 2, c = 3;
@@ -40,7 +40,7 @@ test('Number Sum Semigroup - Associativity: (a + b) + c === a + (b + c)', () => 
 });
 
 // === Number Product Semigroup ===
-const numProductSemigroup = Semigroup.of('NumberProductSemigroup');
+const numProductSemigroup = Semigroup.lookup('NumberProductSemigroup');
 
 test('Number Product Semigroup - Associativity: (a * b) * c === a * (b * c)', () => {
     const a = 2, b = 3, c = 4;
@@ -51,7 +51,7 @@ test('Number Product Semigroup - Associativity: (a * b) * c === a * (b * c)', ()
 });
 
 // === Number Max Semigroup ===
-const numMaxSemigroup = Semigroup.of('NumberMaxSemigroup');
+const numMaxSemigroup = Semigroup.lookup('NumberMaxSemigroup');
 
 test('Number Max Semigroup - Associativity', () => {
     const a = 5, b = 10, c = 3;
@@ -62,7 +62,7 @@ test('Number Max Semigroup - Associativity', () => {
 });
 
 // === Number Min Semigroup ===
-const numMinSemigroup = Semigroup.of('NumberMinSemigroup');
+const numMinSemigroup = Semigroup.lookup('NumberMinSemigroup');
 
 test('Number Min Semigroup - Associativity', () => {
     const a = 5, b = 10, c = 3;
@@ -73,7 +73,7 @@ test('Number Min Semigroup - Associativity', () => {
 });
 
 // === Boolean All Semigroup ===
-const boolAllSemigroup = Semigroup.of('boolean');
+const boolAllSemigroup = Semigroup.lookup('boolean');
 
 test('Boolean All Semigroup - Associativity: (a && b) && c === a && (b && c)', () => {
     const a = true, b = true, c = false;
@@ -84,7 +84,7 @@ test('Boolean All Semigroup - Associativity: (a && b) && c === a && (b && c)', (
 });
 
 // === Boolean Any Semigroup ===
-const boolAnySemigroup = Semigroup.of('BooleanAnySemigroup');
+const boolAnySemigroup = Semigroup.lookup('BooleanAnySemigroup');
 
 test('Boolean Any Semigroup - Associativity: (a || b) || c === a || (b || c)', () => {
     const a = false, b = true, c = false;
@@ -95,7 +95,7 @@ test('Boolean Any Semigroup - Associativity: (a || b) || c === a || (b || c)', (
 });
 
 // === Boolean Xor Semigroup ===
-const boolXorSemigroup = Semigroup.of('BooleanXorSemigroup');
+const boolXorSemigroup = Semigroup.lookup('BooleanXorSemigroup');
 
 test('Boolean Xor Semigroup - Associativity', () => {
     const a = true, b = false, c = true;
@@ -106,7 +106,7 @@ test('Boolean Xor Semigroup - Associativity', () => {
 });
 
 // === Function Semigroup (compose) ===
-const fnSemigroup = Semigroup.of('function');
+const fnSemigroup = Semigroup.lookup('function');
 
 test('Function Semigroup - Associativity: compose(compose(f, g), h) === compose(f, compose(g, h))', () => {
     const f = x => x + 1;
@@ -150,11 +150,11 @@ test('Maybe Semigroup - Nothing concat Nothing', () => {
 });
 
 test('Maybe Semigroup - cache: string and instance produce same reference', () => {
-    assert(Maybe.Semigroup('array') === Maybe.Semigroup(Semigroup.of('array')));
+    assert(Maybe.Semigroup('array') === Maybe.Semigroup(Semigroup.lookup('array')));
 });
 
-test('Maybe Semigroup - registry: Semigroup.of resolves parameterized key', () => {
-    assert(Semigroup.of('maybe(array)') === Maybe.Semigroup('array'));
+test('Maybe Semigroup - registry: Semigroup.lookup resolves parameterized key', () => {
+    assert(Semigroup.lookup('maybe(array)') === Maybe.Semigroup('array'));
 });
 
 // === Either Semigroup ===
@@ -187,23 +187,23 @@ test('Either Semigroup - Left concat Left (first Left wins)', () => {
 });
 
 test('Either Semigroup - cache: string and instance produce same reference', () => {
-    assert(Either.Semigroup('array') === Either.Semigroup(Semigroup.of('array')));
+    assert(Either.Semigroup('array') === Either.Semigroup(Semigroup.lookup('array')));
 });
 
-test('Either Semigroup - registry: Semigroup.of resolves parameterized key', () => {
-    assert(Semigroup.of('either(array)') === Either.Semigroup('array'));
+test('Either Semigroup - registry: Semigroup.lookup resolves parameterized key', () => {
+    assert(Semigroup.lookup('either(array)') === Either.Semigroup('array'));
 });
 
 // === Nested Semigroup ===
 logSection('Nested Semigroup');
 
-test('Nested maybe - Semigroup.of resolves maybe(maybe(array))', () => {
-    const nested = Semigroup.of('maybe(maybe(array))');
+test('Nested maybe - Semigroup.lookup resolves maybe(maybe(array))', () => {
+    const nested = Semigroup.lookup('maybe(maybe(array))');
     assert(nested === Maybe.Semigroup('maybe(array)'));
 });
 
 test('Nested maybe - concat works on nested structure', () => {
-    const nested = Semigroup.of('maybe(maybe(array))');
+    const nested = Semigroup.lookup('maybe(maybe(array))');
     assertDeepEquals(
         nested.concat(Maybe.Just(Maybe.Just([1])), Maybe.Just(Maybe.Just([2]))),
         Maybe.Just(Maybe.Just([1, 2]))
@@ -213,8 +213,8 @@ test('Nested maybe - concat works on nested structure', () => {
 // === Error Cases ===
 logSection('Container Semigroup Error Cases');
 
-test('Semigroup.of with mixed-case container key throws', () => {
-    assertThrowsWith(() => Semigroup.of('Maybe(array)'), 'unsupported key Maybe(array)');
+test('Semigroup.lookup with mixed-case container key throws', () => {
+    assertThrowsWith(() => Semigroup.lookup('Maybe(array)'), 'unsupported key Maybe(array)');
 });
 
 test('Maybe.Semigroup with non-Semigroup object throws', () => {
@@ -225,11 +225,11 @@ test('Either.Semigroup with non-Semigroup object throws', () => {
     assertThrowsWith(() => Either.Semigroup({}), 'Either.Semigroup: innerSG must be a supported semigroup key or Semigroup instance');
 });
 
-test('Maybe.Semigroup with unsupported key propagates Semigroup.of error', () => {
+test('Maybe.Semigroup with unsupported key propagates Semigroup.lookup error', () => {
     assertThrowsWith(() => Maybe.Semigroup('unknown'), 'unsupported key unknown');
 });
 
-test('Maybe.Monoid with unsupported key propagates Semigroup.of error', () => {
+test('Maybe.Monoid with unsupported key propagates Semigroup.lookup error', () => {
     assertThrowsWith(() => Maybe.Monoid('unknown'), 'unsupported key unknown');
 });
 

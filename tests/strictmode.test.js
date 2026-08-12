@@ -22,7 +22,7 @@ test('strict mode enabled - type checking is strict', () => {
     setStrictMode(true);
 
     // In strict mode, invalid operations should throw
-    const functor = Functor.of('maybe');
+    const functor = Functor.lookup('maybe');
 
     // Valid operation should work
     const result = functor.map(x => x + 1, Maybe.Just(5));
@@ -33,7 +33,7 @@ test('strict mode disabled - type checking is loose', () => {
     setStrictMode(false);
 
     // In loose mode, operations should still work
-    const functor = Functor.of('maybe');
+    const functor = Functor.lookup('maybe');
     const result = functor.map(x => x + 1, Maybe.Just(5));
     assertEquals(result.value, 6);
 });
@@ -41,7 +41,7 @@ test('strict mode disabled - type checking is loose', () => {
 test('strict mode - switching modes works correctly', () => {
     // Start with strict
     setStrictMode(true);
-    const functor = Functor.of('maybe');
+    const functor = Functor.lookup('maybe');
     const result1 = functor.map(x => x * 2, Maybe.Just(10));
     assertEquals(result1.value, 20);
 
@@ -59,7 +59,7 @@ test('strict mode - switching modes works correctly', () => {
 test('strict mode - Either operations work in both modes', () => {
     // Strict mode
     setStrictMode(true);
-    const functor = Functor.of('either');
+    const functor = Functor.lookup('either');
     const strictResult = functor.map(x => x + 1, Either.Right(5));
     assertEquals(strictResult.value, 6);
 

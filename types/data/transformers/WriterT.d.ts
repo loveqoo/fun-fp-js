@@ -3,7 +3,7 @@
  *
  * Takes TWO runtime args: the base monad M and a Monoid instance that
  * determines the log type W. TS-side W is a type parameter with
- * `unknown[]` default (matching the runtime default `Monoid.of('array')`).
+ * `unknown[]` default (matching the runtime default `Monoid.lookup('array')`).
  * The monoid is typed `unknown` until the Monoid type class is declared.
  *
  * Public runtime surface: of / tell / lift / runWriterT

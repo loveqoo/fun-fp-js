@@ -309,12 +309,12 @@ type _8c = Expect<
 >;
 
 // ═══════════════════════════════════════════════════════════════════
-// 9. Monad.of transformer key returns correct Monad
+// 9. Monad.lookup transformer key returns correct Monad
 // ═══════════════════════════════════════════════════════════════════
 
 import "../data/transformers/registrations";
 
-const mStMaybe = Monad.of("statet(maybe)");
+const mStMaybe = Monad.lookup("statet(maybe)");
 type _9a = Expect<Equals<typeof mStMaybe, Monad<StateTTypeLambda<MaybeTypeLambda>>>>;
 
 // of on a transformer Monad instance resolves through the registry.

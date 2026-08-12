@@ -28,7 +28,7 @@ extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 ## 예시: 배열 윈도우
 
 ```javascript
-const { extend } = Extend.of('array');
+const { extend } = Extend.lookup('array');
 // extend는 "주변 컨텍스트를 보면서 계산"할 때 유용
 
 const sum = arr => arr.reduce((a, b) => a + b, 0);

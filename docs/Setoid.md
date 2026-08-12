@@ -45,11 +45,11 @@ import FunFP from 'fun-fp-js';
 const { Setoid } = FunFP;
 
 // 숫자 비교
-Setoid.of('number').equals(1, 1);    // true
-Setoid.of('number').equals(1, 2);    // false
+Setoid.lookup('number').equals(1, 1);    // true
+Setoid.lookup('number').equals(1, 2);    // false
 
 // 문자열 비교
-Setoid.of('string').equals('hello', 'hello');  // true
+Setoid.lookup('string').equals('hello', 'hello');  // true
 
 // 배열·객체 Setoid 는 기본 제공되지 않는다 — 직접 만든다
 const arraySetoid = new Setoid(
@@ -63,8 +63,8 @@ arraySetoid.equals([1, 2], [1, 3]);  // false
 ### 자동 타입 추론
 
 ```javascript
-// Setoid.of로 타입에 맞는 인스턴스 자동 선택
-const numSetoid = Setoid.of('number');
+// Setoid.lookup로 타입에 맞는 인스턴스 자동 선택
+const numSetoid = Setoid.lookup('number');
 numSetoid.equals(1, 1);  // true
 ```
 
@@ -72,7 +72,7 @@ numSetoid.equals(1, 1);  // true
 
 ### 중복 제거
 ```javascript
-const setoid = Setoid.of('number');
+const setoid = Setoid.lookup('number');
 
 const uniqueBy = arr => arr.reduce((acc, item) => 
     acc.some(x => setoid.equals(x, item)) ? acc : [...acc, item],

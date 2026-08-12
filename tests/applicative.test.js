@@ -11,7 +11,7 @@ const id = x => x;
 const f = x => x + 1;
 
 // === Array Applicative ===
-const arrApplicative = Applicative.of('array');
+const arrApplicative = Applicative.lookup('array');
 
 test('Array Applicative - Identity: ap(of(x => x), v) === v', () => {
     const v = [1, 2, 3];
@@ -36,7 +36,7 @@ test('Array Applicative - Interchange: ap(u, of(y)) === ap(of(f => f(y)), u)', (
 });
 
 // === Maybe Applicative ===
-const maybeApplicative = Applicative.of('maybe');
+const maybeApplicative = Applicative.lookup('maybe');
 
 test('Maybe Applicative - Identity (Just)', () => {
     const v = Maybe.Just(5);
@@ -67,7 +67,7 @@ test('Maybe Applicative - Interchange', () => {
 });
 
 // === Either Applicative ===
-const eitherApplicative = Applicative.of('either');
+const eitherApplicative = Applicative.lookup('either');
 
 test('Either Applicative - Identity (Right)', () => {
     const v = Either.Right(5);
@@ -91,7 +91,7 @@ test('Either Applicative - Homomorphism', () => {
 });
 
 // === Task Applicative ===
-const taskApplicative = Applicative.of('task');
+const taskApplicative = Applicative.lookup('task');
 
 test('Task Applicative - Identity', () => {
     const v = Task.of(5);

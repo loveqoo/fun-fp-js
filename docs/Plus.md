@@ -36,7 +36,7 @@ Functor.map(f, Plus.zero()) ≡ Plus.zero()
 ```javascript
 const { Maybe, Alt } = FunFP;
 
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 
 // Maybe.Nothing()은 zero 역할
 alt(Maybe.Nothing(), Maybe.of(1));  // Just(1)
@@ -59,9 +59,9 @@ Alt ──> Plus ──> Alternative
 ```javascript
 const { Plus, Monoid, Maybe } = FunFP;
 
-console.log(Plus.of('maybe').alt(Maybe.Just(1), Maybe.Just(2)).value);      // 1
-console.log(Monoid.of('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1 — 같다
-console.log(Monoid.of('plus(maybe)').empty().isNothing());                 // true
+console.log(Plus.lookup('maybe').alt(Maybe.Just(1), Maybe.Just(2)).value);      // 1
+console.log(Monoid.lookup('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1 — 같다
+console.log(Monoid.lookup('plus(maybe)').empty().isNothing());                 // true
 ```
 
 `Plus` 를 새로 등록하면 짝도 따라옵니다 — 손으로 만들 필요가 없습니다.

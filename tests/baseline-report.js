@@ -25,6 +25,11 @@ const O = f => f.Optics
     ? { ...f.Optics, composeOptic: f.Optics.compose, toListOf: f.Optics.toList }
     : { ...f, compose: f.composeOptic, toList: f.toListOf };
 
+// 타입클래스의 정적 조회는 HEAD 에서 `of`, 현재는 `lookup` 이다. 격자는 **동작**을 보므로
+// 양쪽에서 같은 인스턴스를 집도록 갈라준다 — 이름 변경 자체는 「최상위 export 키」와
+// 아래 `.type` 줄들이 잡는다. (`??` 를 쓰면 안 된다 — 규칙 23 의 그 자리다.)
+const L = (f, name) => (f[name].lookup ? f[name].lookup : f[name].of);
+
 const T = f => O(f).traversed('array');
 const bigP = f => O(f).Prism(x => (x > 10 ? f.Maybe.Just(x) : f.Maybe.Nothing()), x => x);
 const aLens = f => O(f).Lens(o => o.a, (b, o) => ({ ...o, a: b }));
@@ -89,14 +94,14 @@ const cases = [
     ['review 비함수 메시지', f => O(f).review(null, 1)],
 
     // ── 모으기에 쓰는 Monoid ──────────────────────────────────────────
-    ['first.concat(1,2)', f => f.Semigroup.of('first').concat(1, 2)],
-    ['first.concat(1,"a")', f => f.Semigroup.of('first').concat(1, 'a')],
-    ['first.concat(obj)', f => f.Semigroup.of('first').concat({ a: 1 }, { a: 2 })],
-    ['last.concat(1,2)', f => f.Semigroup.of('last').concat(1, 2)],
+    ['first.concat(1,2)', f => L(f, 'Semigroup')('first').concat(1, 2)],
+    ['first.concat(1,"a")', f => L(f, 'Semigroup')('first').concat(1, 'a')],
+    ['first.concat(obj)', f => L(f, 'Semigroup')('first').concat({ a: 1 }, { a: 2 })],
+    ['last.concat(1,2)', f => L(f, 'Semigroup')('last').concat(1, 2)],
     ['maybe(first) 동종', f => f.Maybe.Monoid('first').concat(f.Maybe.Just(1), f.Maybe.Just(2))],
     ['maybe(first) 이종', f => f.Maybe.Monoid('first').concat(f.Maybe.Just(1), f.Maybe.Just('a'))],
-    ['array Monoid', f => f.Monoid.of('array').concat([1], [2])],
-    ['array Monoid empty', f => f.Monoid.of('array').empty()],
+    ['array Monoid', f => L(f, 'Monoid')('array').concat([1], [2])],
+    ['array Monoid empty', f => L(f, 'Monoid')('array').empty()],
 
     // ── 레지스트리 자체 — 키가 사라지거나 늘어난 것을 본다 ────────────────
     ['Functor.types 키', f => Object.keys(f.Functor.types).sort()],
@@ -105,6 +110,11 @@ const cases = [
     ['Monoid.types 키', f => Object.keys(f.Monoid.types).sort()],
     ['Semigroup.types 키', f => Object.keys(f.Semigroup.types).sort()],
     ['최상위 export 키', f => Object.keys(f).sort()],
+
+    // 타입클래스의 **정적 표면** — `of` -> `lookup` 같은 이름 변경은 여기서만 보인다.
+    // 「최상위 export 키」는 타입클래스 이름만 보므로 그 안쪽이 바뀐 것을 못 잡는다.
+    ['타입클래스 정적 표면', f => ['Setoid', 'Semigroup', 'Functor', 'Applicative', 'Monad', 'Traversable']
+        .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
 
     // ── 인스턴스의 .type — 값으로는 관측되지 않는 자리다 ──────────────────
     // 검사에 쓰이지 않는 타입클래스(Semigroupoid/Category 등)에서는 .type 이 틀려도

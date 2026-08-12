@@ -484,7 +484,7 @@ test('composeK - generic function works correctly', () => {
     const safeSquare = x => Maybe.Just(x * x);
 
     // compose: safeSquare(safeDouble(safeAddOne(3))) = safeSquare(safeDouble(4)) = safeSquare(8) = 64
-    const composed = composeK(Monad.of('maybe'))([safeSquare, safeDouble, safeAddOne]);
+    const composed = composeK(Monad.lookup('maybe'))([safeSquare, safeDouble, safeAddOne]);
     const result = composed(3);
     assertEquals(result.value, 64);
 });
@@ -494,24 +494,24 @@ logSection('foldMap - Foldable with Monoid');
 
 test('foldMap - array monoid (flatten)', () => {
     const duplicate = x => [x, x];
-    const result = foldMap(Foldable.of('array'), Monoid.of('array'))(duplicate)([1, 2, 3]);
+    const result = foldMap(Foldable.lookup('array'), Monoid.lookup('array'))(duplicate)([1, 2, 3]);
     assertEquals(result, [1, 1, 2, 2, 3, 3]);
 });
 
 test('foldMap - number sum monoid', () => {
     const toLength = str => str.length;
-    const result = foldMap(Foldable.of('array'), Monoid.of('number'))(toLength)(['a', 'bb', 'ccc']);
+    const result = foldMap(Foldable.lookup('array'), Monoid.lookup('number'))(toLength)(['a', 'bb', 'ccc']);
     assertEquals(result, 6); // 1 + 2 + 3
 });
 
 test('foldMap - string monoid', () => {
     const wrap = x => `[${x}]`;
-    const result = foldMap(Foldable.of('array'), Monoid.of('string'))(wrap)([1, 2, 3]);
+    const result = foldMap(Foldable.lookup('array'), Monoid.lookup('string'))(wrap)([1, 2, 3]);
     assertEquals(result, '[1][2][3]');
 });
 
 test('foldMap - empty array returns monoid empty', () => {
-    const result = foldMap(Foldable.of('array'), Monoid.of('number'))(x => x)([]);
+    const result = foldMap(Foldable.lookup('array'), Monoid.lookup('number'))(x => x)([]);
     assertEquals(result, 0);
 });
 
@@ -523,7 +523,7 @@ test('foldMap - with Maybe array (flatten Just values)', () => {
 
     // foldMap with array monoid extracts values
     const extractJusts = m => m.isJust() ? [m.value] : [];
-    const result = foldMap(Foldable.of('array'), Monoid.of('array'))(extractJusts)(lengths);
+    const result = foldMap(Foldable.lookup('array'), Monoid.lookup('array'))(extractJusts)(lengths);
     assertEquals(result, [1, 2, 3]);
 });
 

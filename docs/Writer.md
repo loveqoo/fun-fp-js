@@ -46,7 +46,7 @@ const calculateWithLog = x => {
 
 ```javascript
 const { Writer, Chain } = FunFP;
-const { chain } = Chain.of('writer');
+const { chain } = Chain.lookup('writer');
 
 const add5 = x => new Writer(x + 5, [`Added 5 to ${x}`]);
 const double = x => new Writer(x * 2, [`Doubled ${x}`]);
@@ -89,7 +89,7 @@ const logOnly = Writer.tell(['Starting process']);
 logOnly.run();  // [undefined, ['Starting process']]
 
 // 커스텀 Monoid (String)
-const stringMonoid = Monoid.of('string');
+const stringMonoid = Monoid.lookup('string');
 const stringWriter = new Writer('result', 'log entry. ', stringMonoid);
 stringWriter.run();  // ['result', 'log entry. ']
 ```
@@ -102,7 +102,7 @@ stringWriter.run();  // ['result', 'log entry. ']
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.of('writer');
+const { map } = Functor.lookup('writer');
 
 const writer = new Writer(21, ['log']);
 map(x => x * 2, writer).run();
@@ -118,7 +118,7 @@ Writer를 반환하는 함수로 연쇄하며, 출력이 자동 누적됩니다.
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.of('writer');
+const { chain } = Chain.lookup('writer');
 
 const writer = new Writer(5, ['start']);
 const addLog = x => new Writer(x * 2, ['doubled']);
@@ -143,7 +143,7 @@ Writer 안의 함수를 Writer 안의 값에 적용하며, 출력을 누적합�
 
 ```javascript
 const { Apply } = FunFP;
-const { ap } = Apply.of('writer');
+const { ap } = Apply.lookup('writer');
 
 const wf = new Writer(x => x * 2, ['applying function']);
 const wa = new Writer(21, ['to value']);
@@ -258,7 +258,7 @@ w2.run();
 
 ```javascript
 const { Monoid } = FunFP;
-const stringMonoid = Monoid.of('string');
+const stringMonoid = Monoid.lookup('string');
 
 const w1 = new Writer(1, 'Hello ', stringMonoid);
 const w2 = w1.chain(x => new Writer(x + 1, 'World!', stringMonoid));
@@ -270,7 +270,7 @@ w2.run();
 
 ```javascript
 const { Monoid } = FunFP;
-const numberMonoid = Monoid.of('number');
+const numberMonoid = Monoid.lookup('number');
 
 const w1 = new Writer('step1', 10, numberMonoid);
 const w2 = w1.chain(x => new Writer('step2', 25, numberMonoid));
@@ -293,7 +293,7 @@ Writer.isWriter(5);                    // false
 
 ```javascript
 const { Writer, Chain } = FunFP;
-const { chain } = Chain.of('writer');
+const { chain } = Chain.lookup('writer');
 
 const parseInput = str => {
     const num = parseInt(str);
@@ -422,7 +422,7 @@ console.log('Audit trail:', auditTrail);
 
 ```javascript
 const { Writer, Monoid } = FunFP;
-const stringMonoid = Monoid.of('string');
+const stringMonoid = Monoid.lookup('string');
 
 const step1 = new Writer('data', 'Fetching data... ', stringMonoid);
 const step2 = step1.chain(data =>

@@ -704,11 +704,15 @@ class Traversable extends Functor {
 }
 Traversable.prototype[Symbols.Traversable] = true;
 
+// 타입클래스의 정적 조회는 `lookup` 이다 — `of` 가 아니다.
+// `of` 는 값을 컨테이너에 넣는 생성자 하나만 뜻한다(`Maybe.of(1)` === `Just(1)`,
+// `Applicative.lookup('maybe').of(1)`). 한 이름이 조회와 주입을 겸하면 읽는 쪽이
+// `Maybe.of('array')` 를 조회로 오해한다 — 그건 `Just('array')` 다.
 const withTypeRegistry = (TypeClass, defaultResolver = null) => {
     TypeClass.types = {};
     TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
-    TypeClass.of = key => TypeClass.resolver(key)
-        || raise(new TypeError(`${TypeClass.name}.of: unsupported key ${key}`));
+    TypeClass.lookup = key => TypeClass.resolver(key)
+        || raise(new TypeError(`${TypeClass.name}.lookup: unsupported key ${key}`));
 };
 const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
@@ -949,7 +953,7 @@ modules.push(StringMonoid);
 // 이 둘은 Monoid 가 아니다 — 항등원이 없다 (commit e3d2b82 에서 FirstMonoid/LastMonoid 제거).
 // Monoid 가 필요하면 Maybe 로 감싸는데, 무엇을 원하느냐에 따라 둘로 갈린다:
 //   Maybe.Monoid('first')     = maybe(first)  — 둘 다 Just 면 안쪽 값을 first 로 합친다
-//   Monoid.of('plus(maybe)')  = Alt/Plus 유도 — 안을 열지 않고 첫 Just 를 통째로 고른다
+//   Monoid.lookup('plus(maybe)')  = Alt/Plus 유도 — 안을 열지 않고 첫 Just 를 통째로 고른다
 // 둘은 payload 타입이 같으면 결과도 같다. 갈리는 것은 타입이 섞였을 때뿐이고, 그때
 // 앞엣것은 안쪽 concat 의 타입 검사에 걸려 던진다. "합치기" 면 앞, "고르기" 면 뒤.
 class FirstSemigroup extends Semigroup {
@@ -981,7 +985,7 @@ modules.push(ObjectFoldable);
 // key 는 등록된 소문자 alias 중 가장 짧은 것이고, 등록 안 된 인스턴스면 null 이다.
 // 그 null 이 "레지스트리에 올릴 수 없다 → 인스턴스로 캐시한다" 의 신호가 된다.
 const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
-    const instance = typeof x === 'string' ? TypeClass.of(x) : x;
+    const instance = typeof x === 'string' ? TypeClass.lookup(x) : x;
     if (typeof x !== 'string' && !(x && x[symbol] === true)) {
         raise(new TypeError(`${label}: argument must be a string or ${TypeClass.name} instance`));
     }
@@ -1034,7 +1038,7 @@ Applicative.Const = monoid => {
                   (a, b) => ({ value: m.concat(a.value, b.value) }), 'Object'),
         () => ({ value: m.empty() }), 'Object');
     if (key !== null) {
-        // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.of('const(array)')
+        // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')
         // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
         Functor.types[`const(${key})`] = result;
         Apply.types[`const(${key})`] = result;
@@ -1191,16 +1195,16 @@ class Just extends Maybe {
         super(); this.value = value; this._typeName = 'Maybe';
     }
     isJust() { return true; }
-    map(f) { return Functor.of('maybe').map(f, this); }
-    chain(f) { return Chain.of('maybe').chain(f, this); }
+    map(f) { return Functor.lookup('maybe').map(f, this); }
+    chain(f) { return Chain.lookup('maybe').chain(f, this); }
 }
 class Nothing extends Maybe {
     constructor() {
         super(); this._typeName = 'Maybe';
     }
     isNothing() { return true; }
-    map(f) { return Functor.of('maybe').map(f, this); }
-    chain(f) { return Chain.of('maybe').chain(f, this); }
+    map(f) { return Functor.lookup('maybe').map(f, this); }
+    chain(f) { return Chain.lookup('maybe').chain(f, this); }
 }
 Maybe.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
@@ -1316,14 +1320,14 @@ class Either {
 class Left extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isLeft() { return true; }
-    map(f) { return Functor.of('either').map(f, this); }
-    chain(f) { return Chain.of('either').chain(f, this); }
+    map(f) { return Functor.lookup('either').map(f, this); }
+    chain(f) { return Chain.lookup('either').chain(f, this); }
 }
 class Right extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isRight() { return true; }
-    map(f) { return Functor.of('either').map(f, this); }
-    chain(f) { return Chain.of('either').chain(f, this); }
+    map(f) { return Functor.lookup('either').map(f, this); }
+    chain(f) { return Chain.lookup('either').chain(f, this); }
 }
 Either.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
@@ -1528,8 +1532,8 @@ class Task {
         };
         this._typeName = 'Task';
     }
-    map(f) { return Functor.of('task').map(f, this); }
-    chain(f) { return Chain.of('task').chain(f, this); }
+    map(f) { return Functor.lookup('task').map(f, this); }
+    chain(f) { return Chain.lookup('task').chain(f, this); }
     catchError(handler) { return Task.catchError(handler, this); }
 }
 Task.prototype[Symbols.Task] = true;
@@ -1720,10 +1724,10 @@ class Validation {
 class Valid extends Validation {
     constructor(value) { super(); this.value = value; this._typeName = 'Validation'; }
     isValid() { return true; }
-    map(f) { return Functor.of('validation').map(f, this); }
+    map(f) { return Functor.lookup('validation').map(f, this); }
 }
 class Invalid extends Validation {
-    constructor(errors, monoid = Monoid.of('array')) {
+    constructor(errors, monoid = Monoid.lookup('array')) {
         super();
         this.errors = errors;
         this.monoid = monoid;
@@ -1747,21 +1751,21 @@ Validation.prototype.toEither = function () {
 };
 Validation.fold = (onInvalid, onValid, v) =>
     v.isValid() ? onValid(v.value) : onInvalid(v.errors);
-Validation.map = (f, v) => Functor.of('validation').map(f, v);
-Validation.ap = (vf, va) => Apply.of('validation').ap(vf, va);
-Validation.bimap = (f, g, v) => Bifunctor.of('validation').bimap(f, g, v);
-Validation.reduce = (f, init, v) => Foldable.of('validation').reduce(f, init, v);
+Validation.map = (f, v) => Functor.lookup('validation').map(f, v);
+Validation.ap = (vf, va) => Apply.lookup('validation').ap(vf, va);
+Validation.bimap = (f, g, v) => Bifunctor.lookup('validation').bimap(f, g, v);
+Validation.reduce = (f, init, v) => Foldable.lookup('validation').reduce(f, init, v);
 Validation.collect = (...validators) => f => (...args) => {
     if (validators.length === 0) return Validation.Valid(f());
     const validations = validators.map((validator, i) => {
         const result = validator(args[i]);
         return result.isRight()
             ? Validation.Valid(result.value)
-            : Validation.Invalid([result.value]); // wrap in array for Monoid.of('array')
+            : Validation.Invalid([result.value]); // wrap in array for Monoid.lookup('array')
     });
     const curriedF = curry(f, validators.length);
     return validations.reduce(
-        (acc, v) => Apply.of('validation').ap(acc, v),
+        (acc, v) => Apply.lookup('validation').ap(acc, v),
         Validation.Valid(curriedF)
     );
 };
@@ -1822,8 +1826,8 @@ class Reader {
         this._typeName = 'Reader';
     }
     run(env) { return this._run(env); }
-    map(f) { return Functor.of('reader').map(f, this); }
-    chain(f) { return Chain.of('reader').chain(f, this); }
+    map(f) { return Functor.lookup('reader').map(f, this); }
+    chain(f) { return Chain.lookup('reader').chain(f, this); }
 }
 Reader.prototype[Symbols.Reader] = true;
 Reader.of = x => new Reader(_ => x);
@@ -1867,7 +1871,7 @@ class ReaderMonad extends Monad {
 modules.push(ReaderMonad);
 /* Writer */
 class Writer {
-    constructor(value, output, monoid = Monoid.of('array')) {
+    constructor(value, output, monoid = Monoid.lookup('array')) {
         this.value = value;
         this.output = output;
         this.monoid = monoid;
@@ -1875,13 +1879,13 @@ class Writer {
     }
     run() { return [this.value, this.output]; }
     exec() { return this.value; }
-    map(f) { return Functor.of('writer').map(f, this); }
-    chain(f) { return Chain.of('writer').chain(f, this); }
+    map(f) { return Functor.lookup('writer').map(f, this); }
+    chain(f) { return Chain.lookup('writer').chain(f, this); }
 }
 Writer.prototype[Symbols.Writer] = true;
-Writer.of = (x, monoid = Monoid.of('array')) => new Writer(x, monoid.empty(), monoid);
+Writer.of = (x, monoid = Monoid.lookup('array')) => new Writer(x, monoid.empty(), monoid);
 Writer.isWriter = x => x != null && x[Symbols.Writer] === true;
-Writer.tell = (output, monoid = Monoid.of('array')) => new Writer(undefined, output, monoid);
+Writer.tell = (output, monoid = Monoid.lookup('array')) => new Writer(undefined, output, monoid);
 Writer.listen = w => new Writer([w.value, w.output], w.output, w.monoid);
 Writer.listens = (f, w) => new Writer([w.value, f(w.output)], w.output, w.monoid);
 Writer.pass = w => {
@@ -1936,8 +1940,8 @@ class State {
     run(s) { return this._run(s); }
     eval(s) { return this.run(s)[0]; }
     exec(s) { return this.run(s)[1]; }
-    map(f) { return Functor.of('state').map(f, this); }
-    chain(f) { return Chain.of('state').chain(f, this); }
+    map(f) { return Functor.lookup('state').map(f, this); }
+    chain(f) { return Chain.lookup('state').chain(f, this); }
 }
 State.prototype[Symbols.State] = true;
 State.of = x => new State(s => [x, s]);
@@ -2023,7 +2027,7 @@ const lift = applicative => {
         return args.slice(1).reduce((acc, arg) => applicative.ap(acc, arg), applicative.map(curry(f, args.length), args[0]));
     };
 };
-const pipeK = (monad, foldable = Foldable.of('array')) => {
+const pipeK = (monad, foldable = Foldable.lookup('array')) => {
     if (!(monad && monad[Symbols.Monad] === true)) {
         raise(new TypeError('pipeK: first argument must be a Monad'));
     }
@@ -2032,7 +2036,7 @@ const pipeK = (monad, foldable = Foldable.of('array')) => {
     }
     return fns => x => foldable.reduce((acc, fn) => monad.chain(types.checkFunction(fn, 'pipeK'), acc), monad.of(x), fns);
 };
-const composeK = (monad, foldable = Foldable.of('array')) => {
+const composeK = (monad, foldable = Foldable.lookup('array')) => {
     if (!(monad && monad[Symbols.Monad] === true)) {
         raise(new TypeError('composeK: first argument must be a Monad'));
     }
@@ -2197,8 +2201,8 @@ const { Free, trampoline } = (() => {
             this[Symbol.toStringTag] = 'Pure';
             this[Symbols.Pure] = true;
         }
-        map(f) { return Functor.of('free').map(f, this); }
-        chain(f) { return Chain.of('free').chain(f, this); }
+        map(f) { return Functor.lookup('free').map(f, this); }
+        chain(f) { return Chain.lookup('free').chain(f, this); }
     }
     class Impure extends Free {
         constructor(functor) {
@@ -2209,8 +2213,8 @@ const { Free, trampoline } = (() => {
             this[Symbol.toStringTag] = 'Impure';
             this[Symbols.Impure] = true;
         }
-        map(f) { return Functor.of('free').map(f, this); }
-        chain(f) { return Chain.of('free').chain(f, this); }
+        map(f) { return Functor.lookup('free').map(f, this); }
+        chain(f) { return Chain.lookup('free').chain(f, this); }
     }
     Free.prototype[Symbols.Free] = true;
     class Thunk {
@@ -2339,7 +2343,7 @@ class FreeFunctor extends Functor {
         super(
             (f, free) => Free.isPure(free)
                 ? Free.pure(f(free.value))
-                : Free.impure(free.functor.map(prevFree => Functor.of('free').map(f, prevFree))),
+                : Free.impure(free.functor.map(prevFree => Functor.lookup('free').map(f, prevFree))),
             'Free', Functor.types, 'free'
         );
     }
@@ -2349,7 +2353,7 @@ class FreeApply extends Apply {
     constructor() {
         super(
             Functor.types.FreeFunctor,
-            (mf, mx) => Chain.of('free').chain(f => Functor.of('free').map(f, mx), mf),
+            (mf, mx) => Chain.lookup('free').chain(f => Functor.lookup('free').map(f, mx), mf),
             'Free', Apply.types, 'free'
         );
     }
@@ -2367,7 +2371,7 @@ class FreeChain extends Chain {
             Apply.types.FreeApply,
             (f, free) => Free.isPure(free)
                 ? f(free.value)
-                : Free.impure(free.functor.map(prevFree => Chain.of('free').chain(f, prevFree))),
+                : Free.impure(free.functor.map(prevFree => Chain.lookup('free').chain(f, prevFree))),
             'Free', Chain.types, 'free'
         );
     }
@@ -2404,18 +2408,18 @@ const { Optics } = (() => {
 
     // 함수: p a b = a -> b.  over/set 이 쓴다.
     const functionProfunctor = {
-        dimap: Profunctor.of('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
-        first: p => t => Bifunctor.of('tuple').bimap(p, identity, t),
-        left: p => e => Bifunctor.of('either').bimap(p, identity, e),
+        dimap: Profunctor.lookup('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
+        first: p => t => Bifunctor.lookup('tuple').bimap(p, identity, t),
+        left: p => e => Bifunctor.lookup('either').bimap(p, identity, e),
         wander: (traverse, p) => s =>
-            traverse(Applicative.of('identity'), a => ({ value: p(a) }), s).value,
+            traverse(Applicative.lookup('identity'), a => ({ value: p(a) }), s).value,
     };
     // Forget<r>: p a b = a -> r.  출력을 버리고 r 을 모은다. view/preview/toList/foldMapOf 가 쓴다.
     const forgetProfunctor = monoid => ({
         // 출력 변환을 버리므로 g 자리에 항등을 넣는다.
-        dimap: (f, _g, p) => Profunctor.of('function').promap(f, identity, p),
-        // Comonad.of('array').extract 가 배열의 head 라 2-튜플에서는 fst 다.
-        first: p => t => p(Comonad.of('array').extract(t)),
+        dimap: (f, _g, p) => Profunctor.lookup('function').promap(f, identity, p),
+        // Comonad.lookup('array').extract 가 배열의 head 라 2-튜플에서는 fst 다.
+        first: p => t => p(Comonad.lookup('array').extract(t)),
         left: p => e => Either.fold(p, () => monoid.empty(), e),
         wander: (traverse, p) => s =>
             traverse(Applicative.Const(monoid), a => ({ value: p(a) }), s).value,
@@ -2462,7 +2466,7 @@ const { Optics } = (() => {
     };
     // 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
     const traversed = key => {
-        const instance = Traversable.of(key);
+        const instance = Traversable.lookup(key);
         return P => pab => P.wander(instance.traverse, pab);
     };
 
@@ -2487,14 +2491,14 @@ const { Optics } = (() => {
     // 읽기 셋은 각자의 이름으로 던져야 한다 — foldMapOf 에 위임하면 귀속을 잃는다.
     const toList = (optic, s) => {
         typeof optic !== 'function' && raise(new TypeError('toList: optic must be a function'));
-        return foldMapOf(Monoid.of('array'), optic, a => [a], s);
+        return foldMapOf(Monoid.lookup('array'), optic, a => [a], s);
     };
     // preview 는 대상을 "합치는" 게 아니라 "고르는" 것이므로 컨테이너를 열지 않는 Monoid 를
     // 쓴다 — plus(maybe) 다. maybe(first) 를 쓰면 안쪽 값을 합치려 들어 [1, 'a'] 처럼 타입이
     // 섞인 대상에서 던진다. 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 한다.
     const preview = (optic, s) => {
         typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
-        return foldMapOf(Monoid.of('plus(maybe)'), optic, Maybe.Just, s);
+        return foldMapOf(Monoid.lookup('plus(maybe)'), optic, Maybe.Just, s);
     };
     // Lens/Iso 전용 — "정확히 1대상" 을 문서가 아니라 코드가 강제한다.
     // forgetProfunctor 에는 wander 가 있어서 Traversal 을 넘겨도 실행은 된다(review 와 달리
@@ -2541,12 +2545,12 @@ const { Optics } = (() => {
 })();
 /* ═══════════════════════════════════════════════════════════════
    Monad Transformer
-   - load() 이후에 위치: Monad.of(), Functor.of() 등이 로드된 상태 필요
+   - load() 이후에 위치: Monad.lookup(), Functor.lookup() 등이 로드된 상태 필요
    - 타입 클래스 인스턴스를 동적 생성하여 레지스트리에 등록
    ═══════════════════════════════════════════════════════════════ */
 
 const normalizeMonad = M => {
-    if (typeof M === 'string') return Monad.of(M);
+    if (typeof M === 'string') return Monad.lookup(M);
     if (!M || typeof M.of !== 'function' || typeof M.chain !== 'function' || typeof M.map !== 'function') {
         raise(new TypeError(
             'normalizeMonad: M must be a static-land style object with of(a), map(f, ma), chain(f, ma)'
@@ -2572,20 +2576,20 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
         if (!(val instanceof XT)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
     };
     const tFunctor = new Functor(
-        (f, t) => { check(t, 'map'); return new XT(Functor.of('free').map(f, t._program)); },
+        (f, t) => { check(t, 'map'); return new XT(Functor.lookup('free').map(f, t._program)); },
         typeName, null
     );
     Functor.types[alias] = tFunctor;
     const tApply = new Apply(tFunctor, (tf, ta) => {
         check(tf, 'ap'); check(ta, 'ap');
-        return new XT(Chain.of('free').chain(f => Functor.of('free').map(f, ta._program), tf._program));
+        return new XT(Chain.lookup('free').chain(f => Functor.lookup('free').map(f, ta._program), tf._program));
     }, typeName, null);
     Apply.types[alias] = tApply;
     const tApplicative = new Applicative(tApply, XT.of, typeName, null);
     Applicative.types[alias] = tApplicative;
     const tChain = new Chain(tApply, (f, t) => {
         check(t, 'chain');
-        return new XT(Chain.of('free').chain(x => {
+        return new XT(Chain.lookup('free').chain(x => {
             const result = f(x);
             check(result, 'chain callback');
             return result._program;
@@ -2602,7 +2606,7 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
 };
 
 // type 없는 커스텀 모나드에 자동 부여되는 alias는 프로세스 실행 순서에 따라 달라진다.
-// 이 alias를 외부에서 Functor.of('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
+// 이 alias를 외부에서 Functor.lookup('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
 // 문자열 M (예: 'maybe', 'either')이나 type 프로퍼티가 있는 객체 M을 사용하면 결정적 alias를 얻을 수 있다.
 let _transformerAutoId = 0;
 const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
@@ -2628,8 +2632,8 @@ const StateT = (M) => {
             if (!(this instanceof ST)) raise(new TypeError(`${typeName}.exec: must be called on a ${typeName} instance`));
             return nm.map(([_, s2]) => s2, this.run(s));
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     ST.of = x => new ST(Free.pure(x));
     ST.get = new ST(Free.liftF(new GetF(s => s)));
@@ -2674,8 +2678,8 @@ const EitherT = (M) => {
             if (!(this instanceof ET)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return ET.runEitherT(this);
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     ET.of = x => new ET(Free.pure(x));
     ET.throwError = e => new ET(Free.liftF(new ThrowF(e)));
@@ -2733,8 +2737,8 @@ const ReaderT = (M) => {
             if (!(this instanceof RT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return RT.runReaderT(env, this);
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     RT.of = x => new RT(Free.pure(x));
     RT.ask = new RT(Free.liftF(new AskF(env => env)));
@@ -2773,7 +2777,7 @@ ReaderT._cache = new Map();
 
 /* ── WriterT ── */
 const WriterT = (M, writerMonoid) => {
-    if (!writerMonoid) writerMonoid = Monoid.of('array');
+    if (!writerMonoid) writerMonoid = Monoid.lookup('array');
     if (typeof writerMonoid.empty !== 'function' || typeof writerMonoid.concat !== 'function') {
         raise(new TypeError('WriterT: monoid must have empty() and concat(a, b) methods'));
     }
@@ -2791,8 +2795,8 @@ const WriterT = (M, writerMonoid) => {
             if (!(this instanceof WT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return WT.runWriterT(this);
         }
-        map(f) { return Functor.of(alias).map(f, this); }
-        chain(f) { return Chain.of(alias).chain(f, this); }
+        map(f) { return Functor.lookup(alias).map(f, this); }
+        chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     WT.of = x => new WT(Free.pure(x));
     WT.tell = output => new WT(Free.liftF(new TellF(output, undefined)));
@@ -2873,95 +2877,95 @@ const Actor = ({ init, handle }) => {
 
 /* ═══════════════════════════════════════════════════════════════
    Static Methods (Eta Reduced)
-   - load() 이후에 정의해야 TypeClass.of()가 정상 작동
+   - load() 이후에 정의해야 TypeClass.lookup()가 정상 작동
    ═══════════════════════════════════════════════════════════════ */
 
 // Functor
-Maybe.map = Functor.of('maybe').map;
-Either.map = Functor.of('either').map;
-Task.map = Functor.of('task').map;
-Reader.map = Functor.of('reader').map;
-Writer.map = Functor.of('writer').map;
-State.map = Functor.of('state').map;
-Free.map = Functor.of('free').map;
+Maybe.map = Functor.lookup('maybe').map;
+Either.map = Functor.lookup('either').map;
+Task.map = Functor.lookup('task').map;
+Reader.map = Functor.lookup('reader').map;
+Writer.map = Functor.lookup('writer').map;
+State.map = Functor.lookup('state').map;
+Free.map = Functor.lookup('free').map;
 
 // Apply
-Maybe.ap = Apply.of('maybe').ap;
-Either.ap = Apply.of('either').ap;
-Task.ap = Apply.of('task').ap;
-Reader.ap = Apply.of('reader').ap;
-Writer.ap = Apply.of('writer').ap;
-State.ap = Apply.of('state').ap;
-Free.ap = Apply.of('free').ap;
+Maybe.ap = Apply.lookup('maybe').ap;
+Either.ap = Apply.lookup('either').ap;
+Task.ap = Apply.lookup('task').ap;
+Reader.ap = Apply.lookup('reader').ap;
+Writer.ap = Apply.lookup('writer').ap;
+State.ap = Apply.lookup('state').ap;
+Free.ap = Apply.lookup('free').ap;
 
 // Chain
-Maybe.chain = Chain.of('maybe').chain;
-Either.chain = Chain.of('either').chain;
-Task.chain = Chain.of('task').chain;
-Reader.chain = Chain.of('reader').chain;
-Writer.chain = Chain.of('writer').chain;
-State.chain = Chain.of('state').chain;
-Free.chain = Chain.of('free').chain;
+Maybe.chain = Chain.lookup('maybe').chain;
+Either.chain = Chain.lookup('either').chain;
+Task.chain = Chain.lookup('task').chain;
+Reader.chain = Chain.lookup('reader').chain;
+Writer.chain = Chain.lookup('writer').chain;
+State.chain = Chain.lookup('state').chain;
+Free.chain = Chain.lookup('free').chain;
 
 // Alt
-Maybe.alt = Alt.of('maybe').alt;
-Either.alt = Alt.of('either').alt;
-Task.alt = Alt.of('task').alt;
+Maybe.alt = Alt.lookup('maybe').alt;
+Either.alt = Alt.lookup('either').alt;
+Task.alt = Alt.lookup('task').alt;
 
 // Plus
-Maybe.zero = () => Plus.of('maybe').zero();
+Maybe.zero = () => Plus.lookup('maybe').zero();
 
 // Filterable
-Maybe.filter = Filterable.of('maybe').filter;
-Task.filter = Filterable.of('task').filter;
+Maybe.filter = Filterable.lookup('maybe').filter;
+Task.filter = Filterable.lookup('task').filter;
 
 // Foldable (3+ args - no eta reduction)
-Maybe.reduce = (f, init, m) => Foldable.of('maybe').reduce(f, init, m);
-Either.reduce = (f, init, e) => Foldable.of('either').reduce(f, init, e);
+Maybe.reduce = (f, init, m) => Foldable.lookup('maybe').reduce(f, init, m);
+Either.reduce = (f, init, e) => Foldable.lookup('either').reduce(f, init, e);
 
 // Traversable (3+ args - no eta reduction)
-Maybe.traverse = (applicative, f, m) => Traversable.of('maybe').traverse(applicative, f, m);
-Either.traverse = (applicative, f, e) => Traversable.of('either').traverse(applicative, f, e);
+Maybe.traverse = (applicative, f, m) => Traversable.lookup('maybe').traverse(applicative, f, m);
+Either.traverse = (applicative, f, e) => Traversable.lookup('either').traverse(applicative, f, e);
 
 // Bifunctor (3 args - no eta reduction)
-Either.bimap = (f, g, e) => Bifunctor.of('either').bimap(f, g, e);
+Either.bimap = (f, g, e) => Bifunctor.lookup('either').bimap(f, g, e);
 
 // Filterable with 3 args (no eta reduction)
-Either.filter = (pred, e, onFalse) => Filterable.of('either').filter(pred, e, onFalse);
+Either.filter = (pred, e, onFalse) => Filterable.lookup('either').filter(pred, e, onFalse);
 
 // ChainRec
-Maybe.chainRec = ChainRec.of('maybe').chainRec;
-Either.chainRec = ChainRec.of('either').chainRec;
-Task.chainRec = ChainRec.of('task').chainRec;
+Maybe.chainRec = ChainRec.lookup('maybe').chainRec;
+Either.chainRec = ChainRec.lookup('either').chainRec;
+Task.chainRec = ChainRec.lookup('task').chainRec;
 
 // pipeK (현재 API 유지 - variadic)
-Maybe.pipeK = (...fns) => pipeK(Monad.of('maybe'))(fns);
-Either.pipeK = (...fns) => pipeK(Monad.of('either'))(fns);
-Task.pipeK = (...fns) => pipeK(Monad.of('task'))(fns);
-Reader.pipeK = (...fns) => pipeK(Monad.of('reader'))(fns);
-Writer.pipeK = (...fns) => pipeK(Monad.of('writer'))(fns);
-State.pipeK = (...fns) => pipeK(Monad.of('state'))(fns);
-Free.pipeK = (...fns) => pipeK(Monad.of('free'))(fns);
+Maybe.pipeK = (...fns) => pipeK(Monad.lookup('maybe'))(fns);
+Either.pipeK = (...fns) => pipeK(Monad.lookup('either'))(fns);
+Task.pipeK = (...fns) => pipeK(Monad.lookup('task'))(fns);
+Reader.pipeK = (...fns) => pipeK(Monad.lookup('reader'))(fns);
+Writer.pipeK = (...fns) => pipeK(Monad.lookup('writer'))(fns);
+State.pipeK = (...fns) => pipeK(Monad.lookup('state'))(fns);
+Free.pipeK = (...fns) => pipeK(Monad.lookup('free'))(fns);
 
 // composeK (현재 API 유지 - variadic)
-Maybe.composeK = (...fns) => composeK(Monad.of('maybe'))(fns);
-Either.composeK = (...fns) => composeK(Monad.of('either'))(fns);
-Task.composeK = (...fns) => composeK(Monad.of('task'))(fns);
-Reader.composeK = (...fns) => composeK(Monad.of('reader'))(fns);
-Writer.composeK = (...fns) => composeK(Monad.of('writer'))(fns);
-State.composeK = (...fns) => composeK(Monad.of('state'))(fns);
-Free.composeK = (...fns) => composeK(Monad.of('free'))(fns);
+Maybe.composeK = (...fns) => composeK(Monad.lookup('maybe'))(fns);
+Either.composeK = (...fns) => composeK(Monad.lookup('either'))(fns);
+Task.composeK = (...fns) => composeK(Monad.lookup('task'))(fns);
+Reader.composeK = (...fns) => composeK(Monad.lookup('reader'))(fns);
+Writer.composeK = (...fns) => composeK(Monad.lookup('writer'))(fns);
+State.composeK = (...fns) => composeK(Monad.lookup('state'))(fns);
+Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
 
 // lift (eta reduced)
-Reader.lift = lift(Applicative.of('reader'));
-Writer.lift = lift(Applicative.of('writer'));
-State.lift = lift(Applicative.of('state'));
-Free.lift = lift(Applicative.of('free'));
+Reader.lift = lift(Applicative.lookup('reader'));
+Writer.lift = lift(Applicative.lookup('writer'));
+State.lift = lift(Applicative.lookup('state'));
+Free.lift = lift(Applicative.lookup('free'));
 
 // lift (with error handling - cannot eta reduce)
-Maybe.lift = f => runCatch(lift(Applicative.of('maybe'))(f), Maybe.Nothing);
-Either.lift = f => runCatch(lift(Applicative.of('either'))(f), Either.Left);
-Task.lift = f => runCatch(lift(Applicative.of('task'))(f), Task.rejected);
+Maybe.lift = f => runCatch(lift(Applicative.lookup('maybe'))(f), Maybe.Nothing);
+Either.lift = f => runCatch(lift(Applicative.lookup('either'))(f), Either.Left);
+Task.lift = f => runCatch(lift(Applicative.lookup('task'))(f), Task.rejected);
 
 const extra = (() => {
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(

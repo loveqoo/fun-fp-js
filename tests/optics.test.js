@@ -438,37 +438,37 @@ logSection('foldMapOf');
 
 // 읽기 셋(preview·toList·view)은 Monoid 가 함수 안에 박혀 있어 배열/첫대상밖에 못 모은다.
 // foldMapOf 는 그 Monoid 를 사용자가 고르게 하는 입구다.
-test('foldMapOf — Monoid.of(number) 로 합계를 낸다', () => {
-    assertEquals(foldMapOf(Monoid.of('number'), traversed('array'), x => x, [1, 2, 3]), 6);
+test('foldMapOf — Monoid.lookup(number) 로 합계를 낸다', () => {
+    assertEquals(foldMapOf(Monoid.lookup('number'), traversed('array'), x => x, [1, 2, 3]), 6);
 });
 
 test('foldMapOf — Monoid 를 바꾸면 모으는 방식이 바뀐다', () => {
     const t = traversed('array');
-    assertEquals(foldMapOf(Monoid.of('NumberProductMonoid'), t, x => x, [2, 3, 4]), 24);
-    assertEquals(foldMapOf(Monoid.of('NumberMaxMonoid'), t, x => x, [2, 9, 4]), 9);
-    assertEquals(foldMapOf(Monoid.of('string'), t, String, [1, 2, 3]), '123');
+    assertEquals(foldMapOf(Monoid.lookup('NumberProductMonoid'), t, x => x, [2, 3, 4]), 24);
+    assertEquals(foldMapOf(Monoid.lookup('NumberMaxMonoid'), t, x => x, [2, 9, 4]), 9);
+    assertEquals(foldMapOf(Monoid.lookup('string'), t, String, [1, 2, 3]), '123');
 });
 
 test('foldMapOf — 대상이 없으면 Monoid 의 항등원', () => {
-    assertEquals(foldMapOf(Monoid.of('number'), traversed('array'), x => x, []), 0);
-    assertDeepEquals(foldMapOf(Monoid.of('array'), traversed('array'), a => [a], []), []);
+    assertEquals(foldMapOf(Monoid.lookup('number'), traversed('array'), x => x, []), 0);
+    assertDeepEquals(foldMapOf(Monoid.lookup('array'), traversed('array'), a => [a], []), []);
 });
 
 // toList 와 preview 가 foldMapOf 의 특수 경우라는 것을 고정한다.
 test('foldMapOf — toList 와 preview 가 그 특수 경우다', () => {
     const t = traversed('array');
-    assertDeepEquals(foldMapOf(Monoid.of('array'), t, a => [a], [1, 2, 3]), toList(t, [1, 2, 3]));
+    assertDeepEquals(foldMapOf(Monoid.lookup('array'), t, a => [a], [1, 2, 3]), toList(t, [1, 2, 3]));
     assertEquals(
-        foldMapOf(Monoid.of('plus(maybe)'), t, Maybe.Just, [1, 2, 3]).value,
+        foldMapOf(Monoid.lookup('plus(maybe)'), t, Maybe.Just, [1, 2, 3]).value,
         preview(t, [1, 2, 3]).value
     );
 });
 
 test('foldMapOf — Lens 와 Prism 에서도 동작한다', () => {
-    assertEquals(foldMapOf(Monoid.of('number'), nameLens, s => s.length, { name: 'abcd' }), 4);
+    assertEquals(foldMapOf(Monoid.lookup('number'), nameLens, s => s.length, { name: 'abcd' }), 4);
     const bigP = Prism(x => (x > 10 ? Maybe.Just(x) : Maybe.Nothing()), x => x);
-    assertEquals(foldMapOf(Monoid.of('number'), bigP, x => x, 20), 20);
-    assertEquals(foldMapOf(Monoid.of('number'), bigP, x => x, 5), 0);   // 매치 실패 → 항등원
+    assertEquals(foldMapOf(Monoid.lookup('number'), bigP, x => x, 20), 20);
+    assertEquals(foldMapOf(Monoid.lookup('number'), bigP, x => x, 5), 0);   // 매치 실패 → 항등원
 });
 
 // 에러가 호출한 연산에 귀속돼야 한다 — foldMapOf 로 재정의하면서 preview/toList 가
@@ -490,7 +490,7 @@ test('foldMapOf — Monoid 가 아니면 optic 종류와 무관하게 거부한�
 });
 
 test('foldMapOf — f 가 함수가 아니면 거부한다', () => {
-    assertThrowsWith(() => foldMapOf(Monoid.of('array'), nameLens, 42, { name: 'a' }), 'foldMapOf: f must be a function');
+    assertThrowsWith(() => foldMapOf(Monoid.lookup('array'), nameLens, 42, { name: 'a' }), 'foldMapOf: f must be a function');
 });
 
 // 사용자가 만든 Monoid 는 등록하지 않아도 받는다 — 다만 리터럴이 아니라 Monoid 여야 한다.
@@ -515,7 +515,7 @@ test('foldMapOf — Monoid 키도 받는다', () => {
 // 그 둘에 단언이 없어 name 인자가 뮤테이션을 생존했다.
 test('runOptic 의 라벨이 호출자에 귀속된다', () => {
     assertThrowsWith(() => over(null, x => x, {}), 'over: optic must be a function');
-    assertThrowsWith(() => foldMapOf(Monoid.of('array'), null, a => [a], {}), 'foldMapOf: optic must be a function');
+    assertThrowsWith(() => foldMapOf(Monoid.lookup('array'), null, a => [a], {}), 'foldMapOf: optic must be a function');
 });
 
 console.log('\n✅ Optics tests completed');

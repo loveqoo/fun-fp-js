@@ -12,13 +12,13 @@ Ord는 Setoid의 법칙에 더해 다음을 만족해야 합니다:
 
 ### 1. 반사성 (Reflexivity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { lte } = Ord.of('number');
+const { lte } = Ord.lookup('number');
 lte(a, a) === true
 ```
 
 ### 2. 반대칭성 (Antisymmetry)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { lte } = Ord.of('number');
+const { lte } = Ord.lookup('number');
 if (lte(a, b) && lte(b, a)) {
     equals(a, b) === true
 }
@@ -26,7 +26,7 @@ if (lte(a, b) && lte(b, a)) {
 
 ### 3. 추이성 (Transitivity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { lte } = Ord.of('number');
+const { lte } = Ord.lookup('number');
 if (lte(a, b) && lte(b, c)) {
     lte(a, c) === true
 }
@@ -34,7 +34,7 @@ if (lte(a, b) && lte(b, c)) {
 
 ### 4. 전체성 (Totality)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { lte } = Ord.of('number');
+const { lte } = Ord.lookup('number');
 lte(a, b) === true || lte(b, a) === true
 ```
 모든 두 값은 비교 가능합니다.
@@ -54,18 +54,18 @@ import FunFP from 'fun-fp-js';
 const { Ord } = FunFP;
 
 // 숫자
-const num = Ord.of('number');
+const num = Ord.lookup('number');
 num.lte(1, 2);   // true (1 ≤ 2)
 num.lte(2, 1);   // false
 num.lte(2, 2);   // true
 
 // 문자열 (사전순)
-const str = Ord.of('string');
+const str = Ord.lookup('string');
 str.lte('apple', 'banana');  // true
 str.lte('z', 'a');           // false
 
 // 날짜
-const date = Ord.of('date');
+const date = Ord.lookup('date');
 const d1 = new Date('2023-01-01');
 const d2 = new Date('2023-12-31');
 date.lte(d1, d2);   // true
@@ -74,7 +74,7 @@ date.lte(d1, d2);   // true
 ### 파생 비교 연산자
 
 ```javascript
-const { lte } = Ord.of('number');
+const { lte } = Ord.lookup('number');
 
 // a < b
 const lt = (a, b) => lte(a, b) && !lte(b, a);
@@ -95,7 +95,7 @@ gte(2, 2);  // true
 ### 정렬
 
 ```javascript
-const ord = Ord.of('number');
+const ord = Ord.lookup('number');
 
 const sortBy = arr => [...arr].sort((a, b) => 
     ord.lte(a, b) ? (ord.lte(b, a) ? 0 : -1) : 1
@@ -107,7 +107,7 @@ sortBy([3, 1, 4, 1, 5]);  // [1, 1, 3, 4, 5]
 ### 최소/최대값
 
 ```javascript
-const ord = Ord.of('number');
+const ord = Ord.lookup('number');
 
 const min = (a, b) => ord.lte(a, b) ? a : b;
 const max = (a, b) => ord.lte(a, b) ? b : a;
@@ -122,7 +122,7 @@ minBy([3, 1, 4, 1, 5]);  // 1
 ### 범위 체크
 
 ```javascript
-const ord = Ord.of('number');
+const ord = Ord.lookup('number');
 
 const between = (low, high, x) => ord.lte(low, x) && ord.lte(x, high);
 

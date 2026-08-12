@@ -7,8 +7,8 @@ const { sequence, Traversable, Applicative, Maybe, Either, Task } = fp;
 logSection('Sequence Function');
 
 // === Array<Maybe> -> Maybe<Array> ===
-const arrTraversable = Traversable.of('array');
-const maybeApplicative = Applicative.of('maybe');
+const arrTraversable = Traversable.lookup('array');
+const maybeApplicative = Applicative.lookup('maybe');
 
 test('sequence Array<Maybe.Just> -> Maybe.Just<Array>', () => {
     const input = [Maybe.Just(1), Maybe.Just(2), Maybe.Just(3)];
@@ -34,7 +34,7 @@ test('sequence Empty Array -> Just([])', () => {
 });
 
 // === Array<Either> -> Either<Array> ===
-const eitherApplicative = Applicative.of('either');
+const eitherApplicative = Applicative.lookup('either');
 
 test('sequence Array<Either.Right> -> Either.Right<Array>', () => {
     const input = [Either.Right(1), Either.Right(2), Either.Right(3)];
@@ -53,8 +53,8 @@ test('sequence Array with Left -> Left', () => {
 });
 
 // === Maybe<Array> -> Array<Maybe> ===
-const maybeTraversable = Traversable.of('maybe');
-const arrApplicative = Applicative.of('array');
+const maybeTraversable = Traversable.lookup('maybe');
+const arrApplicative = Applicative.lookup('array');
 
 test('sequence Maybe.Just<Array> -> Array<Maybe.Just>', () => {
     const input = Maybe.Just([1, 2, 3]);
@@ -76,7 +76,7 @@ test('sequence Maybe.Nothing -> [Nothing]', () => {
 });
 
 // === Either<E, Array> -> Array<Either<E, A>> ===
-const eitherTraversable = Traversable.of('either');
+const eitherTraversable = Traversable.lookup('either');
 
 test('sequence Either.Right<Array> -> Array<Either.Right>', () => {
     const input = Either.Right([1, 2, 3]);
@@ -97,7 +97,7 @@ test('sequence Either.Left -> [Left]', () => {
 });
 
 // === Array<Task> -> Task<Array> ===
-const taskApplicative = Applicative.of('task');
+const taskApplicative = Applicative.lookup('task');
 
 test('sequence Array<Task.of> -> Task.of<Array>', () => {
     const input = [Task.of(1), Task.of(2), Task.of(3)];

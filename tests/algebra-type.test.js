@@ -89,15 +89,15 @@ test('모든 인스턴스의 .type 은 types.of() 가 내는 정규 태그다', 
 
 test('대소문자 폴백이 없는 검사(Apply.ap)가 정규 태그를 요구한다', () => {
     // 'Object' 를 'object' 로 적으면 여기서 깨진다 — Identity 가 그 자리다.
-    const { ap } = fp.Apply.of('identity');
+    const { ap } = fp.Apply.lookup('identity');
     assertEquals(ap({ value: x => x + 1 }, { value: 1 }).value, 2);
 });
 
 test('앞서 드리프트했던 자리를 값으로 고정한다', () => {
-    assertEquals(fp.Setoid.of('date').type, 'Date');
-    assertEquals(fp.Ord.of('date').type, 'Date');
-    assertEquals(fp.Filterable.of('object').type, 'Object');
-    assertEquals(fp.Foldable.of('object').type, 'Object');
+    assertEquals(fp.Setoid.lookup('date').type, 'Date');
+    assertEquals(fp.Ord.lookup('date').type, 'Date');
+    assertEquals(fp.Filterable.lookup('object').type, 'Object');
+    assertEquals(fp.Foldable.lookup('object').type, 'Object');
 });
 
 test('레지스트리 키는 소문자 그대로다 — .type 과 별개다', () => {
@@ -107,11 +107,11 @@ test('레지스트리 키는 소문자 그대로다 — .type 과 별개다', ()
 
 test('Date / Object 인스턴스가 정규 태그로도 그대로 동작한다', () => {
     const d1 = new Date(1), d2 = new Date(1), d3 = new Date(2);
-    assertEquals(fp.Setoid.of('date').equals(d1, d2), true);
-    assertEquals(fp.Setoid.of('date').equals(d1, d3), false);
-    assertEquals(fp.Ord.of('date').lte(d1, d3), true);
-    assertEquals(JSON.stringify(fp.Filterable.of('object').filter(v => v > 1, { a: 1, b: 2 })), '{"b":2}');
-    assertEquals(fp.Foldable.of('object').reduce((a, b) => a + b, 0, { a: 1, b: 2 }), 3);
+    assertEquals(fp.Setoid.lookup('date').equals(d1, d2), true);
+    assertEquals(fp.Setoid.lookup('date').equals(d1, d3), false);
+    assertEquals(fp.Ord.lookup('date').lte(d1, d3), true);
+    assertEquals(JSON.stringify(fp.Filterable.lookup('object').filter(v => v > 1, { a: 1, b: 2 })), '{"b":2}');
+    assertEquals(fp.Foldable.lookup('object').reduce((a, b) => a + b, 0, { a: 1, b: 2 }), 3);
 });
 
 console.log('\n✅ Algebra.type 불변식 tests completed\n');

@@ -2,7 +2,7 @@
  * Pre-registered runtime dispatch keys for the most common transformer
  * combinations. Runtime generates keys like `statet(maybe)` when
  * `StateT("maybe")` is first called; we mirror those keys in the
- * type-class `*Instances` maps so that `Monad.of("statet(maybe)")` etc.
+ * type-class `*Instances` maps so that `Monad.lookup("statet(maybe)")` etc.
  * resolve to the correct composed TypeLambda.
  *
  * Scope: only the 5 class interfaces populated by
@@ -19,7 +19,7 @@
  * Users who need other combinations can follow the same pattern via
  * module augmentation in their own code.
  *
- * Caveat: dispatching via string (`Monad.of("statet(maybe)")`) loses S
+ * Caveat: dispatching via string (`Monad.lookup("statet(maybe)")`) loses S
  * tracking — `StateT<Maybe, S, A>` resolves with S = never via Kind
  * defaults. For precise S, use the direct namespace `StateT("maybe")`
  * which returns `StateTMonad<MaybeTypeLambda>` with proper polymorphism.

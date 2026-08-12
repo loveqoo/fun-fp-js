@@ -32,8 +32,8 @@ test('ObjectFilterable.filter filters object values', () => {
     assertEquals(result, { b: 2, c: 3 });
 });
 
-test('Filterable.of resolves to ArrayFilterable', () => {
-    const instance = Filterable.of('array');
+test('Filterable.lookup resolves to ArrayFilterable', () => {
+    const instance = Filterable.lookup('array');
     assert(instance === Filterable.types.ArrayFilterable, 'should resolve to ArrayFilterable');
 });
 

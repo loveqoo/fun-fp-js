@@ -36,11 +36,11 @@ const r6b = Reader.local(
 type _6 = Expect<Equals<typeof r6b, Reader<Env, number>>>;
 
 // ── 7. Registry dispatch ──────────────────────────────────────────────
-const fR = Functor.of("reader");
+const fR = Functor.lookup("reader");
 type _7a = Expect<Equals<typeof fR, Functor<ReaderTypeLambda>>>;
-const mR = Monad.of("reader");
+const mR = Monad.lookup("reader");
 type _7b = Expect<Equals<typeof mR, Monad<ReaderTypeLambda>>>;
-const aR = Applicative.of("reader");
+const aR = Applicative.lookup("reader");
 type _7c = Expect<Equals<typeof aR, Applicative<ReaderTypeLambda>>>;
 
 // ── 8. Instance methods ───────────────────────────────────────────────

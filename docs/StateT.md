@@ -107,8 +107,8 @@ const { StateT, Functor, Monad } = FunFP;
 
 StateT('maybe');   // 등록을 유발한다
 
-console.log(typeof Functor.of('statet(maybe)').map);   // 'function'
-console.log(typeof Monad.of('statet(maybe)').chain);   // 'function'
+console.log(typeof Functor.lookup('statet(maybe)').map);   // 'function'
+console.log(typeof Monad.lookup('statet(maybe)').chain);   // 'function'
 ```
 
 같은 인자로 다시 부르면 **같은 인스턴스**가 나옵니다(캐시).
@@ -349,6 +349,6 @@ console.log(nextCounter);            // 4
 
 - [State](./State.md) - `M` 없는 원형. 효과가 필요 없으면 State가 더 간단합니다.
 - [Free](./Free.md) - Transformer의 내부 표현. 스택 안전성이 여기서 나옵니다.
-- [Monad](./Monad.md) - `Monad.of('statet(maybe)')`로 얻을 수 있습니다(문자열 형태로 만든 경우).
+- [Monad](./Monad.md) - `Monad.lookup('statet(maybe)')`로 얻을 수 있습니다(문자열 형태로 만든 경우).
 - [EitherT](./EitherT.md) · [ReaderT](./ReaderT.md) · [WriterT](./WriterT.md) - 나머지 3종.
 - [Actor](./Actor.md) - 상태 전이에 큐와 순차 실행 보장이 필요하다면 이쪽입니다.

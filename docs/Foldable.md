@@ -28,7 +28,7 @@ Foldable.reduce(f, initial, t): b
 import FunFP from 'fun-fp-js';
 const { Foldable } = FunFP;
 
-const { reduce } = Foldable.of('array');
+const { reduce } = Foldable.lookup('array');
 
 // 합계
 reduce((acc, x) => acc + x, 0, [1, 2, 3, 4, 5]);
@@ -50,7 +50,7 @@ reduce((acc, x) => [...acc, ...x], [], [[1, 2], [3, 4], [5]]);
 ### 객체 Foldable
 
 ```javascript
-const { reduce } = Foldable.of('object');
+const { reduce } = Foldable.lookup('object');
 
 const obj = { a: 1, b: 2, c: 3 };
 
@@ -64,7 +64,7 @@ reduce((acc, x) => acc + x, 0, obj);
 ### 최대/최소값
 
 ```javascript
-const { reduce } = Foldable.of('array');
+const { reduce } = Foldable.lookup('array');
 
 const max = arr => reduce(
     (acc, x) => x > acc ? x : acc,
@@ -85,7 +85,7 @@ min([3, 1, 4, 1, 5, 9]);  // 1
 ### 그룹화
 
 ```javascript
-const { reduce } = Foldable.of('array');
+const { reduce } = Foldable.lookup('array');
 const groupBy = (keyFn, arr) => reduce(
     (acc, x) => {
         const key = keyFn(x);
@@ -108,7 +108,7 @@ groupBy(p => p.dept, people);
 ### 빈도 계산
 
 ```javascript
-const { reduce } = Foldable.of('array');
+const { reduce } = Foldable.lookup('array');
 const frequencies = arr => reduce(
     (acc, x) => ({ ...acc, [x]: (acc[x] || 0) + 1 }),
     {},
@@ -122,7 +122,7 @@ frequencies(['a', 'b', 'a', 'c', 'b', 'a']);
 ### 파이프라인에서 사용
 
 ```javascript
-const { reduce } = Foldable.of('array');
+const { reduce } = Foldable.lookup('array');
 const numbers = [1, 2, 3, 4, 5];
 
 // fold로 통계 계산
@@ -162,7 +162,7 @@ const { foldMap, Foldable, Monoid } = FunFP;
 // foldMap(Foldable, Monoid) -> (매핑함수) -> (컨테이너) -> 결과
 
 // 기본 사용
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
+const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 sumFold(x => x * x)([1, 2, 3, 4]);
 // 1² + 2² + 3² + 4² = 1 + 4 + 9 + 16 = 30
@@ -191,7 +191,7 @@ const foldMap = (foldable, monoid) => f => container =>
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
+const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 // 배열 요소의 제곱 합
 sumFold(x => x * x)([1, 2, 3, 4]);
@@ -207,7 +207,7 @@ sumFold(Math.abs)([-5, 3, -2, 7]);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
+const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 const users = [
     { name: 'Alice', score: 10 },
@@ -225,7 +225,7 @@ sumFold(u => u.score)(users);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
+const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 const words = ['hello', 'world', 'foo', 'bar'];
 
@@ -240,13 +240,13 @@ sumFold(str => str.length)(words);
 const { foldMap, Foldable, Monoid } = FunFP;
 
 // String Monoid로 문자열 연결
-const stringFold = foldMap(Foldable.of('array'), Monoid.of('string'));
+const stringFold = foldMap(Foldable.lookup('array'), Monoid.lookup('string'));
 
 stringFold(n => `${n}, `)([1, 2, 3, 4]);
 // '1, 2, 3, 4, '
 
 // Array Monoid로 배열 병합
-const arrayFold = foldMap(Foldable.of('array'), Monoid.of('array'));
+const arrayFold = foldMap(Foldable.lookup('array'), Monoid.lookup('array'));
 
 arrayFold(n => [n, n * 2])([1, 2, 3]);
 // [1, 2, 2, 4, 3, 6]
@@ -257,7 +257,7 @@ arrayFold(n => [n, n * 2])([1, 2, 3]);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
+const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -280,7 +280,7 @@ sumFold(n => n > 5 ? n : 0)(numbers);
 | 가독성 | 직관적 | 선언적 |
 
 ```javascript
-const sumFold = foldMap(Foldable.of('array'), Monoid.of('number'));
+const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 // map + reduce
 [1, 2, 3, 4]
     .map(x => x * x)  // [1, 4, 9, 16] (중간 배열 생성)

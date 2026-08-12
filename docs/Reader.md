@@ -42,7 +42,7 @@ getProfile(123, config);
 
 ```javascript no-run 네트워크 호출 — 실행 대상 아님
 const { Reader, Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 const fetchUser = id => Reader.asks(config =>
     fetch(`${config.apiUrl}/users/${id}`, {
@@ -103,7 +103,7 @@ getDb.run({ db: 'connection', user: 'admin' });
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.of('reader');
+const { map } = Functor.lookup('reader');
 
 const reader = Reader.of(21);
 map(x => x * 2, reader);  // Reader that returns 42
@@ -125,7 +125,7 @@ Reader를 반환하는 함수로 연쇄합니다. 환경이 자동 전파됩니�
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 const getConfig = Reader.ask;
 const useConfig = config => Reader.of(config.value + 10);
@@ -152,7 +152,7 @@ Reader 안의 함수를 Reader 안의 값에 적용합니다.
 
 ```javascript
 const { Apply } = FunFP;
-const { ap } = Apply.of('reader');
+const { ap } = Apply.lookup('reader');
 
 const rf = Reader.of(x => x * 2);
 const ra = Reader.of(21);
@@ -233,7 +233,7 @@ Reader.isReader(5);                    // false
 ```javascript
 const createDatabaseConnection = cfg => ({ query: () => [], cfg });
 const { Reader, Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 // 데이터베이스 쿼리 함수들 (환경에서 DB 연결 사용)
 const findUser = id => Reader.asks(env =>
@@ -272,7 +272,7 @@ const testResult = getUserWithPosts(123).run({ db: mockDb });
 
 ```javascript
 const { Reader, Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 // 로거를 환경에서 가져오는 헬퍼
 const log = message => Reader.asks(env => {
@@ -312,7 +312,7 @@ handleRequest({ id: 'req-123' }, { id: 'order-456' });
 
 ```javascript
 const { Reader, Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 // 여러 설정 값 읽기
 const getApiUrl = Reader.asks(config => config.api.url);
@@ -378,7 +378,7 @@ const realEmailService = {
 };
 
 const { Reader, Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 // 프로덕션 구현
 const sendEmail = (to, subject, body) => Reader.asks(env =>
@@ -423,7 +423,7 @@ notifyUser(123).run(testEnv);
 
 ```javascript
 const { Reader, Chain } = FunFP;
-const { chain } = Chain.of('reader');
+const { chain } = Chain.lookup('reader');
 
 // 기본 로거
 const log = message => Reader.asks(env =>

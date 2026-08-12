@@ -39,11 +39,11 @@ const g5 = State.gets((c: Counter) => c.n);
 type _5c = Expect<Equals<typeof g5, State<Counter, number>>>;
 
 // ── 6. Registry dispatch ──────────────────────────────────────────────
-const fS = Functor.of("state");
+const fS = Functor.lookup("state");
 type _6 = Expect<Equals<typeof fS, Functor<StateTypeLambda>>>;
-const mS = Monad.of("state");
+const mS = Monad.lookup("state");
 type _6b = Expect<Equals<typeof mS, Monad<StateTypeLambda>>>;
-const aS = Applicative.of("state");
+const aS = Applicative.lookup("state");
 type _6c = Expect<Equals<typeof aS, Applicative<StateTypeLambda>>>;
 
 // ── 7. Kind reduction ─────────────────────────────────────────────────

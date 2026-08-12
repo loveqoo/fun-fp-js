@@ -17,9 +17,9 @@ const fTask = x => Task.of(x + 1);
 const gTask = x => Task.of(x * 2);
 
 // === Array Monad ===
-const arrMonad = Monad.of('array');
-const arrChain = Chain.of('array');
-const arrApplicative = Applicative.of('array');
+const arrMonad = Monad.lookup('array');
+const arrChain = Chain.lookup('array');
+const arrApplicative = Applicative.lookup('array');
 
 test('Array Monad - Left identity: chain(f, of(a)) === f(a)', () => {
     const a = 5;
@@ -46,9 +46,9 @@ test('Array Monad - Associativity: chain(g, chain(f, m)) === chain(x => chain(g,
 });
 
 // === Maybe Monad ===
-const maybeMonad = Monad.of('maybe');
-const maybeChain = Chain.of('maybe');
-const maybeApplicative = Applicative.of('maybe');
+const maybeMonad = Monad.lookup('maybe');
+const maybeChain = Chain.lookup('maybe');
+const maybeApplicative = Applicative.lookup('maybe');
 
 test('Maybe Monad - Left identity (Just)', () => {
     const a = 5;
@@ -85,9 +85,9 @@ test('Maybe Monad - Associativity (Nothing)', () => {
 });
 
 // === Either Monad ===
-const eitherMonad = Monad.of('either');
-const eitherChain = Chain.of('either');
-const eitherApplicative = Applicative.of('either');
+const eitherMonad = Monad.lookup('either');
+const eitherChain = Chain.lookup('either');
+const eitherApplicative = Applicative.lookup('either');
 
 test('Either Monad - Left identity (Right)', () => {
     const a = 5;
@@ -117,9 +117,9 @@ test('Either Monad - Associativity (Right)', () => {
 });
 
 // === Task Monad ===
-const taskMonad = Monad.of('task');
-const taskChain = Chain.of('task');
-const taskApplicative = Applicative.of('task');
+const taskMonad = Monad.lookup('task');
+const taskChain = Chain.lookup('task');
+const taskApplicative = Applicative.lookup('task');
 
 test('Task Monad - Left identity', () => {
     const a = 5;

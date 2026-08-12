@@ -39,19 +39,19 @@ const forkResult = t1.fork(
 );
 type _4 = Expect<Equals<typeof forkResult, void>>;
 
-// ── 5. Functor.of('task') → Functor<TaskTypeLambda> ───────────────────
-const fTask = Functor.of("task");
+// ── 5. Functor.lookup('task') → Functor<TaskTypeLambda> ───────────────────
+const fTask = Functor.lookup("task");
 type _5 = Expect<Equals<typeof fTask, Functor<TaskTypeLambda>>>;
 const t5 = fTask.map((s: string) => s.length, Task.of("hi"));
 type _5b = Expect<Equals<typeof t5, Task<number>>>;
 
-// ── 6. Monad.of('task').chain ─────────────────────────────────────────
-const mTask = Monad.of("task");
+// ── 6. Monad.lookup('task').chain ─────────────────────────────────────────
+const mTask = Monad.lookup("task");
 const t6 = mTask.chain((n: number) => Task.of(n + 1), Task.of(1));
 type _6 = Expect<Equals<typeof t6, Task<number>>>;
 
-// ── 7. Applicative.of('task').of ──────────────────────────────────────
-const aTask = Applicative.of("task");
+// ── 7. Applicative.lookup('task').of ──────────────────────────────────────
+const aTask = Applicative.lookup("task");
 const t7 = aTask.of(42);
 type _7 = Expect<Equals<typeof t7, Task<number>>>;
 

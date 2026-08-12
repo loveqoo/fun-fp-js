@@ -16,14 +16,14 @@ Functor는 **컨테이너 안의 값을 변환**할 수 있는 타입입니다. 
 
 ### 1. 항등법칙 (Identity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { map } = Functor.of('array');
+const { map } = Functor.lookup('array');
 map(x => x, a) === a
 ```
 항등 함수로 매핑하면 원래 값과 같습니다.
 
 ### 2. 합성법칙 (Composition)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { map } = Functor.of('array');
+const { map } = Functor.lookup('array');
 map(x => f(g(x)), a) === map(f, map(g, a))
 ```
 합성 함수로 한 번 매핑 = 각각 매핑 두 번
@@ -45,7 +45,7 @@ Functor.map(f, a): Functor a
 import FunFP from 'fun-fp-js';
 const { Functor } = FunFP;
 
-const { map } = Functor.of('array');
+const { map } = Functor.lookup('array');
 
 map(x => x * 2, [1, 2, 3]);
 // [2, 4, 6]
@@ -62,7 +62,7 @@ const { Maybe, Functor } = FunFP;
 const just = Maybe.of(5);
 const nothing = Maybe.Nothing();
 
-const { map } = Functor.of('maybe');
+const { map } = Functor.lookup('maybe');
 
 map(x => x * 2, just);
 // Just(10)
@@ -79,7 +79,7 @@ const { Either, Functor } = FunFP;
 const right = Either.Right(5);
 const left = Either.Left('error');
 
-const { map } = Functor.of('either');
+const { map } = Functor.lookup('either');
 
 map(x => x * 2, right);
 // Right(10)
@@ -94,7 +94,7 @@ map(x => x * 2, left);
 const { Task, Functor } = FunFP;
 
 const task = Task.of(5);
-const { map } = Functor.of('task');
+const { map } = Functor.lookup('task');
 
 const doubled = map(x => x * 2, task);
 doubled.fork(console.error, console.log);  // 10
@@ -107,7 +107,7 @@ doubled.fork(console.error, console.log);  // 10
 ```javascript
 const user = Maybe.of({ name: 'Alice', address: { city: 'Seoul' } });
 
-const { map } = Functor.of('maybe');
+const { map } = Functor.lookup('maybe');
 
 // 안전하게 중첩 속성 접근
 map(u => u.name, user);
@@ -136,7 +136,7 @@ const parseJson = str => {
 const data = '{"name": "Alice", "age": 30}';
 const result = parseJson(data);
 
-const { map } = Functor.of('either');
+const { map } = Functor.lookup('either');
 
 // 파싱 성공시에만 변환
 map(obj => obj.name, result);
@@ -150,7 +150,7 @@ const fetchUser = userId => Task.fromPromise(
     () => fetch(`/api/users/${userId}`).then(r => r.json())
 );
 
-const { map } = Functor.of('task');
+const { map } = Functor.lookup('task');
 
 const getUserName = pipe(
     fetchUser,

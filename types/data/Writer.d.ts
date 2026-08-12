@@ -11,7 +11,7 @@
  * Note: the runtime class stores the `Monoid<W>` instance on the value
  * itself. This TS surface types the monoid argument on factories as
  * `unknown` until the Monoid type class is declared. Defaults at runtime
- * use `Monoid.of('array')`, i.e. W = unknown[].
+ * use `Monoid.lookup('array')`, i.e. W = unknown[].
  */
 
 import type { TypeLambda } from "../HKT";

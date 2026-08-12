@@ -42,11 +42,11 @@ const w6 = Writer.censor(
 type _6 = Expect<Equals<typeof w6, Writer<string[], number>>>;
 
 // ── 7. Registry dispatch ──────────────────────────────────────────────
-const fW = Functor.of("writer");
+const fW = Functor.lookup("writer");
 type _7 = Expect<Equals<typeof fW, Functor<WriterTypeLambda>>>;
-const mW = Monad.of("writer");
+const mW = Monad.lookup("writer");
 type _7b = Expect<Equals<typeof mW, Monad<WriterTypeLambda>>>;
-const aW = Applicative.of("writer");
+const aW = Applicative.lookup("writer");
 type _7c = Expect<Equals<typeof aW, Applicative<WriterTypeLambda>>>;
 
 // ── 8. Kind reduction ─────────────────────────────────────────────────

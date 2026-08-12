@@ -39,7 +39,7 @@ try {
 
 ```javascript no-run 시그니처·의사코드 표기
 const { Either, Chain } = FunFP;
-const { chain } = Chain.of('either');
+const { chain } = Chain.lookup('either');
 
 const result = Either.fold(
     handleError,
@@ -84,7 +84,7 @@ Either.catch(() => JSON.parse('invalid'));    // Left(SyntaxError)
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.of('either');
+const { map } = Functor.lookup('either');
 
 map(x => x * 2, Either.Right(5));       // Right(10)
 map(x => x * 2, Either.Left('error'));  // Left('error') - 변환 안 됨
@@ -94,7 +94,7 @@ map(x => x * 2, Either.Left('error'));  // Left('error') - 변환 안 됨
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.of('either');
+const { chain } = Chain.lookup('either');
 
 const validatePositive = n =>
     n > 0 ? Either.Right(n) : Either.Left('Must be positive');
@@ -125,7 +125,7 @@ Either.fold(
 ### bimap - 양쪽 모두 변환 (Bifunctor)
 
 ```javascript
-const { bimap } = Bifunctor.of('either');
+const { bimap } = Bifunctor.lookup('either');
 
 bimap(
     err => err.toUpperCase(),  // Left 변환
@@ -298,7 +298,7 @@ Static Land 스타일로 읽기 쉽게 체이닝하기:
 ### Either.pipe - 함수들을 순차 적용
 
 ```javascript
-const { map } = Functor.of('either');
+const { map } = Functor.lookup('either');
 
 Either.pipe(
     Either.Right(5),

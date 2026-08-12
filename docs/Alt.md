@@ -21,7 +21,7 @@ Alt.alt(a, b): Alt a
 
 ### 결합법칙 (Associativity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 alt(alt(a, b), c) === alt(a, alt(b, c))
 ```
 
@@ -38,7 +38,7 @@ map(f, alt(a, b)) === alt(map(f, a), map(f, b))
 import FunFP from 'fun-fp-js';
 const { Alt, Maybe } = FunFP;
 
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 
 alt(Maybe.of(5), Maybe.of(10));           // Just(5)
 alt(Maybe.Nothing(), Maybe.of(10));       // Just(10)
@@ -48,7 +48,7 @@ alt(Maybe.Nothing(), Maybe.Nothing());    // Nothing
 ### Either - 에러 복구
 
 ```javascript
-const { alt } = Alt.of('either');
+const { alt } = Alt.lookup('either');
 
 alt(Either.Right(5), Either.Right(10));   // Right(5)
 alt(Either.Left('err'), Either.Right(10)); // Right(10)
@@ -57,7 +57,7 @@ alt(Either.Left('err'), Either.Right(10)); // Right(10)
 ### Task - 폴백
 
 ```javascript
-const { alt } = Alt.of('task');
+const { alt } = Alt.lookup('task');
 
 const mainServer = Task.rejected('timeout');
 const backupServer = Task.of({ data: 'from backup' });
@@ -73,7 +73,7 @@ alt(mainServer, backupServer).fork(
 ### 다중 폴백
 
 ```javascript
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 const getFromCache = Maybe.Nothing();
 const getFromDB = Maybe.Nothing();
 const getDefault = Maybe.of({ default: true });
@@ -85,7 +85,7 @@ alt(getFromCache, alt(getFromDB, getDefault));
 ### 설정 우선순위
 
 ```javascript
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 const envConfig = process.env.CONFIG ? Maybe.of(JSON.parse(process.env.CONFIG)) : Maybe.Nothing();
 const fileConfig = Maybe.of({ port: 3000 });
 const defaultConfig = Maybe.of({ port: 8080 });
@@ -99,10 +99,10 @@ alt(envConfig, alt(fileConfig, defaultConfig));
 Plus는 Alt에 **빈 값(zero)**을 추가한 것입니다:
 
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { alt } = Alt.of('maybe');
+const { alt } = Alt.lookup('maybe');
 const { Plus } = FunFP;
 
-Plus.of('maybe').zero();  // Nothing
+Plus.lookup('maybe').zero();  // Nothing
 
 // zero는 alt의 항등원
 alt(a, zero) === a

@@ -106,23 +106,23 @@ test('catchError can re-throw', () => {
    ═══════════════════════════════════════════════════ */
 logSection('EitherT - Type Class Integration');
 
-test('Functor.of(alias).map works', () => {
+test('Functor.lookup(alias).map works', () => {
     const alias = 'eithert(identity)';
-    const mapped = Functor.of(alias).map(x => x * 2, ET.of(5));
+    const mapped = Functor.lookup(alias).map(x => x * 2, ET.of(5));
     const result = ET.runEitherT(mapped);
     assertEquals(result.value, Either.Right(10));
 });
 
-test('Chain.of(alias).chain works', () => {
+test('Chain.lookup(alias).chain works', () => {
     const alias = 'eithert(identity)';
-    const chained = Chain.of(alias).chain(x => ET.of(x + 1), ET.of(5));
+    const chained = Chain.lookup(alias).chain(x => ET.of(x + 1), ET.of(5));
     const result = ET.runEitherT(chained);
     assertEquals(result.value, Either.Right(6));
 });
 
-test('Monad.of(alias) exists', () => {
+test('Monad.lookup(alias) exists', () => {
     const alias = 'eithert(identity)';
-    const monad = Monad.of(alias);
+    const monad = Monad.lookup(alias);
     assert(monad != null, 'Monad instance should exist');
     assert(typeof monad.of === 'function', 'should have of');
     assert(typeof monad.chain === 'function', 'should have chain');
@@ -349,7 +349,7 @@ test('catchError: non-ET first arg throws TypeError', () => {
 test('Type class nominal typing: map rejects non-ET instance', () => {
     const alias = 'eithert(identity)';
     assertThrows(
-        () => Functor.of(alias).map(x => x, { _program: Free.pure(1) }),
+        () => Functor.lookup(alias).map(x => x, { _program: Free.pure(1) }),
         'Fake should be rejected'
     );
 });
@@ -373,8 +373,8 @@ test('Caching: same string alias returns same ET', () => {
 
 test('Registry: generic keys not polluted', () => {
     EitherT(Identity);
-    assert(Functor.of('maybe').type === 'Maybe', 'Maybe Functor preserved');
-    assert(Chain.of('free').type === 'Free', 'Free Chain preserved');
+    assert(Functor.lookup('maybe').type === 'Maybe', 'Maybe Functor preserved');
+    assert(Chain.lookup('free').type === 'Free', 'Free Chain preserved');
 });
 
 console.log('\n✅ EitherT tests completed\n');

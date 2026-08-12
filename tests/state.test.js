@@ -202,30 +202,30 @@ test('Functor Law - Composition: map(f . g) === map(f) . map(g)', () => {
 });
 
 // === Type class instances ===
-test('Functor.of("state") returns StateFunctor', () => {
-    const functor = Functor.of('state');
+test('Functor.lookup("state") returns StateFunctor', () => {
+    const functor = Functor.lookup('state');
     const state = State.of(21);
     const mapped = functor.map(x => x * 2, state);
     assertEquals(mapped.eval(null), 42);
 });
 
-test('Apply.of("state") returns StateApply', () => {
-    const apply = Apply.of('state');
+test('Apply.lookup("state") returns StateApply', () => {
+    const apply = Apply.lookup('state');
     const sf = State.of(x => x + 1);
     const sa = State.of(41);
     const result = apply.ap(sf, sa);
     assertEquals(result.eval(null), 42);
 });
 
-test('Chain.of("state") returns StateChain', () => {
-    const chain = Chain.of('state');
+test('Chain.lookup("state") returns StateChain', () => {
+    const chain = Chain.lookup('state');
     const state = State.of(5);
     const result = chain.chain(x => State.of(x * 2), state);
     assertEquals(result.eval(null), 10);
 });
 
-test('Monad.of("state") returns StateMonad', () => {
-    const monad = Monad.of('state');
+test('Monad.lookup("state") returns StateMonad', () => {
+    const monad = Monad.lookup('state');
     assertEquals(monad.of(42).eval(null), 42);
 });
 

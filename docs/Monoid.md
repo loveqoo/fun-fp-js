@@ -53,17 +53,17 @@ import FunFP from 'fun-fp-js';
 const { Monoid } = FunFP;
 
 // 문자열
-const str = Monoid.of('string');
+const str = Monoid.lookup('string');
 str.empty();  // ''
 str.concat('Hello', str.empty());  // 'Hello'
 
 // 배열
-const arr = Monoid.of('array');
+const arr = Monoid.lookup('array');
 arr.empty();  // []
 arr.concat([1, 2], arr.empty());  // [1, 2]
 
 // 숫자 덧셈
-const num = Monoid.of('number');
+const num = Monoid.lookup('number');
 num.empty();  // 0
 num.concat(5, num.empty());  // 5
 ```
@@ -77,15 +77,15 @@ num.concat(5, num.empty());  // 5
 ```javascript
 const { Monoid, Semigroup, Maybe } = FunFP;
 
-console.log(Monoid.of('plus(array)').concat([1], [2]));   // [1, 2]
-console.log(Monoid.of('plus(array)').empty());            // []
+console.log(Monoid.lookup('plus(array)').concat([1], [2]));   // [1, 2]
+console.log(Monoid.lookup('plus(array)').empty());            // []
 
-const pm = Monoid.of('plus(maybe)');
+const pm = Monoid.lookup('plus(maybe)');
 console.log(pm.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 첫 Just 를 고른다
 console.log(pm.empty().isNothing());                         // true
 
 // Semigroup 짝도 함께 등록됩니다
-console.log(Semigroup.of('plus(array)').concat([1], [2]));   // [1, 2]
+console.log(Semigroup.lookup('plus(array)').concat([1], [2]));   // [1, 2]
 ```
 
 ### `plus(maybe)` 와 `maybe(first)` — 안을 여느냐
@@ -95,7 +95,7 @@ console.log(Semigroup.of('plus(array)').concat([1], [2]));   // [1, 2]
 ```javascript
 const { Monoid, Maybe } = FunFP;
 
-const plus = Monoid.of('plus(maybe)');    // 봉투째 고른다 — 안을 열지 않는다
+const plus = Monoid.lookup('plus(maybe)');    // 봉투째 고른다 — 안을 열지 않는다
 const inner = Maybe.Monoid('first');       // 안을 열어 first 로 합친다
 
 // payload 타입이 같으면 결과도 같다
@@ -127,7 +127,7 @@ Semigroup만으로는 빈 배열을 처리할 수 없지만, Monoid는 가능합
 // arr.reduce((a, b) => semigroup.concat(a, b))  // Error on []
 
 // Monoid - 안전!
-const monoid = Monoid.of('number');
+const monoid = Monoid.lookup('number');
 
 const foldMonoid = arr => arr.reduce(
     (acc, x) => monoid.concat(acc, x),
@@ -145,7 +145,7 @@ const errors = ['이름은 필수입니다'];
 const warnings = [];
 const hasErrors = errors.length > 0;
 const hasWarnings = warnings.length > 0;
-const arr = Monoid.of('array');
+const arr = Monoid.lookup('array');
 
 const concatIf = (condition, value) =>
     condition ? value : arr.empty();
@@ -183,7 +183,7 @@ const log = (msgs) => ({
     messages: msgs
 });
 
-const arr = Monoid.of('array');
+const arr = Monoid.lookup('array');
 
 const combineResults = (results) => results.reduce(
     (acc, r) => ({

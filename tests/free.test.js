@@ -27,16 +27,16 @@ test('Free.isFree checks Free type', () => {
     assert(!Free.isFree(42), 'Number should not be Free');
 });
 
-test('Functor.of("free").map transforms value', () => {
+test('Functor.lookup("free").map transforms value', () => {
     const pure = Free.pure(5);
-    const mapped = Functor.of('free').map(x => x * 2, pure);
+    const mapped = Functor.lookup('free').map(x => x * 2, pure);
     assert(Free.isPure(mapped), 'should still be Pure');
     assertEquals(mapped.value, 10);
 });
 
-test('Chain.of("free").chain chains computation', () => {
+test('Chain.lookup("free").chain chains computation', () => {
     const pure = Free.pure(5);
-    const result = Chain.of('free').chain(x => Free.pure(x + 1), pure);
+    const result = Chain.lookup('free').chain(x => Free.pure(x + 1), pure);
     assert(Free.isPure(result), 'should be Pure');
     assertEquals(result.value, 6);
 });
@@ -80,7 +80,7 @@ test('trampoline - suspended computation', () => {
 });
 
 test('trampoline - chained computation using Chain', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const program = chain.chain(
         x => chain.chain(
             y => Thunk.done(y + 1),
@@ -93,7 +93,7 @@ test('trampoline - chained computation using Chain', () => {
 });
 
 test('trampoline - stack safe recursion', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     // Factorial using trampoline (stack safe)
     const factorial = n => {
         const go = (n, acc) =>
@@ -107,7 +107,7 @@ test('trampoline - stack safe recursion', () => {
 });
 
 test('trampoline - sum with large recursion', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const sum = n => {
         const go = (n, acc) =>
             n <= 0
@@ -153,7 +153,7 @@ testAsync('runAsync - executes async program', async () => {
 });
 
 testAsync('runAsync - chains async computations using Chain', async () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const asyncInterpreter = async thunk => {
         await new Promise(r => setTimeout(r, 1));
         return thunk.run();
@@ -169,7 +169,7 @@ testAsync('runAsync - chains async computations using Chain', async () => {
 logSection('Free Monad - Static Land Laws');
 
 test('Left identity: chain(f, of(a)) === f(a)', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const f = x => Free.pure(x * 2);
     const a = 5;
     const left = chain.chain(f, Free.pure(a));
@@ -178,14 +178,14 @@ test('Left identity: chain(f, of(a)) === f(a)', () => {
 });
 
 test('Right identity: chain(of, m) === m', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const m = Free.pure(42);
     const result = chain.chain(Free.pure, m);
     assertEquals(result.value, m.value);
 });
 
 test('Associativity: chain(g, chain(f, m)) === chain(x => chain(g, f(x)), m)', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const m = Free.pure(5);
     const f = x => Free.pure(x + 1);
     const g = x => Free.pure(x * 2);
@@ -207,7 +207,7 @@ test('Free.pipeK composes Kleisli arrows', () => {
 logSection('Free Monad - Deep Nesting');
 
 test('Free Monad - deeply nested chain (1000 levels)', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     let program = Free.pure(0);
     for (let i = 0; i < 1000; i++) {
         program = chain.chain(x => Free.pure(x + 1), program);
@@ -217,7 +217,7 @@ test('Free Monad - deeply nested chain (1000 levels)', () => {
 });
 
 test('Free Monad - deeply nested chain (10000 levels)', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     let program = Free.pure(0);
     for (let i = 0; i < 10000; i++) {
         program = chain.chain(x => Free.pure(x + 1), program);
@@ -227,7 +227,7 @@ test('Free Monad - deeply nested chain (10000 levels)', () => {
 });
 
 test('Free Monad - deeply nested Thunk.suspend', () => {
-    const chain = Chain.of('free');
+    const chain = Chain.lookup('free');
     const buildDeep = (n, acc) => {
         if (n <= 0) return Thunk.done(acc);
         return chain.chain(x => x, Thunk.suspend(() => buildDeep(n - 1, acc + 1)));

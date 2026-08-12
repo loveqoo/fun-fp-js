@@ -63,10 +63,10 @@ const r8: string = Validation.fold(
     v8
 );
 
-// ── 9. Registry: Functor.of('validation') ─────────────────────────────
-const fV = Functor.of("validation");
+// ── 9. Registry: Functor.lookup('validation') ─────────────────────────────
+const fV = Functor.lookup("validation");
 type _9 = Expect<Equals<typeof fV, Functor<ValidationTypeLambda>>>;
-const aV = Applicative.of("validation");
+const aV = Applicative.lookup("validation");
 type _9b = Expect<Equals<typeof aV, Applicative<ValidationTypeLambda>>>;
 
 // ── 10. Kind reduction ────────────────────────────────────────────────

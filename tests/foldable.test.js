@@ -33,8 +33,8 @@ test('ArrayFoldable.reduce - empty array', () => {
     assertEquals(result, 0);
 });
 
-test('Foldable.of resolves to ArrayFoldable', () => {
-    const instance = Foldable.of('array');
+test('Foldable.lookup resolves to ArrayFoldable', () => {
+    const instance = Foldable.lookup('array');
     assert(instance === Foldable.types.ArrayFoldable, 'should resolve to ArrayFoldable');
 });
 

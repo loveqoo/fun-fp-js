@@ -12,7 +12,7 @@ const f = x => x + 1;
 const g = x => x * 2;
 
 // === Array Functor ===
-const arrFunctor = Functor.of('array');
+const arrFunctor = Functor.lookup('array');
 
 test('Array Functor - Identity: map(x => x, u) === u', () => {
     const u = [1, 2, 3];
@@ -28,7 +28,7 @@ test('Array Functor - Composition: map(x => f(g(x)), u) === map(f, map(g, u))', 
 });
 
 // === Maybe Functor ===
-const maybeFunctor = Functor.of('maybe');
+const maybeFunctor = Functor.lookup('maybe');
 
 test('Maybe Functor - Identity (Just)', () => {
     const u = Maybe.Just(5);
@@ -59,7 +59,7 @@ test('Maybe Functor - Composition (Nothing)', () => {
 });
 
 // === Either Functor ===
-const eitherFunctor = Functor.of('either');
+const eitherFunctor = Functor.lookup('either');
 
 test('Either Functor - Identity (Right)', () => {
     const u = Either.Right(5);
@@ -91,7 +91,7 @@ test('Either Functor - Composition (Left)', () => {
 });
 
 // === Task Functor (async) ===
-const taskFunctor = Functor.of('task');
+const taskFunctor = Functor.lookup('task');
 
 test('Task Functor - Identity', () => {
     const u = Task.of(5);

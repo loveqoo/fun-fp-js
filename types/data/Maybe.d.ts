@@ -62,7 +62,7 @@ export declare const Maybe: {
     // Runtime: runCatch(() => Just(f()), Nothing) — thunk throws → Nothing.
     readonly catch: <A>(thunk: () => A) => Maybe<A>;
 
-    // Static Land methods (wired at runtime from Functor.of('maybe').map etc.)
+    // Static Land methods (wired at runtime from Functor.lookup('maybe').map etc.)
     readonly map: <A, B>(f: (a: A) => B, m: Maybe<A>) => Maybe<B>;
     readonly ap: <A, B>(
         mf: Maybe<(a: A) => B>,
@@ -108,7 +108,7 @@ export declare const Maybe: {
     // Traverse — distribute Maybe through an Applicative G. Slot
     // parameters of G are fixed at `never` (the common case); traversals
     // that need non-trivial G slots (e.g. Either<E, _> as the Applicative
-    // with a custom E) should call via `Traversable.of('maybe').traverse`.
+    // with a custom E) should call via `Traversable.lookup('maybe').traverse`.
     //
     // Inference caveat: `B` is inferred through a conditional `Kind` type,
     // which TS sometimes fails to resolve when `G` is also being inferred.

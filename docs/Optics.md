@@ -246,10 +246,10 @@ const { traversed, foldMapOf } = FunFP.Optics;
 
 const each = traversed('array');
 
-console.log(foldMapOf(Monoid.of('number'), each, x => x, [1, 2, 3]));            // 6  합계
-console.log(foldMapOf(Monoid.of('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24 곱
-console.log(foldMapOf(Monoid.of('NumberMaxMonoid'), each, x => x, [2, 9, 4]));   // 9  최대
-console.log(foldMapOf(Monoid.of('string'), each, String, [1, 2, 3]));            // '123'
+console.log(foldMapOf(Monoid.lookup('number'), each, x => x, [1, 2, 3]));            // 6  합계
+console.log(foldMapOf(Monoid.lookup('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24 곱
+console.log(foldMapOf(Monoid.lookup('NumberMaxMonoid'), each, x => x, [2, 9, 4]));   // 9  최대
+console.log(foldMapOf(Monoid.lookup('string'), each, String, [1, 2, 3]));            // '123'
 ```
 
 **대상이 없으면 Monoid 의 항등원**입니다.
@@ -258,7 +258,7 @@ console.log(foldMapOf(Monoid.of('string'), each, String, [1, 2, 3]));           
 const { Monoid } = FunFP;
 const { traversed, foldMapOf } = FunFP.Optics;
 
-console.log(foldMapOf(Monoid.of('number'), traversed('array'), x => x, []));  // 0
+console.log(foldMapOf(Monoid.lookup('number'), traversed('array'), x => x, []));  // 0
 ```
 
 `toList` 와 `preview` 는 이것의 특수 경우입니다 — Monoid 가 각각 `array` 와 `plus(maybe)` 로
@@ -269,7 +269,7 @@ const { Monoid, Maybe } = FunFP;
 const { traversed, foldMapOf, toList } = FunFP.Optics;
 
 const each = traversed('array');
-console.log(JSON.stringify(foldMapOf(Monoid.of('array'), each, a => [a], [1, 2, 3])));
+console.log(JSON.stringify(foldMapOf(Monoid.lookup('array'), each, a => [a], [1, 2, 3])));
 console.log(JSON.stringify(toList(each, [1, 2, 3])));   // 위와 같다
 ```
 

@@ -9,7 +9,7 @@
  *  - Four role-based slots on a TypeLambda; unused slots take `never`.
  *  - Users register new types by declaring `interface X extends TypeLambda`.
  *    No module augmentation of any global registry required.
- *  - Runtime-side string dispatch (`Functor.of('maybe')`) is kept orthogonal
+ *  - Runtime-side string dispatch (`Functor.lookup('maybe')`) is kept orthogonal
  *    at the value level; the mapping `'maybe' → MaybeTypeLambda` is a thin
  *    layer declared per type-class entry point.
  */

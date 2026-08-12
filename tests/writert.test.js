@@ -65,7 +65,7 @@ test('run instance method works', () => {
 logSection('WriterT - Custom Monoid');
 
 test('WriterT with string monoid', () => {
-    const stringMonoid = Monoid.of('string');
+    const stringMonoid = Monoid.lookup('string');
     const WTS = WriterT(Identity, stringMonoid);
     const program = WTS.tell('hello ')
         .chain(_ => WTS.tell('world'))
@@ -79,15 +79,15 @@ test('WriterT with string monoid', () => {
    ═══════════════════════════════════════════════════ */
 logSection('WriterT - Type Class Integration');
 
-test('Functor.of(alias).map works', () => {
+test('Functor.lookup(alias).map works', () => {
     const alias = 'writert(identity,array)';
-    const mapped = Functor.of(alias).map(x => x * 2, WT.of(5));
+    const mapped = Functor.lookup(alias).map(x => x * 2, WT.of(5));
     const result = WT.runWriterT(mapped);
     assertEquals(result.value, [10, []]);
 });
 
-test('Monad.of(alias) exists', () => {
-    const monad = Monad.of('writert(identity,array)');
+test('Monad.lookup(alias) exists', () => {
+    const monad = Monad.lookup('writert(identity,array)');
     assert(monad != null, 'should exist');
 });
 

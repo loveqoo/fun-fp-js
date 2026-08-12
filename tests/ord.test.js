@@ -7,8 +7,8 @@ const { Ord, Setoid } = fp;
 logSection('Ord Laws');
 
 // === Number Ord ===
-const numOrd = Ord.of('number');
-const numSetoid = Setoid.of('number');
+const numOrd = Ord.lookup('number');
+const numSetoid = Setoid.lookup('number');
 
 test('Number Ord - Totality: lte(a, b) || lte(b, a)', () => {
     assertEquals(numOrd.lte(1, 2) || numOrd.lte(2, 1), true);
@@ -31,7 +31,7 @@ test('Number Ord - Transitivity: lte(a, b) && lte(b, c) => lte(a, c)', () => {
 });
 
 // === String Ord ===
-const strOrd = Ord.of('string');
+const strOrd = Ord.lookup('string');
 
 test('String Ord - Totality', () => {
     assertEquals(strOrd.lte('a', 'b') || strOrd.lte('b', 'a'), true);
@@ -46,7 +46,7 @@ test('String Ord - Transitivity', () => {
 });
 
 // === Date Ord ===
-const dateOrd = Ord.of('date');
+const dateOrd = Ord.lookup('date');
 
 test('Date Ord - Totality', () => {
     const d1 = new Date('2024-01-01');
@@ -71,7 +71,7 @@ test('Date Ord - Equal dates', () => {
 });
 
 // === Default Ord ===
-const defaultOrd = Ord.of('default');
+const defaultOrd = Ord.lookup('default');
 
 test('Default Ord - Uses <= operator', () => {
     assertEquals(defaultOrd.lte(1, 2), true);

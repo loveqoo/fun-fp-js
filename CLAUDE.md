@@ -29,5 +29,8 @@ all since reverted.
 - Never shell-loop `npm test`; exit code stays 0.
 - `type:'any'`: binary ops only; unary checks lose validation.
 - `StateT` M must be a string; objects make a distinct type.
-- Probe `Object.keys(fp)` before naming; never by `.of`. Keys nest: `plus(maybe)`.
+- `lookup(key)` pulls an instance from a registry (type classes); `of(value)` lifts
+  a value (data types, `Applicative` instances). Type classes have no `of` — no
+  test says so, and `instance.of(x)` is all over `tests/`, which reads as the opposite.
+- Probe `Object.keys(fp)` before naming; never by `.lookup`. Keys nest: `plus(maybe)`.
 - Green `npm test` ≠ unchanged behavior; use `npm run baseline` + mutation.

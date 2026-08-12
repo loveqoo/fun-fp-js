@@ -12,7 +12,7 @@ Semigroup은 두 값을 **결합(combine)**하여 같은 타입의 새 값을 �
 
 ### 결합법칙 (Associativity)
 ```javascript no-run 대수 법칙 — 자유변수 표기
-const { concat } = Semigroup.of('array');
+const { concat } = Semigroup.lookup('array');
 concat(concat(a, b), c) === concat(a, concat(b, c))
 ```
 
@@ -43,18 +43,18 @@ import FunFP from 'fun-fp-js';
 const { Semigroup } = FunFP;
 
 // 문자열 연결
-Semigroup.of('string').concat('Hello, ', 'World!');  // 'Hello, World!'
+Semigroup.lookup('string').concat('Hello, ', 'World!');  // 'Hello, World!'
 
 // 배열 병합
-Semigroup.of('array').concat([1, 2], [3, 4]);  // [1, 2, 3, 4]
+Semigroup.lookup('array').concat([1, 2], [3, 4]);  // [1, 2, 3, 4]
 
 // 숫자 덧셈
-Semigroup.of('number').concat(5, 3);  // 8
+Semigroup.lookup('number').concat(5, 3);  // 8
 
 // 함수 합성
 const add1 = x => x + 1;
 const mul2 = x => x * 2;
-const composed = Semigroup.of('function').concat(add1, mul2);
+const composed = Semigroup.lookup('function').concat(add1, mul2);
 composed(5);  // add1(mul2(5)) = add1(10) = 11
 ```
 
@@ -63,7 +63,7 @@ composed(5);  // add1(mul2(5)) = add1(10) = 11
 ### 여러 값 결합 (reduce 패턴)
 
 ```javascript
-const { concat } = Semigroup.of('array');
+const { concat } = Semigroup.lookup('array');
 
 const concatAll = arr => arr.reduce(concat);
 concatAll([[1], [2], [3]]);  // [1, 2, 3]
@@ -78,7 +78,7 @@ const email = 'alice@example.com';
 const errors = [];
 const validate = (cond, msg) => cond ? [] : [msg];
 
-const { concat } = Semigroup.of('array');
+const { concat } = Semigroup.lookup('array');
 
 const nameErrors = validate(name.length > 0, 'Name is required');
 const emailErrors = validate(email.includes('@'), 'Invalid email');
@@ -96,7 +96,7 @@ const allErrors = concat(nameErrors, emailErrors);
 
 ```javascript
 // 추상화된 합계 함수
-const sum = (type, arr) => arr.reduce(Semigroup.of(type).concat);
+const sum = (type, arr) => arr.reduce(Semigroup.lookup(type).concat);
 
 sum('number', [1, 2, 3]);     // 6
 sum('string', ['a', 'b', 'c']);  // 'abc'

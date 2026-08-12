@@ -40,7 +40,7 @@ pipeline(5);  // 11
 
 ```javascript
 const { State, Chain } = FunFP;
-const { chain } = Chain.of('state');
+const { chain } = Chain.lookup('state');
 
 const increment = State.modify(s => s + 1);
 const double = State.modify(s => s * 2);
@@ -102,7 +102,7 @@ State.gets(s => s.name).run({ name: 'Alice', age: 30 });
 
 ```javascript
 const { Functor } = FunFP;
-const { map } = Functor.of('state');
+const { map } = Functor.lookup('state');
 
 const state = State.of(21);
 map(x => x * 2, state).run('any');
@@ -123,7 +123,7 @@ State를 반환하는 함수로 연쇄하며, 상태가 자동 전달됩니다.
 
 ```javascript
 const { Chain } = FunFP;
-const { chain } = Chain.of('state');
+const { chain } = Chain.lookup('state');
 
 const state = State.of(5);
 const useValue = x => new State(s => [x + s, s * 2]);
@@ -150,7 +150,7 @@ State.chain(useValue, state);
 
 ```javascript
 const { Apply } = FunFP;
-const { ap } = Apply.of('state');
+const { ap } = Apply.lookup('state');
 
 const sf = State.of(x => x * 2);
 const sa = State.of(21);

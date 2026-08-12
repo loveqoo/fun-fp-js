@@ -148,9 +148,29 @@ Extend ──> Comonad
 | Extend | extend | 컨텍스트 변환 |
 | Comonad | extract | 값 추출 |
 
+### `lookup` 과 `of` — 두 이름이 하는 일이 다릅니다
+
+| | 무엇을 하나 | 어디에 있나 |
+| --- | --- | --- |
+| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 24개 (`Functor`, `Monoid`, …) |
+| `of(값)` | **값을 컨테이너에 넣는다** | 데이터 타입 8개 (`Maybe`, `Either`, …)와 `Applicative` 인스턴스 |
+
+```javascript
+const { Maybe, Functor, Applicative } = FunFP;
+
+Functor.lookup('maybe')            // MaybeFunctor 인스턴스를 꺼낸다
+Maybe.of(1)                        // Just(1) — 값을 넣는다
+Applicative.lookup('maybe').of(1)  // 꺼낸 다음 넣는다
+
+Maybe.of('array')                  // Just('array') — 조회가 아니다
+```
+
+**한 이름이 둘을 겸하면 마지막 줄이 조회로 읽힙니다.** 그래서 타입클래스에는 `of` 가
+없습니다 — `Functor.of` 는 `undefined` 입니다.
+
 ### 레지스트리 키 — 매개변수화된 것들
 
-`Functor.of('array')` 처럼 **타입 이름**이 기본이지만, 조립된 키도 있습니다.
+`Functor.lookup('array')` 처럼 **타입 이름**이 기본이지만, 조립된 키도 있습니다.
 
 | 키 형태 | 뜻 | 예 | 문서 |
 | --- | --- | --- | --- |
@@ -231,7 +251,7 @@ validate('-5');   // Left('Must be positive')
 ```javascript
 const fetchUser = id => Task.of({ id, name: 'Alice' });
 const { Chain, Task } = FunFP;
-const { chain } = Chain.of('task');
+const { chain } = Chain.lookup('task');
 
 const fetchData = userId =>
     chain(user => fetchPosts(user.id),
@@ -265,7 +285,7 @@ const fetchUser = id => Task.of({ id, name: 'Alice' });
 const fetchPosts = uid => Task.of([{ id: 10, uid, title: '첫 글' }]);
 const fetchComments = postId => Task.of([{ id: 100, postId, body: '댓글' }]);
 const { pipe, Chain } = FunFP;
-const { chain } = Chain.of('task');
+const { chain } = Chain.lookup('task');
 
 // pipe 는 함수를 돌려준다 — 값이 아니라 함수들을 넘기고 마지막에 적용한다
 pipe(
