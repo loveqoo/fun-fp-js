@@ -202,9 +202,8 @@ console.log(arrayMonoid.empty());       // []   ← 원래의 ArrayMonoid, 다�
 | 묶는 기준은 **`.type`**, 레지스트리 키가 아님 | `Semigroupoid` 의 `maybe` 인스턴스는 Kleisli 합성이라 `.type` 이 `'function'` 입니다 — `all('function')` 에 있고 `all('maybe')` 에는 없습니다 |
 | **열거가 아니라 "지금 있는 것"** | 매개변수화 인스턴스는 팩토리를 불러야 생깁니다. `Maybe.Semigroup('number')` 뒤의 `all('maybe')` 에는 `maybeNumberSemigroup` 이 더 있습니다 |
 
-**셋업에서 한 번 부르십시오.** 캐시가 없어 매번 레지스트리 전체를 훑습니다 — `lookup` 의
-해시 조회보다 실측 650배 느립니다(13μs 대 0.02μs). 구조분해해서 쓰는 용도이고, **타입을
-순회하며 루프 안에서 부르지 마십시오.**
+**키 순서는 약속이 아닙니다.** 이름으로 구조분해해서 쓰십시오 — `Object.keys` 의 순서는
+등록 순서를 따라가므로 라이브러리 내부가 바뀌면 함께 바뀝니다.
 
 세 번째가 설계입니다. 안쪽 타입 공간은 닫혀 있지 않아서 — `maybe(maybe(maybe(array)))` 도
 됩니다 — 미리 열거할 수 없습니다. **안쪽 타입은 힌트이고, 정확히 지목하려면 조립 키로

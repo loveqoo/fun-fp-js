@@ -132,4 +132,37 @@ test('이름이 겹치지 않는다 — 인스턴스 수와 키 수가 같다', 
     }
 });
 
+test('역인덱스와 실제 레지스트리가 일치한다 — 문을 우회하면 여기서 걸린다', () => {
+    // Algebra.all 은 등록 시점에 만들어진 역인덱스를 꺼낸다. 누가 X.types[키] = 인스턴스 로
+    // 직접 쓰면 lookup 은 되는데 인덱스에는 없어 all 에서 조용히 사라진다.
+    // 문법으로 막을 방법이 없으므로 이 대조가 유일한 게이트다.
+    const inRegistry = new Map();          // .type(소문자) -> Set<인스턴스>
+    for (const name of TYPE_CLASSES) {
+        for (const instance of Object.values(fp[name].types)) {
+            if (typeof instance?.type !== 'string') continue;
+            const t = instance.type.toLowerCase();
+            (inRegistry.get(t) ?? inRegistry.set(t, new Set()).get(t)).add(instance);
+        }
+    }
+    const missing = [];
+    for (const [type, instances] of inRegistry) {
+        const bundle = new Set(Object.values(fp.Algebra.all(type)));
+        for (const instance of instances) {
+            if (!bundle.has(instance)) missing.push(`${type}: ${instance.constructor.name}`);
+        }
+    }
+    assertEquals(missing.join(' | '), '', '레지스트리에 있는데 Algebra.all 에 없는 인스턴스');
+});
+
+test('지연 등록도 같은 문을 지난다', () => {
+    // 팩토리·트랜스포머가 만드는 인스턴스는 나중에 생긴다. 그것들이 문을 안 지나면
+    // 위 대조가 그 시점 이후에만 깨지므로, 여기서 직접 만들어 확인한다.
+    fp.Maybe.Semigroup('boolean');
+    assert('maybeBooleanSemigroup' in fp.Algebra.all('maybe'), 'Maybe.Semigroup 파생');
+    fp.Applicative.Const('boolean');
+    assert('constBooleanApplicative' in fp.Algebra.all('object'), 'Applicative.Const 파생');
+    fp.StateT('either');
+    assert('statetEitherFunctor' in fp.Algebra.all('statet(either)'), 'StateT 등록');
+});
+
 console.log('\n✅ 레지스트리 API tests completed\n');

@@ -291,29 +291,49 @@ console.log(Monad.lookup('statet(maybe)') === Monad.lookup('statet(maybe)'));  /
 
 ---
 
-## 레지스트리에 쓰는 자리는 14곳이다 {#registry-writes}
+## 레지스트리에 쓰는 문은 하나다 {#registry-writes}
 
-| | 개수 |
-| --- | --- |
-| `register(registry, instance, ...aliases)` | 함수 1개 (호출 23곳) |
-| `X.types[키] = 인스턴스` 직접 대입 | **13곳** — `Plus` 유도, `Const`, `Maybe`/`Either` 파생, 트랜스포머 |
+**`registerAs(types, 키, 인스턴스)` 가 유일한 문입니다.** `register(types, instance, ...별칭)`
+도 그 위에 세워져 있습니다 — 클래스 이름과 별칭을 각각 `registerAs` 로 넣습니다.
 
-문이 여럿이라 **등록 규칙을 한 자리에서 강제할 수 없습니다.** 2026-08-13 의 `.type` 드리프트도,
-`.type` 게이트가 `plus(array)` 를 못 훑던 것도 여기서 나왔습니다. 이 자리를 한 문으로 모으면
-[`Algebra.all`](./README.md) 의 캐시도 따라옵니다 — 아직 안 했습니다.
+```javascript
+const { Semigroup, Monoid } = FunFP;
+
+// register() 로 들어간 것: 클래스 이름과 소문자 별칭 둘 다 같은 인스턴스를 준다
+console.log(Semigroup.lookup('array') === Semigroup.types.ArraySemigroup);   // true
+// registerAs 로 키를 직접 넣은 것: 조립 키 하나만 있다
+console.log(Monoid.lookup('plus(array)') === Monoid.types['plus(array)']);   // true
+```
+
+**직접 대입하지 마십시오.** `X.types[키] = 인스턴스` 로 쓰면 `lookup` 은 되지만
+[역인덱스](#algebra-all)에 안 들어가서 `Algebra.all` 에서 **조용히 사라집니다.**
+
+2026-08-13 이전에는 문이 14개였습니다(`register()` 1개 + 직접 대입 13곳). 그래서 등록 규칙을
+한 자리에서 강제할 수 없었고, 같은 날의 `.type` 드리프트도 `.type` 게이트가 `plus(array)` 를
+못 훑던 것도 거기서 나왔습니다.
+
+**문법으로는 우회를 막을 수 없습니다.** `tests/registry-api.test.js` 가 "레지스트리에 있는
+인스턴스가 전부 `Algebra.all` 에도 있는가" 를 대조하는 것이 유일한 게이트입니다. 그 대조는
+**그 시점에 존재하는 인스턴스만** 봅니다 — 아무도 만들지 않는 파생을 우회하면 안 걸립니다.
 
 ---
 
-## `Algebra.all` 은 캐시가 없다 {#algebra-all}
+## `Algebra.all` 은 등록 시점의 역인덱스를 꺼낸다 {#algebra-all}
 
 쓰는 법은 [README](./README.md) 에 있습니다. 내부 사정은 이렇습니다.
 
-한 번 부를 때마다 레지스트리 전체(엔트리 230개)를 훑습니다. 바깥 루프는 24개 레지스트리의
-**분할**이라 곱이 아니라 합이므로 **O(E) 선형**이지만, `lookup` 이 해시 조회 O(1)인 것과는
-급이 다릅니다 — 실측 **13μs 대 0.02μs(650배)**. 루프 안에서 부르면 O(타입수 × E) 가 됩니다.
+[유일한 문](#registry-writes)이 인스턴스를 등록할 때 `.type`(소문자) → 인스턴스들의
+역인덱스를 함께 갱신합니다. `Algebra.all` 은 그 인덱스를 꺼내므로 **O(k)** 입니다 —
+훑지 않습니다.
 
-캐시를 두려면 무효화가 필요하고, 그러려면 [쓰기 경로 14곳](#registry-writes)을 한 문으로
-모아야 합니다.
+| | 훑던 때 | 인덱스 |
+| --- | --- | --- |
+| `Algebra.all('array')` | 15.9μs | **1.5μs** |
+| `Algebra.all('number')` | 13.5μs | **0.6μs** |
+| `Functor.lookup('array')` | 0.009μs | 0.009μs |
 
-`npm run baseline` 은 **값만** 보므로 이런 종류의 대가는 격자로 영원히 안 잡힙니다. 숫자로
-남겨야 합니다.
+**키 순서는 계약이 아닙니다.** 등록 순서를 따라가므로 등록 순서가 바뀌면 함께 바뀝니다 —
+실제로 훑기에서 인덱스로 옮길 때 바뀌었습니다. 쓰는 쪽은 이름으로 구조분해하므로 순서에
+의존하는 곳이 0건이고, 그래서 `npm run baseline` 격자도 **정렬해서** 봅니다. 정렬 안 한
+줄을 두면 의미 없는 차이를 보고하고, 누군가 그것을 초록으로 만들려다 우연한 순서를
+계약으로 굳힙니다.

@@ -148,9 +148,23 @@ const range = n => {
     return Array.from({ length: n }, (_, i) => i);
 };
 const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
+// 레지스트리에 쓰는 **유일한 문**. 직접 대입하지 마라 — docs/internals.md#registry-writes
+// 역인덱스(.type -> 인스턴스들)를 여기서 함께 갱신하므로, 우회하면 Algebra.all 에서
+// 조용히 사라진다. tests/registry-api.test.js 가 인덱스와 레지스트리의 일치를 강제한다.
+const registryIndex = new Map();
+const registerAs = (types, key, instance) => {
+    types[key] = instance;
+    if (typeof instance?.type !== 'string') return;
+    const bucket = registryIndex.get(instance.type.toLowerCase())
+        ?? registryIndex.set(instance.type.toLowerCase(), new Map()).get(instance.type.toLowerCase());
+    const entry = bucket.get(instance) ?? { name: null, key: null };
+    // 대문자로 시작하는 키는 클래스 이름이고, 그것이 표시 이름이 된다.
+    if (key[0] === key[0].toUpperCase()) entry.name ??= key; else entry.key ??= key;
+    bucket.set(instance, entry);
+};
 const register = (target, instance, ...aliases) => {
-    target[instance.constructor.name] = instance;
-    for (const alias of aliases) { target[alias.toLowerCase()] = instance; }
+    registerAs(target, instance.constructor.name, instance);
+    for (const alias of aliases) { registerAs(target, alias.toLowerCase(), instance); }
 };
 const loadedModules = new Set();
 const load = (...modules) => {
@@ -585,8 +599,8 @@ const deriveFromPlus = (plus, type, aliases) => {
     const monoid = new Monoid(semigroup, plus.zero, type);
     for (const alias of aliases) {
         const key = `plus(${alias.toLowerCase()})`;
-        Semigroup.types[key] = semigroup;
-        Monoid.types[key] = monoid;
+        registerAs(Semigroup.types, key, semigroup);
+        registerAs(Monoid.types, key, monoid);
     }
 };
 class Plus extends Alt {
@@ -686,14 +700,11 @@ class Traversable extends Functor {
 Traversable.prototype[Symbols.Traversable] = true;
 
 // 정적 조회는 lookup 이다. of 는 값 주입 전용 — docs/README.md 「lookup 과 of」
-// typeRegistries: 목록을 손으로 유지하면 등록을 추가할 때 어긋나므로 스스로 등록한다.
-const typeRegistries = [];
 const withTypeRegistry = (TypeClass, defaultResolver = null) => {
     TypeClass.types = {};
     TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
     TypeClass.lookup = key => TypeClass.resolver(key)
         || raise(new TypeError(`${TypeClass.name}.lookup: unsupported key ${key}`));
-    typeRegistries.push(TypeClass);
 };
 const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
@@ -710,20 +721,11 @@ Algebra.all = key => {
     // 소문자만 받는다. 대문자도 받으면 같은 묶음을 두 이름으로 부르게 되고,
     // `.type` 이 대문자('Maybe')인 것과 소문자('number')인 것이 섞여 있어 더 헷갈린다.
     key === key.toLowerCase() || raise(new TypeError(`Algebra.all: key must be lowercase, got ${key}`));
-    const found = new Map();
-    for (const TypeClass of typeRegistries) {
-        for (const [k, instance] of Object.entries(TypeClass.types)) {
-            if (instance.type?.toLowerCase() !== key) continue;
-            const entry = found.get(instance) ?? { name: null, key: null };
-            if (k === capHead(k)) entry.name = entry.name ?? camelHead(k);
-            else entry.key = entry.key ?? k;
-            found.set(instance, entry);
-        }
-    }
-    found.size > 0 || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
+    const found = registryIndex.get(key);
+    found?.size > 0 || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
     const result = {};
     for (const [instance, { name, key: composed }] of found) {
-        result[name ?? composedName(composed, instance.constructor.name)] = instance;
+        result[name ? camelHead(name) : composedName(composed, instance.constructor.name)] = instance;
     }
     return result;
 };
@@ -1035,9 +1037,9 @@ Applicative.Const = monoid => {
     if (key !== null) {
         // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')
         // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
-        Functor.types[`const(${key})`] = result;
-        Apply.types[`const(${key})`] = result;
-        Applicative.types[`const(${key})`] = result;
+        registerAs(Functor.types, `const(${key})`, result);
+        registerAs(Apply.types, `const(${key})`, result);
+        registerAs(Applicative.types, `const(${key})`, result);
         Applicative.Const._keyCache.set(key, result);
     } else {
         Applicative.Const._instanceCache.set(m, result);
@@ -1445,7 +1447,7 @@ Maybe.Semigroup = innerSG => {
         'Maybe', null
     );
     if (key !== null) {
-        Semigroup.types[`maybe(${key})`] = result;
+        registerAs(Semigroup.types, `maybe(${key})`, result);
         Maybe.Semigroup._keyCache.set(key, result);
     } else {
         Maybe.Semigroup._instanceCache.set(sg, result);
@@ -1463,7 +1465,7 @@ Maybe.Monoid = innerSG => {
     const maybeSG = Maybe.Semigroup(sg);
     const result = new Monoid(maybeSG, () => Maybe.Nothing(), 'Maybe', null);
     if (key !== null) {
-        Monoid.types[`maybe(${key})`] = result;
+        registerAs(Monoid.types, `maybe(${key})`, result);
         Maybe.Monoid._keyCache.set(key, result);
     } else {
         Maybe.Monoid._instanceCache.set(sg, result);
@@ -1484,7 +1486,7 @@ Either.Semigroup = innerSG => {
         'Either', null
     );
     if (key !== null) {
-        Semigroup.types[`either(${key})`] = result;
+        registerAs(Semigroup.types, `either(${key})`, result);
         Either.Semigroup._keyCache.set(key, result);
     } else {
         Either.Semigroup._instanceCache.set(sg, result);
@@ -2552,14 +2554,14 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
         (f, t) => { check(t, 'map'); return new XT(Functor.lookup('free').map(f, t._program)); },
         typeName, null
     );
-    Functor.types[alias] = tFunctor;
+    registerAs(Functor.types, alias, tFunctor);
     const tApply = new Apply(tFunctor, (tf, ta) => {
         check(tf, 'ap'); check(ta, 'ap');
         return new XT(Chain.lookup('free').chain(f => Functor.lookup('free').map(f, ta._program), tf._program));
     }, typeName, null);
-    Apply.types[alias] = tApply;
+    registerAs(Apply.types, alias, tApply);
     const tApplicative = new Applicative(tApply, XT.of, typeName, null);
-    Applicative.types[alias] = tApplicative;
+    registerAs(Applicative.types, alias, tApplicative);
     const tChain = new Chain(tApply, (f, t) => {
         check(t, 'chain');
         return new XT(Chain.lookup('free').chain(x => {
@@ -2568,9 +2570,9 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
             return result._program;
         }, t._program));
     }, typeName, null);
-    Chain.types[alias] = tChain;
+    registerAs(Chain.types, alias, tChain);
     const tMonad = new Monad(tApplicative, tChain, typeName, null);
-    Monad.types[alias] = tMonad;
+    registerAs(Monad.types, alias, tMonad);
     XT.map = tFunctor.map;
     XT.ap = tApply.ap;
     XT.chain = tChain.chain;

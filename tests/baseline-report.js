@@ -30,6 +30,20 @@ const O = f => f.Optics
 // 아래 `.type` 줄들이 잡는다. (`??` 를 쓰면 안 된다 — 규칙 23 의 그 자리다.)
 const L = (f, name) => (f[name].lookup ? f[name].lookup : f[name].of);
 
+const TYPE_CLASSES = ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
+    'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply', 'Applicative',
+    'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'Foldable', 'Extend', 'Comonad',
+    'Traversable'];
+const allRegistryKeys = f => TYPE_CLASSES.map(c => `${c}: ${Object.keys(f[c].types).sort().join(',')}`);
+// **정렬해서 본다.** 묶음의 키 순서는 계약이 아니다 — 쓰는 쪽은 이름으로 구조분해하므로
+// 순서에 의존하는 곳이 0건이다. 정렬 안 한 줄을 두면 등록 순서를 건드릴 때마다 의미 없는
+// 차이를 보고하고, 누군가 그것을 초록으로 만들려다 우연한 순서를 계약으로 굳힌다.
+const allBundles = f => {
+    const types = new Set();
+    for (const c of TYPE_CLASSES) for (const v of Object.values(f[c].types)) if (v && v.type) types.add(v.type.toLowerCase());
+    return [...types].sort().map(t => `${t}: ${Object.keys(f.Algebra.all(t)).sort().join(',')}`);
+};
+
 const T = f => O(f).traversed('array');
 const bigP = f => O(f).Prism(x => (x > 10 ? f.Maybe.Just(x) : f.Maybe.Nothing()), x => x);
 const aLens = f => O(f).Lens(o => o.a, (b, o) => ({ ...o, a: b }));
@@ -151,6 +165,23 @@ const cases = [
         .filter(([k]) => k[0] === k[0].toUpperCase())
         .map(([k, v]) => `${k}=${v.type}`)
         .sort()]),
+
+    // ── 등록 표면 전체 — 레지스트리 쓰기 경로를 건드리는 변경의 감시면 ──────
+    // 여기 아래는 지연 등록을 **일으키므로** 반드시 격자의 끝에 둔다.
+    ['모든 레지스트리 키', allRegistryKeys],
+    ['모든 타입의 Algebra.all 키', allBundles],
+
+    // 지연 등록(팩토리·트랜스포머)이 같은 문을 지나는지. 문을 하나 빠뜨리면 그 인스턴스만
+    // 인덱스에 없고 Algebra.all 에서 조용히 사라진다 — 그것을 여기서 잡는다.
+    ['지연 등록을 일으킨다', f => {
+        f.Maybe.Semigroup('number'); f.Maybe.Monoid('array'); f.Either.Semigroup('string');
+        f.Applicative.Const('array'); f.Semigroup.lookup('maybe(maybe(array))');
+        f.StateT('maybe'); f.EitherT('task'); f.ReaderT('maybe');
+        f.WriterT('maybe', f.Monoid.lookup('array'));
+        return 'done';
+    }],
+    ['지연 등록 후 레지스트리 키', allRegistryKeys],
+    ['지연 등록 후 Algebra.all 키', allBundles],
 ];
 
 const { changed } = await diffCases(cases, { ref: process.argv[2] || 'HEAD' });
