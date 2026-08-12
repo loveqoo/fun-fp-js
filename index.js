@@ -967,13 +967,13 @@ modules.push(LastSemigroup);
 /* Object */
 class ObjectFilterable extends Filterable {
     constructor() {
-        super((pred, obj) => polyfills.object.filter(pred, obj), 'object', Filterable.types, 'object');
+        super((pred, obj) => polyfills.object.filter(pred, obj), 'Object', Filterable.types, 'object');
     }
 }
 modules.push(ObjectFilterable);
 class ObjectFoldable extends Foldable {
     constructor() {
-        super((f, init, obj) => polyfills.object.values(obj).reduce(f, init), 'object', Foldable.types, 'object');
+        super((f, init, obj) => polyfills.object.values(obj).reduce(f, init), 'Object', Foldable.types, 'object');
     }
 }
 modules.push(ObjectFoldable);
@@ -1171,13 +1171,13 @@ modules.push(ArrayTraversable);
 /* Date */
 class DateSetoid extends Setoid {
     constructor() {
-        super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'date', Setoid.types, 'date');
+        super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'Date', Setoid.types, 'date');
     }
 }
 modules.push(DateSetoid);
 class DateOrd extends Ord {
     constructor() {
-        super((x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'date', Ord.types, 'date');
+        super((x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'Date', Ord.types, 'date');
     }
 }
 modules.push(DateOrd);
@@ -1212,15 +1212,17 @@ Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
 Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
+// Kleisli 합성이므로 compose 가 받는 것은 a -> Maybe b 꼴의 **함수**다. 'Maybe' 는 합성
+// 결과가 품는 타입이지 인자의 타입이 아니다 — Either/Task 쪽과 같이 'function' 이다.
 class MaybeSemigroupoid extends Semigroupoid {
     constructor() {
-        super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'Maybe', Semigroupoid.types, 'maybe');
+        super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'function', Semigroupoid.types, 'maybe');
     }
 }
 modules.push(MaybeSemigroupoid);
 class MaybeCategory extends Category {
     constructor() {
-        super(Semigroupoid.types.MaybeSemigroupoid, Maybe.Just, 'Maybe', Category.types, 'maybe');
+        super(Semigroupoid.types.MaybeSemigroupoid, Maybe.Just, 'function', Category.types, 'maybe');
     }
 }
 modules.push(MaybeCategory);

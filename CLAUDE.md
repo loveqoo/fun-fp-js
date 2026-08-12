@@ -28,7 +28,6 @@ all since reverted.
 
 - Never shell-loop `npm test`; exit code stays 0.
 - `type:'any'`: binary ops only; unary checks lose validation.
-- `type:'Object'`: capital O; lowercase kills optics traversals.
 - `StateT` M must be a string; objects make a distinct type.
 - Probe `Object.keys(fp)` before naming; never by `.of`. Keys nest: `plus(maybe)`.
 - Green `npm test` ≠ unchanged behavior; use `npm run baseline` + mutation.

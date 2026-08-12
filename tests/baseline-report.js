@@ -105,6 +105,19 @@ const cases = [
     ['Monoid.types 키', f => Object.keys(f.Monoid.types).sort()],
     ['Semigroup.types 키', f => Object.keys(f.Semigroup.types).sort()],
     ['최상위 export 키', f => Object.keys(f).sort()],
+
+    // ── 인스턴스의 .type — 값으로는 관측되지 않는 자리다 ──────────────────
+    // 검사에 쓰이지 않는 타입클래스(Semigroupoid/Category 등)에서는 .type 이 틀려도
+    // 동작이 같으므로 위 격자가 전부 통과한다. 필드를 직접 읽어야 드리프트가 보인다.
+    // 타입클래스별로 나눈다 — 한 줄에 몰면 바뀐 자리를 눈으로 못 찾는다(규칙 14).
+    ...['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
+        'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
+        'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad',
+        'Foldable', 'Extend', 'Comonad', 'Traversable'
+    ].map(name => [`${name} .type`, f => Object.entries(f[name].types)
+        .filter(([k]) => k[0] === k[0].toUpperCase())
+        .map(([k, v]) => `${k}=${v.type}`)
+        .sort()]),
 ];
 
 const { changed } = await diffCases(cases, { ref: process.argv[2] || 'HEAD' });
