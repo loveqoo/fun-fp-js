@@ -21,6 +21,11 @@ all since reverted.
   want; do not proceed on a guess of it.
 - **Report facts, not conjecture.** Run the check, quote the source. When you must
   speculate, label it as speculation.
+- **The owner does not read the code — explain in plain language, every time.**
+  Your prose is the deliverable, not the diff. Say what changed and what it means
+  before naming files or lines; a list of `file:line` is not an explanation. When
+  you propose work, say plainly what breaks if it is skipped — and if nothing
+  breaks, say that too.
 - **When the process goes wrong, write a retrospective** so the next task inherits
   the fix rather than repeating the mistake. Before starting, read what already
   went wrong here.
