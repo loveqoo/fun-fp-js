@@ -5,7 +5,11 @@ migration in progress — do not split it. Navigate by section comments
 (`/* Optics */`, `/* Array */`, …); line numbers drift.
 
 Concepts and usage live in [`docs/`](./docs/README.md); its examples are executed
-by the test suite.
+by the test suite. Rationale for how `index.js` is built lives in
+[`docs/internals.md`](./docs/internals.md).
+
+**Keep source comments to one line.** If you need more, write it in `docs/` and
+leave a one-line hint pointing there — doc examples are executed, comments are not.
 
 **Principle:** structural payoff outranks immediate implementation convenience.
 YAGNI is banned — it cost this repo 5 private instances and 11 top-level names,

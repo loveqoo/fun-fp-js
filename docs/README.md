@@ -343,6 +343,12 @@ pipe(
 )(fetchUser(userId)).fork(console.error, console.log);
 ```
 
+## `index.js` 를 고치려면
+
+[내부 구조](./internals.md) — `.type` 규칙, `'any'`, `Plus`→`Monoid` 유도, Identity/Const,
+검사 겹을 벗기는 자리, optics 의 Profunctor 인코딩, 트랜스포머 등록, 레지스트리 쓰기 경로.
+**소스 주석은 한 줄 힌트만 두고 근거는 그쪽에 모읍니다.**
+
 ## 더 알아보기
 
 - [Static Land Specification](https://github.com/fantasyland/static-land)

@@ -428,15 +428,7 @@ const checkAndSet = (config => {
     };
 })(config);
 class Algebra { constructor(type) { this.type = type; } }
-// 상위 클래스에 넘기는 map/ap 은 이미 검사가 씌워진 것이다. 같은 type 이면 상위가 씌우는
-// 검사가 **글자 그대로 같으므로**(둘 다 types.isFunction(f) && types.check(a, instance.type))
-// 바깥 겹은 안전성을 더하지 않는다. 그것이 벗기는 유일한 근거다.
-// Alternative 가 this.alt = plus.alt 로 재래핑을 피하는 것과 같은 처리다.
-// type 이 다르면 바깥 검사가 다른 것이므로 그대로 둔다.
-//
-// 성능을 근거로 삼지 마라 — 같은 회차가 first/left 를 Bifunctor.bimap 위임으로 바꿔
-// 원소마다 레지스트리 조회를 새로 넣었고, 그쪽이 벗긴 겹보다 크다(실측 1.37~1.60배).
-// 레지스트리 재사용은 POLICY 6 에 따른 옳은 선택이고 되돌리지 않는다.
+// 같은 type 이면 상위의 검사와 글자 그대로 같다 — docs/internals.md#unwrap (성능은 근거가 아니다)
 const unwrapIfSameType = (instance, source, ...methods) => {
     if (instance.type !== source.type) return;
     for (const m of methods) { if (source[m]) instance[m] = source[m]; }
@@ -587,18 +579,7 @@ class Alt extends Functor {
     alt() { raise(new Error('Alt: alt is not implemented')); }
 }
 Alt.prototype[Symbols.Alt] = true;
-// Plus 는 alt(결합 이항 연산)와 zero(항등원)를 둘 다 갖고 있어 구조적으로 Monoid 다 —
-// 태그만 없다. 그래서 등록된 Plus 는 전부 짝 Semigroup/Monoid 를 plus(<alias>) 키로 얻는다.
-// 특례를 손으로 쓰지 않는다: Plus 를 새로 등록하면 짝도 자동으로 따라온다.
-//
-// 이렇게 얻은 Monoid 는 컨테이너를 열지 않고 한쪽을 통째로 고른다. Maybe 의 경우
-// Maybe.Monoid(innerSG)(= maybe(first))와 대비된다 — 그쪽은 둘 다 Just 일 때 안쪽 값을
-// innerSG.concat 으로 합치므로 안의 타입이 같아야 한다. payload 타입이 같으면 결과도
-// 같고, 섞였을 때만 갈린다 — 앞엣것은 던지고 이쪽은 고른다.
-//
-// register() 를 쓰지 않는 이유: 그것은 instance.constructor.name 도 키로 넣으므로
-// Monoid.types['Monoid'] 가 생기고 Plus 들이 서로 덮는다. Maybe.Monoid 의 선례대로
-// 키를 직접 넣는다.
+// Plus 는 alt + zero 를 다 가져 구조적으로 Monoid 다 — docs/internals.md#plus-monoid
 const deriveFromPlus = (plus, type, aliases) => {
     const semigroup = new Semigroup(plus.alt, type);
     const monoid = new Monoid(semigroup, plus.zero, type);
@@ -704,11 +685,8 @@ class Traversable extends Functor {
 }
 Traversable.prototype[Symbols.Traversable] = true;
 
-// 타입클래스의 정적 조회는 `lookup` 이다 — `of` 가 아니다.
-// `of` 는 값을 컨테이너에 넣는 생성자 하나만 뜻한다(`Maybe.of(1)` === `Just(1)`,
-// `Applicative.lookup('maybe').of(1)`). 한 이름이 조회와 주입을 겸하면 읽는 쪽이
-// `Maybe.of('array')` 를 조회로 오해한다 — 그건 `Just('array')` 다.
-// 레지스트리를 가진 타입클래스 전부. 목록을 손으로 유지하면 등록을 추가할 때 어긋난다.
+// 정적 조회는 lookup 이다. of 는 값 주입 전용 — docs/README.md 「lookup 과 of」
+// typeRegistries: 목록을 손으로 유지하면 등록을 추가할 때 어긋나므로 스스로 등록한다.
 const typeRegistries = [];
 const withTypeRegistry = (TypeClass, defaultResolver = null) => {
     TypeClass.types = {};
@@ -721,29 +699,8 @@ const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
     TypeClass.resolver = key => prev(key) || resolver(key);
 };
-// Algebra.all(<타입키>) — 그 타입을 다루는 인스턴스를 한 객체로 모은다.
-// 타입클래스 하나에서 꺼내면 인스턴스 하나(`Functor.lookup('maybe')`), 전부의 뿌리인
-// Algebra 에서 꺼내면 그 타입의 인스턴스 전부다.
-//
-//   const { arraySemigroup, arrayMonoid, arrayFoldable } = Algebra.all('array');
-//
-// 이름은 카멜케이스다. 이름 있는 인스턴스는 클래스 이름을 그대로 쓰고(`ArraySemigroup`
-// -> `arraySemigroup`), 조립 키로 만들어진 것은 키 조각을 앞에 붙인다
-// (`plus(array)` 의 Semigroup -> `plusArraySemigroup`).
-//
-// **묶는 기준은 `.type` 이다** — 레지스트리 키가 아니다. 둘은 다르다: `Semigroupoid` 의
-// `maybe` 키가 가리키는 인스턴스는 `.type` 이 `'function'` 이므로 `all('function')` 에 있다.
-//
-// **조회 시점의 레지스트리를 반영한다.** 매개변수화 인스턴스는 팩토리를 불러야 생기므로
-// (`Maybe.Semigroup('number')`), 그 뒤에 부른 `all('maybe')` 에는 `maybeNumberSemigroup`
-// 이 더 들어 있다. 열거가 아니라 "지금 있는 것" 이다.
-//
-// **비용**: 캐시가 없다. 한 번 부를 때마다 레지스트리 전체(현재 엔트리 230개)를 훑는다.
-// 바깥 루프는 24개 레지스트리의 **분할**이라 곱이 아니라 합이므로 O(E) 선형이지만,
-// `lookup` 이 해시 조회 O(1)인 것과는 급이 다르다 — 실측 13μs 대 0.02μs(650배).
-// **셋업에서 한 번 구조분해하는 용도다. 루프 안에서 부르면 O(타입수 × E) 가 된다.**
-// 캐시를 두려면 무효화가 필요하고, 그러려면 레지스트리 쓰기 경로 14곳(register 1개 +
-// types[...] 직접 대입 13곳)을 한 문으로 모아야 한다 — 그건 별도 회차의 구조 작업이다.
+// Algebra.all(<타입키>) — 그 타입의 인스턴스를 한 객체로. 쓰는 법 docs/README.md,
+// 묶는 기준(.type)·이름 규칙·캐시 없는 비용은 docs/internals.md#algebra-all
 const capHead = s => s.charAt(0).toUpperCase() + s.slice(1);
 const camelHead = s => s.charAt(0).toLowerCase() + s.slice(1);
 const composedName = (key, className) =>
@@ -999,15 +956,7 @@ class StringMonoid extends Monoid {
 }
 modules.push(StringMonoid);
 /* Polymorphic — 값 타입을 보지 않는 인스턴스 ('any') */
-// first/last 는 (a,b) => a · (a,b) => b 라 값의 타입과 무관하다. 한때 /* Object */ 섹션에
-// 있어 'object' 로 등록돼 있었는데, 그건 위치를 따라간 것이고 types/data/builtins.d.ts 의
-// 선언(readonly first: unknown)이 처음부터 모든 타입이었다.
-// 이 둘은 Monoid 가 아니다 — 항등원이 없다 (commit e3d2b82 에서 FirstMonoid/LastMonoid 제거).
-// Monoid 가 필요하면 Maybe 로 감싸는데, 무엇을 원하느냐에 따라 둘로 갈린다:
-//   Maybe.Monoid('first')     = maybe(first)  — 둘 다 Just 면 안쪽 값을 first 로 합친다
-//   Monoid.lookup('plus(maybe)')  = Alt/Plus 유도 — 안을 열지 않고 첫 Just 를 통째로 고른다
-// 둘은 payload 타입이 같으면 결과도 같다. 갈리는 것은 타입이 섞였을 때뿐이고, 그때
-// 앞엣것은 안쪽 concat 의 타입 검사에 걸려 던진다. "합치기" 면 앞, "고르기" 면 뒤.
+// Monoid 가 아니다(항등원 없음). Maybe 로 감쌀 때 갈리는 두 길: docs/internals.md#any
 class FirstSemigroup extends Semigroup {
     constructor() {
         super(x => x, 'any', Semigroup.types, 'first');
@@ -1051,17 +1000,8 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
     return { key: best, instance };
 };
 /* Identity / Const — traverse 에 넘기는 Applicative 두 개 */
-// Identity: 값을 그대로 나른다. traverse 를 "그냥 매핑" 으로 쓰고 싶을 때 쓴다 (optics 의 over).
-// Const<r>: 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓴다 (optics 의 preview).
-// 담는 모양은 { value } 이므로 type 은 'Object' 다 — types.of({}) 가 'Object' 를 준다.
-// 등록된 다른 모든 Applicative 와 같은 3단이다 — Functor → Apply → Applicative.
-// type 이 'Object' (대문자) 인 것은 types.of({}) 가 'Object' 를 주기 때문이고,
-// **여기를 소문자로 바꾸면 optics 가 전부 죽는다** — Identity/Const 는 Apply.ap 를 지나고
-// 거기 쓰이는 types.equals(a, b, instance.type) 는 types.check 와 달리 대소문자 폴백이
-// 없다. 그 3인자형을 쓰는 곳은 파일 전체에서 Apply.ap 와 Alt.alt 둘뿐이다.
-// (2026-08-13 이전에는 ObjectFilterable/ObjectFoldable 이 소문자 'object' 를 써서 이 자리가
-//  "예외" 처럼 보였다. 그쪽은 폴백이 있는 types.check 만 지나 우연히 살아 있었던 것이고,
-//  지금은 넷 다 정규 태그다. tests/algebra-type.test.js 가 전수로 강제한다.)
+// 캐리어가 { value } 라 type 은 'Object'(대문자). 소문자로 바꾸면 optics 가 죽는다
+// — docs/internals.md#identity-const
 class IdentityFunctor extends Functor {
     constructor() {
         super((f, x) => ({ value: f(x.value) }), 'Object', Functor.types, 'identity');
@@ -2444,22 +2384,10 @@ load(...modules);
 // transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
 const { Optics } = (() => {
     // Profunctor 인코딩: Optic s a = P => P a a -> P s s
-    //
-    // 어떤 P를 주입하느냐가 연산을 정한다 — 하나의 정의에서 읽기·쓰기·역생성이 모두 나온다.
-    //   함수      → over/set        (dimap, first, left, wander)
-    //   Forget<r> → view/preview/toList/foldMapOf  (같음. monoid로 누적)
-    //   Tagged    → review          (dimap, left 만)
-    //
-    // Tagged에 first와 wander가 없다는 사실이 타입 안전성을 대신한다 —
-    // Lens나 Traversal에 review를 쓰면 그 자리에서 TypeError가 난다.
-    // P가 첫 인자이므로 plain compose로는 합성 불가 → Optics.compose 제공.
+    // 주입하는 P 가 연산을 정한다(함수=over, Forget=view, Tagged=review).
+    // first=Lens · left=Prism · wander=Traversal — docs/internals.md#optics
 
     // ── 구체 Profunctor 3종 ────────────────────────────────────────────
-    // 세 딕셔너리가 공유하는 메서드가 optic 의 종류를 정한다:
-    //   first  = 곱   — 짝 [a, c] 의 한쪽만 건드린다        → Lens
-    //   left   = 합   — Either 의 Left 만 건드린다          → Prism
-    //   wander = 순회 — 컨테이너 안의 모든 자리를 건드린다   → Traversal
-    // 어느 것을 요구하느냐가 그 optic 에 무엇을 쓸 수 있는지를 정한다.
 
     // 함수: p a b = a -> b.  over/set 이 쓴다.
     const functionProfunctor = {
@@ -2492,9 +2420,7 @@ const { Optics } = (() => {
     };
 
     // ── optic 생성자 ───────────────────────────────────────────────────
-    // dimap만 쓴다 — 세 P가 모두 dimap을 가지므로 Iso는 모든 연산에서 동작한다.
-    // Lens이자 Prism이라 view도 review도 되며, 그래서 optic 계층의 최상단이다.
-    // 법칙: from(to(s)) === s, to(from(a)) === a (무손실 변환)
+    // Iso 는 dimap 만 써서 모든 연산에 통한다(계층 최상단) — docs/internals.md#optics
     const Iso = (to, from) => {
         typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
         typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
@@ -2531,11 +2457,8 @@ const { Optics } = (() => {
         return optic(P)(pab)(s);
     };
     const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
-    // 읽기 셋은 전부 foldMapOf 의 특수 경우다 — 어떤 Monoid 로 모으느냐만 다르다.
-    // 인자 순서는 over(optic, f, s) 에 맞추고 monoid 를 앞에 둔다.
-    // monoid 는 first 경로(Lens/Iso)에서 한 번도 안 쓰이므로, 검사하지 않으면 optic 종류에
-    // 따라 통과 여부가 갈린다. 기존 foldMap(foldable, monoid) 과 같은 규칙으로 요구한다 —
-    // 등록은 필요 없고 new Monoid(...) 로 만든 것이면 된다.
+    // 읽기 셋은 전부 이것의 특수 경우다. monoid 를 항상 요구하는 이유는 Lens/Iso
+    // 경로에서 안 쓰여 검사가 optic 종류에 따라 갈리기 때문 — docs/internals.md#optics
     const foldMapOf = (monoid, optic, f, s) => {
         // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그러므로
         // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
@@ -2555,10 +2478,8 @@ const { Optics } = (() => {
         typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
         return foldMapOf(Monoid.lookup('plus(maybe)'), optic, Maybe.Just, s);
     };
-    // Lens/Iso 전용 — "정확히 1대상" 을 문서가 아니라 코드가 강제한다.
-    // forgetProfunctor 에는 wander 가 있어서 Traversal 을 넘겨도 실행은 된다(review 와 달리
-    // 구조가 막지 못한다). 그래서 대상 수를 세는 것이 유일한 방법이다. 0개면 undefined 를
-    // 흘리지 않고, 2개 이상이면 첫 값을 조용히 주지 않는다.
+    // Lens/Iso 전용. Forget 에는 wander 가 있어 구조가 못 막으므로 대상 수를 센다
+    // — docs/internals.md#optics
     const view = (lens, s) => {
         typeof lens !== 'function' && raise(new TypeError('view: optic must be a function'));
         const targets = toList(lens, s);
@@ -2621,11 +2542,8 @@ const liftCont = f => f._mapChain
     ? a => applyMapChain(f._mapChain, f.cont(a))
     : f.cont;
 
-// 타입 클래스 인스턴스 동적 등록: Functor → Apply → Applicative → Chain → Monad
-// registry=null로 generic 키 오염 방지, alias만 수동 등록
-// nominal typing (instanceof XT) 강제
-// 전제: 호출 시점에 XT.of가 이미 완성되어 있어야 한다.
-// WriterT처럼 추가 파라미터를 캡처하는 경우, of가 해당 클로저를 올바르게 품고 있어야 한다.
+// Functor → Apply → Applicative → Chain → Monad 5단 동적 등록. registry=null 로 키 오염
+// 방지, nominal typing, XT.of 선완성 전제 — docs/internals.md#transformer-register
 const registerTransformerTypeClasses = (XT, typeName, alias) => {
     const check = (val, method) => {
         if (!(val instanceof XT)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
@@ -2660,9 +2578,8 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
     XT.composeK = (...fns) => composeK(tMonad)(fns);
 };
 
-// type 없는 커스텀 모나드에 자동 부여되는 alias는 프로세스 실행 순서에 따라 달라진다.
-// 이 alias를 외부에서 Functor.lookup('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
-// 문자열 M (예: 'maybe', 'either')이나 type 프로퍼티가 있는 객체 M을 사용하면 결정적 alias를 얻을 수 있다.
+// 자동 alias 는 실행 순서에 따라 달라진다 — M 은 문자열로 넘겨라.
+// docs/internals.md#transformer-register
 let _transformerAutoId = 0;
 const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
 
