@@ -30,7 +30,8 @@
       "retrospect",
       "log",
       "experiment",
-      "scratch"
+      "scratch",
+      "review"
     ],
     "docs_subdirs": [
       "spec",
@@ -47,7 +48,8 @@
       "troubleshooting",
       "retrospect",
       "log",
-      "experiment"
+      "experiment",
+      "review"
     ],
     "prefix_exempt_names": [
       "INDEX.md",
@@ -236,12 +238,40 @@
       ]
     },
     "verification_evidence": {
-      "bash_pattern": "\\b(npm|pnpm|yarn|bun)\\s+(run\\s+)?test\\b|\\bpytest\\b|\\bgo\\s+test\\b|\\bcargo\\s+test\\b|\\bmake\\s+(test|check|lint)\\b|\\bvitest\\b|\\bjest\\b|\\bruff\\b|\\bmypy\\b|\\btsc\\b|--dry-run\\b",
+      "bash_pattern": "(npm|pnpm|yarn|bun)(\\s+-\\S+)*(\\s+(run|workspace\\s+\\S+|-r|--filter\\s+\\S+))*\\s+(test|check|lint|typecheck)\\b|(python3?|py)\\s+-m\\s+(pytest|unittest|mypy|ruff)\\b|(uvx?|poetry|pipenv|hatch|pdm|rye|nox|tox)(\\s+run)?\\s+\\S*(pytest|test|check|lint)\\b|(npx|pnpm\\s+dlx|yarn\\s+dlx)\\s+\\S*(playwright|vitest|jest|tsc|eslint|cypress)\\b|(mvn|gradle|\\./gradlew|dotnet|deno|swift|ctest|rspec|phpunit|bundle\\s+exec\\s+rspec)(\\s+-\\S+)*\\s*(test|check|verify)?\\b|go\\s+test\\b|cargo\\s+(test|nextest\\s+run|clippy)\\b|make\\s+(test|check|lint|typecheck|verify)\\b|cmake\\s+--build\\s+\\S+\\s+--target\\s+test\\b|(bin/|script/)?(rails|rake)\\s+test\\b|(pytest|vitest|jest|tsc|ruff|mypy|eslint|nx\\s+test|tox|ctest)\\b",
       "tools": [
         "Agent",
         "Task"
       ],
-      "tool_pattern": "^mcp__claude-in-chrome__|^mcp__playwright__"
+      "tool_pattern": "^mcp__(claude-in-chrome|playwright)__(navigate|computer|read_page|get_page_text|find|form_input|browser_batch)$",
+      "satisfied_by": "observed",
+      "stages": [
+        "execution",
+        "verification"
+      ],
+      "commands": []
+    },
+    "review_recorded": {
+      "satisfied_by": "file",
+      "write_glob": [
+        ".dev/review/**/*.md"
+      ],
+      "help": "리뷰 결과를 .dev/review/ 아래에 파일로 남겨야 한다 — 외부 모델(코덱스 등)에게 받은 판단은 남기지 않으면 세션과 함께 휘발된다. 파일명은 이번 회차 접두사로 시작한다"
+    }
+  },
+  "node_presets": {
+    "review": {
+      "label": "Review",
+      "summary": "적대적 리뷰 — 결과를 .dev/review/ 에 파일로 남긴다. 외부 모델(코덱스 등) 결과는 남기지 않으면 휘발되므로, 이 노드는 결과 파일 없이는 끝나지 않는다.",
+      "write": [
+        "dev"
+      ],
+      "exit_criteria": [
+        "review_recorded"
+      ],
+      "stop_requires": [
+        "review_recorded"
+      ]
     }
   }
 }
