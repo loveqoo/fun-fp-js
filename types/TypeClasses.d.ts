@@ -23,9 +23,19 @@ import type { ConstTypeLambda } from "./TypeLambdas";
 // ── Algebra — base class for every type-class instance at runtime ────
 // Exposed for completeness (the default export includes `Algebra`);
 // users rarely construct it directly.
+//
+// `Algebra.all(key)` is the plural counterpart of `TypeClass.lookup(key)`:
+// one type class yields one instance, the shared root yields every instance
+// that handles that type. Keys are lowercase; grouping is by the instance's
+// `.type`, which is not always the registry key (`Semigroupoid`'s `maybe`
+// instance has `.type === 'function'`, so it lands under `all('function')`).
+//
+// The shape is open — parameterized instances appear once their factory has
+// run — so the result is typed as a record rather than a fixed set of fields.
 export declare class Algebra {
     constructor(type: string);
     readonly type: string;
+    static all(key: string): Record<string, Algebra>;
 }
 
 // ─── Functor ────────────────────────────────────────────────────────

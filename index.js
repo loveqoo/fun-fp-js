@@ -708,15 +708,67 @@ Traversable.prototype[Symbols.Traversable] = true;
 // `of` 는 값을 컨테이너에 넣는 생성자 하나만 뜻한다(`Maybe.of(1)` === `Just(1)`,
 // `Applicative.lookup('maybe').of(1)`). 한 이름이 조회와 주입을 겸하면 읽는 쪽이
 // `Maybe.of('array')` 를 조회로 오해한다 — 그건 `Just('array')` 다.
+// 레지스트리를 가진 타입클래스 전부. 목록을 손으로 유지하면 등록을 추가할 때 어긋난다.
+const typeRegistries = [];
 const withTypeRegistry = (TypeClass, defaultResolver = null) => {
     TypeClass.types = {};
     TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
     TypeClass.lookup = key => TypeClass.resolver(key)
         || raise(new TypeError(`${TypeClass.name}.lookup: unsupported key ${key}`));
+    typeRegistries.push(TypeClass);
 };
 const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
     TypeClass.resolver = key => prev(key) || resolver(key);
+};
+// Algebra.all(<타입키>) — 그 타입을 다루는 인스턴스를 한 객체로 모은다.
+// 타입클래스 하나에서 꺼내면 인스턴스 하나(`Functor.lookup('maybe')`), 전부의 뿌리인
+// Algebra 에서 꺼내면 그 타입의 인스턴스 전부다.
+//
+//   const { arraySemigroup, arrayMonoid, arrayFoldable } = Algebra.all('array');
+//
+// 이름은 카멜케이스다. 이름 있는 인스턴스는 클래스 이름을 그대로 쓰고(`ArraySemigroup`
+// -> `arraySemigroup`), 조립 키로 만들어진 것은 키 조각을 앞에 붙인다
+// (`plus(array)` 의 Semigroup -> `plusArraySemigroup`).
+//
+// **묶는 기준은 `.type` 이다** — 레지스트리 키가 아니다. 둘은 다르다: `Semigroupoid` 의
+// `maybe` 키가 가리키는 인스턴스는 `.type` 이 `'function'` 이므로 `all('function')` 에 있다.
+//
+// **조회 시점의 레지스트리를 반영한다.** 매개변수화 인스턴스는 팩토리를 불러야 생기므로
+// (`Maybe.Semigroup('number')`), 그 뒤에 부른 `all('maybe')` 에는 `maybeNumberSemigroup`
+// 이 더 들어 있다. 열거가 아니라 "지금 있는 것" 이다.
+//
+// **비용**: 캐시가 없다. 한 번 부를 때마다 레지스트리 전체(현재 엔트리 230개)를 훑는다.
+// 바깥 루프는 24개 레지스트리의 **분할**이라 곱이 아니라 합이므로 O(E) 선형이지만,
+// `lookup` 이 해시 조회 O(1)인 것과는 급이 다르다 — 실측 13μs 대 0.02μs(650배).
+// **셋업에서 한 번 구조분해하는 용도다. 루프 안에서 부르면 O(타입수 × E) 가 된다.**
+// 캐시를 두려면 무효화가 필요하고, 그러려면 레지스트리 쓰기 경로 14곳(register 1개 +
+// types[...] 직접 대입 13곳)을 한 문으로 모아야 한다 — 그건 별도 회차의 구조 작업이다.
+const capHead = s => s.charAt(0).toUpperCase() + s.slice(1);
+const camelHead = s => s.charAt(0).toLowerCase() + s.slice(1);
+const composedName = (key, className) =>
+    camelHead(key.split(/[(),]+/).filter(Boolean).map(capHead).join('') + className);
+Algebra.all = key => {
+    typeof key === 'string' || raise(new TypeError('Algebra.all: key must be a string'));
+    // 소문자만 받는다. 대문자도 받으면 같은 묶음을 두 이름으로 부르게 되고,
+    // `.type` 이 대문자('Maybe')인 것과 소문자('number')인 것이 섞여 있어 더 헷갈린다.
+    key === key.toLowerCase() || raise(new TypeError(`Algebra.all: key must be lowercase, got ${key}`));
+    const found = new Map();
+    for (const TypeClass of typeRegistries) {
+        for (const [k, instance] of Object.entries(TypeClass.types)) {
+            if (instance.type?.toLowerCase() !== key) continue;
+            const entry = found.get(instance) ?? { name: null, key: null };
+            if (k === capHead(k)) entry.name = entry.name ?? camelHead(k);
+            else entry.key = entry.key ?? k;
+            found.set(instance, entry);
+        }
+    }
+    found.size > 0 || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
+    const result = {};
+    for (const [instance, { name, key: composed }] of found) {
+        result[name ?? composedName(composed, instance.constructor.name)] = instance;
+    }
+    return result;
 };
 
 Setoid.op = (a, b) => a === b;

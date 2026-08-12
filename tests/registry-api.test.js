@@ -69,4 +69,67 @@ test('types 레지스트리는 lookup 과 같은 인스턴스를 준다', () => 
     assert(fp.Functor.lookup('maybe') === fp.Functor.types.maybe, '소문자 키도 같은 인스턴스');
 });
 
+logSection('Algebra.all — 한 타입의 인스턴스를 한 번에');
+
+test('구조분해로 원하는 구현체만 받는다', () => {
+    const { arraySemigroup, arrayFoldable, plusArrayMonoid } = fp.Algebra.all('array');
+    assertEquals(JSON.stringify(arraySemigroup.concat([1], [2])), '[1,2]');
+    assertEquals(arrayFoldable.reduce((a, b) => a + b, 0, [1, 2, 3]), 6);
+    assertEquals(JSON.stringify(plusArrayMonoid.empty()), '[]');
+});
+
+test('lookup 이 주는 것과 같은 인스턴스다 — 사본이 아니다', () => {
+    const all = fp.Algebra.all('array');
+    assert(all.arraySemigroup === fp.Semigroup.lookup('array'), 'arraySemigroup');
+    assert(all.arrayFoldable === fp.Foldable.lookup('array'), 'arrayFoldable');
+    assert(all.plusArrayMonoid === fp.Monoid.lookup('plus(array)'), 'plusArrayMonoid');
+});
+
+test('묶는 기준은 .type 이지 레지스트리 키가 아니다', () => {
+    // Semigroupoid 의 'maybe' 키가 가리키는 인스턴스는 Kleisli 합성이라 .type 이
+    // 'function' 이다. 키로 묶었다면 all('maybe') 에 있었을 것이다.
+    assert('maybeSemigroupoid' in fp.Algebra.all('function'), "all('function') 에 있다");
+    assert(!('maybeSemigroupoid' in fp.Algebra.all('maybe')), "all('maybe') 에는 없다");
+    assert(fp.Algebra.all('function').maybeSemigroupoid === fp.Semigroupoid.lookup('maybe'),
+        '같은 인스턴스다');
+});
+
+test('조립 키로 만들어진 것은 키 조각을 이름 앞에 붙인다', () => {
+    const arr = fp.Algebra.all('array');
+    assert('arraySemigroup' in arr, '이름 있는 것은 클래스 이름 그대로');
+    assert('plusArraySemigroup' in arr, '조립 키는 plus + Array + Semigroup');
+    assert(arr.arraySemigroup !== arr.plusArraySemigroup, '서로 다른 인스턴스다');
+});
+
+test('조회 시점의 레지스트리를 반영한다 — 열거가 아니다', () => {
+    // 매개변수화 인스턴스는 팩토리를 불러야 생긴다. 안쪽 타입 공간은 무한하므로
+    // (maybe(maybe(maybe(array))) 도 된다) 미리 열거할 수 없다.
+    const before = Object.keys(fp.Algebra.all('maybe'));
+    assert(!before.includes('maybeStringSemigroup'), '아직 없다');
+    fp.Maybe.Semigroup('string');
+    const after = Object.keys(fp.Algebra.all('maybe'));
+    assert(after.includes('maybeStringSemigroup'), '팩토리를 부른 뒤에는 있다');
+    assertEquals(after.length, before.length + 1, '하나만 늘었다');
+});
+
+test('키는 소문자만 받는다', () => {
+    let message = '(안 던짐)';
+    try { fp.Algebra.all('Array'); } catch (e) { message = e.message; }
+    assertEquals(message, 'Algebra.all: key must be lowercase, got Array');
+});
+
+test('없는 타입과 문자열 아닌 인자는 던진다', () => {
+    const messageOf = fn => { try { fn(); return '(안 던짐)'; } catch (e) { return e.message; } };
+    assertEquals(messageOf(() => fp.Algebra.all('없는타입')), 'Algebra.all: unsupported type 없는타입');
+    assertEquals(messageOf(() => fp.Algebra.all(123)), 'Algebra.all: key must be a string');
+});
+
+test('이름이 겹치지 않는다 — 인스턴스 수와 키 수가 같다', () => {
+    for (const key of ['array', 'maybe', 'either', 'number', 'string', 'boolean', 'function', 'object']) {
+        const bundle = fp.Algebra.all(key);
+        const instances = new Set(Object.values(bundle));
+        assertEquals(Object.keys(bundle).length, instances.size, `all('${key}') 에서 이름이 겹친다`);
+    }
+});
+
 console.log('\n✅ 레지스트리 API tests completed\n');

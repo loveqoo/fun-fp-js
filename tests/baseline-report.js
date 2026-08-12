@@ -103,6 +103,14 @@ const cases = [
     ['array Monoid', f => L(f, 'Monoid')('array').concat([1], [2])],
     ['array Monoid empty', f => L(f, 'Monoid')('array').empty()],
 
+    // ── Algebra.all — 한 타입의 인스턴스 묶음. 이름이 바뀌면 여기서 보인다 ──
+    // HEAD 에 Algebra.all 이 없으면 THROW 로 잡히는 것이 맞다 — 새 표면이다.
+    ['Algebra.all(array) 이름', f => Object.keys(f.Algebra.all('array')).sort()],
+    ['Algebra.all(function) 이름', f => Object.keys(f.Algebra.all('function')).sort()],
+    ['Algebra.all(number) 이름', f => Object.keys(f.Algebra.all('number')).sort()],
+    ['Algebra.all 소문자 강제', f => f.Algebra.all('Array')],
+    ['Algebra.all 없는 타입', f => f.Algebra.all('nope')],
+
     // ── .type 이 새어 나가는 곳 — 사용자가 보는 에러 문자열 ─────────────────
     // `.type` 을 고치면 여기가 따라 바뀐다. 격자에 없으면 "관측 가능한 동작이 그대로다" 가
     // 거짓이 된다 — 실제로 `match date` -> `match Date` 변경을 격자가 못 봤다.

@@ -32,5 +32,8 @@ all since reverted.
 - `lookup(key)` pulls an instance from a registry (type classes); `of(value)` lifts
   a value (data types, `Applicative` instances). Type classes have no `of` — no
   test says so, and `instance.of(x)` is all over `tests/`, which reads as the opposite.
+- `Algebra.all(type)` groups by the instance's `.type`, not by registry key, and
+  reads the registry as it stands. `all('maybe').maybeSemigroupoid` is `undefined`
+  — that instance is Kleisli, so its `.type` is `'function'`.
 - Probe `Object.keys(fp)` before naming; never by `.lookup`. Keys nest: `plus(maybe)`.
 - Green `npm test` ≠ unchanged behavior; use `npm run baseline` + mutation.

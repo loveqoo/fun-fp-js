@@ -168,6 +168,55 @@ Maybe.of('array')                  // Just('array') — 조회가 아니다
 **한 이름이 둘을 겸하면 마지막 줄이 조회로 읽힙니다.** 그래서 타입클래스에는 `of` 가
 없습니다 — `Functor.of` 는 `undefined` 입니다.
 
+### `Algebra.all(타입)` — 한 타입의 인스턴스를 한 번에
+
+`lookup` 은 하나를 꺼냅니다. **같은 타입의 여러 인스턴스가 필요하면 하나씩 부르는 대신
+`Algebra.all` 로 받아 구조분해합니다.** `Algebra` 는 모든 인스턴스의 뿌리 클래스입니다 —
+타입클래스 하나에서 꺼내면 인스턴스 하나, 뿌리에서 꺼내면 그 타입의 인스턴스 전부입니다.
+
+```javascript
+const { Algebra } = FunFP;
+
+const { arraySemigroup, arrayFoldable, arrayTraversable } = Algebra.all('array');
+
+console.log(arraySemigroup.concat([1], [2]));            // [1, 2]
+console.log(arrayFoldable.reduce((a, b) => a + b, 0, [1, 2, 3]));  // 6
+```
+
+이름은 **카멜케이스**입니다. 클래스 이름을 그대로 쓰고(`ArraySemigroup` → `arraySemigroup`),
+조립 키로 만들어진 것은 키 조각을 앞에 붙입니다(`plus(array)` 의 Monoid → `plusArrayMonoid`).
+
+```javascript
+const { Algebra: A } = FunFP;
+
+const { plusArrayMonoid, arrayMonoid } = A.all('array');
+console.log(plusArrayMonoid.empty());   // []   ← Plus 에서 유도된 것
+console.log(arrayMonoid.empty());       // []   ← 원래의 ArrayMonoid, 다른 인스턴스다
+```
+
+**세 가지를 기억하십시오.**
+
+| | |
+| --- | --- |
+| 키는 **소문자만** | `Algebra.all('Array')` 는 던집니다. 없는 타입도 던집니다 |
+| 묶는 기준은 **`.type`**, 레지스트리 키가 아님 | `Semigroupoid` 의 `maybe` 인스턴스는 Kleisli 합성이라 `.type` 이 `'function'` 입니다 — `all('function')` 에 있고 `all('maybe')` 에는 없습니다 |
+| **열거가 아니라 "지금 있는 것"** | 매개변수화 인스턴스는 팩토리를 불러야 생깁니다. `Maybe.Semigroup('number')` 뒤의 `all('maybe')` 에는 `maybeNumberSemigroup` 이 더 있습니다 |
+
+**셋업에서 한 번 부르십시오.** 캐시가 없어 매번 레지스트리 전체를 훑습니다 — `lookup` 의
+해시 조회보다 실측 650배 느립니다(13μs 대 0.02μs). 구조분해해서 쓰는 용도이고, **타입을
+순회하며 루프 안에서 부르지 마십시오.**
+
+세 번째가 설계입니다. 안쪽 타입 공간은 닫혀 있지 않아서 — `maybe(maybe(maybe(array)))` 도
+됩니다 — 미리 열거할 수 없습니다. **안쪽 타입은 힌트이고, 정확히 지목하려면 조립 키로
+`lookup` 하십시오.**
+
+```javascript
+const { Semigroup, Maybe } = FunFP;
+
+const inner = Semigroup.lookup('maybe(number)');          // 명확한 키로 정확히 하나
+console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
+```
+
 ### 레지스트리 키 — 매개변수화된 것들
 
 `Functor.lookup('array')` 처럼 **타입 이름**이 기본이지만, 조립된 키도 있습니다.
