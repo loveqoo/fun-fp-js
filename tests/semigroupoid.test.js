@@ -42,8 +42,9 @@ test('Category.types has FunctionCategory', () => {
     assert(Category.types.FunctionCategory, 'should have FunctionCategory');
 });
 
+// 명세: id :: () -> T a a. **불러서** 항등 사상을 얻는다 — id 자체가 사상이 아니다.
 test('FunctionCategory has id (identity)', () => {
-    const { id } = Category.types.FunctionCategory;
+    const id = Category.types.FunctionCategory.id();
     assertEquals(id(5), 5);
     assertEquals(id('hello'), 'hello');
     const obj = { a: 1 };
@@ -57,16 +58,16 @@ test('FunctionCategory.compose inherits from Semigroupoid', () => {
     assertEquals(composed(5), 12);
 });
 
-test('Category laws - left identity: compose(id, f) === f', () => {
+test('Category laws - left identity: compose(id(), f) === f', () => {
     const f = x => x * 2;
     const { compose, id } = Category.types.FunctionCategory;
-    assertEquals(compose(id, f)(5), f(5));
+    assertEquals(compose(id(), f)(5), f(5));
 });
 
-test('Category laws - right identity: compose(f, id) === f', () => {
+test('Category laws - right identity: compose(f, id()) === f', () => {
     const f = x => x * 2;
     const { compose, id } = Category.types.FunctionCategory;
-    assertEquals(compose(f, id)(5), f(5));
+    assertEquals(compose(f, id())(5), f(5));
 });
 
 logSection('Semigroupoid / Category — Kleisli 인스턴스');
@@ -104,12 +105,12 @@ test('MaybeSemigroupoid.compose 는 함수가 아닌 인자를 거부한다', ()
     assertThrows(() => compose(x => fp.Maybe.Just(x), fp.Maybe.Just(1)), '두 번째 인자도 마찬가지');
 });
 
-test('MaybeCategory.id 는 Kleisli 항등 화살표다', () => {
+test('MaybeCategory.id() 는 Kleisli 항등 화살표다', () => {
     const { compose, id } = Category.lookup('maybe');
     const inc = x => fp.Maybe.Just(x + 1);
-    assertEquals(id(3).value, 3);
-    assertEquals(compose(inc, id)(3).value, 4);
-    assertEquals(compose(id, inc)(3).value, 4);
+    assertEquals(id()(3).value, 3);
+    assertEquals(compose(inc, id())(3).value, 4);
+    assertEquals(compose(id(), inc)(3).value, 4);
 });
 
 console.log('\n✅ Semigroupoid and Category tests completed\n');

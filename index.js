@@ -254,12 +254,13 @@ const checkAndSet = (config => {
             strict: (semigroupoid) => { !(semigroupoid && semigroupoid[Symbols.Semigroupoid]) && raise(new TypeError('Category: argument must be a Semigroupoid')); },
             loose: emptyFunc
         },
+        // 명세는 id 를 "불러서" 항등 사상을 얻는다: id :: () -> T a a. 사상 자체가 아니다.
         Category: {
             strict: (instance, semigroupoid, id) => {
                 typeof id !== 'function' && raise(new TypeError('Category.id: id must be a function'));
-                instance.id = id;
+                instance.id = () => id;
             },
-            loose: (instance, semigroupoid, id) => { instance.id = id; }
+            loose: (instance, semigroupoid, id) => { instance.id = () => id; }
         },
         Filterable: {
             strict: (instance, filter) => {

@@ -358,7 +358,6 @@ const BIFUNCTOR = {
 const KNOWN_DEVIATIONS = {
     'Filterable.EitherFilterable': '소멸 법칙 — filter(항상 false, Right(x)) 가 Left(x) 라 입력에 따라 결과가 다르다. 정규 빈 상자가 없다(왼쪽 Monoid 가 있어야 만들 수 있다)',
     'Filterable.TaskFilterable': '같은 이유 — filter(항상 false, Task.of(x)) 가 rejected(x) 다',
-    'Category.*': 'id 의 모양이 명세와 다르다. 명세는 id() 가 항등 사상을 돌려주는데 여기서는 id 자체가 사상이다 — types/TypeClasses.d.ts 는 명세 쪽(() => Kind)으로 선언하고 있어 TS 사용자는 id() 로 undefined 를 받는다',
 };
 
 const CLASS_LAWS = {
@@ -368,6 +367,16 @@ const CLASS_LAWS = {
         const eqf = (a, b) => FN_INPUTS_F.every(x => same(kit.obs, a(x), b(x)));
         for (const a of kit.fns) for (const b of kit.fns) for (const c of kit.fns)
             eqf(S.compose(S.compose(a, b), c), S.compose(a, S.compose(b, c))) || bad.push('결합 깨짐');
+        return bad;
+    },
+    Category: (C, _obs, key) => {
+        const kit = KLEISLI[key]; if (!kit) return null;
+        const bad = [];
+        const eqf = (a, b) => FN_INPUTS_F.every(x => same(kit.obs, a(x), b(x)));
+        for (const a of kit.fns) {
+            eqf(C.compose(a, C.id()), a) || bad.push('우항등 깨짐');
+            eqf(C.compose(C.id(), a), a) || bad.push('좌항등 깨짐');
+        }
         return bad;
     },
     Filterable: (F, obs) => {
@@ -533,7 +542,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 63, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 67, '법칙을 돌린 인스턴스 수가 달라졌다');
 });
 
 test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {
@@ -543,7 +552,7 @@ test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () =
         assertEquals(typeof why === 'string' && why.length > 20, true, `${k}: 이유가 없거나 너무 짧다`);
     }
     assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','),
-        'Category.*,Filterable.EitherFilterable,Filterable.TaskFilterable',
+        'Filterable.EitherFilterable,Filterable.TaskFilterable',
         '명세 미준수 목록이 달라졌다 — .dev/TODO.md 에 항목으로 올려라');
 });
 

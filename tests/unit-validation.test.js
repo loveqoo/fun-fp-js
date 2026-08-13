@@ -108,8 +108,9 @@ test('Category (strict mode): accepts function as id', () => {
     const semigroupoid = createMockSemigroupoid();
     const category = new fp.Category(semigroupoid, x => x, 'test');
 
+    // 명세대로 id() 를 불러야 항등 사상이 나온다.
     assertEquals(typeof category.id, 'function');
-    assertEquals(category.id(5), 5);
+    assertEquals(category.id()(5), 5);
 });
 
 test('Category (strict mode): rejects non-function id', () => {
@@ -136,8 +137,8 @@ test('Category (loose mode): accepts any value as id', () => {
     const category1 = new fp.Category(semigroupoid, 'string', 'test1');
     const category2 = new fp.Category(semigroupoid, 42, 'test2');
 
-    assertEquals(category1.id, 'string');
-    assertEquals(category2.id, 42);
+    assertEquals(category1.id(), 'string');
+    assertEquals(category2.id(), 42);
 });
 
 // ============================================
