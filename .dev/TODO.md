@@ -63,7 +63,9 @@
 
 | 상태 | # | 무엇 |
 | --- | --- | --- |
-| 🟡 | — | [법칙이 레지스트리 전체를 안 본다 — Functor 는 닫음, 나머지 8개 클래스가 남음](#functor법칙) |
+| ✅ | — | [법칙이 레지스트리 전체를 안 본다](#functor법칙) |
+| ⏸ | — | [`Filterable` 소멸 법칙을 `Either`/`Task` 가 못 지킨다](#filterable소멸) |
+| ⏸ | — | [`Category.id` 의 모양이 명세·타입 선언과 다르다](#category-id) |
 | ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
 | ✅ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
 | ✅ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 직접 다시 씀](#2차-6) |
@@ -97,10 +99,17 @@
   깨끗한 뮤테이션 셋(`Maybe`/`Reader`/`Free` 의 `map` 이 함수를 안 쓰게)을 심어 **새 게이트가
   단독으로** 잡는 것을 확인했다. 표본이 공허하지 않은지 보는 검사도 함께 넣었다 — 각 타입마다
   "합성을 안 하는 map" 의 차이가 실제로 관측되는지 본다.
-- **남은 것** — `Apply`·`Applicative`·`Alt`·`Chain`·`ChainRec`·`Extend`·`Comonad`·
-  `Traversable` 여덟은 아직 각 `tests/*.test.js` 가 **테스트에 이름을 적어 둔 인스턴스만** 본다
-  — 레지스트리를 순회하지 않으므로, 적어 넣지 않은 인스턴스는 등록돼 있어도 검사받지 않는다.
-  `OBSERVE` 가 있으니 같은 틀로 넓힐 수 있다.
+- **검증 (2026-08-13) — 나머지도 닫았다** — `Semigroupoid`·`Filterable`·`Bifunctor`·
+  `Contravariant`·`Profunctor`·`Apply`·`Applicative`·`Alt`·`Plus`·`Alternative`·`Chain`·
+  `Monad`·`Foldable`·`Extend`·`Comonad` 열다섯을 레지스트리 순회로 돌린다. 법칙 원문은
+  명세에서 가져와 옮겼다. 값 수준 5 + `Functor` 11 + 팩토리 11 + 나머지 **63** 개.
+  뮤테이션으로 확인: `MaybeChain.chain` 이 f 무시 / `ArrayAlt.alt` 가 둘째 버림 /
+  `ArrayFilterable.filter` 가 predicate 무시 / `ArrayComonad.extract` 를 마지막 원소로 /
+  `MaybePlus.zero` 를 `Just(0)` 으로 / `MaybeApplicative.of` 를 항상 `Nothing` 으로 —
+  **여섯 전부 잡힌다.**
+- **덮지 못한 것** — `ChainRec`(스택 사용 제약이 법칙에 들어 있어 등가식만으로는 불충분)과
+  `Traversable`(자연변환·Applicative 합성이 필요)은 넣지 않았다. `Category` 는 아래 결정 대기.
+  `Foldable` 법칙은 자기참조라 `reduce` 전체가 뒤집혀도 통과한다(파일 머리에 실측과 함께 적음).
 - **참고** — [`tests/staticland-laws.test.js`](./../tests/staticland-laws.test.js) 머리의
   「못 잡는 것」 · [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
 
@@ -214,7 +223,36 @@
   `Setoid.Struct({b,a}) === Setoid.Struct({a,b})` → `true`.
 - **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 7번 · [`index.js:1573`](./../index.js#L1573)
 
-## ⏸ 소유자 결정 대기 (전부 결정됨 — 아래는 그 기록)
+## ⏸ 소유자 결정 대기
+
+<h3 id="filterable소멸">[⏸] <code>Filterable</code> 소멸 법칙을 <code>Either</code>/<code>Task</code> 가 못 지킨다</h3>
+
+- **원인** — 명세: `F.filter(x => false, a) ≡ F.filter(x => false, b)`. 전부 걸러내면 **입력과
+  무관하게 같은 것**이 나와야 한다. `Array`·`Maybe`·`Object` 는 `[]`·`Nothing`·`{}` 라는
+  정규 빈 상자가 있어 지켜지는데, `Either`/`Task` 는 없다. 실측:
+  `filter(항상 false, Right(1))` → `Left(1)`, `Right(9)` → `Left(9)` — 값이 왼쪽으로 옮겨간다.
+  `Task` 도 같다(`Task.of(1)` → `rejected(1)`).
+- **왜 에이전트가 못 정하나** — 고치는 길이 셋이고 전부 공개 표면을 바꾼다.
+  ① 왼쪽 `Monoid` 를 받는 팩토리로 바꾼다(fp-ts 의 `getFilterable(M)` 방식) —
+  `Filterable.lookup('either')` 가 사라진다. ② 등록을 뺀다. ③ 명세 미준수로 두고 문서화한다.
+- **지금 상태** — `tests/staticland-laws.test.js` 의 `KNOWN_DEVIATIONS` 에 이유와 함께 올라가
+  있고, 목록이 바뀌면 테스트가 멈춘다. **조용히 넘어가지는 않는다.**
+
+<h3 id="category-id">[⏸] <code>Category.id</code> 의 모양이 명세·타입 선언과 다르다</h3>
+
+- **원인** — 명세는 `id()` 를 **불러서** 항등 사상을 얻는다(법칙도 `M.compose(a, M.id())` 로
+  쓴다). 런타임은 `id` 자체가 사상이라 `id()` 는 사상을 호출해 버린다. 실측:
+  `Category.lookup('function').id()` → `undefined`, `maybe`/`either`/`task` → 뜻 없는 객체.
+  `id` 를 사상으로 직접 쓰면 법칙은 성립한다(`compose(a, C.id)` ≡ `a`).
+- **왜 이게 아픈가** — `types/TypeClasses.d.ts:210` 이 `readonly id: <A>() => Kind<…>` 로
+  **명세 쪽**을 선언한다. `Ord` 때와 같은 유형이다 — TS 사용자는 `tsc` 를 통과하고 런타임에
+  `undefined` 를 받는다.
+- **왜 에이전트가 못 정하나** — `id` 를 `() => 사상` 으로 바꾸면 공개 표면이 바뀐다
+  (breaking). 타입 선언을 런타임에 맞추면 명세에서 멀어진다. 어느 쪽이 이 라이브러리의
+  약속인지는 소유자가 정한다.
+- **지금 상태** — `KNOWN_DEVIATIONS` 에 `Category.*` 로 올라가 있어 법칙 검사에서 빠진다.
+
+## ⏸ 결정이 끝난 것 (기록)
 
 <h3 id="1차-8">✅ [1차-8] <code>either(...)</code> 항수가 레지스트리마다 다름</h3>
 

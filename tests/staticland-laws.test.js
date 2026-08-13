@@ -34,6 +34,13 @@
 //   - 'function' 의 동등은 관측 동등이다 — 표본 입력에서만 같음을 본다.
 //   - FACTORY_CASES 는 이름을 적어 두는 명단이다. 팩토리 산물은 레지스트리 순회로 안 닿기
 //     때문인데, 그래서 새 팩토리를 만들고 여기 안 넣으면 감시 밖이다.
+//   - **Foldable 법칙은 reduce 를 reduce 로 정의하는 자기참조라, reduce 전체가 뒤집혀도
+//     양쪽이 같이 뒤집혀 통과한다.** 실측: ArrayFoldable.reduce 를 arr.reverse().reduce 로
+//     바꿔도 이 파일은 초록이다(전체 스위트는 tests/foldable.test.js 의 순서 고정이 잡는다).
+//     비가환 연산을 쓰는 것은 두 경로가 서로 어긋나는 구현을 잡기 위한 것이지 순서를
+//     고정하지는 못한다 — 컨테이너의 순서는 각 타입의 테스트가 져야 한다.
+//   - KNOWN_DEVIATIONS 에 있는 것은 검사에서 빠진다. 조용히 빠지지 않도록 목록과 이유를
+//     별도 검사가 고정한다.
 import fp from '../index.js';
 import { test, assertEquals, logSection } from './utils.js';
 
@@ -316,6 +323,228 @@ test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 
         caught || blind.push(label);
     }
     assertEquals(blind.join(','), '', '표본이 map 의 차이를 못 가르는 인스턴스');
+});
+
+// ─── 나머지 타입 클래스 ──────────────────────────────────────────────
+// 값을 담는 법과 "실패/빈 상자". 컨테이너 법칙의 표본을 이 둘로 만든다.
+const OF = {
+    Object: x => ({ value: x }), Array: x => [x], Maybe: x => Just(x), Either: x => Right(x),
+    Task: x => fp.Task.of(x), Validation: x => fp.Validation.Valid(x), Reader: x => fp.Reader.of(x),
+    Writer: x => fp.Writer.of(x), State: x => fp.State.of(x), Free: x => fp.Free.of(x),
+};
+const DEGENERATE = {
+    Array: [], Maybe: Nothing(), Either: Left('e'), Task: fp.Task.rejected('boom'),
+    Validation: fp.Validation.Invalid(['e'], fp.Monoid.lookup('array')),
+};
+const fnA = x => (typeof x === 'number' ? x + 1 : x);
+const fnB = x => (typeof x === 'number' ? x * 2 : x);
+const same = (obs, a, b) => { try { return JSON.stringify(obs(a)) === JSON.stringify(obs(b)); } catch { return false; } };
+
+// Kleisli 클래스는 .type 이 전부 'function' 이라 레지스트리 키로 갈라야 한다.
+const KLEISLI = {
+    function: { fns: [x => x + 1, x => x * 2, x => x - 3], obs: v => v },
+    maybe: { fns: [x => Just(x + 1), x => Just(x * 2), () => Nothing()], obs: OBSERVE.Maybe },
+    either: { fns: [x => Right(x + 1), x => Right(x * 2), () => Left('e')], obs: OBSERVE.Either },
+    task: { fns: [x => fp.Task.of(x + 1), x => fp.Task.of(x * 2), () => fp.Task.rejected('b')], obs: OBSERVE.Task },
+};
+const BIFUNCTOR = {
+    TupleBifunctor: { xs: [[1, 'a'], [2, 'b']], obs: v => v },
+    EitherBifunctor: { xs: [Left('e'), Right(1)], obs: OBSERVE.Either },
+    ValidationBifunctor: { xs: [fp.Validation.Valid(1), fp.Validation.Invalid(['e'], fp.Monoid.lookup('array'))], obs: OBSERVE.Validation },
+};
+
+// 명세를 지키지 못하는 자리. **이유가 곧 판정 근거다** — 이유 없이 여기 추가하지 마라.
+// 소유자 결정이 필요한 것은 .dev/TODO.md 에 항목으로 올린다.
+const KNOWN_DEVIATIONS = {
+    'Filterable.EitherFilterable': '소멸 법칙 — filter(항상 false, Right(x)) 가 Left(x) 라 입력에 따라 결과가 다르다. 정규 빈 상자가 없다(왼쪽 Monoid 가 있어야 만들 수 있다)',
+    'Filterable.TaskFilterable': '같은 이유 — filter(항상 false, Task.of(x)) 가 rejected(x) 다',
+    'Category.*': 'id 의 모양이 명세와 다르다. 명세는 id() 가 항등 사상을 돌려주는데 여기서는 id 자체가 사상이다 — types/TypeClasses.d.ts 는 명세 쪽(() => Kind)으로 선언하고 있어 TS 사용자는 id() 로 undefined 를 받는다',
+};
+
+const CLASS_LAWS = {
+    Semigroupoid: (S, _obs, key) => {
+        const kit = KLEISLI[key]; if (!kit) return null;
+        const bad = [];
+        const eqf = (a, b) => FN_INPUTS_F.every(x => same(kit.obs, a(x), b(x)));
+        for (const a of kit.fns) for (const b of kit.fns) for (const c of kit.fns)
+            eqf(S.compose(S.compose(a, b), c), S.compose(a, S.compose(b, c))) || bad.push('결합 깨짐');
+        return bad;
+    },
+    Filterable: (F, obs) => {
+        const xs = FUNCTOR_SAMPLES[F.type]; if (!xs) return null;
+        const p = x => typeof x !== 'number' || x > 0;
+        const q = x => typeof x !== 'number' || x < 10;
+        const bad = [];
+        for (const a of xs) {
+            same(obs, F.filter(x => p(x) && q(x), a), F.filter(q, F.filter(p, a))) || bad.push('분배 깨짐');
+            same(obs, F.filter(() => true, a), a) || bad.push('항등 깨짐');
+            for (const b of xs) same(obs, F.filter(() => false, a), F.filter(() => false, b)) || bad.push('소멸 깨짐');
+        }
+        return bad;
+    },
+    Bifunctor: (B, _obs, _key, label) => {
+        const kit = BIFUNCTOR[label]; if (!kit) return null;
+        const h = x => (typeof x === 'number' ? x + 1 : x + '!');
+        const i = x => (typeof x === 'number' ? x * 2 : x + '?');
+        const bad = [];
+        for (const a of kit.xs) {
+            same(kit.obs, B.bimap(x => x, x => x, a), a) || bad.push('항등 깨짐');
+            same(kit.obs, B.bimap(x => h(i(x)), x => h(i(x)), a), B.bimap(h, h, B.bimap(i, i, a))) || bad.push('합성 깨짐');
+        }
+        return bad;
+    },
+    Contravariant: C => {
+        const pred = x => x > 0;
+        const bad = [];
+        FN_INPUTS_F.every(x => C.contramap(y => y, pred)(x) === pred(x)) || bad.push('항등 깨짐');
+        FN_INPUTS_F.every(x => C.contramap(y => fnA(fnB(y)), pred)(x) === C.contramap(fnB, C.contramap(fnA, pred))(x))
+            || bad.push('합성 깨짐');
+        return bad;
+    },
+    Profunctor: P => {
+        const fn = x => x * 10;
+        const bad = [];
+        FN_INPUTS_F.every(x => P.promap(y => y, y => y, fn)(x) === fn(x)) || bad.push('항등 깨짐');
+        FN_INPUTS_F.every(x => P.promap(y => fnA(fnB(y)), y => fnA(fnB(y)), fn)(x)
+            === P.promap(fnB, fnA, P.promap(fnA, fnB, fn))(x)) || bad.push('합성 깨짐');
+        return bad;
+    },
+    Apply: (A, obs) => {
+        const xs = FUNCTOR_SAMPLES[A.type], of = OF[A.type]; if (!xs || !of) return null;
+        const fns = [of(fnA), of(fnB), ...(DEGENERATE[A.type] ? [DEGENERATE[A.type]] : [])];
+        const comp = A.map(ff => gg => x => ff(gg(x)), fns[0]);
+        const bad = [];
+        for (const u of fns) for (const v of xs)
+            same(obs, A.ap(A.ap(comp, u), v), A.ap(fns[0], A.ap(u, v))) || bad.push('합성 깨짐');
+        return bad;
+    },
+    Applicative: (A, obs) => {
+        const xs = FUNCTOR_SAMPLES[A.type]; if (!xs) return null;
+        const bad = [];
+        for (const v of xs) same(obs, A.ap(A.of(x => x), v), v) || bad.push('항등 깨짐');
+        same(obs, A.ap(A.of(fnA), A.of(1)), A.of(fnA(1))) || bad.push('준동형 깨짐');
+        for (const u of [A.of(fnA), ...(DEGENERATE[A.type] ? [DEGENERATE[A.type]] : [])])
+            same(obs, A.ap(u, A.of(2)), A.ap(A.of(ff => ff(2)), u)) || bad.push('교환 깨짐');
+        return bad;
+    },
+    Alt: (A, obs) => {
+        const xs = FUNCTOR_SAMPLES[A.type]; if (!xs) return null;
+        const bad = [];
+        for (const a of xs) for (const b of xs) {
+            for (const c of xs) same(obs, A.alt(A.alt(a, b), c), A.alt(a, A.alt(b, c))) || bad.push('결합 깨짐');
+            same(obs, A.map(fnA, A.alt(a, b)), A.alt(A.map(fnA, a), A.map(fnA, b))) || bad.push('분배 깨짐');
+        }
+        return bad;
+    },
+    Plus: (P, obs) => {
+        const xs = FUNCTOR_SAMPLES[P.type]; if (!xs) return null;
+        const bad = [];
+        for (const a of xs) {
+            same(obs, P.alt(a, P.zero()), a) || bad.push('우항등 깨짐');
+            same(obs, P.alt(P.zero(), a), a) || bad.push('좌항등 깨짐');
+        }
+        same(obs, P.map(fnA, P.zero()), P.zero()) || bad.push('소멸 깨짐');
+        return bad;
+    },
+    Alternative: (A, obs) => {
+        const xs = FUNCTOR_SAMPLES[A.type]; if (!xs) return null;
+        const fns = [A.of(fnA), A.of(fnB)];
+        const bad = [];
+        for (const a of fns) for (const b of fns) for (const c of xs)
+            same(obs, A.ap(A.alt(a, b), c), A.alt(A.ap(a, c), A.ap(b, c))) || bad.push('분배 깨짐');
+        for (const a of xs) same(obs, A.ap(A.zero(), a), A.zero()) || bad.push('소멸 깨짐');
+        return bad;
+    },
+    Chain: (M, obs) => {
+        const xs = FUNCTOR_SAMPLES[M.type], of = OF[M.type]; if (!xs || !of) return null;
+        const fs = [x => of(fnA(x)), x => of(fnB(x)), ...(DEGENERATE[M.type] ? [() => DEGENERATE[M.type]] : [])];
+        const bad = [];
+        for (const u of xs) for (const ff of fs) for (const gg of fs)
+            same(obs, M.chain(gg, M.chain(ff, u)), M.chain(x => M.chain(gg, ff(x)), u)) || bad.push('결합 깨짐');
+        return bad;
+    },
+    Monad: (M, obs) => {
+        const xs = FUNCTOR_SAMPLES[M.type]; if (!xs) return null;
+        const ff = x => M.of(fnA(x));
+        const bad = [];
+        same(obs, M.chain(ff, M.of(1)), ff(1)) || bad.push('좌항등 깨짐');
+        for (const u of xs) same(obs, M.chain(M.of, u), u) || bad.push('우항등 깨짐');
+        return bad;
+    },
+    Foldable: F => {
+        const xs = F.type === 'Object' ? [{ a: 1, b: 2 }, {}] : FUNCTOR_SAMPLES[F.type];
+        if (!xs) return null;
+        // 비가환 연산을 쓴다 — 덧셈이면 순서가 뒤집혀도 결과가 같아 검사가 공허해진다.
+        const app = (acc, y) => `${acc}|${y}`;
+        const bad = [];
+        for (const u of xs) {
+            const direct = F.reduce(app, '', u);
+            const viaList = F.reduce((acc, y) => acc.concat([y]), [], u).reduce(app, '');
+            direct === viaList || bad.push(`reduce 가 목록 경유와 다르다: ${direct} vs ${viaList}`);
+        }
+        return bad;
+    },
+    Extend: (E, obs) => {
+        const xs = FUNCTOR_SAMPLES[E.type]; if (!xs) return null;
+        const ff = w => (Array.isArray(w) ? w.length : 0);
+        const gg = w => (Array.isArray(w) ? (w[0] ?? 0) : 0);
+        const bad = [];
+        for (const w of xs)
+            same(obs, E.extend(ff, E.extend(gg, w)), E.extend(_w => ff(E.extend(gg, _w)), w)) || bad.push('결합 깨짐');
+        return bad;
+    },
+    Comonad: (C, obs) => {
+        // extract 는 빈 상자에서 꺼낼 것이 없다 — 비어 있지 않은 표본만 쓴다.
+        const xs = (FUNCTOR_SAMPLES[C.type] ?? []).filter(v => !Array.isArray(v) || v.length > 0);
+        if (!xs.length) return null;
+        const ff = w => (Array.isArray(w) ? w.length : 0);
+        const bad = [];
+        for (const w of xs) {
+            same(obs, C.extend(C.extract, w), w) || bad.push('좌항등 깨짐');
+            JSON.stringify(C.extract(C.extend(ff, w))) === JSON.stringify(ff(w)) || bad.push('우항등 깨짐');
+        }
+        return bad;
+    },
+};
+
+// 레지스트리 키(소문자)를 인스턴스에 되돌려 붙인다 — Kleisli 는 .type 이 전부 'function' 이라
+// 클래스 이름만으로는 어떤 상자를 다루는지 알 수 없다.
+const lowerKeyOf = name => {
+    const m = new Map();
+    for (const [k, i] of Object.entries(fp[name].types)) if (k[0] === k[0].toLowerCase()) m.set(i, k);
+    return m;
+};
+
+test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법칙이 돈다', () => {
+    const broken = [];
+    const uncovered = [];
+    let checked = 0;
+    for (const [name, law] of Object.entries(CLASS_LAWS)) {
+        const keys = lowerKeyOf(name);
+        for (const [label, I] of instancesOf(name)) {
+            if (KNOWN_DEVIATIONS[`${name}.${label}`] || KNOWN_DEVIATIONS[`${name}.*`]) continue;
+            const obs = OBSERVE[I.type];
+            if (!obs) { uncovered.push(`${name}.${label}(${I.type}) — 여는 법 없음`); continue; }
+            const bad = law(I, obs, keys.get(I), label);
+            if (bad === null) { uncovered.push(`${name}.${label}(${I.type}) — 표본 없음`); continue; }
+            checked++;
+            for (const m of new Set(bad)) broken.push(`${name}.${label}: ${m}`);
+        }
+    }
+    assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
+    assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
+    assertEquals(checked, 63, '법칙을 돌린 인스턴스 수가 달라졌다');
+});
+
+test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {
+    // 조용히 건너뛰지 않는다. 새 위반이 생기면 위 검사가 빨개지고, 여기에 이유를 적어야만
+    // 통과한다 — 그리고 그 이유가 곧 소유자에게 올릴 결정 항목이 된다.
+    for (const [k, why] of Object.entries(KNOWN_DEVIATIONS)) {
+        assertEquals(typeof why === 'string' && why.length > 20, true, `${k}: 이유가 없거나 너무 짧다`);
+    }
+    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','),
+        'Category.*,Filterable.EitherFilterable,Filterable.TaskFilterable',
+        '명세 미준수 목록이 달라졌다 — .dev/TODO.md 에 항목으로 올려라');
 });
 
 test('표본 예외에는 전부 이유가 붙어 있다', () => {
