@@ -3,7 +3,8 @@
 // 왜 있는가: `tests/ord.test.js` 에 반대칭 법칙 테스트가 있었는데도 `Ord` 가 `equals` 없이
 // 살아 있었다. 두 가지가 겹쳤다.
 //
-//   1. 법칙을 손으로 고른 인스턴스 둘(maybe(number), array(number))에만 돌렸다.
+//   1. 검사할 인스턴스를 파일에 이름으로 적어 두는 방식이라, 적힌 둘(maybe(number),
+//      array(number))에만 법칙이 돌았다. StringLengthOrd 는 등록돼 있어도 아무도 안 봤다.
 //   2. 그 법칙이 `O.lte` 와 **다른 인스턴스의** `S.equals` 를 섞어 썼다.
 //
 // 명세는 반대칭을 이렇게 쓴다 — "if `S.lte(a, b)` and `S.lte(b, a)`, then `S.equals(a, b)`".
@@ -26,11 +27,13 @@
 //     동치를 가르는 쌍**이 표본에 있는지 확인하라. 없으면 검사는 공허하게 통과한다.
 //   - Functor 는 등록된 11개 전부에 돈다(아래 OBSERVE). 그러나 Apply·Applicative·Alt·
 //     Chain·ChainRec·Extend·Comonad·Traversable 의 법칙은 여전히 각 tests/*.test.js 가
-//     손으로 고른 인스턴스만 본다 — Ord 를 놓쳤던 것과 같은 모양의 구멍이 그만큼 남아 있다.
+//     이름을 적어 둔 인스턴스만 본다(레지스트리를 순회하지 않는다) — Ord 를 놓쳤던 것과
+//     같은 모양의 구멍이 그만큼 남아 있다.
 //   - 컨테이너는 값이 아니라 **관측**으로 비교한다(OBSERVE). Reader/State 는 표본 환경·
 //     상태에서만, Task 는 fork 결과로만 본다 — 그 표본이 못 가르는 차이는 못 잡는다.
 //   - 'function' 의 동등은 관측 동등이다 — 표본 입력에서만 같음을 본다.
-//   - FACTORY_CASES 는 손으로 쓴 명단이다. 새 팩토리를 만들고 여기 안 넣으면 감시 밖이다.
+//   - FACTORY_CASES 는 이름을 적어 두는 명단이다. 팩토리 산물은 레지스트리 순회로 안 닿기
+//     때문인데, 그래서 새 팩토리를 만들고 여기 안 넣으면 감시 밖이다.
 import fp from '../index.js';
 import { test, assertEquals, logSection } from './utils.js';
 

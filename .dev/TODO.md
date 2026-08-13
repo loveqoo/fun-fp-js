@@ -86,7 +86,7 @@
 - **원인** — 값 수준 다섯 클래스(Setoid·Ord·Semigroup·Monoid·Group)는 표본만 있으면 법칙을
   돌릴 수 있어 먼저 했다. 컨테이너는 동등이 타입마다 달라 미뤘다 — `Task`·`Reader`·`State`
   는 안에 함수가 있어 구조 비교가 안 된다. **`Ord` 를 놓쳤던 것과 같은 모양의 구멍**이
-  그대로 남아 있다: 각 `tests/*.test.js` 가 손으로 고른 인스턴스만 본다.
+  그대로 남아 있다: 각 `tests/*.test.js` 가 **테스트에 이름을 적어 둔 인스턴스만** 본다.
 - **해결책** — 타입별 동등을 표로 두고(`Task` 는 `fork` 결과 비교 같은 관측 동등),
   `staticland-laws.test.js` 의 `LAWS`·`FACTORY_CASES` 구조를 그대로 확장한다.
 - **완료조건** — `Functor` 등록 인스턴스 전부에 항등·합성 법칙이 돌고, 아무 인스턴스의 `map`
@@ -98,7 +98,8 @@
   단독으로** 잡는 것을 확인했다. 표본이 공허하지 않은지 보는 검사도 함께 넣었다 — 각 타입마다
   "합성을 안 하는 map" 의 차이가 실제로 관측되는지 본다.
 - **남은 것** — `Apply`·`Applicative`·`Alt`·`Chain`·`ChainRec`·`Extend`·`Comonad`·
-  `Traversable` 여덟은 아직 각 `tests/*.test.js` 가 손으로 고른 인스턴스만 본다.
+  `Traversable` 여덟은 아직 각 `tests/*.test.js` 가 **테스트에 이름을 적어 둔 인스턴스만** 본다
+  — 레지스트리를 순회하지 않으므로, 적어 넣지 않은 인스턴스는 등록돼 있어도 검사받지 않는다.
   `OBSERVE` 가 있으니 같은 틀로 넓힐 수 있다.
 - **참고** — [`tests/staticland-laws.test.js`](./../tests/staticland-laws.test.js) 머리의
   「못 잡는 것」 · [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
