@@ -4,7 +4,7 @@ import { test, assertEquals, assertEqualsBy, assertThrowsWith, logSection } from
 
 // 비교는 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다.
 // 레코드는 struct(필드:키) 로 필드마다 비교법을 밝힌다.
-const eqPerson = fp.Setoid.lookup('struct(age:number,name:string)');
+const eqPerson = fp.Setoid.Struct({ name: 'string', age: 'number' });
 const eqAN = fp.Setoid.lookup('array(number)');
 const eqAS = fp.Setoid.lookup('array(string)');
 
@@ -85,14 +85,14 @@ test('compose — set on composed lens (deep immutable update)', () => {
     const userCity = compose(addressLens, cityLens);
     const original = { name: 'A', address: { city: 'Seoul', country: 'KR' } };
     const updated = set(userCity, 'Busan', original);
-    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:string,country:string),name:string)'), updated, { name: 'A', address: { city: 'Busan', country: 'KR' } });
-    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:string,country:string),name:string)'), original, { name: 'A', address: { city: 'Seoul', country: 'KR' } });
+    assertEqualsBy(fp.Setoid.Struct({ name: 'string', address: fp.Setoid.Struct({ city: 'string', country: 'string' }) }), updated, { name: 'A', address: { city: 'Busan', country: 'KR' } });
+    assertEqualsBy(fp.Setoid.Struct({ name: 'string', address: fp.Setoid.Struct({ city: 'string', country: 'string' }) }), original, { name: 'A', address: { city: 'Seoul', country: 'KR' } });
 });
 
 test('compose — over on composed lens', () => {
     const userCity = compose(addressLens, cityLens);
     const original = { address: { city: 'seoul' } };
-    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:string))'),
+    assertEqualsBy(fp.Setoid.Struct({ address: fp.Setoid.Struct({ city: 'string' }) }),
         over(userCity, s => s.toUpperCase(), original),
         { address: { city: 'SEOUL' } }
     );
@@ -102,7 +102,7 @@ test('compose — 3-level nesting (variadic)', () => {
     const deep = compose(addressLens, cityLens, zipLens);
     const original = { address: { city: { zip: '00000', name: 'Seoul' } } };
     assertEquals(view(deep, original), '00000');
-    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:struct(name:string,zip:string)))'),
+    assertEqualsBy(fp.Setoid.Struct({ address: fp.Setoid.Struct({ city: fp.Setoid.Struct({ zip: 'string', name: 'string' }) }) }),
         set(deep, '12345', original),
         { address: { city: { zip: '12345', name: 'Seoul' } } }
     );
@@ -168,7 +168,7 @@ test('view — 대상이 정확히 1개인 Traversal 은 그 값을 준다', () 
 test('preview — 대상들의 타입이 섞여도 첫 대상을 준다', () => {
     assertEquals(preview(traversed('array'), [1, 'a']).value, 1);
     assertEquals(preview(traversed('array'), [null, 1]).value, null);
-    assertEqualsBy(fp.Setoid.lookup('struct(a:number)'), preview(traversed('array'), [{ a: 1 }, [2]]).value, { a: 1 });
+    assertEqualsBy(fp.Setoid.Struct({ a: 'number' }), preview(traversed('array'), [{ a: 1 }, [2]]).value, { a: 1 });
 });
 
 test('set — optic must be a function', () => {
@@ -381,11 +381,11 @@ test('compose — Lens + Traversal + Lens', () => {
     const db = { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] };
 
     assertEqualsBy(eqAS, toList(allNames, db), ['a', 'b', 'c']);
-    assertEqualsBy(fp.Setoid.lookup('struct(users:array(struct(name:string)))'), over(allNames, s => s.toUpperCase(), db), {
+    assertEqualsBy(fp.Setoid.Struct({ users: fp.Setoid.Array(fp.Setoid.Struct({ name: 'string' })) }), over(allNames, s => s.toUpperCase(), db), {
         users: [{ name: 'A' }, { name: 'B' }, { name: 'C' }]
     });
     // 원본 불변
-    assertEqualsBy(fp.Setoid.lookup('struct(users:array(struct(name:string)))'), db, { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] });
+    assertEqualsBy(fp.Setoid.Struct({ users: fp.Setoid.Array(fp.Setoid.Struct({ name: 'string' })) }), db, { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] });
 });
 
 test('compose — Lens + Prism, 매칭 실패 시 원본 보존', () => {
@@ -411,7 +411,7 @@ test('compose — Lens + Iso', () => {
     const inF = compose(tempLens, fahrenheit);
 
     assertEquals(view(inF, { temp: 100, city: 'Seoul' }), 212);
-    assertEqualsBy(fp.Setoid.lookup('struct(city:string,temp:number)'), over(inF, f => f - 32, { temp: 100, city: 'Seoul' }), {
+    assertEqualsBy(fp.Setoid.Struct({ temp: 'number', city: 'string' }), over(inF, f => f - 32, { temp: 100, city: 'Seoul' }), {
         temp: 100 - 32 * 5 / 9, city: 'Seoul'
     });
 });

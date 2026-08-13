@@ -171,17 +171,29 @@ test('다른 타입을 넘기면 던진다', () => {
 });
 
 
-logSection('Setoid — Struct (레코드는 필드마다 비교법을 밝힌다)');
+logSection('Setoid — Struct (레코드는 즉석 모양이라 레지스트리 밖이다)');
 
-test('필드 순서가 달라도 같은 인스턴스다 (키 정규화)', () => {
-    assertEquals(Setoid.lookup('struct(name:string,age:number)')
-        === Setoid.lookup('struct(age:number,name:string)'), true);
+test('입구는 팩토리뿐이다 — 문자열 키로는 못 꺼낸다', () => {
+    // 레코드는 사용자마다 다른 즉석 모양이라 무한히 많다. 전역 레지스트리에 올리면
+    // Algebra.all('object') 가 오염되므로 등록하지 않는다.
+    let message = '(안 던짐)';
+    try { Setoid.lookup('struct(age:number,name:string)'); } catch (e) { message = e.message; }
+    assertEquals(message, 'Setoid.lookup: unsupported key struct(age:number,name:string)');
+});
+
+test('레지스트리와 Algebra.all 을 오염시키지 않는다', () => {
+    Setoid.Struct({ probe: 'number' });
+    assertEquals(Object.keys(Setoid.types).filter(k => k.startsWith('struct')).length, 0);
+    assertEquals(Object.keys(fp.Algebra.all('object')).filter(k => /^struct/.test(k)).length, 0);
+});
+
+test('필드 순서가 달라도 같은 인스턴스다 (내부 정규화 캐시)', () => {
     assertEquals(Setoid.Struct({ name: 'string', age: 'number' })
-        === Setoid.lookup('struct(age:number,name:string)'), true);
+        === Setoid.Struct({ age: 'number', name: 'string' }), true);
 });
 
 test('선언한 필드와 정확히 같아야 한다 — 초과도 부족도 거부', () => {
-    const S = Setoid.lookup('struct(age:number,name:string)');
+    const S = Setoid.Struct({ name: 'string', age: 'number' });
     assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A', age: 1 }), true);
     assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A', age: 1, x: 0 }), false, '초과 필드');
     assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A' }), false, '부족 필드');
@@ -189,16 +201,16 @@ test('선언한 필드와 정확히 같아야 한다 — 초과도 부족도 거
 });
 
 test('중첩 — struct 안의 struct, struct 안의 array', () => {
-    const N = Setoid.lookup('struct(address:struct(city:string),name:string)');
+    const N = Setoid.Struct({ name: 'string', address: Setoid.Struct({ city: 'string' }) });
     assertEquals(N.equals({ address: { city: 'Seoul' }, name: 'A' }, { address: { city: 'Seoul' }, name: 'A' }), true);
     assertEquals(N.equals({ address: { city: 'Seoul' }, name: 'A' }, { address: { city: 'Busan' }, name: 'A' }), false);
-    const U = Setoid.lookup('struct(users:array(struct(name:string)))');
+    const U = Setoid.Struct({ users: Setoid.Array(Setoid.Struct({ name: 'string' })) });
     assertEquals(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] }), true);
     assertEquals(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'b' }] }), false);
 });
 
 test('법칙 — 반사·대칭·추이 (Struct)', () => {
-    const S = Setoid.lookup('struct(age:number,name:string)');
+    const S = Setoid.Struct({ name: 'string', age: 'number' });
     const xs = [{ name: 'A', age: 1 }, { name: 'A', age: 2 }, { name: 'B', age: 1 }];
     for (const a of xs) assertEquals(S.equals(a, a), true, '반사성');
     for (const a of xs) for (const b of xs) assertEquals(S.equals(a, b), S.equals(b, a), '대칭성');
@@ -213,6 +225,5 @@ test('빈 필드와 잘못된 인자는 던진다', () => {
     let m2 = '(안 던짐)'; try { Setoid.Struct('name:string'); } catch (e) { m2 = e.message; }
     assertEquals(m2, 'Setoid.Struct: fields must be a plain object');
 });
-
 
 console.log('\n✅ Setoid tests completed');

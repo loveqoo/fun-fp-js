@@ -715,7 +715,7 @@ const addResolver = (TypeClass, resolver) => {
 const capHead = s => s.charAt(0).toUpperCase() + s.slice(1);
 const camelHead = s => s.charAt(0).toLowerCase() + s.slice(1);
 const composedName = (key, className) =>
-    camelHead(key.split(/[(),:]+/).filter(Boolean).map(capHead).join('') + className);
+    camelHead(key.split(/[(),]+/).filter(Boolean).map(capHead).join('') + className);
 Algebra.all = key => {
     typeof key === 'string' || raise(new TypeError('Algebra.all: key must be a string'));
     // 소문자만 받는다. 대문자도 받으면 같은 묶음을 두 이름으로 부르게 되고,
@@ -1595,37 +1595,32 @@ Setoid.Struct = fields => {
     const names = Object.keys(fields).sort();
     names.length > 0 || raise(new TypeError('Setoid.Struct: fields must not be empty'));
     const resolved = names.map(n => [n, resolveInnerSetoid('Setoid.Struct', fields[n])]);
-    const key = resolved.every(([, r]) => r.key !== null)
-        ? `struct(${resolved.map(([n, r]) => `${n}:${r.key}`).join(',')})`
+    // 레지스트리에 올리지 않는다 — maybe/array/either 는 이 라이브러리의 이름 있는
+    // 타입이지만 레코드는 사용자마다 다른 즉석 모양이라 무한히 많다. 전역 명부에
+    // 올리면 Algebra.all('object') 가 오염된다. 캐시는 내부에만 둔다(정규화 유지 —
+    // 필드 순서가 달라도, 안쪽이 전부 키로 밝혀져 있으면 같은 인스턴스).
+    const cacheKey = resolved.every(([, r]) => r.key !== null)
+        ? resolved.map(([n, r]) => `${n}:${r.key}`).join(',')
         : null;
-    if (key !== null && Setoid.Struct._keyCache.has(key)) return Setoid.Struct._keyCache.get(key);
+    if (cacheKey !== null && Setoid.Struct._cache.has(cacheKey)) return Setoid.Struct._cache.get(cacheKey);
     const result = new Setoid((a, b) => {
         const ka = Object.keys(a), kb = Object.keys(b);
         return ka.length === names.length && kb.length === names.length
             && names.every(n => n in a && n in b)
             && resolved.every(([n, r]) => r.instance.equals(a[n], b[n]));
     }, 'Object', null);
-    if (key !== null) { registerAs(Setoid.types, key, result); Setoid.Struct._keyCache.set(key, result); }
+    if (cacheKey !== null) Setoid.Struct._cache.set(cacheKey, result);
     return result;
 };
-Setoid.Struct._keyCache = new Map();
+Setoid.Struct._cache = new Map();
+// struct 는 여기 없다 — 레코드는 즉석 모양이라 레지스트리 밖이다. Setoid.Struct 팩토리만이 입구다.
 addResolver(Setoid, key => {
-    const m = /^(maybe|array|either|struct)\((.+)\)$/.exec(key);
+    const m = /^(maybe|array|either)\((.+)\)$/.exec(key);
     if (!m) return null;
     if (m[1] === 'maybe') return Maybe.Setoid(m[2]);
     if (m[1] === 'array') return Setoid.Array(m[2]);
-    if (m[1] === 'either') {
-        const parts = splitTopLevel(m[2]);
-        return parts.length === 2 ? Either.Setoid(parts[0], parts[1]) : null;
-    }
-    // struct(name:string,age:number) — 필드마다 첫 최상위 콜론에서 이름과 키를 가른다
-    const fields = {};
-    for (const part of splitTopLevel(m[2])) {
-        const i = part.indexOf(':');
-        if (i < 1) return null;
-        fields[part.slice(0, i)] = part.slice(i + 1);
-    }
-    return Setoid.Struct(fields);
+    const parts = splitTopLevel(m[2]);
+    return parts.length === 2 ? Either.Setoid(parts[0], parts[1]) : null;
 });
 addResolver(Ord, key => {
     const m = /^(maybe|array)\((.+)\)$/.exec(key);

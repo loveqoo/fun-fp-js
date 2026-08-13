@@ -332,19 +332,27 @@ console.log(Setoid.lookup('either(maybe(number),array(string))')
 **`Either` 의 `Ord` 는 일부러 없습니다.** `Left` 와 `Right` 중 무엇이 먼저인지에 정답이
 없습니다. fp-ts 도 코어에서 뺐습니다. `Ord.lookup('either(...)')` 는 던집니다.
 
-### 레코드는 `struct` — 필드마다 비교법을 밝힌다
+### 레코드는 `Setoid.Struct` — 팩토리만이 입구다
 
 레코드(`{ name, age }`)는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해집니다.
-fp-ts 의 `Eq.struct` 에 해당합니다. **키는 필드 이름을 정렬해 정규화합니다** — 적는 순서가
-달라도 같은 인스턴스입니다.
+fp-ts 의 `Eq.struct` 에 해당합니다.
+
+**문자열 키가 없습니다.** `maybe`/`array`/`either` 는 이 라이브러리의 이름 있는 타입이라
+레지스트리에 살지만, 레코드는 **사용자마다 다른 즉석 모양**이라 무한히 많습니다 — 전역
+명부에 올리면 `Algebra.all('object')` 가 `structAddressStructCityStringSetoid` 같은 이름으로
+오염됩니다. 그래서 등록하지 않고(`registry=null` 경로) 팩토리만 둡니다.
 
 ```javascript
 const { Setoid } = FunFP;
 
-const S = Setoid.lookup('struct(name:string,age:number)');
+const S = Setoid.Struct({ name: 'string', age: 'number' });
 console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30 }));        // true
 console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30, x: 1 }));  // false  초과 필드도 거부
-console.log(S === Setoid.lookup('struct(age:number,name:string)'));           // true   정렬 정규화
+console.log(S === Setoid.Struct({ age: 'number', name: 'string' }));          // true   내부 정규화 캐시
+
+// 중첩은 팩토리를 겹쳐 쓴다
+const U = Setoid.Struct({ users: Setoid.Array(Setoid.Struct({ name: 'string' })) });
+console.log(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] })); // true
 ```
 
 **엄격 비교입니다** — 선언한 필드 집합과 실제 키 집합이 정확히 같아야 합니다. fp-ts 는 초과
@@ -361,6 +369,10 @@ console.log(S === Setoid.lookup('struct(age:number,name:string)'));           //
 ---
 
 ## 레지스트리에 쓰는 문은 하나다 {#registry-writes}
+
+**레지스트리는 잘 알려진 타입의 명부입니다** — 이미 등록된 인스턴스를 이름으로 찾기 위한
+것이고, 커스텀 타입은 지원하지 않습니다(소유자 결정, 2026-08-13). 사용자 정의 모양은
+팩토리(`Setoid.Struct`)나 `registry=null` 생성자로 만들어 **명부 밖에서** 씁니다.
 
 **`registerAs(types, 키, 인스턴스)` 가 유일한 문입니다.** `register(types, instance, ...별칭)`
 도 그 위에 세워져 있습니다 — 클래스 이름과 별칭을 각각 `registerAs` 로 넣습니다.

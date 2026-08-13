@@ -418,15 +418,17 @@ export declare const Setoid: {
     ) => Setoid<SetoidInstances[K]>;
     // Container factories — the inner comparison must always be named.
     // Composed keys resolve lazily too: Setoid.lookup('maybe(number)'),
-    // 'array(number)', 'either(string,number)', 'struct(age:number,name:string)'.
+    // 'array(number)', 'either(string,number)'. Struct is factory-only —
+    // records are ad-hoc shapes and stay out of the registry.
     readonly Array: {
         <K extends keyof SetoidInstances>(inner: K): Setoid<ReadonlyArray<SetoidInstances[K]>>;
         <A>(inner: Setoid<A>): Setoid<ReadonlyArray<A>>;
     };
     // Records need one comparison per field (fp-ts Eq.struct). Strict: the
-    // compared objects must have exactly the declared fields. Keys are
-    // normalized by sorting field names. There is no Ord.Struct — record
-    // ordering has no canonical answer.
+    // compared objects must have exactly the declared fields. Same fields in
+    // any order return the same instance (internal normalized cache), but the
+    // instance is NOT registered — factory is the only entrance. There is no
+    // Ord.Struct — record ordering has no canonical answer.
     readonly Struct: (
         fields: Record<string, string | Setoid<unknown>>
     ) => Setoid<Record<string, unknown>>;

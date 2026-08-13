@@ -190,7 +190,7 @@ test("Semigroup 'last' - 원시값에서 동작한다", () => {
 });
 
 test("Semigroup 'first' - 객체에서도 동작한다", () => {
-    assertEqualsBy(fp.Setoid.lookup('struct(a:number)'), Semigroup.lookup('first').concat({ a: 1 }, { a: 2 }), { a: 1 });
+    assertEqualsBy(fp.Setoid.Struct({ a: 'number' }), Semigroup.lookup('first').concat({ a: 1 }, { a: 2 }), { a: 1 });
 });
 
 // 'any' 는 "무슨 타입이어야 하는가" 만 끈다. "두 인자가 같은 타입인가" 는 살아 있다.

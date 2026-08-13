@@ -179,8 +179,7 @@ const cases = [
         // 컨테이너 Setoid/Ord — 불러야 생긴다. HEAD 에 없으면 THROW 로 잡히는 것이 맞다.
         try { f.Setoid.lookup('maybe(number)'); f.Setoid.lookup('array(number)');
               f.Setoid.lookup('either(string,number)'); f.Ord.lookup('maybe(number)');
-              f.Ord.lookup('array(number)');
-              f.Setoid.lookup('struct(age:number,name:string)'); } catch { /* HEAD 에는 없다 */ }
+              f.Ord.lookup('array(number)'); } catch { /* HEAD 에는 없다 */ }
         f.StateT('maybe'); f.EitherT('task'); f.ReaderT('maybe');
         f.WriterT('maybe', f.Monoid.lookup('array'));
         return 'done';
