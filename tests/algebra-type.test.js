@@ -177,6 +177,14 @@ test('팩토리로만 생기는 파생 인스턴스도 정규 태그다', () => 
         ['Either.Semigroup("number")', fp.Either.Semigroup('number'), 'Either'],
         ['Applicative.Const("array")', fp.Applicative.Const('array'), 'Object'],
         ['Semigroup.lookup("maybe(maybe(array))")', fp.Semigroup.lookup('maybe(maybe(array))'), 'Maybe'],
+        // 컨테이너 Setoid/Ord. 명세 게이트도 법칙 게이트도 .type **값**은 안 본다 —
+        // 여기가 유일한 감시자다. Setoid.Struct 는 레지스트리 밖이라 더욱 그렇다.
+        ['Maybe.Setoid("number")', fp.Maybe.Setoid('number'), 'Maybe'],
+        ['Maybe.Ord("number")', fp.Maybe.Ord('number'), 'Maybe'],
+        ['Setoid.Array("number")', fp.Setoid.Array('number'), 'Array'],
+        ['Ord.Array("number")', fp.Ord.Array('number'), 'Array'],
+        ['Either.Setoid("string","number")', fp.Either.Setoid('string', 'number'), 'Either'],
+        ['Setoid.Struct({a:"number"})', fp.Setoid.Struct({ a: 'number' }), 'Object'],
     ];
     for (const [label, instance, expected] of cases) {
         assertEquals(instance.type, expected, `${label}.type`);

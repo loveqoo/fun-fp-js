@@ -53,18 +53,18 @@
 ```
 ✅ 레지스트리 정합성
 ✅ Ord 를 Setoid 로            ← 이 회차의 본체
-🟡 검증 장치                    ← 지금 여기
-⬜ 남은 정리 9건
-⬜ 커밋                         ← 상위로 올라가려면 이것이 먼저
+🟡 검증 장치                    ← 지금 여기 (1차-9 닫음, Functor 법칙 하나 남음)
+⬜ 남은 정리 8건 — 동작에 영향 없음
 ```
 
-**커밋이 0건입니다.** 하루치(14파일)가 작업 트리에만 있습니다. 이것이 지금 가장 큰 위험이며,
-아래 어떤 항목보다 먼저 처리할 후보입니다.
+**커밋 3개** — 라이브러리+게이트 · 작업 방식(이 파일과 판정 기록) · `.type` 명단.
+작업 트리 clean. (해시는 안 적는다 — amend·rebase 로 바뀌면 이 줄이 거짓이 된다.)
+`dist/` 는 HEAD 상태다 — 요청 시에만 빌드한다.
 
 | 상태 | # | 무엇 |
 | --- | --- | --- |
 | 🟡 | — | [Functor~Traversable 법칙이 레지스트리 전체를 안 본다](#functor법칙) |
-| ⬜ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
+| ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
 | ⬜ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
 | ⬜ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
 | ⬜ | 2차-8 | [부모 인스턴스 조회가 관례와 다름](#2차-8) |
@@ -95,21 +95,6 @@
   「못 잡는 것」 · [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
 
 ## ⬜ 남은 것
-
-<h3 id="1차-9">[1차-9] 컨테이너 인스턴스의 <code>.type</code> 이 어떤 게이트에도 안 걸린다</h3>
-
-- **원인** — `.type` 게이트의 "팩토리로만 생기는 파생 인스턴스" 명단이 다섯 개짜리 고정
-  목록인데, 컨테이너 `Setoid`/`Ord` 여섯이 거기 없다. **주 에이전트가 "게이트 둘을 신설해
-  상당 부분 해소됐다" 고 말했는데 근거 없는 말이었다** — 새 게이트는 *메서드가 있는가*와
-  *메서드끼리 맞는가*를 보지 `.type` **값**을 안 본다.
-- **해결책** — `tests/algebra-type.test.js` 의 그 명단에 여섯 줄을 더한다:
-  `Maybe.Setoid`·`Maybe.Ord`·`Setoid.Array`·`Ord.Array`·`Either.Setoid`·`Setoid.Struct`.
-  마지막 것은 레지스트리 밖이라 이 목록이 유일한 감시자다.
-- **완료조건** — `Maybe.Setoid('number').type` 을 `'maybe'` 로 바꾸는 뮤테이션이 잡힌다.
-  **지금은 42/42 초록으로 통과한다(실측).**
-- **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 9번 ·
-  [`tests/algebra-type.test.js:172`](./../tests/algebra-type.test.js) ·
-  [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
 
 <h3 id="2차-3">[2차-3] <code>default</code> 의 동종 제약이 격자·문서에 없다</h3>
 
@@ -218,6 +203,31 @@
 ---
 
 ## ✅ 닫힌 것
+
+<details><summary><b>[1차-9] 컨테이너 인스턴스의 <code>.type</code> 이 게이트 밖이었다</b></summary>
+
+<span id="1차-9"></span>
+
+- **원인** — `.type` 게이트의 "팩토리로만 생기는 파생 인스턴스" 명단이 다섯 개짜리 고정
+  목록인데, 컨테이너 `Setoid`/`Ord` 여섯이 거기 없다. **주 에이전트가 "게이트 둘을 신설해
+  상당 부분 해소됐다" 고 말했는데 근거 없는 말이었다** — 새 게이트는 *메서드가 있는가*와
+  *메서드끼리 맞는가*를 보지 `.type` **값**을 안 본다.
+- **해결책** — `tests/algebra-type.test.js` 의 그 명단에 여섯 줄을 더한다:
+  `Maybe.Setoid`·`Maybe.Ord`·`Setoid.Array`·`Ord.Array`·`Either.Setoid`·`Setoid.Struct`.
+  마지막 것은 레지스트리 밖이라 이 목록이 유일한 감시자다.
+- **완료조건** — 여섯 자리의 `.type` 을 비정규 소문자로 바꾸는 뮤테이션이 **전부** 잡힌다.
+- **검증 (2026-08-13)** — `tests/algebra-type.test.js` 의 팩토리 명단에 여섯 줄을 더한 뒤
+  하나씩 심어 확인했다. 여섯 전부 `41 passed, 1 failed`:
+  `Maybe.Setoid`→`'maybe'` · `Maybe.Ord`→`'maybe'` · `Setoid.Array`→`'array'` ·
+  `Ord.Array`→`'array'` · `Either.Setoid`→`'either'` · `Setoid.Struct`→`'object'`.
+  매번 `cmp` 로 작업 트리 복원을 확인했고 복원 후 42/42 초록.
+  (고치기 전에는 같은 뮤테이션이 42/42 초록으로 통과했다.)
+- **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 9번 ·
+  [`tests/algebra-type.test.js:172`](./../tests/algebra-type.test.js) ·
+  [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
+
+</details>
+
 
 <details><summary><b>레지스트리 정합성</b> — 세 항목</summary>
 
