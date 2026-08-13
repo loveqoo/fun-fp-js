@@ -1,6 +1,12 @@
 // Lens (Optics) Tests
 import fp from '../index.js';
-import { test, assertEquals, assertDeepEquals, assertThrowsWith, logSection } from './utils.js';
+import { test, assertEquals, assertEqualsBy, assertThrowsWith, logSection } from './utils.js';
+
+// 비교는 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다.
+// 레코드는 struct(필드:키) 로 필드마다 비교법을 밝힌다.
+const eqPerson = fp.Setoid.lookup('struct(age:number,name:string)');
+const eqAN = fp.Setoid.lookup('array(number)');
+const eqAS = fp.Setoid.lookup('array(string)');
 
 const { Functor, Maybe, Either, Monoid } = fp;
 // optics 는 모듈 객체 하나로 나온다 — 최상위에 view/set/over 같은 흔한 이름을 두지 않는다.
@@ -21,7 +27,7 @@ const zipLens = Lens(c => c.zip, (z, c) => ({ ...c, zip: z }));
 // === Lens laws ===
 test('Lens law: get-set — set(lens, view(lens, s), s) === s', () => {
     const s = { name: 'A', age: 30 };
-    assertDeepEquals(set(nameLens, view(nameLens, s), s), s);
+    assertEqualsBy(eqPerson, set(nameLens, view(nameLens, s), s), s);
 });
 
 test('Lens law: set-get — view(lens, set(lens, b, s)) === b', () => {
@@ -31,7 +37,7 @@ test('Lens law: set-get — view(lens, set(lens, b, s)) === b', () => {
 
 test('Lens law: set-set — set(lens, b2, set(lens, b1, s)) === set(lens, b2, s)', () => {
     const s = { name: 'A', age: 30 };
-    assertDeepEquals(
+    assertEqualsBy(eqPerson,
         set(nameLens, 'C', set(nameLens, 'B', s)),
         set(nameLens, 'C', s)
     );
@@ -45,12 +51,12 @@ test('view — extracts value', () => {
 test('set — replaces value without mutating source', () => {
     const original = { name: 'A', age: 30 };
     const updated = set(nameLens, 'B', original);
-    assertDeepEquals(updated, { name: 'B', age: 30 });
-    assertDeepEquals(original, { name: 'A', age: 30 });
+    assertEqualsBy(eqPerson, updated, { name: 'B', age: 30 });
+    assertEqualsBy(eqPerson, original, { name: 'A', age: 30 });
 });
 
 test('over — applies function to focused value', () => {
-    assertDeepEquals(
+    assertEqualsBy(eqPerson,
         over(nameLens, s => s.toUpperCase(), { name: 'anthony', age: 30 }),
         { name: 'ANTHONY', age: 30 }
     );
@@ -63,7 +69,7 @@ test('nested object access via separate lenses', () => {
 
 test('over identity sanity — over(lens, x => x, s) deep-equals s', () => {
     const s = { name: 'A', age: 30 };
-    assertDeepEquals(over(ageLens, x => x, s), s);
+    assertEqualsBy(eqPerson, over(ageLens, x => x, s), s);
 });
 
 // === 합성 ===
@@ -79,14 +85,14 @@ test('compose — set on composed lens (deep immutable update)', () => {
     const userCity = compose(addressLens, cityLens);
     const original = { name: 'A', address: { city: 'Seoul', country: 'KR' } };
     const updated = set(userCity, 'Busan', original);
-    assertDeepEquals(updated, { name: 'A', address: { city: 'Busan', country: 'KR' } });
-    assertDeepEquals(original, { name: 'A', address: { city: 'Seoul', country: 'KR' } });
+    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:string,country:string),name:string)'), updated, { name: 'A', address: { city: 'Busan', country: 'KR' } });
+    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:string,country:string),name:string)'), original, { name: 'A', address: { city: 'Seoul', country: 'KR' } });
 });
 
 test('compose — over on composed lens', () => {
     const userCity = compose(addressLens, cityLens);
     const original = { address: { city: 'seoul' } };
-    assertDeepEquals(
+    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:string))'),
         over(userCity, s => s.toUpperCase(), original),
         { address: { city: 'SEOUL' } }
     );
@@ -96,7 +102,7 @@ test('compose — 3-level nesting (variadic)', () => {
     const deep = compose(addressLens, cityLens, zipLens);
     const original = { address: { city: { zip: '00000', name: 'Seoul' } } };
     assertEquals(view(deep, original), '00000');
-    assertDeepEquals(
+    assertEqualsBy(fp.Setoid.lookup('struct(address:struct(city:struct(name:string,zip:string)))'),
         set(deep, '12345', original),
         { address: { city: { zip: '12345', name: 'Seoul' } } }
     );
@@ -111,8 +117,8 @@ test('Lens — 임의의 Profunctor 딕셔너리로 동작한다', () => {
         first: p => { calls.push('first'); return ([a, c]) => [p(a), c]; },
     };
     const run = nameLens(spy)(a => a.toUpperCase());
-    assertDeepEquals(run({ name: 'a', age: 1 }), { name: 'A', age: 1 });
-    assertDeepEquals(calls, ['first', 'dimap']);
+    assertEqualsBy(eqPerson, run({ name: 'a', age: 1 }), { name: 'A', age: 1 });
+    assertEqualsBy(eqAS, calls, ['first', 'dimap']);
 });
 
 test('optic은 순수 함수다 — 프로퍼티를 이고 다니지 않는다', () => {
@@ -162,7 +168,7 @@ test('view — 대상이 정확히 1개인 Traversal 은 그 값을 준다', () 
 test('preview — 대상들의 타입이 섞여도 첫 대상을 준다', () => {
     assertEquals(preview(traversed('array'), [1, 'a']).value, 1);
     assertEquals(preview(traversed('array'), [null, 1]).value, null);
-    assertDeepEquals(preview(traversed('array'), [{ a: 1 }, [2]]).value, { a: 1 });
+    assertEqualsBy(fp.Setoid.lookup('struct(a:number)'), preview(traversed('array'), [{ a: 1 }, [2]]).value, { a: 1 });
 });
 
 test('set — optic must be a function', () => {
@@ -203,7 +209,7 @@ test('Iso — set 은 초점을 교체한다', () => {
 
 test('Iso — preview 는 항상 Just, toList 는 항상 1개', () => {
     assertEquals(preview(fahrenheit, 0).value, 32);
-    assertDeepEquals(toList(fahrenheit, 0), [32]);
+    assertEqualsBy(eqAN, toList(fahrenheit, 0), [32]);
 });
 
 test('Iso law: review(iso, view(iso, s)) === s', () => {
@@ -275,8 +281,8 @@ test('Prism law: match 성공 시 review(p, focus) 가 원본과 같다', () => 
 });
 
 test('Prism — toList gives 0 or 1 element', () => {
-    assertDeepEquals(toList(rightPrism, Either.Right(1)), [1]);
-    assertDeepEquals(toList(rightPrism, Either.Left('e')), []);
+    assertEqualsBy(eqAN, toList(rightPrism, Either.Right(1)), [1]);
+    assertEqualsBy(eqAN, toList(rightPrism, Either.Left('e')), []);
 });
 
 test('Prism — match must return a Maybe', () => {
@@ -308,7 +314,7 @@ test('review — 합성된 Prism 에서도 동작한다', () => {
 
 test('review 합성 = 바깥 review ∘ 안쪽 review', () => {
     const composed = compose(rightPrism, evenPrism);
-    assertDeepEquals(
+    assertEqualsBy(fp.Setoid.lookup('either(string,number)'),
         review(composed, 6),
         review(rightPrism, review(evenPrism, 6))
     );
@@ -329,11 +335,11 @@ logSection('Traversal');
 const each = traversed('array');
 
 test('Traversal — toList collects every target', () => {
-    assertDeepEquals(toList(each, [1, 2, 3]), [1, 2, 3]);
+    assertEqualsBy(eqAN, toList(each, [1, 2, 3]), [1, 2, 3]);
 });
 
 test('Traversal — over maps every target', () => {
-    assertDeepEquals(over(each, x => x * 10, [1, 2, 3]), [10, 20, 30]);
+    assertEqualsBy(eqAN, over(each, x => x * 10, [1, 2, 3]), [10, 20, 30]);
 });
 
 test('Traversal — preview returns the first target', () => {
@@ -342,24 +348,24 @@ test('Traversal — preview returns the first target', () => {
 
 test('Traversal — empty source: preview is Nothing, over is unchanged', () => {
     assertEquals(preview(each, []).isNothing(), true);
-    assertDeepEquals(over(each, x => x * 10, []), []);
+    assertEqualsBy(eqAN, over(each, x => x * 10, []), []);
 });
 
 test('Traversal — does not mutate the source', () => {
     const original = [1, 2, 3];
     over(each, x => x + 1, original);
-    assertDeepEquals(original, [1, 2, 3]);
+    assertEqualsBy(eqAN, original, [1, 2, 3]);
 });
 
 test('Traversal law: over(t, x => x, s) deep-equals s', () => {
     const s = [1, 2, 3];
-    assertDeepEquals(over(each, x => x, s), s);
+    assertEqualsBy(eqAN, over(each, x => x, s), s);
 });
 
 test('Traversal — works on Maybe via the registry', () => {
     const inMaybe = traversed('maybe');
-    assertDeepEquals(toList(inMaybe, Maybe.Just(5)), [5]);
-    assertDeepEquals(toList(inMaybe, Maybe.Nothing()), []);
+    assertEqualsBy(eqAN, toList(inMaybe, Maybe.Just(5)), [5]);
+    assertEqualsBy(eqAN, toList(inMaybe, Maybe.Nothing()), []);
     assertEquals(over(inMaybe, x => x * 2, Maybe.Just(5)).value, 10);
 });
 
@@ -374,12 +380,12 @@ test('compose — Lens + Traversal + Lens', () => {
     const allNames = compose(usersLens, each, nameLens);
     const db = { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] };
 
-    assertDeepEquals(toList(allNames, db), ['a', 'b', 'c']);
-    assertDeepEquals(over(allNames, s => s.toUpperCase(), db), {
+    assertEqualsBy(eqAS, toList(allNames, db), ['a', 'b', 'c']);
+    assertEqualsBy(fp.Setoid.lookup('struct(users:array(struct(name:string)))'), over(allNames, s => s.toUpperCase(), db), {
         users: [{ name: 'A' }, { name: 'B' }, { name: 'C' }]
     });
     // 원본 불변
-    assertDeepEquals(db, { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] });
+    assertEqualsBy(fp.Setoid.lookup('struct(users:array(struct(name:string)))'), db, { users: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] });
 });
 
 test('compose — Lens + Prism, 매칭 실패 시 원본 보존', () => {
@@ -396,8 +402,8 @@ test('compose — Lens + Prism, 매칭 실패 시 원본 보존', () => {
 
 test('compose — Traversal + Prism 은 통과한 것만 바꾼다', () => {
     const evens = compose(each, evenPrism);
-    assertDeepEquals(toList(evens, [1, 2, 3, 4]), [2, 4]);
-    assertDeepEquals(over(evens, x => x * 100, [1, 2, 3, 4]), [1, 200, 3, 400]);
+    assertEqualsBy(eqAN, toList(evens, [1, 2, 3, 4]), [2, 4]);
+    assertEqualsBy(eqAN, over(evens, x => x * 100, [1, 2, 3, 4]), [1, 200, 3, 400]);
 });
 
 test('compose — Lens + Iso', () => {
@@ -405,15 +411,15 @@ test('compose — Lens + Iso', () => {
     const inF = compose(tempLens, fahrenheit);
 
     assertEquals(view(inF, { temp: 100, city: 'Seoul' }), 212);
-    assertDeepEquals(over(inF, f => f - 32, { temp: 100, city: 'Seoul' }), {
+    assertEqualsBy(fp.Setoid.lookup('struct(city:string,temp:number)'), over(inF, f => f - 32, { temp: 100, city: 'Seoul' }), {
         temp: 100 - 32 * 5 / 9, city: 'Seoul'
     });
 });
 
 test('compose — Traversal + Iso 는 모든 원소를 변환한다', () => {
     const inF = compose(each, fahrenheit);
-    assertDeepEquals(toList(inF, [0, 100]), [32, 212]);
-    assertDeepEquals(over(inF, f => f + 0, [0, 100]), [0, 100]);
+    assertEqualsBy(eqAN, toList(inF, [0, 100]), [32, 212]);
+    assertEqualsBy(eqAN, over(inF, f => f + 0, [0, 100]), [0, 100]);
 });
 
 test('compose — Prism + Iso 는 review 가 이어진다', () => {
@@ -451,13 +457,13 @@ test('foldMapOf — Monoid 를 바꾸면 모으는 방식이 바뀐다', () => {
 
 test('foldMapOf — 대상이 없으면 Monoid 의 항등원', () => {
     assertEquals(foldMapOf(Monoid.lookup('number'), traversed('array'), x => x, []), 0);
-    assertDeepEquals(foldMapOf(Monoid.lookup('array'), traversed('array'), a => [a], []), []);
+    assertEqualsBy(eqAN, foldMapOf(Monoid.lookup('array'), traversed('array'), a => [a], []), []);
 });
 
 // toList 와 preview 가 foldMapOf 의 특수 경우라는 것을 고정한다.
 test('foldMapOf — toList 와 preview 가 그 특수 경우다', () => {
     const t = traversed('array');
-    assertDeepEquals(foldMapOf(Monoid.lookup('array'), t, a => [a], [1, 2, 3]), toList(t, [1, 2, 3]));
+    assertEqualsBy(eqAN, foldMapOf(Monoid.lookup('array'), t, a => [a], [1, 2, 3]), toList(t, [1, 2, 3]));
     assertEquals(
         foldMapOf(Monoid.lookup('plus(maybe)'), t, Maybe.Just, [1, 2, 3]).value,
         preview(t, [1, 2, 3]).value
@@ -507,7 +513,7 @@ test('foldMapOf — 등록 안 된 사용자 Monoid 를 받는다', () => {
 // 호출 체인의 아래쪽은 되는데 사용자가 만지는 입구가 안 되는 상태였다.
 test('foldMapOf — Monoid 키도 받는다', () => {
     assertEquals(foldMapOf('number', traversed('array'), x => x, [1, 2, 3]), 6);
-    assertDeepEquals(foldMapOf('array', traversed('array'), a => [a], [1, 2]), [1, 2]);
+    assertEqualsBy(eqAN, foldMapOf('array', traversed('array'), a => [a], [1, 2]), [1, 2]);
 });
 
 // runOptic 이 name 을 받는 유일한 이유가 호출자 귀속인데, preview/toList/view 가 자기 검사를

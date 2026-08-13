@@ -715,7 +715,7 @@ const addResolver = (TypeClass, resolver) => {
 const capHead = s => s.charAt(0).toUpperCase() + s.slice(1);
 const camelHead = s => s.charAt(0).toLowerCase() + s.slice(1);
 const composedName = (key, className) =>
-    camelHead(key.split(/[(),]+/).filter(Boolean).map(capHead).join('') + className);
+    camelHead(key.split(/[(),:]+/).filter(Boolean).map(capHead).join('') + className);
 Algebra.all = key => {
     typeof key === 'string' || raise(new TypeError('Algebra.all: key must be a string'));
     // 소문자만 받는다. 대문자도 받으면 같은 묶음을 두 이름으로 부르게 되고,
@@ -1511,6 +1511,125 @@ addResolver(Monoid, key => {
 addResolver(Applicative, key => {
     const m = /^const\((.+)\)$/.exec(key);
     return m ? Applicative.Const(m[1]) : null;
+});
+/* Container Setoid / Ord — 안쪽 비교법을 받아 상자 비교법을 만든다 */
+// 안쪽을 항상 밝힌다: Setoid.lookup('maybe(number)'). 매개변수 없는 'maybe' 는 없다.
+// Either 는 자리가 둘이라 비교법도 둘을 받는다 — docs/internals.md#container-setoid
+const normalizeSetoidKey = normalizeTypeClassKey(Setoid, Symbols.Setoid, 'normalizeSetoidKey');
+const normalizeOrdKey = normalizeTypeClassKey(Ord, Symbols.Ord, 'normalizeOrdKey');
+const innerResolver = (normalize, kind) => (label, inner) => {
+    try { return normalize(inner); }
+    catch (e) {
+        if (e instanceof TypeError) raise(new TypeError(`${label}: inner must be a supported ${kind} key or ${kind} instance`));
+        throw e;
+    }
+};
+const resolveInnerSetoid = innerResolver(normalizeSetoidKey, 'Setoid');
+const resolveInnerOrd = innerResolver(normalizeOrdKey, 'Ord');
+// 키가 중첩될 수 있으므로(either(maybe(number),array(string))) 최상위 쉼표에서만 자른다.
+const splitTopLevel = s => {
+    const out = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') depth--;
+        else if (s[i] === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
+    }
+    return (out.push(s.slice(start)), out);
+};
+// Maybe.Semigroup 선례의 캐시 두 개(키/인스턴스)를 뼈대로 뽑았다.
+const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
+    const factory = inner => {
+        const { key, instance } = resolveInner(label, inner);
+        if (key !== null && factory._keyCache.has(key)) return factory._keyCache.get(key);
+        if (key === null && factory._instanceCache.has(instance)) return factory._instanceCache.get(instance);
+        const result = build(instance);
+        if (key !== null) { registerAs(registry, keyOf(key), result); factory._keyCache.set(key, result); }
+        else factory._instanceCache.set(instance, result);
+        return result;
+    };
+    factory._keyCache = new Map();
+    factory._instanceCache = new WeakMap();
+    return factory;
+};
+Maybe.Setoid = cachedInnerFactory('Maybe.Setoid', resolveInnerSetoid, Setoid.types, k => `maybe(${k})`,
+    inner => new Setoid((a, b) => a.isNothing() ? b.isNothing() : b.isJust() && inner.equals(a.value, b.value), 'Maybe', null));
+// Nothing 이 가장 작다 — fp-ts 의 getOrd 와 같고, Haskell 의 생성자 선언 순서와도 같다.
+Maybe.Ord = cachedInnerFactory('Maybe.Ord', resolveInnerOrd, Ord.types, k => `maybe(${k})`,
+    inner => new Ord((a, b) => a.isNothing() || (b.isJust() && inner.lte(a.value, b.value)), 'Maybe', null));
+Setoid.Array = cachedInnerFactory('Setoid.Array', resolveInnerSetoid, Setoid.types, k => `array(${k})`,
+    inner => new Setoid((a, b) => a.length === b.length && a.every((x, i) => inner.equals(x, b[i])), 'Array', null));
+// 사전식. Ord 는 lte 만 있으므로 "양쪽으로 lte" 를 같음으로 읽어 자리를 넘긴다.
+Setoid.Array._ordLte = inner => (a, b) => {
+    const n = Math.min(a.length, b.length);
+    for (let i = 0; i < n; i++) {
+        if (!inner.lte(a[i], b[i])) return false;
+        if (!inner.lte(b[i], a[i])) return true;
+    }
+    return a.length <= b.length;
+};
+Ord.Array = cachedInnerFactory('Ord.Array', resolveInnerOrd, Ord.types, k => `array(${k})`,
+    inner => new Ord(Setoid.Array._ordLte(inner), 'Array', null));
+// Either 만 안쪽이 둘이다. 양쪽 키를 다 알 때만 캐시한다 — 한쪽이 미등록 인스턴스면
+// 키가 없어 캐시할 자리가 없다(선례의 WeakMap 은 인자가 하나일 때의 장치다).
+Either.Setoid = (leftS, rightS) => {
+    const l = resolveInnerSetoid('Either.Setoid', leftS);
+    const r = resolveInnerSetoid('Either.Setoid', rightS);
+    const key = l.key !== null && r.key !== null ? `either(${l.key},${r.key})` : null;
+    if (key !== null && Either.Setoid._keyCache.has(key)) return Either.Setoid._keyCache.get(key);
+    const result = new Setoid((a, b) => a.isLeft()
+        ? b.isLeft() && l.instance.equals(a.value, b.value)
+        : b.isRight() && r.instance.equals(a.value, b.value), 'Either', null);
+    if (key !== null) { registerAs(Setoid.types, key, result); Either.Setoid._keyCache.set(key, result); }
+    return result;
+};
+Either.Setoid._keyCache = new Map();
+// Either 의 Ord 는 만들지 않는다 — Left/Right 중 무엇이 먼저인지에 정답이 없다.
+// fp-ts 도 코어에서 뺐다. 근거: docs/internals.md#container-setoid
+// 레코드는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해진다 — 필드별로 받는다.
+// fp-ts 의 Eq.struct 에 해당. 키는 필드 이름 정렬로 정규화한다: struct(age:number,name:string).
+// 선언한 필드 집합과 실제 키 집합이 정확히 같아야 한다(엄격) — 초과 필드를 무시하면
+// 검사가 아니라 표본 대조가 된다. Ord.Struct 는 없다 — 레코드의 순서에 정답이 없다.
+Setoid.Struct = fields => {
+    types.isPlainObject(fields) || raise(new TypeError('Setoid.Struct: fields must be a plain object'));
+    const names = Object.keys(fields).sort();
+    names.length > 0 || raise(new TypeError('Setoid.Struct: fields must not be empty'));
+    const resolved = names.map(n => [n, resolveInnerSetoid('Setoid.Struct', fields[n])]);
+    const key = resolved.every(([, r]) => r.key !== null)
+        ? `struct(${resolved.map(([n, r]) => `${n}:${r.key}`).join(',')})`
+        : null;
+    if (key !== null && Setoid.Struct._keyCache.has(key)) return Setoid.Struct._keyCache.get(key);
+    const result = new Setoid((a, b) => {
+        const ka = Object.keys(a), kb = Object.keys(b);
+        return ka.length === names.length && kb.length === names.length
+            && names.every(n => n in a && n in b)
+            && resolved.every(([n, r]) => r.instance.equals(a[n], b[n]));
+    }, 'Object', null);
+    if (key !== null) { registerAs(Setoid.types, key, result); Setoid.Struct._keyCache.set(key, result); }
+    return result;
+};
+Setoid.Struct._keyCache = new Map();
+addResolver(Setoid, key => {
+    const m = /^(maybe|array|either|struct)\((.+)\)$/.exec(key);
+    if (!m) return null;
+    if (m[1] === 'maybe') return Maybe.Setoid(m[2]);
+    if (m[1] === 'array') return Setoid.Array(m[2]);
+    if (m[1] === 'either') {
+        const parts = splitTopLevel(m[2]);
+        return parts.length === 2 ? Either.Setoid(parts[0], parts[1]) : null;
+    }
+    // struct(name:string,age:number) — 필드마다 첫 최상위 콜론에서 이름과 키를 가른다
+    const fields = {};
+    for (const part of splitTopLevel(m[2])) {
+        const i = part.indexOf(':');
+        if (i < 1) return null;
+        fields[part.slice(0, i)] = part.slice(i + 1);
+    }
+    return Setoid.Struct(fields);
+});
+addResolver(Ord, key => {
+    const m = /^(maybe|array)\((.+)\)$/.exec(key);
+    return !m ? null : m[1] === 'maybe' ? Maybe.Ord(m[2]) : Ord.Array(m[2]);
 });
 /* Task */
 class Task {

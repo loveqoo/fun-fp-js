@@ -1,6 +1,6 @@
 // Sequence Tests
 import fp from '../index.js';
-import { test, assertEquals, assertThrows, deepEquals, logSection } from './utils.js';
+import { test, assertEquals, assertThrows, logSection } from './utils.js';
 
 const { sequence, Traversable, Applicative, Maybe, Either, Task } = fp;
 

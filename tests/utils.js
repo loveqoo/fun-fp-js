@@ -11,38 +11,12 @@ export const assertEquals = (actual, expected, message) => {
     }
 };
 
-export const deepEquals = (a, b) => {
-    // Handle Maybe/Either/Task instances
-    if (a && b && a._typeName && b._typeName) {
-        if (a._typeName !== b._typeName) return false;
-        if (a._typeName === 'Maybe') {
-            if (a.isJust() !== b.isJust()) return false;
-            return a.isNothing() || deepEquals(a.value, b.value);
-        }
-        if (a._typeName === 'Either') {
-            if (a.isLeft() !== b.isLeft()) return false;
-            return deepEquals(a.value, b.value);
-        }
-    }
-    // Primitive comparison
-    if (a === b) return true;
-    if (typeof a !== typeof b) return false;
-    if (Array.isArray(a) && Array.isArray(b)) {
-        if (a.length !== b.length) return false;
-        return a.every((v, i) => deepEquals(v, b[i]));
-    }
-    if (typeof a === 'object' && a !== null) {
-        const keysA = Object.keys(a);
-        const keysB = Object.keys(b);
-        if (keysA.length !== keysB.length) return false;
-        return keysA.every(k => deepEquals(a[k], b[k]));
-    }
-    return false;
-};
-
-export const assertDeepEquals = (actual, expected, message) => {
-    if (!deepEquals(actual, expected)) {
-        throw new Error(`${message || 'Deep value mismatch'}\n      Expected: ${JSON.stringify(expected)}\n      Actual:   ${JSON.stringify(actual)}`);
+// 라이브러리의 Setoid 로 단언한다. 사설 deepEquals 를 대체한 것 —
+// 비교 규칙이 테스트 헬퍼가 아니라 검증 대상인 라이브러리 자신에게서 나온다.
+// setoid 는 인스턴스 그대로 받는다(키 해석은 호출부가 Setoid.lookup 으로 한다).
+export const assertEqualsBy = (setoid, actual, expected, message) => {
+    if (!setoid.equals(actual, expected)) {
+        throw new Error(`${message || 'Setoid mismatch'}\n      Expected: ${JSON.stringify(expected)}\n      Actual:   ${JSON.stringify(actual)}`);
     }
 };
 

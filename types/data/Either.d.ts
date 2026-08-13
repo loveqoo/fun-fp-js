@@ -23,6 +23,8 @@ import type {
     ChainRecStep,
     Semigroup,
     SemigroupInstances,
+    Setoid,
+    SetoidInstances,
 } from "../TypeClasses";
 
 // ── Type ─────────────────────────────────────────────────────────────
@@ -213,6 +215,16 @@ export declare const Either: {
             innerSG: K
         ): Semigroup<Either<SemigroupInstances[K], A>>;
         <E, A>(innerSG: Semigroup<E>): Semigroup<Either<E, A>>;
+    };
+    // Either has two slots with different types, so equality takes two
+    // instances (Haskell: (Eq a, Eq b); fp-ts: getEq(EL, EA)). There is
+    // deliberately no Either Ord — Left-before-Right has no canonical
+    // justification; fp-ts leaves it out of core too.
+    readonly Setoid: {
+        <KL extends keyof SetoidInstances, KR extends keyof SetoidInstances>(
+            left: KL, right: KR
+        ): Setoid<Either<SetoidInstances[KL], SetoidInstances[KR]>>;
+        <E, A>(left: Setoid<E> | string, right: Setoid<A> | string): Setoid<Either<E, A>>;
     };
 };
 

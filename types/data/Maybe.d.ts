@@ -17,6 +17,10 @@ import type {
     Semigroup,
     Monoid,
     SemigroupInstances,
+    Setoid,
+    SetoidInstances,
+    Ord,
+    OrdInstances,
 } from "../TypeClasses";
 import type { Either } from "./Either";
 
@@ -192,6 +196,16 @@ export declare const Maybe: {
             innerSG: K
         ): Monoid<Maybe<SemigroupInstances[K]>>;
         <A>(innerSG: Semigroup<A>): Monoid<Maybe<A>>;
+    };
+    // Equality/order need the inner instance. Nothing equals only Nothing;
+    // for Ord, Nothing is the least value (matches fp-ts getOrd).
+    readonly Setoid: {
+        <K extends keyof SetoidInstances>(inner: K): Setoid<Maybe<SetoidInstances[K]>>;
+        <A>(inner: Setoid<A>): Setoid<Maybe<A>>;
+    };
+    readonly Ord: {
+        <K extends keyof OrdInstances>(inner: K): Ord<Maybe<OrdInstances[K]>>;
+        <A>(inner: Ord<A>): Ord<Maybe<A>>;
     };
 };
 

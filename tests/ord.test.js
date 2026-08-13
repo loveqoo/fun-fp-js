@@ -79,4 +79,69 @@ test('Default Ord - Uses <= operator', () => {
     assertEquals(defaultOrd.lte(5, 5), true);
 });
 
+
+logSection('Ord — 컨테이너 (안쪽 순서를 받아 만든다)');
+
+const { Maybe } = fp;
+const Ju = Maybe.Just, No = Maybe.Nothing;
+
+test('팩토리를 부르기 전에도 조립 키로 꺼내진다', () => {
+    assertEquals(Ord.lookup('maybe(number)') instanceof Ord, true);
+    assertEquals(Ord.lookup('array(number)') instanceof Ord, true);
+});
+
+test('Maybe: Nothing 이 가장 작다', () => {
+    const O = Ord.lookup('maybe(number)');
+    assertEquals(O.lte(No(), No()), true);
+    assertEquals(O.lte(No(), Ju(1)), true);
+    assertEquals(O.lte(Ju(1), No()), false);
+    assertEquals(O.lte(Ju(1), Ju(2)), true);
+    assertEquals(O.lte(Ju(2), Ju(1)), false);
+});
+
+test('Array: 사전식이다', () => {
+    const O = Ord.lookup('array(number)');
+    assertEquals(O.lte([], []), true);
+    assertEquals(O.lte([], [1]), true);
+    assertEquals(O.lte([1], []), false);
+    assertEquals(O.lte([1, 2], [1, 3]), true);
+    assertEquals(O.lte([1, 3], [1, 2]), false);
+    assertEquals(O.lte([1], [1, 2]), true);      // 짧은 쪽이 앞
+    assertEquals(O.lte([1, 2], [1]), false);
+    assertEquals(O.lte([2], [1, 9]), false);     // 첫 원소가 먼저다
+});
+
+test('Either 의 Ord 는 일부러 없다', () => {
+    // Left/Right 중 무엇이 먼저인지에 정답이 없어 만들지 않았다. fp-ts 도 코어에서 뺐다.
+    let message = '(안 던짐)';
+    try { Ord.lookup('either(string,number)'); } catch (e) { message = e.message; }
+    assertEquals(message, 'Ord.lookup: unsupported key either(string,number)');
+});
+
+test('법칙 — 전순서·반대칭·추이 (Maybe)', () => {
+    const O = Ord.lookup('maybe(number)');
+    const S = Setoid.lookup('maybe(number)');
+    const xs = [No(), Ju(1), Ju(2)];
+    for (const a of xs) for (const b of xs) {
+        assertEquals(O.lte(a, b) || O.lte(b, a), true, '전순서');
+        if (O.lte(a, b) && O.lte(b, a)) assertEquals(S.equals(a, b), true, '반대칭');
+    }
+    for (const a of xs) for (const b of xs) for (const c of xs) {
+        if (O.lte(a, b) && O.lte(b, c)) assertEquals(O.lte(a, c), true, '추이성');
+    }
+});
+
+test('법칙 — 전순서·반대칭·추이 (Array)', () => {
+    const O = Ord.lookup('array(number)');
+    const S = Setoid.lookup('array(number)');
+    const xs = [[], [1], [1, 2], [1, 3], [2]];
+    for (const a of xs) for (const b of xs) {
+        assertEquals(O.lte(a, b) || O.lte(b, a), true, '전순서');
+        if (O.lte(a, b) && O.lte(b, a)) assertEquals(S.equals(a, b), true, '반대칭');
+    }
+    for (const a of xs) for (const b of xs) for (const c of xs) {
+        if (O.lte(a, b) && O.lte(b, c)) assertEquals(O.lte(a, c), true, '추이성');
+    }
+});
+
 console.log('\n✅ Ord tests completed');

@@ -1,6 +1,6 @@
 // Semigroup Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, assertDeepEquals, assert, assertThrowsWith, logSection } from './utils.js';
+import { test, assertEquals, assertEqualsBy, assert, assertThrowsWith, logSection } from './utils.js';
 
 const { Semigroup, Maybe, Either } = fp;
 
@@ -124,29 +124,31 @@ test('Function Semigroup - Associativity: compose(compose(f, g), h) === compose(
 logSection('Maybe Semigroup');
 
 const maybeSG = Maybe.Semigroup('array');
+// 비교도 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다
+const eqMA = fp.Setoid.lookup('maybe(array(number))');
 
 test('Maybe Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
     const a = Maybe.Just([1]), b = Maybe.Just([2]), c = Maybe.Just([3]);
-    assertDeepEquals(
+    assertEqualsBy(eqMA,
         maybeSG.concat(maybeSG.concat(a, b), c),
         maybeSG.concat(a, maybeSG.concat(b, c))
     );
 });
 
 test('Maybe Semigroup - Just concat Just', () => {
-    assertDeepEquals(maybeSG.concat(Maybe.Just([1, 2]), Maybe.Just([3, 4])), Maybe.Just([1, 2, 3, 4]));
+    assertEqualsBy(eqMA, maybeSG.concat(Maybe.Just([1, 2]), Maybe.Just([3, 4])), Maybe.Just([1, 2, 3, 4]));
 });
 
 test('Maybe Semigroup - Just concat Nothing', () => {
-    assertDeepEquals(maybeSG.concat(Maybe.Just([1]), Maybe.Nothing()), Maybe.Just([1]));
+    assertEqualsBy(eqMA, maybeSG.concat(Maybe.Just([1]), Maybe.Nothing()), Maybe.Just([1]));
 });
 
 test('Maybe Semigroup - Nothing concat Just', () => {
-    assertDeepEquals(maybeSG.concat(Maybe.Nothing(), Maybe.Just([1])), Maybe.Just([1]));
+    assertEqualsBy(eqMA, maybeSG.concat(Maybe.Nothing(), Maybe.Just([1])), Maybe.Just([1]));
 });
 
 test('Maybe Semigroup - Nothing concat Nothing', () => {
-    assertDeepEquals(maybeSG.concat(Maybe.Nothing(), Maybe.Nothing()), Maybe.Nothing());
+    assertEqualsBy(eqMA, maybeSG.concat(Maybe.Nothing(), Maybe.Nothing()), Maybe.Nothing());
 });
 
 test('Maybe Semigroup - cache: string and instance produce same reference', () => {
@@ -161,29 +163,30 @@ test('Maybe Semigroup - registry: Semigroup.lookup resolves parameterized key', 
 logSection('Either Semigroup');
 
 const eitherSG = Either.Semigroup('array');
+const eqEA = fp.Setoid.lookup('either(string,array(number))');
 
 test('Either Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
     const a = Either.Right([1]), b = Either.Right([2]), c = Either.Right([3]);
-    assertDeepEquals(
+    assertEqualsBy(eqEA,
         eitherSG.concat(eitherSG.concat(a, b), c),
         eitherSG.concat(a, eitherSG.concat(b, c))
     );
 });
 
 test('Either Semigroup - Right concat Right', () => {
-    assertDeepEquals(eitherSG.concat(Either.Right([1]), Either.Right([2])), Either.Right([1, 2]));
+    assertEqualsBy(eqEA, eitherSG.concat(Either.Right([1]), Either.Right([2])), Either.Right([1, 2]));
 });
 
 test('Either Semigroup - Left concat Right (first Left wins)', () => {
-    assertDeepEquals(eitherSG.concat(Either.Left('err'), Either.Right([1])), Either.Left('err'));
+    assertEqualsBy(eqEA, eitherSG.concat(Either.Left('err'), Either.Right([1])), Either.Left('err'));
 });
 
 test('Either Semigroup - Right concat Left', () => {
-    assertDeepEquals(eitherSG.concat(Either.Right([1]), Either.Left('err')), Either.Left('err'));
+    assertEqualsBy(eqEA, eitherSG.concat(Either.Right([1]), Either.Left('err')), Either.Left('err'));
 });
 
 test('Either Semigroup - Left concat Left (first Left wins)', () => {
-    assertDeepEquals(eitherSG.concat(Either.Left('e1'), Either.Left('e2')), Either.Left('e1'));
+    assertEqualsBy(eqEA, eitherSG.concat(Either.Left('e1'), Either.Left('e2')), Either.Left('e1'));
 });
 
 test('Either Semigroup - cache: string and instance produce same reference', () => {
@@ -204,7 +207,7 @@ test('Nested maybe - Semigroup.lookup resolves maybe(maybe(array))', () => {
 
 test('Nested maybe - concat works on nested structure', () => {
     const nested = Semigroup.lookup('maybe(maybe(array))');
-    assertDeepEquals(
+    assertEqualsBy(fp.Setoid.lookup('maybe(maybe(array(number)))'),
         nested.concat(Maybe.Just(Maybe.Just([1])), Maybe.Just(Maybe.Just([2]))),
         Maybe.Just(Maybe.Just([1, 2]))
     );

@@ -1,6 +1,6 @@
 // Monad Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, deepEquals, logSection } from './utils.js';
+import { test, assertEquals, logSection } from './utils.js';
 
 const { Monad, Chain, Applicative, Maybe, Either, Task } = fp;
 

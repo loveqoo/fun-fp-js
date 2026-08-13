@@ -1,6 +1,6 @@
 // Monoid Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, assertDeepEquals, assert, assertThrowsWith, logSection } from './utils.js';
+import { test, assertEquals, assertEqualsBy, assert, assertThrowsWith, logSection } from './utils.js';
 
 const { Monoid, Maybe, Apply } = fp;
 
@@ -142,22 +142,25 @@ test('Function Monoid - Left identity: compose(identity, f) === f', () => {
 logSection('Maybe Monoid');
 
 const maybeMN = Maybe.Monoid('array');
+// 비교도 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다
+const eqMA = fp.Setoid.lookup('maybe(array(number))');
+const eqAN = fp.Setoid.lookup('array(number)');
 
 test('Maybe Monoid - empty() returns Nothing', () => {
-    assertDeepEquals(maybeMN.empty(), Maybe.Nothing());
+    assertEqualsBy(eqMA, maybeMN.empty(), Maybe.Nothing());
 });
 
 test('Maybe Monoid - Right identity: concat(a, empty()) === a', () => {
-    assertDeepEquals(maybeMN.concat(Maybe.Just([1, 2]), maybeMN.empty()), Maybe.Just([1, 2]));
+    assertEqualsBy(eqMA, maybeMN.concat(Maybe.Just([1, 2]), maybeMN.empty()), Maybe.Just([1, 2]));
 });
 
 test('Maybe Monoid - Left identity: concat(empty(), a) === a', () => {
-    assertDeepEquals(maybeMN.concat(maybeMN.empty(), Maybe.Just([1, 2])), Maybe.Just([1, 2]));
+    assertEqualsBy(eqMA, maybeMN.concat(maybeMN.empty(), Maybe.Just([1, 2])), Maybe.Just([1, 2]));
 });
 
 test('Maybe Monoid - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
     const a = Maybe.Just([1]), b = Maybe.Just([2]), c = Maybe.Just([3]);
-    assertDeepEquals(
+    assertEqualsBy(eqMA,
         maybeMN.concat(maybeMN.concat(a, b), c),
         maybeMN.concat(a, maybeMN.concat(b, c))
     );
@@ -187,7 +190,7 @@ test("Semigroup 'last' - 원시값에서 동작한다", () => {
 });
 
 test("Semigroup 'first' - 객체에서도 동작한다", () => {
-    assertDeepEquals(Semigroup.lookup('first').concat({ a: 1 }, { a: 2 }), { a: 1 });
+    assertEqualsBy(fp.Setoid.lookup('struct(a:number)'), Semigroup.lookup('first').concat({ a: 1 }, { a: 2 }), { a: 1 });
 });
 
 // 'any' 는 "무슨 타입이어야 하는가" 만 끈다. "두 인자가 같은 타입인가" 는 살아 있다.
@@ -240,15 +243,15 @@ test("Monoid 'plus(maybe)' - 안을 열지 않으므로 타입이 섞여도 동�
 });
 
 test("Monoid 'plus(array)' - Plus 유도가 array 에도 대칭으로 있다", () => {
-    assertDeepEquals(Monoid.lookup('plus(array)').concat([1], [2]), [1, 2]);
-    assertDeepEquals(Monoid.lookup('plus(array)').empty(), []);
+    assertEqualsBy(eqAN, Monoid.lookup('plus(array)').concat([1], [2]), [1, 2]);
+    assertEqualsBy(eqAN, Monoid.lookup('plus(array)').empty(), []);
 });
 
 // 유도는 손으로 쓴 특례 2개가 아니라 Plus 생성자의 규칙이다 — Plus 를 새로 등록하면
 // 짝 Monoid/Semigroup 이 자동으로 따라온다.
 test("Plus 유도 - 짝 Semigroup 도 레지스트리에 있다", () => {
     assertEquals(Semigroup.lookup('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).value, 1);
-    assertDeepEquals(Semigroup.lookup('plus(array)').concat([1], [2]), [1, 2]);
+    assertEqualsBy(eqAN, Semigroup.lookup('plus(array)').concat([1], [2]), [1, 2]);
 });
 
 test("Plus 유도 - 같은 키는 같은 인스턴스", () => {
@@ -291,9 +294,9 @@ test('Applicative identity - 검사가 살아 있다', () => {
 
 test('Applicative.Const - monoid 로 모으고 값은 버린다', () => {
     const c = Applicative.Const(Monoid.lookup('array'));
-    assertDeepEquals(c.of().value, []);
-    assertDeepEquals(c.ap({ value: [1] }, { value: [2] }).value, [1, 2]);
-    assertDeepEquals(c.map(x => x + 1, { value: [9] }).value, [9]);   // 값을 버린다
+    assertEqualsBy(eqAN, c.of().value, []);
+    assertEqualsBy(eqAN, c.ap({ value: [1] }, { value: [2] }).value, [1, 2]);
+    assertEqualsBy(eqAN, c.map(x => x + 1, { value: [9] }).value, [9]);   // 값을 버린다
 });
 
 
@@ -310,7 +313,7 @@ test('identity - Functor/Apply/Applicative 3단이 전부 등록돼 있다', () 
 test('Applicative.Const - 키로 만들면 레지스트리에 등록된다', () => {
     const c = Applicative.Const('array');
     assert(Applicative.lookup('const(array)') === c);
-    assertDeepEquals(c.of().value, []);
+    assertEqualsBy(eqAN, c.of().value, []);
 });
 
 test('Applicative.Const - 같은 키/인스턴스는 같은 인스턴스', () => {

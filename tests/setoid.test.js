@@ -88,4 +88,131 @@ test('Default Setoid - Reference equality', () => {
     assertEquals(defaultSetoid.equals(obj, obj), true);
 });
 
+
+logSection('Setoid — 컨테이너 (안쪽 비교법을 받아 만든다)');
+
+// 헬퍼(assertDeepEquals)를 쓰지 않는다. 그 헬퍼가 검사 대상을 쓰게 되면 둘이 같이
+// 틀렸을 때 아무도 못 잡는다 — 여기서는 equals 의 결과를 불리언으로 직접 본다.
+const { Maybe, Either } = fp;
+const J = Maybe.Just, N = Maybe.Nothing, L = Either.Left, R = Either.Right;
+
+test('팩토리를 부르기 전에도 조립 키로 꺼내진다', () => {
+    assertEquals(Setoid.lookup('maybe(number)') instanceof Setoid, true);
+    assertEquals(Setoid.lookup('array(number)') instanceof Setoid, true);
+    assertEquals(Setoid.lookup('either(string,number)') instanceof Setoid, true);
+});
+
+test('Maybe: 같은 쪽끼리만, 안쪽까지 본다', () => {
+    const S = Setoid.lookup('maybe(number)');
+    assertEquals(S.equals(J(1), J(1)), true);
+    assertEquals(S.equals(J(1), J(2)), false);
+    assertEquals(S.equals(N(), N()), true);
+    assertEquals(S.equals(J(1), N()), false);
+    assertEquals(S.equals(N(), J(1)), false);
+});
+
+test('Array: 길이와 원소를 본다', () => {
+    const S = Setoid.lookup('array(number)');
+    assertEquals(S.equals([], []), true);
+    assertEquals(S.equals([1, 2], [1, 2]), true);
+    assertEquals(S.equals([1, 2], [1, 3]), false);
+    assertEquals(S.equals([1], [1, 2]), false);
+});
+
+test('Either: 자리마다 다른 비교법을 쓴다', () => {
+    const S = Setoid.lookup('either(string,number)');
+    assertEquals(S.equals(R(1), R(1)), true);
+    assertEquals(S.equals(R(1), R(2)), false);
+    assertEquals(S.equals(L('a'), L('a')), true);
+    assertEquals(S.equals(L('a'), L('b')), false);
+    assertEquals(S.equals(L('a'), R(1)), false);
+    assertEquals(S.equals(R(1), L('a')), false);
+});
+
+test('중첩된 조립 키도 해석된다', () => {
+    assertEquals(Setoid.lookup('maybe(array(number))').equals(J([1, 2]), J([1, 2])), true);
+    assertEquals(Setoid.lookup('maybe(array(number))').equals(J([1, 2]), J([1, 3])), false);
+    // 최상위 쉼표에서만 자르는지 — 안쪽 괄호의 쉼표에 속으면 여기서 깨진다
+    const S = Setoid.lookup('either(maybe(number),array(string))');
+    assertEquals(S.equals(L(J(1)), L(J(1))), true);
+    assertEquals(S.equals(R(['a']), R(['a'])), true);
+    assertEquals(S.equals(R(['a']), R(['b'])), false);
+});
+
+test('같은 키는 같은 인스턴스를 준다 (캐시)', () => {
+    assertEquals(Setoid.lookup('maybe(number)') === Setoid.lookup('maybe(number)'), true);
+    assertEquals(Setoid.lookup('either(string,number)') === Setoid.lookup('either(string,number)'), true);
+});
+
+test('법칙 — 반사·대칭·추이 (Maybe)', () => {
+    const S = Setoid.lookup('maybe(number)');
+    const xs = [N(), J(1), J(2)];
+    for (const a of xs) assertEquals(S.equals(a, a), true, '반사성');
+    for (const a of xs) for (const b of xs) assertEquals(S.equals(a, b), S.equals(b, a), '대칭성');
+    for (const a of xs) for (const b of xs) for (const c of xs) {
+        if (S.equals(a, b) && S.equals(b, c)) assertEquals(S.equals(a, c), true, '추이성');
+    }
+});
+
+test('법칙 — 반사·대칭·추이 (Either)', () => {
+    const S = Setoid.lookup('either(string,number)');
+    const xs = [L('a'), L('b'), R(1), R(2)];
+    for (const a of xs) assertEquals(S.equals(a, a), true, '반사성');
+    for (const a of xs) for (const b of xs) assertEquals(S.equals(a, b), S.equals(b, a), '대칭성');
+    for (const a of xs) for (const b of xs) for (const c of xs) {
+        if (S.equals(a, b) && S.equals(b, c)) assertEquals(S.equals(a, c), true, '추이성');
+    }
+});
+
+test('다른 타입을 넘기면 던진다', () => {
+    let threw = false;
+    try { Setoid.lookup('maybe(number)').equals(J(1), 1); } catch { threw = true; }
+    assertEquals(threw, true, 'Maybe 아닌 것을 섞으면 거부한다');
+});
+
+
+logSection('Setoid — Struct (레코드는 필드마다 비교법을 밝힌다)');
+
+test('필드 순서가 달라도 같은 인스턴스다 (키 정규화)', () => {
+    assertEquals(Setoid.lookup('struct(name:string,age:number)')
+        === Setoid.lookup('struct(age:number,name:string)'), true);
+    assertEquals(Setoid.Struct({ name: 'string', age: 'number' })
+        === Setoid.lookup('struct(age:number,name:string)'), true);
+});
+
+test('선언한 필드와 정확히 같아야 한다 — 초과도 부족도 거부', () => {
+    const S = Setoid.lookup('struct(age:number,name:string)');
+    assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A', age: 1 }), true);
+    assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A', age: 1, x: 0 }), false, '초과 필드');
+    assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A' }), false, '부족 필드');
+    assertEquals(S.equals({ name: 'A', age: 1 }, { name: 'A', age: 2 }), false, '값이 다름');
+});
+
+test('중첩 — struct 안의 struct, struct 안의 array', () => {
+    const N = Setoid.lookup('struct(address:struct(city:string),name:string)');
+    assertEquals(N.equals({ address: { city: 'Seoul' }, name: 'A' }, { address: { city: 'Seoul' }, name: 'A' }), true);
+    assertEquals(N.equals({ address: { city: 'Seoul' }, name: 'A' }, { address: { city: 'Busan' }, name: 'A' }), false);
+    const U = Setoid.lookup('struct(users:array(struct(name:string)))');
+    assertEquals(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] }), true);
+    assertEquals(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'b' }] }), false);
+});
+
+test('법칙 — 반사·대칭·추이 (Struct)', () => {
+    const S = Setoid.lookup('struct(age:number,name:string)');
+    const xs = [{ name: 'A', age: 1 }, { name: 'A', age: 2 }, { name: 'B', age: 1 }];
+    for (const a of xs) assertEquals(S.equals(a, a), true, '반사성');
+    for (const a of xs) for (const b of xs) assertEquals(S.equals(a, b), S.equals(b, a), '대칭성');
+    for (const a of xs) for (const b of xs) for (const c of xs) {
+        if (S.equals(a, b) && S.equals(b, c)) assertEquals(S.equals(a, c), true, '추이성');
+    }
+});
+
+test('빈 필드와 잘못된 인자는 던진다', () => {
+    let m1 = '(안 던짐)'; try { Setoid.Struct({}); } catch (e) { m1 = e.message; }
+    assertEquals(m1, 'Setoid.Struct: fields must not be empty');
+    let m2 = '(안 던짐)'; try { Setoid.Struct('name:string'); } catch (e) { m2 = e.message; }
+    assertEquals(m2, 'Setoid.Struct: fields must be a plain object');
+});
+
+
 console.log('\n✅ Setoid tests completed');

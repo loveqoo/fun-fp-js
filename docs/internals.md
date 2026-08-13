@@ -291,6 +291,75 @@ console.log(Monad.lookup('statet(maybe)') === Monad.lookup('statet(maybe)'));  /
 
 ---
 
+## 컨테이너 Setoid / Ord — 안쪽 비교법을 받아 상자 비교법을 만든다 {#container-setoid}
+
+`Setoid.lookup('number')` 는 숫자를 비교합니다. `Just(1)` 같은 상자를 비교하려면 **안에 든
+것을 비교하는 법**을 먼저 알아야 하므로, 조립 키로 안쪽을 밝힙니다. 매개변수 없는
+`Setoid.lookup('maybe')` 는 없습니다 — 안쪽을 항상 밝힙니다.
+
+```javascript
+const { Setoid, Ord, Maybe, Either } = FunFP;
+
+const S = Setoid.lookup('maybe(number)');
+console.log(S.equals(Maybe.Just(1), Maybe.Just(1)));    // true
+console.log(S.equals(Maybe.Just(1), Maybe.Nothing()));  // false
+
+console.log(Setoid.lookup('array(number)').equals([1, 2], [1, 3]));   // false
+console.log(Ord.lookup('maybe(number)').lte(Maybe.Nothing(), Maybe.Just(1)));  // true  Nothing 이 가장 작다
+console.log(Ord.lookup('array(number)').lte([1, 2], [1, 3]));         // true  사전식
+```
+
+### `Either` 는 자리가 둘이라 비교법도 둘을 받는다
+
+`Left` 에는 실패가, `Right` 에는 성공이 담기고 **서로 타입이 다릅니다.** 키는 쉼표로 둘을
+담습니다 — `writert(maybe,array)` 가 이미 쓰는 형식입니다. Haskell(`(Eq a, Eq b) =>`)과
+fp-ts(`getEq(EL, EA)`)도 둘을 받지만, 그쪽은 타입 검사기가 찾아주는 전제라 근거로 삼은 것은
+우리 키 형식입니다.
+
+```javascript
+const { Setoid, Either } = FunFP;
+
+const S = Setoid.lookup('either(string,number)');
+console.log(S.equals(Either.Left('a'), Either.Left('a')));   // true   왼쪽은 문자열로
+console.log(S.equals(Either.Right(1), Either.Right(1)));     // true   오른쪽은 숫자로
+console.log(S.equals(Either.Left('a'), Either.Right(1)));    // false
+
+// 중첩도 됩니다 — 쉼표는 최상위에서만 자릅니다
+console.log(Setoid.lookup('either(maybe(number),array(string))')
+    .equals(Either.Right(['a']), Either.Right(['a'])));      // true
+```
+
+**`Either` 의 `Ord` 는 일부러 없습니다.** `Left` 와 `Right` 중 무엇이 먼저인지에 정답이
+없습니다. fp-ts 도 코어에서 뺐습니다. `Ord.lookup('either(...)')` 는 던집니다.
+
+### 레코드는 `struct` — 필드마다 비교법을 밝힌다
+
+레코드(`{ name, age }`)는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해집니다.
+fp-ts 의 `Eq.struct` 에 해당합니다. **키는 필드 이름을 정렬해 정규화합니다** — 적는 순서가
+달라도 같은 인스턴스입니다.
+
+```javascript
+const { Setoid } = FunFP;
+
+const S = Setoid.lookup('struct(name:string,age:number)');
+console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30 }));        // true
+console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30, x: 1 }));  // false  초과 필드도 거부
+console.log(S === Setoid.lookup('struct(age:number,name:string)'));           // true   정렬 정규화
+```
+
+**엄격 비교입니다** — 선언한 필드 집합과 실제 키 집합이 정확히 같아야 합니다. fp-ts 는 초과
+필드를 무시하지만, 이 라이브러리의 검사 철학(strict mode)과 맞추고 테스트 이행에서 약해지지
+않기 위해 거부합니다. `Ord.Struct` 는 없습니다 — 레코드의 순서에도 정답이 없습니다.
+
+### 왜 만들었나 — 테스트가 사설 구현을 갖고 있었다
+
+`tests/utils.js` 의 `deepEquals`(2025-12-25 생성)가 `Maybe`/`Either` 를 손으로 분해해
+비교했고, **그것을 검증하는 테스트는 0건인 채 58곳이 그것에 기대고 있었습니다.** 지금은
+전부 라이브러리의 `Setoid` 로 갈아끼웠고 사설 구현은 지웠습니다 — 비교 규칙이 테스트
+헬퍼가 아니라 검증 대상인 라이브러리 자신에게서 나옵니다(`assertEqualsBy`).
+
+---
+
 ## 레지스트리에 쓰는 문은 하나다 {#registry-writes}
 
 **`registerAs(types, 키, 인스턴스)` 가 유일한 문입니다.** `register(types, instance, ...별칭)`

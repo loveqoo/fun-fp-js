@@ -1,6 +1,6 @@
 // Functor Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, assertDeepEquals, deepEquals, logSection } from './utils.js';
+import { test, assertEquals, logSection } from './utils.js';
 
 const { Functor, Maybe, Either, Task } = fp;
 
