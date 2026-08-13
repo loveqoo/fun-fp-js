@@ -53,8 +53,8 @@
 ```
 ✅ 레지스트리 정합성
 ✅ Ord 를 Setoid 로            ← 이 회차의 본체
-🟡 검증 장치                    ← 지금 여기 (1차-9 닫음, Functor 법칙 하나 남음)
-⬜ 남은 정리 1건 — 2차-3 (유일한 검증 구멍)
+🟡 검증 장치                    ← 지금 여기 — Functor~Traversable 법칙 하나만 남았다
+✅ 남은 정리 — 전부 닫힘
 ```
 
 **커밋 3개** — 라이브러리+게이트 · 작업 방식(이 파일과 판정 기록) · `.type` 명단.
@@ -65,7 +65,7 @@
 | --- | --- | --- |
 | 🟡 | — | [Functor~Traversable 법칙이 레지스트리 전체를 안 본다](#functor법칙) |
 | ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
-| ⬜ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
+| ✅ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
 | ✅ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
 | ✅ | 2차-8 | [부모 인스턴스 조회가 관례와 다름](#2차-8) |
 | ✅ | 2차-9 | [거짓 주석 — "뼈대가 이미 정해 두고 있다"](#2차-9) |
@@ -96,7 +96,7 @@
 
 ## ⬜ 남은 것
 
-<h3 id="2차-3">[2차-3] <code>default</code> 의 동종 제약이 격자·문서에 없다</h3>
+<h3 id="2차-3">✅ [2차-3] <code>default</code> 의 동종 제약이 격자·문서에 없다</h3>
 
 - **원인** — `lookup('default')` 를 정식 인스턴스로 만들면서 타입 검사가 붙었다.
   `equals(1,'a')` 가 `false` → 던짐으로 바뀌었다. **소유자 승인을 받은 의도된 변경**이지만,
@@ -104,6 +104,11 @@
   `docs/internals.md` 의 `'any'` 절은 새 인스턴스 둘을 모른다.
 - **해결책** — 격자에 이종 비교 한 줄, `#any` 절에 `DefaultSetoid`/`DefaultOrd` 추가.
 - **완료조건** — 그 제약을 되돌리는 뮤테이션(`type:'any'` → 검증 없는 리터럴)이 잡힌다.
+- **검증 (2026-08-13)** — 세 곳에 박았다. ① `docs/internals.md#any` 에 절을 더했고 예제가
+  `docs-examples.test.js` 에서 돈다(485개 통과) ② `tests/setoid.test.js`·`ord.test.js` 가
+  이종 인자의 던짐과 인스턴스 동일성을 전문으로 고정 ③ `baseline` 격자에 네 줄.
+  되돌리는 뮤테이션을 양쪽에 심어 확인: `DefaultSetoid.equals = Setoid.op` → **41/1**,
+  `DefaultOrd.lte = Ord.op` → **41/1**. `npm run baseline` 차이 없음.
 - **참고** — [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 3번 · [`index.js:1003`](./../index.js#L1003) · [`docs/internals.md`](./../docs/internals.md) `#any`
 
 <h3 id="2차-6">✅ [2차-6] <code>FunctionFunctor.map</code> 이 <code>compose2</code> 를 손으로 다시 씀</h3>

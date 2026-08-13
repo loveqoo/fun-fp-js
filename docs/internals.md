@@ -93,6 +93,29 @@ catch (e) { console.log(e.message); }  // 'Semigroup.concat: arguments must be t
 한때 `/* Object */` 섹션에 있어 `'object'` 로 등록돼 있었는데, 그건 **위치를 따라간 것**이고
 타입 선언(`types/data/builtins.d.ts` 의 `readonly first: unknown`)은 처음부터 모든 타입이었습니다.
 
+### `lookup('default')` 도 `'any'` 다 — 그래서 이종 인자를 거부한다
+
+`DefaultSetoid`(`===`)와 `DefaultOrd`(`<=`)도 값 타입을 보지 않으므로 `'any'` 입니다.
+**이름이 "기본" 이라고 아무 두 값이나 받는다는 뜻은 아닙니다** — `'any'` 에 남는 유일한
+검사, 곧 "두 인자의 타입이 같아야 한다" 가 여기에도 걸립니다.
+
+```javascript
+const { Setoid, Ord } = FunFP;
+
+console.log(Setoid.lookup('default').equals(1, 1));   // true
+console.log(Ord.lookup('default').lte(1, 2));         // true
+
+try { Setoid.lookup('default').equals(1, 'a'); }
+catch (e) { console.log(e.message); }  // 'Setoid.equals: arguments must be the same type'
+try { Ord.lookup('default').lte(1, 'a'); }
+catch (e) { console.log(e.message); }  // 'Ord.lte: arguments must be the same type'
+```
+
+한때 이 둘은 레지스트리 밖의 **맨 객체 리터럴**이었습니다(`{ equals: Setoid.op }`). 그때는
+이종 인자에 조용히 `false` 를 돌려줬고, 꺼낼 때마다 새 객체라 컨테이너 캐시도 안 맞았습니다.
+정식 인스턴스가 되면서 다른 `Setoid` 와 같은 규칙을 따릅니다 — **조용히 틀린 답을 주는 대신
+비교할 수 없다고 멈춥니다.**
+
 **이 둘은 Monoid 가 아닙니다 — 항등원이 없습니다.** `FirstMonoid`/`LastMonoid` 는 커밋
 `e3d2b82` 에서 그 이유로 제거됐습니다. Monoid 가 필요하면 `Maybe` 로 감싸는데, **무엇을
 원하느냐에 따라 둘로 갈립니다.**

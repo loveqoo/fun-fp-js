@@ -130,6 +130,12 @@ const cases = [
     // 거짓이 된다 — 실제로 `match date` -> `match Date` 변경을 격자가 못 봤다.
     ['Setoid.equals 타입 불일치 메시지', f => L(f, 'Setoid')('date').equals(1, 2)],
     ['Ord.lte 타입 불일치 메시지', f => L(f, 'Ord')('date').lte(1, 2)],
+    // lookup('default') 는 한때 레지스트리 밖 맨 객체라 이종 인자에 조용히 false 를 줬다.
+    // 정식 인스턴스가 되며 던지게 됐다 — 그 제약이 되돌아가면 이 네 줄이 차이로 나온다.
+    ['default equals 동종', f => L(f, 'Setoid')('default').equals(1, 1)],
+    ['default equals 이종', f => L(f, 'Setoid')('default').equals(1, 'a')],
+    ['default lte 이종', f => L(f, 'Ord')('default').lte(1, 'a')],
+    ['default 동일성', f => L(f, 'Setoid')('default') === L(f, 'Setoid')('default')],
     ['Filterable.filter 타입 불일치 메시지', f => L(f, 'Filterable')('object').filter(x => x, [1])],
     ['Foldable.reduce 타입 불일치 메시지', f => L(f, 'Foldable')('object').reduce((a) => a, 0, [1])],
 

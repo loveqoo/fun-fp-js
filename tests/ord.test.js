@@ -79,6 +79,14 @@ test('Default Ord - Uses <= operator', () => {
     assertEquals(defaultOrd.lte(5, 5), true);
 });
 
+// Setoid 쪽과 같은 이유 — docs/internals.md#any
+test('Default Ord - 이종 인자는 던진다', () => {
+    let m = '(안 던짐)';
+    try { defaultOrd.lte(1, 'a'); } catch (e) { m = e.message; }
+    assertEquals(m, 'Ord.lte: arguments must be the same type');
+    assertEquals(defaultOrd === Ord.lookup('default'), true, '꺼낼 때마다 같은 물건이어야 한다');
+});
+
 
 logSection('Ord — 컨테이너 (안쪽 순서를 받아 만든다)');
 

@@ -88,6 +88,16 @@ test('Default Setoid - Reference equality', () => {
     assertEquals(defaultSetoid.equals(obj, obj), true);
 });
 
+// 'default' 는 .type 이 'any' 다 — 값 타입은 안 보지만 "두 인자가 같은 타입" 은 본다.
+// 한때 레지스트리 밖 맨 객체라 이종 인자에 조용히 false 를 줬다. 그 상태로 되돌아가면 여기서 멈춘다.
+test('Default Setoid - 이종 인자는 던진다 (조용히 false 를 주지 않는다)', () => {
+    let m = '(안 던짐)';
+    try { defaultSetoid.equals(1, 'a'); } catch (e) { m = e.message; }
+    assertEquals(m, 'Setoid.equals: arguments must be the same type');
+    assertEquals(defaultSetoid instanceof Setoid, true);
+    assertEquals(defaultSetoid === Setoid.lookup('default'), true, '꺼낼 때마다 같은 물건이어야 한다');
+});
+
 
 logSection('Setoid — 컨테이너 (안쪽 비교법을 받아 만든다)');
 
