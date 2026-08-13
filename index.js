@@ -802,7 +802,7 @@ modules.push(PredicateContravariant);
 // 입력을 고정한 (a ->) 의 Functor. map 은 후합성이다 — compose2 와 같은 연산.
 class FunctionFunctor extends Functor {
     constructor() {
-        super((g, fn) => x => g(fn(x)), 'function', Functor.types, 'function');
+        super(compose2, 'function', Functor.types, 'function');
     }
 }
 modules.push(FunctionFunctor);
@@ -870,7 +870,7 @@ class NumberSetoid extends Setoid {
 modules.push(NumberSetoid);
 class NumberOrd extends Ord {
     constructor() {
-        super(Setoid.lookup('number'), Ord.op, 'number', Ord.types, 'number');
+        super(Setoid.types.NumberSetoid, Ord.op, 'number', Ord.types, 'number');
     }
 }
 modules.push(NumberOrd);
@@ -943,7 +943,7 @@ class StringSetoid extends Setoid {
 modules.push(StringSetoid);
 class StringOrd extends Ord {
     constructor() {
-        super(Setoid.lookup('string'), Ord.op, 'string', Ord.types, 'string');
+        super(Setoid.types.StringSetoid, Ord.op, 'string', Ord.types, 'string');
     }
 }
 modules.push(StringOrd);
@@ -957,7 +957,7 @@ class StringLengthSetoid extends Setoid {
 modules.push(StringLengthSetoid);
 class StringLengthOrd extends Ord {
     constructor() {
-        super(Setoid.lookup('StringLengthSetoid'), (x, y) => x.length <= y.length, 'string', Ord.types);
+        super(Setoid.types.StringLengthSetoid, (x, y) => x.length <= y.length, 'string', Ord.types);
     }
 }
 modules.push(StringLengthOrd);
@@ -969,7 +969,7 @@ class StringLocaleSetoid extends Setoid {
 modules.push(StringLocaleSetoid);
 class StringLocaleOrd extends Ord {
     constructor() {
-        super(Setoid.lookup('StringLocaleSetoid'), (x, y) => x.localeCompare(y) <= 0, 'string', Ord.types);
+        super(Setoid.types.StringLocaleSetoid, (x, y) => x.localeCompare(y) <= 0, 'string', Ord.types);
     }
 }
 modules.push(StringLocaleOrd);
@@ -1008,7 +1008,7 @@ class DefaultSetoid extends Setoid {
 modules.push(DefaultSetoid);
 class DefaultOrd extends Ord {
     constructor() {
-        super(Setoid.lookup('default'), Ord.op, 'any', Ord.types, 'default');
+        super(Setoid.types.DefaultSetoid, Ord.op, 'any', Ord.types, 'default');
     }
 }
 modules.push(DefaultOrd);
@@ -1219,7 +1219,7 @@ class DateSetoid extends Setoid {
 modules.push(DateSetoid);
 class DateOrd extends Ord {
     constructor() {
-        super(Setoid.lookup('date'), (x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'Date', Ord.types, 'date');
+        super(Setoid.types.DateSetoid, (x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'Date', Ord.types, 'date');
     }
 }
 modules.push(DateOrd);
@@ -1552,7 +1552,7 @@ Maybe.Ord = cachedInnerFactory('Maybe.Ord', resolveInnerOrd, Ord.types, k => `ma
 Setoid.Array = cachedInnerFactory('Setoid.Array', resolveInnerSetoid, Setoid.types, k => `array(${k})`,
     inner => new Setoid((a, b) => a.length === b.length && a.every((x, i) => inner.equals(x, b[i])), 'Array', null));
 // 사전식. Ord 는 lte 만 있으므로 "양쪽으로 lte" 를 같음으로 읽어 자리를 넘긴다.
-Setoid.Array._ordLte = inner => (a, b) => {
+const arrayOrdLte = inner => (a, b) => {
     const n = Math.min(a.length, b.length);
     for (let i = 0; i < n; i++) {
         if (!inner.lte(a[i], b[i])) return false;
@@ -1561,7 +1561,7 @@ Setoid.Array._ordLte = inner => (a, b) => {
     return a.length <= b.length;
 };
 Ord.Array = cachedInnerFactory('Ord.Array', resolveInnerOrd, Ord.types, k => `array(${k})`,
-    inner => new Ord(Setoid.Array(inner), Setoid.Array._ordLte(inner), 'Array', null));
+    inner => new Ord(Setoid.Array(inner), arrayOrdLte(inner), 'Array', null));
 // Either 만 안쪽이 둘이라 양쪽 키를 다 알 때만 캐시된다 — 한쪽이 미등록이면 캐시가 없다.
 Either.Setoid = cachedInnerFactory('Either.Setoid', resolveInnerSetoid, Setoid.types, (l, r) => `either(${l},${r})`,
     (l, r) => new Setoid((a, b) => a.isLeft()

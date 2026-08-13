@@ -54,7 +54,7 @@
 ✅ 레지스트리 정합성
 ✅ Ord 를 Setoid 로            ← 이 회차의 본체
 🟡 검증 장치                    ← 지금 여기 (1차-9 닫음, Functor 법칙 하나 남음)
-⬜ 남은 정리 4건 — 동작에 영향 없음
+⬜ 남은 정리 1건 — 2차-3 (유일한 검증 구멍)
 ```
 
 **커밋 3개** — 라이브러리+게이트 · 작업 방식(이 파일과 판정 기록) · `.type` 명단.
@@ -66,12 +66,12 @@
 | 🟡 | — | [Functor~Traversable 법칙이 레지스트리 전체를 안 본다](#functor법칙) |
 | ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
 | ⬜ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
-| ⬜ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
-| ⬜ | 2차-8 | [부모 인스턴스 조회가 관례와 다름](#2차-8) |
+| ✅ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
+| ✅ | 2차-8 | [부모 인스턴스 조회가 관례와 다름](#2차-8) |
 | ✅ | 2차-9 | [거짓 주석 — "뼈대가 이미 정해 두고 있다"](#2차-9) |
 | ✅ | 2차-10 | [죽은 앵커 `docs/internals.md#ord-setoid`](#2차-10) |
 | ✅ | 2차-11 | [게이트 ③의 한계를 소스 주석이 과장](#2차-11) |
-| ⬜ | 1차-5 | [`_ordLte` — Ord 헬퍼가 Setoid 이름 아래](#1차-5) |
+| ✅ | 1차-5 | [`_ordLte` — Ord 헬퍼가 Setoid 이름 아래](#1차-5) |
 | ✅ | 1차-7 | [없어진 `struct(...)` 키를 광고하는 주석](#1차-7) |
 | ⏸ | 1차-8 | [`either(...)` 항수가 레지스트리마다 다름](#1차-8) |
 | ⏸ | — | [`NumberProductGroup` 이 0에서 군 법칙을 깬다](#곱셈군) |
@@ -106,7 +106,7 @@
 - **완료조건** — 그 제약을 되돌리는 뮤테이션(`type:'any'` → 검증 없는 리터럴)이 잡힌다.
 - **참고** — [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 3번 · [`index.js:1003`](./../index.js#L1003) · [`docs/internals.md`](./../docs/internals.md) `#any`
 
-<h3 id="2차-6">[2차-6] <code>FunctionFunctor.map</code> 이 <code>compose2</code> 를 손으로 다시 씀</h3>
+<h3 id="2차-6">✅ [2차-6] <code>FunctionFunctor.map</code> 이 <code>compose2</code> 를 손으로 다시 씀</h3>
 
 - **원인** — 명세 게이트 ③을 만족시키려고 `FunctionFunctor` 를 급히 만들면서, 같은 파일에
   이미 있는 `compose2` 를 조회하지 않고 람다를 직접 썼다. **관례를 실행으로 조회하라는
@@ -114,16 +114,22 @@
 - **해결책** — `super(compose2, 'function', Functor.types, 'function')`.
 - **완료조건** — 형제 셋의 형태가 같고, 전 입력에서 `map`/`concat`/`compose` 결과가 일치한다
   (이미 일치함을 실측). 합성 방향 뒤집기 뮤테이션은 이미 잡힌다.
+- **검증 (2026-08-13)** — `super(compose2, 'function', Functor.types, 'function')` 로 바꿔 형제 둘과
+  형태가 같아졌다. 전 입력 대조: `Functor.map` / `Semigroup.concat` / `Semigroupoid.compose` 가
+  `[10,20,-10,80]` 로 셋 다 일치. `npm run baseline` 차이 없음.
 - **참고** — [`index.js:803`](./../index.js#L803) vs [`index.js:94`](./../index.js#L94) ·
   형제: `FunctionSemigroup`·`FunctionSemigroupoid` · [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 6번 · [`learning/INDEX.md`](./learning/INDEX.md) 규칙 22
 
-<h3 id="2차-8">[2차-8] 부모 인스턴스 조회가 관례와 다름</h3>
+<h3 id="2차-8">✅ [2차-8] 부모 인스턴스 조회가 관례와 다름</h3>
 
 - **원인** — `Ord extends Setoid` 를 만들며 짝 Setoid 를 `Setoid.lookup('number')` 로 꺼냈다.
   파일의 선례 68곳은 전부 `Parent.types.ClassName` 이다. 실행으로 관례를 조회하지 않았다.
 - **해결책** — 68곳과 형태를 맞추거나, `lookup` 을 고르는 이유(미등록 시 라벨 있는 TypeError)를
   **한 줄로 적고 결정으로 기록**한다. 규칙 19: 다른 규칙을 들여놓는 것은 결정이다.
 - **완료조건** — `grep` 집계가 한 형태로 모이거나, 두 형태가 공존하는 이유가 소스에 적혀 있다.
+- **검증 (2026-08-13)** — 여섯 자리를 `Setoid.types.<클래스이름>` 으로 바꿨다.
+  집계가 한 형태로 모였다: `.types.X` 68 → **74**, `Setoid.lookup` 6 → **0**.
+  `npm run baseline` 차이 없음.
 - **참고** — [`index.js:873`](./../index.js#L873) `946` `960` `972` `1011` `1222` ·
   현재 집계 `.types.X` 68 / `Setoid.lookup` 6 · [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 8번
 
@@ -169,13 +175,17 @@
 - **참고** — [`index.js:803`](./../index.js#L803) ·
   [`tests/staticland-spec.test.js`](./../tests/staticland-spec.test.js) 검사 ③ · [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 11번
 
-<h3 id="1차-5">[1차-5] <code>_ordLte</code> — Ord 헬퍼가 Setoid 이름 아래</h3>
+<h3 id="1차-5">✅ [1차-5] <code>_ordLte</code> — Ord 헬퍼가 Setoid 이름 아래</h3>
 
 - **원인** — 컨테이너 Ord 를 만들며 배열 사전식 비교 함수를 `Setoid.Array._ordLte` 로 붙였다.
   이 파일에서 공개 팩토리에 붙은 밑줄 속성은 **전부 캐시**인데 이것만 로직이다. 밖에서
   `fp.Setoid.Array._ordLte` 로 닿는다 — 공개 표면 오염이다.
 - **해결책** — 파일의 다른 헬퍼처럼 모듈 지역 `const arrayOrdLte` 로 내리고 `Ord.Array` 위에 둔다.
 - **완료조건** — `fp.Setoid.Array._ordLte` 가 `undefined` 이고 42/42 초록.
+- **검증 (2026-08-13)** — 모듈 지역 `const arrayOrdLte` 로 내렸다.
+  `fp.Setoid.Array._ordLte` 가 `undefined`(공개 표면에서 사라졌다). 사전식 동작 그대로:
+  `lte([1,2],[1,3])` `true` · `lte([1,3],[1,2])` `false` · `lte([1],[1,0])` `true` ·
+  반대칭 `equals([1,2],[1,2])` `true`. `npm run baseline` 차이 없음.
 - **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 5번 · [`index.js:1555`](./../index.js#L1555) · 사용처는 [`1564`](./../index.js#L1564) 한 줄뿐
 
 <h3 id="1차-7">✅ [1차-7] 없어진 <code>struct(...)</code> 키를 광고하는 주석</h3>
