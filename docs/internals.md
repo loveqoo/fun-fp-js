@@ -489,6 +489,62 @@ console.log(G.concat(49, G.invert(49)));    // 0
 
 ---
 
+## `Either`·`Task` 는 `Filterable` 이 아니다 {#filterable}
+
+Static Land 의 `Filterable` 은 규칙 셋을 요구합니다.
+
+| | 규칙 |
+| --- | --- |
+| 분배 | `filter(x => f(x) && g(x), a) ≡ filter(g, filter(f, a))` |
+| 항등 | `filter(x => true, a) ≡ a` |
+| 소멸 | `filter(x => false, a) ≡ filter(x => false, b)` |
+
+**소멸 규칙은 "비어 있음" 을 요구합니다.** 전부 걸러내면 원래 무엇이 들어 있었든 같은 것이
+나와야 하는데, 그러려면 그 타입에 "비어 있음" 에 해당하는 값이 있어야 합니다.
+
+```javascript
+const { Filterable, Maybe } = FunFP;
+
+console.log(Filterable.lookup('array').filter(() => false, [1, 2, 3]));   // []
+console.log(Filterable.lookup('array').filter(() => false, [9]));        // []
+console.log(Filterable.lookup('maybe').filter(() => false, Maybe.Just(1)).isNothing());  // true
+```
+
+`Either` 에는 그런 값이 없습니다. 언제나 `Left` 아니면 `Right` 이고 **둘 다 값을 지고
+있습니다.** `Left('DB 실패')` 는 "비어 있음" 이 아니라 특정한 실패입니다.
+
+`Left` 를 만나면 걸러낼 값이 없으므로 술어를 부를 수 없고, 보존하거나 뭉개거나 하나로
+정해야 합니다. **어느 쪽을 골라도 규칙 하나가 깨집니다.**
+
+| `Left` 를 만나면 | 깨지는 규칙 |
+| --- | --- |
+| 보존한다 | 소멸 — `Left('e1')` 과 `Left('e2')` 가 그대로 남아 결과가 다르다 |
+| 뭉갠다 | 항등 — `filter(x => true, Left('e'))` 도 뭉개진다 |
+
+왼쪽에 "빈 값은 이것이다" 를 알려줘도 같습니다. 손을 안 대는 쪽을 고르면 소멸이 깨지고,
+손을 대면 항등이 깨집니다 — **정보의 문제가 아니라 모양의 문제입니다.** `Task` 도 같습니다:
+거부된 `Task` 는 오류를 지고 있습니다.
+
+그래서 이 둘은 `Filterable` 로 등록하지 않습니다. 거르는 기능 자체는 그대로 씁니다 —
+등록은 "규칙을 지킨다" 는 보증이고, 그 보증만 거둔 것입니다.
+
+```javascript
+const { Either, Filterable } = FunFP;
+
+console.log(Either.filter(x => x > 0, Either.Right(1)).value);    // 1
+console.log(Either.filter(x => x > 0, Either.Right(-1)).isLeft()); // true
+
+let message = '';
+try { Filterable.lookup('either'); } catch (e) { message = e.message; }
+console.log(message);   // 'Filterable.lookup: unsupported key either'
+```
+
+fp-ts 와 Haskell 의 `witherable` 은 `Either` 에 거르기를 줍니다(왼쪽 `Monoid` 를 받는
+조건으로). **그쪽 규칙집에는 소멸 규칙이 없기 때문입니다** — Haskell 의 `Filterable` 법칙은
+보존과 합성 둘뿐입니다. 전제가 다른 곳의 결론이라 그대로 가져올 수 없습니다.
+
+---
+
 ## 레지스트리에 쓰는 문은 하나다 {#registry-writes}
 
 **레지스트리는 잘 알려진 타입의 명부입니다** — 이미 등록된 인스턴스를 이름으로 찾기 위한

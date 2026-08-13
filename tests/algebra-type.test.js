@@ -122,7 +122,7 @@ test('레지스트리 순회가 인스턴스를 빠뜨리지도 늘리지도 않
     // 개수를 못 박는다. 인스턴스를 더하거나 지우면 여기서 멈춰 "이 게이트를 갱신하라" 고
     // 말한다 — `>= N` 으로 두면 **느는 쪽**을 통째로 못 본다.
     const all = REGISTERED;
-    assertEquals(all.length, 129, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
+    assertEquals(all.length, 127, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
     const unnamed = all.filter(r => !r.isNamed).map(r => r.label).sort();
     assertEquals(unnamed.join(','),
         'Monoid(plus(array)),Monoid(plus(maybe)),Semigroup(plus(array)),Semigroup(plus(maybe))',

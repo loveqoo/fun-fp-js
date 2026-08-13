@@ -355,10 +355,8 @@ const BIFUNCTOR = {
 
 // 명세를 지키지 못하는 자리. **이유가 곧 판정 근거다** — 이유 없이 여기 추가하지 마라.
 // 소유자 결정이 필요한 것은 .dev/TODO.md 에 항목으로 올린다.
-const KNOWN_DEVIATIONS = {
-    'Filterable.EitherFilterable': '소멸 법칙 — filter(항상 false, Right(x)) 가 Left(x) 라 입력에 따라 결과가 다르다. 정규 빈 상자가 없다(왼쪽 Monoid 가 있어야 만들 수 있다)',
-    'Filterable.TaskFilterable': '같은 이유 — filter(항상 false, Task.of(x)) 가 rejected(x) 다',
-};
+// 2026-08-13 현재 비어 있다. Either/Task 의 Filterable 은 등록을 뗐다(docs/internals.md#filterable).
+const KNOWN_DEVIATIONS = {};
 
 const CLASS_LAWS = {
     Semigroupoid: (S, _obs, key) => {
@@ -551,8 +549,7 @@ test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () =
     for (const [k, why] of Object.entries(KNOWN_DEVIATIONS)) {
         assertEquals(typeof why === 'string' && why.length > 20, true, `${k}: 이유가 없거나 너무 짧다`);
     }
-    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','),
-        'Filterable.EitherFilterable,Filterable.TaskFilterable',
+    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','), '',
         '명세 미준수 목록이 달라졌다 — .dev/TODO.md 에 항목으로 올려라');
 });
 

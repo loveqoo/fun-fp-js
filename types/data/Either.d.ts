@@ -242,6 +242,5 @@ declare module "../TypeClasses" {
     interface MonadInstances       { readonly either: EitherTypeLambda }
     interface FoldableInstances    { readonly either: EitherTypeLambda }
     interface TraversableInstances { readonly either: EitherTypeLambda }
-    interface FilterableInstances  { readonly either: EitherTypeLambda }
     interface BifunctorInstances   { readonly either: EitherTypeLambda }
 }

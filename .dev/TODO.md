@@ -64,7 +64,7 @@
 | 상태 | # | 무엇 |
 | --- | --- | --- |
 | ✅ | — | [법칙이 레지스트리 전체를 안 본다](#functor법칙) |
-| ⏸ | — | [`Filterable` 소멸 법칙을 `Either`/`Task` 가 못 지킨다](#filterable소멸) |
+| ✅ | — | [`Filterable` 소멸 법칙을 `Either`/`Task` 가 못 지킨다](#filterable소멸) |
 | ✅ | — | [`Category.id` 의 모양이 명세·타입 선언과 다르다](#category-id) |
 | ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
 | ✅ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
@@ -235,8 +235,19 @@
 - **왜 에이전트가 못 정하나** — 고치는 길이 셋이고 전부 공개 표면을 바꾼다.
   ① 왼쪽 `Monoid` 를 받는 팩토리로 바꾼다(fp-ts 의 `getFilterable(M)` 방식) —
   `Filterable.lookup('either')` 가 사라진다. ② 등록을 뺀다. ③ 명세 미준수로 두고 문서화한다.
-- **지금 상태** — `tests/staticland-laws.test.js` 의 `KNOWN_DEVIATIONS` 에 이유와 함께 올라가
-  있고, 목록이 바뀌면 테스트가 멈춘다. **조용히 넘어가지는 않는다.**
+- **조사 (2026-08-13)** — 다른 라이브러리를 찾아봤다. fp-ts 는 `getFilterable(M: Monoid<E>)`,
+  Haskell `witherable` 은 `Monoid e => Filterable (Either e)` 다. **둘 다 전역 등록이 아니라
+  왼쪽 `Monoid` 를 요구하는 조건부다.** 다만 그쪽 법칙집에는 **소멸 법칙이 없다**(Haskell 은
+  보존·합성 둘뿐). 전제가 다른 곳의 결론이라 그대로 가져올 수 없다 — 규칙 5.
+- **증명** — Static Land 아래에서는 `Monoid` 를 줘도 불가능하다. `Left` 에는 술어를 부를 값이
+  없어 보존/뭉갬 중 하나로 고정해야 하는데, 보존하면 소멸이(`Left(e1)`≠`Left(e2)`), 뭉개면
+  항등이(`filter(x=>true, Left(e))`≠`Left(e)`) 깨진다. **정보가 아니라 모양의 문제다.**
+- **결정 (2026-08-13, 소유자)** — 등록을 뗀다. "함수형 라이브러리는 정확해야 한다."
+- **검증 (2026-08-13)** — `Filterable.lookup('either'/'task')` 가 `unsupported key` 로 막힌다.
+  `Either.filter`·`Task.filter` 는 평범한 함수로 남아 **동작이 그대로다**(실측).
+  `npm run baseline` 차이 5건 — 전부 레지스트리·`Algebra.all` 목록에서 둘이 빠진 것이고
+  `filter` 결과 자체는 차이 0. 다시 등록하는 뮤테이션 → **40/2**(개수 게이트 + 법칙 게이트).
+  `KNOWN_DEVIATIONS` 가 비었다. 근거는 `docs/internals.md#filterable` 에 예제와 함께 있다.
 
 <h3 id="category-id">[⏸] <code>Category.id</code> 의 모양이 명세·타입 선언과 다르다</h3>
 

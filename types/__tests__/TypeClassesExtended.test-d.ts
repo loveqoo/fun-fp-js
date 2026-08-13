@@ -64,15 +64,11 @@ const v2b = biV.bimap(
 );
 type _2b = Expect<Equals<typeof v2b, Validation<number, string>>>;
 
-// ── 3. Filterable on Maybe / Either / Task / Array ───────────────────
+// ── 3. Filterable on Maybe / Array ───────────────────────────────────
+// Either / Task 는 Filterable 이 아니다 — "비어 있음" 이 없어 소멸 규칙을 못 지킨다.
+// 거르는 기능은 Either.filter / Task.filter 로 남아 있다. docs/internals.md#filterable
 const fM = Filterable.lookup("maybe");
 type _3a = Expect<Equals<typeof fM, Filterable<MaybeTypeLambda>>>;
-
-const fE = Filterable.lookup("either");
-type _3b = Expect<Equals<typeof fE, Filterable<EitherTypeLambda>>>;
-
-const fT = Filterable.lookup("task");
-type _3c = Expect<Equals<typeof fT, Filterable<TaskTypeLambda>>>;
 
 const fA = Filterable.lookup("array");
 type _3d = Expect<Equals<typeof fA, Filterable<ArrayTypeLambda>>>;

@@ -130,26 +130,39 @@ filter(x => x > 0, Maybe.Just(-1));  // Nothing
 filter(x => x > 0, Maybe.Nothing()); // Nothing
 ```
 
-### Either 필터링
+### `Either` 와 `Task` 는 `Filterable` 이 아니다
+
+거르는 기능은 있지만 **레지스트리에 등록돼 있지 않습니다.** `Either` 에는 "비어 있음" 에
+해당하는 값이 없어서 소멸 규칙(전부 걸러내면 언제나 같은 것)을 지킬 수 없기 때문입니다.
+`Task` 도 같습니다 — 거부된 `Task` 는 오류를 지고 있습니다. 근거는
+[internals.md](./internals.md#filterable) 에 있습니다.
+
+`Filterable.lookup` 대신 **타입이 직접 가진 함수**를 씁니다.
 
 ```javascript
-const { filter } = Filterable.lookup('either');
+const { Either, Task, Filterable } = FunFP;
 
-filter(x => x > 0, Either.Right(5));   // Right(5)
-filter(x => x > 0, Either.Right(-1));  // Left(-1) - 값 보존
-filter(x => x > 0, Either.Left('err')); // Left('err')
+console.log(Either.filter(x => x > 0, Either.Right(5)).value);      // 5
+console.log(Either.filter(x => x > 0, Either.Right(-1)).isLeft());  // true   값이 왼쪽으로
+console.log(Either.filter(x => x > 0, Either.Left('err')).value);   // 'err'  실패는 그대로
+
+// 세 번째 인자로 걸러진 값을 어떻게 표시할지 정할 수 있다
+console.log(Either.filter(x => x > 0, Either.Right(-1), () => '조건 불충족').value);
+// '조건 불충족'
+
+let message = '';
+try { Filterable.lookup('either'); } catch (e) { message = e.message; }
+console.log(message);   // 'Filterable.lookup: unsupported key either'
 ```
 
-### Task 필터링
-
 ```javascript
-const { filter } = Filterable.lookup('task');
+const { Task } = FunFP;
 
-filter(x => x > 0, Task.of(5))
-    .fork(console.error, console.log);  // 5
+Task.filter(x => x > 0, Task.of(5))
+    .fork(e => console.log('rejected:', e), v => console.log(v));   // 5
 
-filter(x => x > 0, Task.of(-1))
-    .fork(console.error, console.log);  // rejected: -1
+Task.filter(x => x > 0, Task.of(-1))
+    .fork(e => console.log('rejected:', e), v => console.log(v));   // rejected: -1
 ```
 
 ## 관련 타입 클래스
