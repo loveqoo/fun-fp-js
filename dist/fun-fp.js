@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-13T12:59:58.942Z
+ * Built: 2026-08-13T15:41:01.605Z
  * Static Land specification compliant
  */
 const polyfills = {
@@ -259,12 +259,13 @@ const checkAndSet = (config => {
             strict: (semigroupoid) => { !(semigroupoid && semigroupoid[Symbols.Semigroupoid]) && raise(new TypeError('Category: argument must be a Semigroupoid')); },
             loose: emptyFunc
         },
+        // 명세는 id 를 "불러서" 항등 사상을 얻는다: id :: () -> T a a. 사상 자체가 아니다.
         Category: {
             strict: (instance, semigroupoid, id) => {
                 typeof id !== 'function' && raise(new TypeError('Category.id: id must be a function'));
-                instance.id = id;
+                instance.id = () => id;
             },
-            loose: (instance, semigroupoid, id) => { instance.id = id; }
+            loose: (instance, semigroupoid, id) => { instance.id = () => id; }
         },
         Filterable: {
             strict: (instance, filter) => {
@@ -1394,12 +1395,13 @@ class EitherCategory extends Category {
     }
 }
 modules.push(EitherCategory);
-class EitherFilterable extends Filterable {
-    constructor() {
-        super((pred, e, onFalse = identity) => e.isLeft() ? e : (pred(e.value) ? e : Either.Left(onFalse(e.value))), 'Either', Filterable.types, 'either');
-    }
-}
-modules.push(EitherFilterable);
+// Filterable 로 등록하지 않는다 — 명세의 소멸·항등 법칙을 동시에 만족할 수 없다.
+// Left 에는 술어를 부를 값이 없어 보존하거나 뭉개거나 하나로 고정해야 하는데, 보존하면
+// 소멸이, 뭉개면 항등이 깨진다. 왼쪽 Monoid 를 받아도 같다 — docs/internals.md#filterable
+const eitherFilter = (pred, e, onFalse = identity) =>
+    types.checkFunction(pred, 'Either.filter') && Either.isEither(e)
+        ? (e.isLeft() ? e : (pred(e.value) ? e : Either.Left(onFalse(e.value))))
+        : raise(new TypeError('Either.filter: arguments must be (function, Either)'));
 class EitherFunctor extends Functor {
     constructor() {
         super((f, e) => e.isRight() ? Either.Right(f(e.value)) : e, 'Either', Functor.types, 'either');
@@ -1728,14 +1730,12 @@ class TaskCategory extends Category {
     }
 }
 modules.push(TaskCategory);
-class TaskFilterable extends Filterable {
-    constructor() {
-        super((pred, t) => new Task((reject, resolve) =>
-            t.fork(reject, x => pred(x) ? resolve(x) : reject(x))
-        ), 'Task', Filterable.types, 'task');
-    }
-}
-modules.push(TaskFilterable);
+// Either 와 같은 이유로 Filterable 이 아니다 — 거부된 Task 는 오류를 지고 있어 정규 빈
+// 상자가 없다. docs/internals.md#filterable
+const taskFilter = (pred, t) =>
+    types.checkFunction(pred, 'Task.filter') && Task.isTask(t)
+        ? new Task((reject, resolve) => t.fork(reject, x => pred(x) ? resolve(x) : reject(x)))
+        : raise(new TypeError('Task.filter: arguments must be (function, Task)'));
 class TaskFunctor extends Functor {
     constructor() {
         super((f, task) => new Task((reject, resolve) => {
@@ -3000,7 +3000,7 @@ Maybe.zero = () => Plus.lookup('maybe').zero();
 
 // Filterable
 Maybe.filter = Filterable.lookup('maybe').filter;
-Task.filter = Filterable.lookup('task').filter;
+Task.filter = taskFilter;
 
 // Foldable (3+ args - no eta reduction)
 Maybe.reduce = (f, init, m) => Foldable.lookup('maybe').reduce(f, init, m);
@@ -3013,8 +3013,8 @@ Either.traverse = (applicative, f, e) => Traversable.lookup('either').traverse(a
 // Bifunctor (3 args - no eta reduction)
 Either.bimap = (f, g, e) => Bifunctor.lookup('either').bimap(f, g, e);
 
-// Filterable with 3 args (no eta reduction)
-Either.filter = (pred, e, onFalse) => Filterable.lookup('either').filter(pred, e, onFalse);
+// Either/Task 는 Filterable 이 아니라 평범한 함수다 — 위 정의 참조
+Either.filter = eitherFilter;
 
 // ChainRec
 Maybe.chainRec = ChainRec.lookup('maybe').chainRec;
