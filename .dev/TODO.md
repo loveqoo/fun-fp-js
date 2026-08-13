@@ -66,7 +66,7 @@
 | 🟡 | — | [법칙이 레지스트리 전체를 안 본다 — Functor 는 닫음, 나머지 8개 클래스가 남음](#functor법칙) |
 | ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
 | ✅ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
-| ✅ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
+| ✅ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 직접 다시 씀](#2차-6) |
 | ✅ | 2차-8 | [부모 인스턴스 조회가 관례와 다름](#2차-8) |
 | ✅ | 2차-9 | [거짓 주석 — "뼈대가 이미 정해 두고 있다"](#2차-9) |
 | ✅ | 2차-10 | [죽은 앵커 `docs/internals.md#ord-setoid`](#2차-10) |
@@ -121,7 +121,7 @@
   `DefaultOrd.lte = Ord.op` → **41/1**. `npm run baseline` 차이 없음.
 - **참고** — [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 3번 · [`index.js:1003`](./../index.js#L1003) · [`docs/internals.md`](./../docs/internals.md) `#any`
 
-<h3 id="2차-6">✅ [2차-6] <code>FunctionFunctor.map</code> 이 <code>compose2</code> 를 손으로 다시 씀</h3>
+<h3 id="2차-6">✅ [2차-6] <code>FunctionFunctor.map</code> 이 <code>compose2</code> 를 직접 다시 씀</h3>
 
 - **원인** — 명세 게이트 ③을 만족시키려고 `FunctionFunctor` 를 급히 만들면서, 같은 파일에
   이미 있는 `compose2` 를 조회하지 않고 람다를 직접 썼다. **관례를 실행으로 조회하라는

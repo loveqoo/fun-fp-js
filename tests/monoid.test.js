@@ -247,7 +247,7 @@ test("Monoid 'plus(array)' - Plus 유도가 array 에도 대칭으로 있다", (
     assertEqualsBy(eqAN, Monoid.lookup('plus(array)').empty(), []);
 });
 
-// 유도는 손으로 쓴 특례 2개가 아니라 Plus 생성자의 규칙이다 — Plus 를 새로 등록하면
+// 유도는 수동으로 적은 특례 2개가 아니라 Plus 생성자의 규칙이다 — Plus 를 새로 등록하면
 // 짝 Monoid/Semigroup 이 자동으로 따라온다.
 test("Plus 유도 - 짝 Semigroup 도 레지스트리에 있다", () => {
     assertEquals(Semigroup.lookup('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).value, 1);

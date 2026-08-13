@@ -30,7 +30,7 @@ API 호출입니다.
 fetchUser(id)
     .chain(eitherUser =>
         eitherUser.isLeft()
-            ? Task.of(eitherUser)                  // 실패를 손으로 전파
+            ? Task.of(eitherUser)                  // 실패를 수동으로 전파
             : fetchPosts(eitherUser.value).chain(eitherPosts =>
                 eitherPosts.isLeft()
                     ? Task.of(eitherPosts)         // 또 전파

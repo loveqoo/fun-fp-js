@@ -64,7 +64,7 @@ console.log(Monoid.lookup('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).va
 console.log(Monoid.lookup('plus(maybe)').empty().isNothing());                 // true
 ```
 
-`Plus` 를 새로 등록하면 짝도 따라옵니다 — 손으로 만들 필요가 없습니다.
+`Plus` 를 새로 등록하면 짝도 따라옵니다 — 직접 만들 필요가 없습니다.
 자세한 내용과 `maybe(first)` 와의 차이는 [Monoid](./Monoid.md) 문서를 보십시오.
 
 ## 참고

@@ -150,7 +150,7 @@ console.log(pick.concat(Maybe.Just(1), Maybe.Just('a')).value); // 1  — 안 �
 
 `Plus` 는 `alt`(결합 이항 연산)와 `zero`(항등원)를 둘 다 가지므로 **구조적으로 Monoid 입니다** —
 태그만 없습니다. 그래서 등록된 `Plus` 는 전부 짝 `Semigroup`/`Monoid` 를 `plus(<별칭>)` 키로
-얻습니다. 특례를 손으로 쓰지 않으므로 **`Plus` 를 새로 등록하면 짝도 자동으로 따라옵니다.**
+얻습니다. 특례를 따로 적어 두지 않으므로 **`Plus` 를 새로 등록하면 짝도 자동으로 따라옵니다.**
 
 ```javascript
 const { Semigroup, Monoid, Plus } = FunFP;
@@ -445,7 +445,7 @@ console.log(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] })); /
 
 ### 왜 만들었나 — 테스트가 사설 구현을 갖고 있었다
 
-`tests/utils.js` 의 `deepEquals`(2025-12-25 생성)가 `Maybe`/`Either` 를 손으로 분해해
+`tests/utils.js` 의 `deepEquals`(2025-12-25 생성)가 `Maybe`/`Either` 를 직접 분해해
 비교했고, **그것을 검증하는 테스트는 0건인 채 58곳이 그것에 기대고 있었습니다.** 지금은
 전부 라이브러리의 `Setoid` 로 갈아끼웠고 사설 구현은 지웠습니다 — 비교 규칙이 테스트
 헬퍼가 아니라 검증 대상인 라이브러리 자신에게서 나옵니다(`assertEqualsBy`).

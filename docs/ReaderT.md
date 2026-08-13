@@ -22,7 +22,7 @@ ReaderT M env a = env -> M a
 
 ## 왜 ReaderT인가?
 
-### 문제: 의존성을 함수마다 손으로 넘긴다
+### 문제: 의존성을 함수마다 수동으로 넘긴다
 
 ```javascript no-run 문제 상황 — 일부러 나쁜 코드
 // 모든 함수가 config를 받아 아래로 전달한다

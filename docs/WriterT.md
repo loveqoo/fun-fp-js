@@ -36,7 +36,7 @@ function calculate(x) {
     return doubled;
 }
 
-// 방법 2: 로그를 손으로 나른다 — 모든 함수의 시그니처가 오염된다
+// 방법 2: 로그를 수동으로 나른다 — 모든 함수의 시그니처가 오염된다
 function calculate(x, log) {
     const newLog = [...log, `입력 ${x}`];
     const doubled = x * 2;

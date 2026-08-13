@@ -59,7 +59,7 @@ const rightLens = Lens(
     (v, e) => Either.Right(v)  // Left 를 Right 로 바꿔버린다
 );
 
-// 배열 전체를 바꾸려면 매번 map 을 손으로 쓴다
+// 배열 전체를 바꾸려면 매번 map 을 직접 쓴다
 const updated = {
     ...db,
     users: db.users.map(u => ({ ...u, name: u.name.toUpperCase() }))
