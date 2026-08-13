@@ -114,4 +114,13 @@ test('Task Functor - Composition', () => {
     assertEquals(leftVal, rightVal);
 });
 
+// 입력을 고정한 (a ->) 의 Functor. 합성 방향이 뒤집혀도 법칙(항등·합성)은 그대로 성립하므로
+// 법칙 게이트가 못 잡는다 — 어느 쪽으로 합성하는지를 값으로 못 박는다.
+test('Functor.lookup("function") - map 은 후합성이다 (map(g, fn) = x => g(fn(x)))', () => {
+    const mapped = Functor.lookup('function').map(x => x * 10, x => x + 1);
+    assertEquals([0, 1, -2, 7].map(mapped), [10, 20, -10, 80]);
+    // 뒤집힌 방향(x => fn(g(x)))이면 [1, 11, -19, 71] 이 나온다.
+    assertEquals(mapped(0), 10);
+});
+
 console.log('\n✅ Functor tests completed');

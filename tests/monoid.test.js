@@ -171,7 +171,7 @@ test('Maybe Monoid - registry: Monoid.lookup resolves parameterized key', () => 
 });
 
 test('Maybe Monoid - invalid input throws', () => {
-    assertThrowsWith(() => Maybe.Monoid({}), 'Maybe.Monoid: innerSG must be a supported semigroup key or Semigroup instance');
+    assertThrowsWith(() => Maybe.Monoid({}), 'Maybe.Monoid: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 // === first/last Semigroup — 값 타입을 보지 않는다 ('any') ===

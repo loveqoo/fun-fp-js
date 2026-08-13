@@ -92,29 +92,25 @@
 
 ## 타입 클래스 의존성 그래프
 
+Static Land 명세의 "support X algebra for the same T" 를 그대로 옮긴 것이다. 화살표 왼쪽을
+갖춰야 오른쪽이 될 수 있고, `+` 는 둘 다 필요하다는 뜻이다. `tests/staticland-spec.test.js`
+가 이 목록과 코드·타입 선언을 대조한다 — 셋이 갈라지면 테스트가 멈춘다.
+
 ```
-Setoid ─────> Ord
+Setoid ──────────────> Ord
+Semigroup ───────────> Monoid ──> Group
+Semigroupoid ────────> Category
 
-Semigroup ──> Monoid ──> Group
+Functor ─────────────> Apply ──> Applicative
+Apply ───────────────> Chain ──> ChainRec
+Functor ─────────────> Alt ────> Plus
+Applicative + Chain ─> Monad
+Applicative + Plus ──> Alternative
+Functor ─────────────> Extend ──> Comonad
+Functor + Foldable ──> Traversable
 
-Semigroupoid ──> Category
-
-                         ┌──> Bifunctor
-                         │
-Functor ──> Apply ──> Applicative ──> Monad
-              │            │
-              └──> Alt ────┴──> Alternative
-                    │
-                    v
-                   Plus
-
-Foldable ──> Traversable <── Functor
-
-Chain ──> ChainRec
-  │
-  └──> Monad <── Applicative
-
-Extend ──> Comonad
+Bifunctor, Profunctor — 첫 매개변수를 고정한 타입이 Functor 여야 한다 (같은 T 가 아니다)
+Filterable, Contravariant — 요구하는 상위 클래스가 없다
 ```
 
 ## 핵심 개념 요약

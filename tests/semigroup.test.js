@@ -221,19 +221,21 @@ test('Semigroup.lookup with mixed-case container key throws', () => {
 });
 
 test('Maybe.Semigroup with non-Semigroup object throws', () => {
-    assertThrowsWith(() => Maybe.Semigroup({}), 'Maybe.Semigroup: innerSG must be a supported semigroup key or Semigroup instance');
+    assertThrowsWith(() => Maybe.Semigroup({}), 'Maybe.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 test('Either.Semigroup with non-Semigroup object throws', () => {
-    assertThrowsWith(() => Either.Semigroup({}), 'Either.Semigroup: innerSG must be a supported semigroup key or Semigroup instance');
+    assertThrowsWith(() => Either.Semigroup({}), 'Either.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
 });
 
-test('Maybe.Semigroup with unsupported key propagates Semigroup.lookup error', () => {
-    assertThrowsWith(() => Maybe.Semigroup('unknown'), 'unsupported key unknown');
+// 오타든 잘못된 객체든 한 문장으로 나간다. 예전에는 문자열만 Semigroup.lookup 의 메시지가
+// 새어 나와 'maybe(...)' 를 잃었다 — Setoid/Ord 컨테이너와 같은 형태로 맞췄다.
+test('Maybe.Semigroup with unsupported key names the factory', () => {
+    assertThrowsWith(() => Maybe.Semigroup('unknown'), 'Maybe.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
 });
 
-test('Maybe.Monoid with unsupported key propagates Semigroup.lookup error', () => {
-    assertThrowsWith(() => Maybe.Monoid('unknown'), 'unsupported key unknown');
+test('Maybe.Monoid with unsupported key names the factory', () => {
+    assertThrowsWith(() => Maybe.Monoid('unknown'), 'Maybe.Monoid: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 test('Maybe Semigroup - strict mode: type mismatch throws (Just vs Right)', () => {

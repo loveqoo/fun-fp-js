@@ -47,9 +47,12 @@ declare module "../TypeClasses" {
 }
 
 // ─── Concrete-type instance registrations ────────────────────────────
-// Setoid: BooleanSetoid / NumberSetoid / StringSetoid
-// Ord:    NumberOrd / StringOrd (StringLengthOrd / StringLocaleOrd use
-//         constructor-name keys only)
+// Setoid: BooleanSetoid / NumberSetoid / StringSetoid / DefaultSetoid
+//         (StringLengthSetoid / StringLocaleSetoid use constructor-name keys
+//         only — they are the equivalences the length/locale orders induce)
+// Ord:    NumberOrd / StringOrd / DefaultOrd (StringLengthOrd /
+//         StringLocaleOrd use constructor-name keys only). Every Ord is a
+//         Setoid — `equals` comes from the paired Setoid it is built on.
 // Semigroup default aliases (first-registered wins per key):
 //   boolean → BooleanAllSemigroup (AND)
 //   number  → NumberSumSemigroup

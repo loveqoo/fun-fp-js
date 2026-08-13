@@ -226,4 +226,35 @@ test('빈 필드와 잘못된 인자는 던진다', () => {
     assertEquals(m2, 'Setoid.Struct: fields must be a plain object');
 });
 
+// 안쪽이 둘인 팩토리는 인스턴스 캐시(WeakMap)를 쓸 수 없다 — 무엇을 키로 삼을지 정할 수
+// 없기 때문이다. 첫 인자만 키로 쓰면 오른쪽이 다른 둘이 같은 인스턴스로 합쳐진다.
+test('Either.Setoid - 미등록 왼쪽이 같아도 오른쪽이 다르면 다른 인스턴스다', () => {
+    const left = new fp.Setoid((a, b) => a === b, 'string');
+    const withNumber = Either.Setoid(left, 'number');
+    const withString = Either.Setoid(left, 'string');
+    assertEquals(withNumber === withString, false, '오른쪽이 다른데 캐시가 합쳤다');
+    assertEquals(withString.equals(Either.Right('a'), Either.Right('a')), true);
+    assertEquals(withNumber.equals(Either.Right(1), Either.Right(1)), true);
+});
+
+// 안쪽 개수가 틀리면 조용히 통과하지 말고 던져야 한다 — 통과하면 undefined 가 키에 박혀
+// 전역 레지스트리에 maybe(undefined) 같은 쓰레기가 남는다.
+test('컨테이너 팩토리 - 안쪽 개수가 틀리면 던진다', () => {
+    const cases = [
+        [() => Maybe.Setoid(), 'Maybe.Setoid: expects 1 inner argument, got 0'],
+        [() => Setoid.Array(), 'Setoid.Array: expects 1 inner argument, got 0'],
+        [() => Either.Setoid(), 'Either.Setoid: expects 2 inner arguments, got 0'],
+        [() => Either.Setoid('number'), 'Either.Setoid: expects 2 inner arguments, got 1'],
+        [() => Maybe.Setoid('number', 'string'), 'Maybe.Setoid: expects 1 inner argument, got 2'],
+    ];
+    for (const [fn, expected] of cases) {
+        let message = '(안 던짐)';
+        try { fn(); } catch (e) { message = e.message; }
+        assertEquals(message, expected);
+    }
+    const polluted = [...Object.keys(Setoid.types), ...Object.keys(fp.Semigroup.types)]
+        .filter(k => k.includes('undefined'));
+    assertEquals(polluted.join(','), '', '레지스트리에 undefined 키가 들어갔다');
+});
+
 console.log('\n✅ Setoid tests completed');

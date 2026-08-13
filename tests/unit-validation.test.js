@@ -1,6 +1,6 @@
 import fp from '../index.js';
 
-import { test, assertEquals, assertThrows } from './utils.js';
+import { test, assertEquals, assertThrows, assertThrowsWith } from './utils.js';
 
 // Test utilities
 const createMockSemigroup = () => {
@@ -63,6 +63,18 @@ test('Monoid (strict mode): rejects non-semigroup argument', () => {
     assertThrows(() => {
         new fp.Monoid({}, () => 'identity', 'test');
     }, /Monoid: argument must be a Semigroup/);
+});
+
+// Ord 는 Setoid 를 확장한다(명세: "support Setoid algebra for the same T"). 선례인
+// Monoid.super 와 같은 검증이 붙어 있어야 한다 — 이 검사가 없으면 짝 없는 Ord 가 통과한다.
+// assertThrows 는 "던지는가" 만 본다 — 검증을 꺼도 뒤에서 다른 이유로 던지므로 통과한다.
+// 어느 검증이 잡았는지 가르려면 메시지를 대조해야 한다.
+test('Ord (strict mode): rejects non-setoid argument', () => {
+    fp.setStrictMode(true);
+
+    assertThrowsWith(() => {
+        new fp.Ord({}, (a, b) => a <= b, 'test');
+    }, 'Ord: argument must be a Setoid');
 });
 
 test('Monoid (loose mode): accepts any value as empty', () => {
