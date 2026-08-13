@@ -452,6 +452,43 @@ console.log(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] })); /
 
 ---
 
+## `NumberProductGroup` 의 역원은 모든 수에 있지 않다 {#product-group}
+
+`Group` 은 "모든 값에 역원이 있다" 는 약속입니다. 곱셈에서 2의 역원은 0.5이고
+`2 × 0.5 = 1` 입니다. **그 약속이 지켜지지 않는 값이 있습니다.** 원인이 둘입니다.
+
+**0은 원리적으로 역원이 없습니다.** 어떤 수를 0에 곱해도 1이 되지 않습니다. 수학에서도
+곱셈 군은 0을 뺀 수에서만 성립합니다 — 라이브러리 결함이 아닙니다.
+
+**0이 아니어도 부동소수점이 깹니다.** `a × (1/a)` 가 정확히 1이 되려면 반올림이 상쇄돼야
+하는데, 평범한 값에서도 어긋납니다.
+
+```javascript
+const { Group } = FunFP;
+
+const G = Group.lookup('NumberProductGroup');
+console.log(G.concat(2, G.invert(2)));    // 1     — 성립
+console.log(G.concat(-3, G.invert(-3)));  // 1     — 성립
+console.log(G.concat(49, G.invert(49)));  // 1.0000000000000002  — 어긋난다
+console.log(G.concat(0, G.invert(0)));    // NaN   — 0 은 역원이 없다
+```
+
+덧셈 쪽은 이 문제가 없습니다 — `a + (-a)` 는 항상 정확히 0입니다.
+
+```javascript
+const { Group } = FunFP;
+
+const G = Group.lookup('NumberSumGroup');
+console.log(G.concat(0.1, G.invert(0.1)));  // 0
+console.log(G.concat(49, G.invert(49)));    // 0
+```
+
+**정확한 나눗셈이 필요하면 `NumberProductGroup` 대신 유리수나 십진 타입을 쓰십시오.**
+`tests/staticland-laws.test.js` 의 군 법칙 검사가 이 인스턴스만 표본을 따로 두는 이유가
+이것이고, 그 표본에 이유가 적혀 있습니다.
+
+---
+
 ## 레지스트리에 쓰는 문은 하나다 {#registry-writes}
 
 **레지스트리는 잘 알려진 타입의 명부입니다** — 이미 등록된 인스턴스를 이름으로 찾기 위한

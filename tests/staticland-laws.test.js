@@ -97,7 +97,7 @@ const EQ = {
 // ─── 팩토리로만 생기는 인스턴스 ──────────────────────────────────────
 // 레지스트리 순회로는 안 닿는다. 표본이 인스턴스마다 다르므로 함께 적는다.
 const maybeArrayEq = fp.Maybe.Setoid(fp.Setoid.Array('number'));
-const eitherArrayEq = fp.Either.Setoid('string', fp.Setoid.Array('number'));
+const eitherArrayArrayEq = fp.Either.Setoid(fp.Setoid.Array('string'), fp.Setoid.Array('number'));
 // 안쪽이 StringLengthOrd 인 경우가 중요하다. 이 순서는 'ab' 와 'cd' 를 같은 자리에 놓으므로
 // 반대칭이 equals(['ab'],['cd']) === true 를 요구한다. 짝 Setoid 를 안쪽 Ord 가 아니라
 // **키로** 조회하면(Setoid.Array('string')) false 가 나와 법칙이 깨진다 — 그 지름길을 막는다.
@@ -119,8 +119,9 @@ const FACTORY_CASES = [
         [Nothing(), Just([1]), Just([1]), Just([2, 3])], (a, b) => maybeArrayEq.equals(a, b)],
     ['Maybe.Monoid("array")', 'Monoid', fp.Maybe.Monoid('array'),
         [Nothing(), Just([1]), Just([1]), Just([2, 3])], (a, b) => maybeArrayEq.equals(a, b)],
-    ['Either.Semigroup("array")', 'Semigroup', fp.Either.Semigroup('array'),
-        [Left('e'), Right([1]), Right([1]), Right([2, 3])], (a, b) => eitherArrayEq.equals(a, b)],
+    ['Either.Semigroup("array","array")', 'Semigroup', fp.Either.Semigroup('array', 'array'),
+        [Left(['e']), Left(['e']), Right([1]), Right([1]), Right([2, 3])],
+        (a, b) => eitherArrayArrayEq.equals(a, b)],
 ];
 
 // ─── 법칙 ────────────────────────────────────────────────────────────

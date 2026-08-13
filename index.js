@@ -1475,6 +1475,17 @@ const innerResolver = (normalize, kind) => (label, inner) => {
         throw e;
     }
 };
+// 키가 중첩될 수 있으므로(either(maybe(number),array(string))) 최상위 쉼표에서만 자른다.
+const splitTopLevel = s => {
+    const out = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') depth--;
+        else if (s[i] === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
+    }
+    return (out.push(s.slice(start)), out);
+};
 // 안쪽이 전부 키로 밝혀졌을 때만 레지스트리에 올린다. 인스턴스 캐시(WeakMap)는 안쪽이
 // 하나일 때만 자리가 있다 — 둘 이상이면 무엇을 WeakMap 키로 삼을지 정할 수 없다.
 const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
@@ -1507,14 +1518,20 @@ Maybe.Semigroup = cachedInnerFactory('Maybe.Semigroup', resolveInnerSemigroup, S
 // inner 가 Semigroup 이기만 해도 Monoid 가 된다 — Nothing 이 항등원이라 inner 의 empty 가 필요 없다.
 Maybe.Monoid = cachedInnerFactory('Maybe.Monoid', resolveInnerSemigroup, Monoid.types, k => `maybe(${k})`,
     sg => new Monoid(Maybe.Semigroup(sg), () => Maybe.Nothing(), 'Maybe', null));
-Either.Semigroup = cachedInnerFactory('Either.Semigroup', resolveInnerSemigroup, Semigroup.types, k => `either(${k})`,
-    sg => new Semigroup((a, b) => a.isLeft() ? a : b.isLeft() ? b : Either.Right(sg.concat(a.value, b.value)), 'Either', null));
+// 자리가 둘이면 합치는 법도 둘이다 — Setoid 쪽 either 와 같은 키 형식을 쓴다.
+// 둘 다 Left 면 왼쪽 법으로 **누적**한다(Validation 선례). 한쪽만 Left 면 그것이 이긴다.
+Either.Semigroup = cachedInnerFactory('Either.Semigroup', resolveInnerSemigroup, Semigroup.types,
+    (l, r) => `either(${l},${r})`,
+    (l, r) => new Semigroup((a, b) =>
+        a.isLeft() ? (b.isLeft() ? Either.Left(l.concat(a.value, b.value)) : a)
+        : b.isLeft() ? b
+        : Either.Right(r.concat(a.value, b.value)), 'Either', null));
 addResolver(Semigroup, key => {
     const m = /^(maybe|either)\((.+)\)$/.exec(key);
     if (!m) return null;
-    return m[1] === 'maybe' ? Maybe.Semigroup(m[2])
-         : m[1] === 'either' ? Either.Semigroup(m[2])
-         : null;
+    if (m[1] === 'maybe') return Maybe.Semigroup(m[2]);
+    const parts = splitTopLevel(m[2]);
+    return parts.length === 2 ? Either.Semigroup(parts[0], parts[1]) : null;
 });
 addResolver(Monoid, key => {
     const m = /^maybe\((.+)\)$/.exec(key);
@@ -1533,17 +1550,6 @@ const normalizeSetoidKey = normalizeTypeClassKey(Setoid, Symbols.Setoid, 'normal
 const normalizeOrdKey = normalizeTypeClassKey(Ord, Symbols.Ord, 'normalizeOrdKey');
 const resolveInnerSetoid = innerResolver(normalizeSetoidKey, 'Setoid');
 const resolveInnerOrd = innerResolver(normalizeOrdKey, 'Ord');
-// 키가 중첩될 수 있으므로(either(maybe(number),array(string))) 최상위 쉼표에서만 자른다.
-const splitTopLevel = s => {
-    const out = [];
-    let depth = 0, start = 0;
-    for (let i = 0; i < s.length; i++) {
-        if (s[i] === '(') depth++;
-        else if (s[i] === ')') depth--;
-        else if (s[i] === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
-    }
-    return (out.push(s.slice(start)), out);
-};
 Maybe.Setoid = cachedInnerFactory('Maybe.Setoid', resolveInnerSetoid, Setoid.types, k => `maybe(${k})`,
     inner => new Setoid((a, b) => a.isNothing() ? b.isNothing() : b.isJust() && inner.equals(a.value, b.value), 'Maybe', null));
 // Nothing 이 가장 작다 — fp-ts 의 getOrd 와 같고, Haskell 의 생성자 선언 순서와도 같다.

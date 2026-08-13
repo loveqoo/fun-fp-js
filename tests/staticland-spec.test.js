@@ -151,7 +151,7 @@ test('④ 팩토리로만 생기는 인스턴스도 조상의 메서드를 진�
         ['Setoid.Struct({a:"number"})', 'Setoid', fp.Setoid.Struct({ a: 'number' })],
         ['Maybe.Semigroup("array")', 'Semigroup', fp.Maybe.Semigroup('array')],
         ['Maybe.Monoid("array")', 'Monoid', fp.Maybe.Monoid('array')],
-        ['Either.Semigroup("array")', 'Semigroup', fp.Either.Semigroup('array')],
+        ['Either.Semigroup("array","array")', 'Semigroup', fp.Either.Semigroup('array', 'array')],
         ['Applicative.Const("array")', 'Applicative', fp.Applicative.Const('array')],
         // StateT('maybe') 를 부르는 순간 Functor~Monad 다섯 곳에 statet(maybe) 키가 생긴다.
         ['statet(maybe)', 'Monad', (fp.StateT('maybe'), fp.Monad.lookup('statet(maybe)'))],

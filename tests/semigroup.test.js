@@ -162,7 +162,8 @@ test('Maybe Semigroup - registry: Semigroup.lookup resolves parameterized key', 
 // === Either Semigroup ===
 logSection('Either Semigroup');
 
-const eitherSG = Either.Semigroup('array');
+// 자리가 둘이면 합치는 법도 둘이다 — 왼쪽도 Semigroup 을 받는다.
+const eitherSG = Either.Semigroup('string', 'array');
 const eqEA = fp.Setoid.lookup('either(string,array(number))');
 
 test('Either Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
@@ -185,16 +186,28 @@ test('Either Semigroup - Right concat Left', () => {
     assertEqualsBy(eqEA, eitherSG.concat(Either.Right([1]), Either.Left('err')), Either.Left('err'));
 });
 
-test('Either Semigroup - Left concat Left (first Left wins)', () => {
-    assertEqualsBy(eqEA, eitherSG.concat(Either.Left('e1'), Either.Left('e2')), Either.Left('e1'));
+// 왼쪽 법을 실제로 쓴다 — 둘 다 실패면 누적한다(Validation 선례). 받아만 놓고 안 쓰면
+// 인자가 거짓말이 된다.
+test('Either Semigroup - Left concat Left 는 왼쪽 법으로 누적한다', () => {
+    assertEqualsBy(eqEA, eitherSG.concat(Either.Left('e1'), Either.Left('e2')), Either.Left('e1e2'));
 });
 
 test('Either Semigroup - cache: string and instance produce same reference', () => {
-    assert(Either.Semigroup('array') === Either.Semigroup(Semigroup.lookup('array')));
+    assert(Either.Semigroup('string', 'array')
+        === Either.Semigroup(Semigroup.lookup('string'), Semigroup.lookup('array')));
 });
 
 test('Either Semigroup - registry: Semigroup.lookup resolves parameterized key', () => {
-    assert(Semigroup.lookup('either(array)') === Either.Semigroup('array'));
+    assert(Semigroup.lookup('either(string,array)') === Either.Semigroup('string', 'array'));
+});
+
+// Setoid 쪽 either 와 같은 문법이어야 한다 — 한쪽에서 배운 형태가 다른 쪽에서 안 통하면
+// 조립 키가 공용 문법 노릇을 못 한다.
+test('Either Semigroup - 안쪽 하나만 주면 던진다 (Setoid 쪽과 같은 항수)', () => {
+    let m = '(안 던짐)';
+    try { Either.Semigroup('array'); } catch (e) { m = e.message; }
+    assertEquals(m, 'Either.Semigroup: expects 2 inner arguments, got 1');
+    assert(fp.Setoid.lookup('either(string,number)') instanceof fp.Setoid, 'Setoid 쪽도 2항이다');
 });
 
 // === Nested Semigroup ===
@@ -225,7 +238,7 @@ test('Maybe.Semigroup with non-Semigroup object throws', () => {
 });
 
 test('Either.Semigroup with non-Semigroup object throws', () => {
-    assertThrowsWith(() => Either.Semigroup({}), 'Either.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
+    assertThrowsWith(() => Either.Semigroup({}, 'array'), 'Either.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 // 오타든 잘못된 객체든 한 문장으로 나간다. 예전에는 문자열만 Semigroup.lookup 의 메시지가

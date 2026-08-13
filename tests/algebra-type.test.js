@@ -174,7 +174,7 @@ test('팩토리로만 생기는 파생 인스턴스도 정규 태그다', () => 
     const cases = [
         ['Maybe.Semigroup("number")', fp.Maybe.Semigroup('number'), 'Maybe'],
         ['Maybe.Monoid("number")', fp.Maybe.Monoid('number'), 'Maybe'],
-        ['Either.Semigroup("number")', fp.Either.Semigroup('number'), 'Either'],
+        ['Either.Semigroup("string","number")', fp.Either.Semigroup('string', 'number'), 'Either'],
         ['Applicative.Const("array")', fp.Applicative.Const('array'), 'Object'],
         ['Semigroup.lookup("maybe(maybe(array))")', fp.Semigroup.lookup('maybe(maybe(array))'), 'Maybe'],
         // 컨테이너 Setoid/Ord. 명세 게이트도 법칙 게이트도 .type **값**은 안 본다 —

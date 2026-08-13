@@ -180,7 +180,7 @@ const cases = [
     // 지연 등록(팩토리·트랜스포머)이 같은 문을 지나는지. 문을 하나 빠뜨리면 그 인스턴스만
     // 인덱스에 없고 Algebra.all 에서 조용히 사라진다 — 그것을 여기서 잡는다.
     ['지연 등록을 일으킨다', f => {
-        f.Maybe.Semigroup('number'); f.Maybe.Monoid('array'); f.Either.Semigroup('string');
+        f.Maybe.Semigroup('number'); f.Maybe.Monoid('array'); f.Either.Semigroup('string', 'string');
         f.Applicative.Const('array'); f.Semigroup.lookup('maybe(maybe(array))');
         // 컨테이너 Setoid/Ord — 불러야 생긴다. HEAD 에 없으면 THROW 로 잡히는 것이 맞다.
         try { f.Setoid.lookup('maybe(number)'); f.Setoid.lookup('array(number)');
