@@ -799,7 +799,7 @@ class PredicateContravariant extends Contravariant {
     }
 }
 modules.push(PredicateContravariant);
-// 입력을 고정한 (a ->) 의 Functor — 명세가 Profunctor 에 요구하는 그것이다. map 은 합성.
+// 입력을 고정한 (a ->) 의 Functor. map 은 후합성이다 — compose2 와 같은 연산.
 class FunctionFunctor extends Functor {
     constructor() {
         super((g, fn) => x => g(fn(x)), 'function', Functor.types, 'function');
@@ -1562,7 +1562,7 @@ Setoid.Array._ordLte = inner => (a, b) => {
 };
 Ord.Array = cachedInnerFactory('Ord.Array', resolveInnerOrd, Ord.types, k => `array(${k})`,
     inner => new Ord(Setoid.Array(inner), Setoid.Array._ordLte(inner), 'Array', null));
-// Either 만 안쪽이 둘이다 — 뼈대가 그 경우의 캐시 자리를 이미 정해 두고 있다.
+// Either 만 안쪽이 둘이라 양쪽 키를 다 알 때만 캐시된다 — 한쪽이 미등록이면 캐시가 없다.
 Either.Setoid = cachedInnerFactory('Either.Setoid', resolveInnerSetoid, Setoid.types, (l, r) => `either(${l},${r})`,
     (l, r) => new Setoid((a, b) => a.isLeft()
         ? b.isLeft() && l.equals(a.value, b.value)
@@ -1570,7 +1570,7 @@ Either.Setoid = cachedInnerFactory('Either.Setoid', resolveInnerSetoid, Setoid.t
 // Either 의 Ord 는 만들지 않는다 — Left/Right 중 무엇이 먼저인지에 정답이 없다.
 // fp-ts 도 코어에서 뺐다. 근거: docs/internals.md#container-setoid
 // 레코드는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해진다 — 필드별로 받는다.
-// fp-ts 의 Eq.struct 에 해당. 키는 필드 이름 정렬로 정규화한다: struct(age:number,name:string).
+// fp-ts 의 Eq.struct 에 해당. 내부 캐시 키만 필드 이름 정렬로 정규화한다(조회 키는 없다).
 // 선언한 필드 집합과 실제 키 집합이 정확히 같아야 한다(엄격) — 초과 필드를 무시하면
 // 검사가 아니라 표본 대조가 된다. Ord.Struct 는 없다 — 레코드의 순서에 정답이 없다.
 // 위 뼈대를 안 쓴다 — 안쪽이 위치 인자가 아니라 이름 붙은 필드고, 레지스트리에도 안 올린다.

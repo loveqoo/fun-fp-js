@@ -291,6 +291,67 @@ console.log(Monad.lookup('statet(maybe)') === Monad.lookup('statet(maybe)'));  /
 
 ---
 
+## `Ord` 는 짝 `Setoid` 를 싣는다 {#ord-setoid}
+
+Static Land 는 `Ord` 에 "support `Setoid` algebra for the same `T`" 를 겁니다. 순서를 아는
+것은 같음도 안다는 뜻입니다. 그래서 `Ord` 는 `Setoid` 를 상속하고, 생성자가 **짝이 될
+`Setoid` 를 받습니다** — `Monoid` 가 `Semigroup` 을 받는 것과 같은 모양입니다.
+
+```javascript
+const { Ord, Setoid } = FunFP;
+
+const O = Ord.lookup('number');
+console.log(O.lte(1, 2), O.equals(1, 1));   // true true   한 인스턴스가 둘 다 진다
+console.log(O instanceof Setoid);           // true
+```
+
+### 짝은 아무 `Setoid` 나 되지 않는다
+
+**순서가 유도하는 동치**여야 합니다. 문자열을 길이로 비교하면 `'ab'` 와 `'cd'` 는 서로
+`lte` 가 양방향으로 참이므로 **같은 자리**입니다. 반대칭 법칙(`lte(a,b)` 이고 `lte(b,a)` 면
+`equals(a,b)`)이 그 둘을 같다고 답할 것을 요구합니다. 글자 동등을 쓰면 그 법칙이 깨집니다.
+
+```javascript
+const { Ord, Setoid } = FunFP;
+
+const byLength = Ord.lookup('StringLengthOrd');
+console.log(byLength.lte('ab', 'cd'), byLength.lte('cd', 'ab'));  // true true  같은 자리
+console.log(byLength.equals('ab', 'cd'));                          // true   그래서 같다
+
+console.log(Setoid.lookup('string').equals('ab', 'cd'));           // false  글자 동등은 다르다
+```
+
+그래서 `StringLengthOrd`·`StringLocaleOrd` 는 `StringSetoid` 를 재활용하지 않고 각자의
+짝(`StringLengthSetoid`·`StringLocaleSetoid`)을 따로 둡니다. 로케일 순서의 동치는 조합형과
+완성형을 같다고 봅니다.
+
+```javascript
+const { Setoid } = FunFP;
+
+const nfc = '\u00e9';    // é  완성형 (한 글자)
+const nfd = 'e\u0301';   // é  조합형 (e + 결합 악센트)
+console.log(Setoid.lookup('string').equals(nfc, nfd));               // false
+console.log(Setoid.lookup('StringLocaleSetoid').equals(nfc, nfd));   // true
+```
+
+### 컨테이너도 같은 규칙을 따른다
+
+`Ord.Array(inner)` 의 짝은 `Setoid.Array(inner)` 입니다 — **안쪽 `Ord` 자신**에게서 뽑습니다.
+안쪽 키로 `Setoid` 를 조회하면(`Setoid.Array('string')`) 위의 길이 순서에서 법칙이 깨집니다.
+
+```javascript
+const { Ord } = FunFP;
+
+const byLength = Ord.lookup('StringLengthOrd');
+const arrays = Ord.Array(byLength);
+console.log(arrays.lte(['ab'], ['cd']), arrays.lte(['cd'], ['ab']));  // true true
+console.log(arrays.equals(['ab'], ['cd']));                            // true
+```
+
+`tests/staticland-laws.test.js` 가 등록된 인스턴스와 팩토리 산물 전부에 이 법칙을 돌립니다.
+
+---
+
 ## 컨테이너 Setoid / Ord — 안쪽 비교법을 받아 상자 비교법을 만든다 {#container-setoid}
 
 `Setoid.lookup('number')` 는 숫자를 비교합니다. `Just(1)` 같은 상자를 비교하려면 **안에 든

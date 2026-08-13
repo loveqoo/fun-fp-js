@@ -54,7 +54,7 @@
 ✅ 레지스트리 정합성
 ✅ Ord 를 Setoid 로            ← 이 회차의 본체
 🟡 검증 장치                    ← 지금 여기 (1차-9 닫음, Functor 법칙 하나 남음)
-⬜ 남은 정리 8건 — 동작에 영향 없음
+⬜ 남은 정리 4건 — 동작에 영향 없음
 ```
 
 **커밋 3개** — 라이브러리+게이트 · 작업 방식(이 파일과 판정 기록) · `.type` 명단.
@@ -68,11 +68,11 @@
 | ⬜ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
 | ⬜ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
 | ⬜ | 2차-8 | [부모 인스턴스 조회가 관례와 다름](#2차-8) |
-| ⬜ | 2차-9 | [거짓 주석 — "뼈대가 이미 정해 두고 있다"](#2차-9) |
-| ⬜ | 2차-10 | [죽은 앵커 `docs/internals.md#ord-setoid`](#2차-10) |
-| ⬜ | 2차-11 | [게이트 ③의 한계를 소스 주석이 과장](#2차-11) |
+| ✅ | 2차-9 | [거짓 주석 — "뼈대가 이미 정해 두고 있다"](#2차-9) |
+| ✅ | 2차-10 | [죽은 앵커 `docs/internals.md#ord-setoid`](#2차-10) |
+| ✅ | 2차-11 | [게이트 ③의 한계를 소스 주석이 과장](#2차-11) |
 | ⬜ | 1차-5 | [`_ordLte` — Ord 헬퍼가 Setoid 이름 아래](#1차-5) |
-| ⬜ | 1차-7 | [없어진 `struct(...)` 키를 광고하는 주석](#1차-7) |
+| ✅ | 1차-7 | [없어진 `struct(...)` 키를 광고하는 주석](#1차-7) |
 | ⏸ | 1차-8 | [`either(...)` 항수가 레지스트리마다 다름](#1차-8) |
 | ⏸ | — | [`NumberProductGroup` 이 0에서 군 법칙을 깬다](#곱셈군) |
 | ⏸ | — | [`dist/` 재빌드](#dist) |
@@ -127,7 +127,7 @@
 - **참고** — [`index.js:873`](./../index.js#L873) `946` `960` `972` `1011` `1222` ·
   현재 집계 `.types.X` 68 / `Setoid.lookup` 6 · [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 8번
 
-<h3 id="2차-9">[2차-9] 거짓 주석 — "뼈대가 <em>이미</em> 정해 두고 있다"</h3>
+<h3 id="2차-9">✅ [2차-9] 거짓 주석 — "뼈대가 <em>이미</em> 정해 두고 있다"</h3>
 
 - **원인** — `Either.Setoid` 를 공용 뼈대에 올리며 주석을 달았는데 두 겹으로 틀렸다.
   ① 그 다인자 분기는 **같은 변경에서 새로 만든 것**이라 "이미" 가 아니다.
@@ -135,18 +135,24 @@
   이 줄이 반대로 말한다.
 - **해결책** — "안쪽이 둘이면 양쪽 키를 다 알 때만 캐시된다" 로 고치거나 지운다.
 - **완료조건** — 소스를 읽고 실행 결과와 모순이 없다(소유자 판단).
+- **검증 (2026-08-13)** — `index.js:1565` 를 "양쪽 키를 다 알 때만 캐시된다 — 한쪽이 미등록이면
+  캐시가 없다" 로 고쳤다. 실행 대조: 양쪽 키면 `Either.Setoid('string','number')` 동일성 `true`,
+  왼쪽을 미등록 인스턴스로 주면 `false`.
 - **참고** — [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 9번 · [`index.js:1565`](./../index.js#L1565)
 
-<h3 id="2차-10">[2차-10] 죽은 앵커 <code>docs/internals.md#ord-setoid</code></h3>
+<h3 id="2차-10">✅ [2차-10] 죽은 앵커 <code>docs/internals.md#ord-setoid</code></h3>
 
 - **원인** — 주석이 두 줄을 넘어가서 `docs/` 로 빼고 힌트만 남기는 규약을 따랐는데,
   **가리킨 절을 만들지 않았다.** 지금 그 앵커는 0개다.
 - **해결책** — `docs/internals.md` 에 `{#ord-setoid}` 절을 만들고 길이·로케일 예제를 넣는다.
   문서 예제는 테스트가 실행하므로 **그것이 곧 회귀 테스트**가 된다.
 - **완료조건** — 앵커가 실재하고, 그 절의 예제가 `docs-examples.test.js` 에서 돈다.
+- **검증 (2026-08-13)** — `docs/internals.md` 에 `{#ord-setoid}` 절을 만들었다(앵커 0개 → 1개).
+  예제 넷이 `docs-examples.test.js` 에서 돈다 — 484개 전부 통과. 길이 순서의 반대칭과
+  NFC/NFD 로케일 동치를 예제가 실행한다.
 - **참고** — [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 10번 · [`index.js:951`](./../index.js#L951) · [`docs/internals.md`](./../docs/internals.md)
 
-<h3 id="2차-11">[2차-11] 게이트 ③의 한계를 소스 주석이 과장</h3>
+<h3 id="2차-11">✅ [2차-11] 게이트 ③의 한계를 소스 주석이 과장</h3>
 
 - **원인** — `FunctionFunctor` 주석에 "명세가 요구하는 그것이다" 라고 단정했다. 그런데 그
   판정을 내리는 게이트는 `.type` **문자열**만 비교한다. `TupleBifunctor`(`.type='Array'`)가
@@ -155,6 +161,11 @@
 - **해결책** — 주석에서 단정을 빼고 무엇인지만 말한다(`map = 후합성`). 게이트 파일의
   「못 잡는 것」에 `TupleBifunctor` 사례를 명시한다.
 - **완료조건** — 주석에 게이트가 보증하지 않는 주장이 없다(소유자 판단).
+- **검증 (2026-08-13)** — `index.js:802` 에서 "명세가 요구하는 그것이다" 를 빼고
+  "map 은 후합성이다 — compose2 와 같은 연산" 으로 바꿨다. 실행 대조: `map(g,fn)` 과
+  `Semigroupoid.compose(g,fn)` 이 전 입력에서 `[10,20,-10,80]` 로 일치.
+  게이트 ③의 한계(`TupleBifunctor` 가 `ArrayFunctor` 로 만족된다)를
+  `tests/staticland-spec.test.js` 머리의 「못 잡는 것」에 실측값과 함께 적었다.
 - **참고** — [`index.js:803`](./../index.js#L803) ·
   [`tests/staticland-spec.test.js`](./../tests/staticland-spec.test.js) 검사 ③ · [`review/260813-index-audit-2.md`](./review/260813-index-audit-2.md) 11번
 
@@ -167,12 +178,15 @@
 - **완료조건** — `fp.Setoid.Array._ordLte` 가 `undefined` 이고 42/42 초록.
 - **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 5번 · [`index.js:1555`](./../index.js#L1555) · 사용처는 [`1564`](./../index.js#L1564) 한 줄뿐
 
-<h3 id="1차-7">[1차-7] 없어진 <code>struct(...)</code> 키를 광고하는 주석</h3>
+<h3 id="1차-7">✅ [1차-7] 없어진 <code>struct(...)</code> 키를 광고하는 주석</h3>
 
 - **원인** — `struct` 를 레지스트리 밖으로 빼면서 키 문법을 없앴는데, 그 문법을 설명하는
   주석을 안 고쳤다. 지금 그 키로 조회하면 던진다.
 - **해결책** — `struct(age:number,name:string)` 를 지우고 "내부 캐시 키" 라고만 쓴다.
 - **완료조건** — 주석이 광고하는 키가 실제로 조회된다, 또는 그런 주장이 없다.
+- **검증 (2026-08-13)** — `index.js:1573` 을 "내부 캐시 키만 필드 이름 정렬로 정규화한다
+  (조회 키는 없다)" 로 고쳤다. 실행 대조: `Setoid.lookup('struct(a:number)')` → `unsupported key`,
+  `Setoid.Struct({b,a}) === Setoid.Struct({a,b})` → `true`.
 - **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 7번 · [`index.js:1573`](./../index.js#L1573)
 
 ## ⏸ 소유자 결정 대기
