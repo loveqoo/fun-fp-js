@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-12T16:44:20.546Z
+ * Built: 2026-08-13T01:18:06.817Z
  * Static Land specification compliant
  */
 const polyfills = {
@@ -153,9 +153,23 @@ const range = n => {
     return Array.from({ length: n }, (_, i) => i);
 };
 const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
+// 레지스트리에 쓰는 **유일한 문**. 직접 대입하지 마라 — docs/internals.md#registry-writes
+// 역인덱스(.type -> 인스턴스들)를 여기서 함께 갱신하므로, 우회하면 Algebra.all 에서
+// 조용히 사라진다. tests/registry-api.test.js 가 인덱스와 레지스트리의 일치를 강제한다.
+const registryIndex = new Map();
+const registerAs = (types, key, instance) => {
+    types[key] = instance;
+    if (typeof instance?.type !== 'string') return;
+    const bucket = registryIndex.get(instance.type.toLowerCase())
+        ?? registryIndex.set(instance.type.toLowerCase(), new Map()).get(instance.type.toLowerCase());
+    const entry = bucket.get(instance) ?? { name: null, key: null };
+    // 대문자로 시작하는 키는 클래스 이름이고, 그것이 표시 이름이 된다.
+    if (key[0] === key[0].toUpperCase()) entry.name ??= key; else entry.key ??= key;
+    bucket.set(instance, entry);
+};
 const register = (target, instance, ...aliases) => {
-    target[instance.constructor.name] = instance;
-    for (const alias of aliases) { target[alias.toLowerCase()] = instance; }
+    registerAs(target, instance.constructor.name, instance);
+    for (const alias of aliases) { registerAs(target, alias.toLowerCase(), instance); }
 };
 const loadedModules = new Set();
 const load = (...modules) => {
@@ -433,15 +447,7 @@ const checkAndSet = (config => {
     };
 })(config);
 class Algebra { constructor(type) { this.type = type; } }
-// 상위 클래스에 넘기는 map/ap 은 이미 검사가 씌워진 것이다. 같은 type 이면 상위가 씌우는
-// 검사가 **글자 그대로 같으므로**(둘 다 types.isFunction(f) && types.check(a, instance.type))
-// 바깥 겹은 안전성을 더하지 않는다. 그것이 벗기는 유일한 근거다.
-// Alternative 가 this.alt = plus.alt 로 재래핑을 피하는 것과 같은 처리다.
-// type 이 다르면 바깥 검사가 다른 것이므로 그대로 둔다.
-//
-// 성능을 근거로 삼지 마라 — 같은 회차가 first/left 를 Bifunctor.bimap 위임으로 바꿔
-// 원소마다 레지스트리 조회를 새로 넣었고, 그쪽이 벗긴 겹보다 크다(실측 1.37~1.60배).
-// 레지스트리 재사용은 POLICY 6 에 따른 옳은 선택이고 되돌리지 않는다.
+// 같은 type 이면 상위의 검사와 글자 그대로 같다 — docs/internals.md#unwrap (성능은 근거가 아니다)
 const unwrapIfSameType = (instance, source, ...methods) => {
     if (instance.type !== source.type) return;
     for (const m of methods) { if (source[m]) instance[m] = source[m]; }
@@ -592,25 +598,14 @@ class Alt extends Functor {
     alt() { raise(new Error('Alt: alt is not implemented')); }
 }
 Alt.prototype[Symbols.Alt] = true;
-// Plus 는 alt(결합 이항 연산)와 zero(항등원)를 둘 다 갖고 있어 구조적으로 Monoid 다 —
-// 태그만 없다. 그래서 등록된 Plus 는 전부 짝 Semigroup/Monoid 를 plus(<alias>) 키로 얻는다.
-// 특례를 손으로 쓰지 않는다: Plus 를 새로 등록하면 짝도 자동으로 따라온다.
-//
-// 이렇게 얻은 Monoid 는 컨테이너를 열지 않고 한쪽을 통째로 고른다. Maybe 의 경우
-// Maybe.Monoid(innerSG)(= maybe(first))와 대비된다 — 그쪽은 둘 다 Just 일 때 안쪽 값을
-// innerSG.concat 으로 합치므로 안의 타입이 같아야 한다. payload 타입이 같으면 결과도
-// 같고, 섞였을 때만 갈린다 — 앞엣것은 던지고 이쪽은 고른다.
-//
-// register() 를 쓰지 않는 이유: 그것은 instance.constructor.name 도 키로 넣으므로
-// Monoid.types['Monoid'] 가 생기고 Plus 들이 서로 덮는다. Maybe.Monoid 의 선례대로
-// 키를 직접 넣는다.
+// Plus 는 alt + zero 를 다 가져 구조적으로 Monoid 다 — docs/internals.md#plus-monoid
 const deriveFromPlus = (plus, type, aliases) => {
     const semigroup = new Semigroup(plus.alt, type);
     const monoid = new Monoid(semigroup, plus.zero, type);
     for (const alias of aliases) {
         const key = `plus(${alias.toLowerCase()})`;
-        Semigroup.types[key] = semigroup;
-        Monoid.types[key] = monoid;
+        registerAs(Semigroup.types, key, semigroup);
+        registerAs(Monoid.types, key, monoid);
     }
 };
 class Plus extends Alt {
@@ -709,10 +704,7 @@ class Traversable extends Functor {
 }
 Traversable.prototype[Symbols.Traversable] = true;
 
-// 타입클래스의 정적 조회는 `lookup` 이다 — `of` 가 아니다.
-// `of` 는 값을 컨테이너에 넣는 생성자 하나만 뜻한다(`Maybe.of(1)` === `Just(1)`,
-// `Applicative.lookup('maybe').of(1)`). 한 이름이 조회와 주입을 겸하면 읽는 쪽이
-// `Maybe.of('array')` 를 조회로 오해한다 — 그건 `Just('array')` 다.
+// 정적 조회는 lookup 이다. of 는 값 주입 전용 — docs/README.md 「lookup 과 of」
 const withTypeRegistry = (TypeClass, defaultResolver = null) => {
     TypeClass.types = {};
     TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
@@ -722,6 +714,25 @@ const withTypeRegistry = (TypeClass, defaultResolver = null) => {
 const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
     TypeClass.resolver = key => prev(key) || resolver(key);
+};
+// Algebra.all(<타입키>) — 그 타입의 인스턴스를 한 객체로. 쓰는 법 docs/README.md,
+// 묶는 기준(.type)·이름 규칙·캐시 없는 비용은 docs/internals.md#algebra-all
+const capHead = s => s.charAt(0).toUpperCase() + s.slice(1);
+const camelHead = s => s.charAt(0).toLowerCase() + s.slice(1);
+const composedName = (key, className) =>
+    camelHead(key.split(/[(),]+/).filter(Boolean).map(capHead).join('') + className);
+Algebra.all = key => {
+    typeof key === 'string' || raise(new TypeError('Algebra.all: key must be a string'));
+    // 소문자만 받는다. 대문자도 받으면 같은 묶음을 두 이름으로 부르게 되고,
+    // `.type` 이 대문자('Maybe')인 것과 소문자('number')인 것이 섞여 있어 더 헷갈린다.
+    key === key.toLowerCase() || raise(new TypeError(`Algebra.all: key must be lowercase, got ${key}`));
+    const found = registryIndex.get(key);
+    found?.size > 0 || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
+    const result = {};
+    for (const [instance, { name, key: composed }] of found) {
+        result[name ? camelHead(name) : composedName(composed, instance.constructor.name)] = instance;
+    }
+    return result;
 };
 
 Setoid.op = (a, b) => a === b;
@@ -952,15 +963,7 @@ class StringMonoid extends Monoid {
 }
 modules.push(StringMonoid);
 /* Polymorphic — 값 타입을 보지 않는 인스턴스 ('any') */
-// first/last 는 (a,b) => a · (a,b) => b 라 값의 타입과 무관하다. 한때 /* Object */ 섹션에
-// 있어 'object' 로 등록돼 있었는데, 그건 위치를 따라간 것이고 types/data/builtins.d.ts 의
-// 선언(readonly first: unknown)이 처음부터 모든 타입이었다.
-// 이 둘은 Monoid 가 아니다 — 항등원이 없다 (commit e3d2b82 에서 FirstMonoid/LastMonoid 제거).
-// Monoid 가 필요하면 Maybe 로 감싸는데, 무엇을 원하느냐에 따라 둘로 갈린다:
-//   Maybe.Monoid('first')     = maybe(first)  — 둘 다 Just 면 안쪽 값을 first 로 합친다
-//   Monoid.lookup('plus(maybe)')  = Alt/Plus 유도 — 안을 열지 않고 첫 Just 를 통째로 고른다
-// 둘은 payload 타입이 같으면 결과도 같다. 갈리는 것은 타입이 섞였을 때뿐이고, 그때
-// 앞엣것은 안쪽 concat 의 타입 검사에 걸려 던진다. "합치기" 면 앞, "고르기" 면 뒤.
+// Monoid 가 아니다(항등원 없음). Maybe 로 감쌀 때 갈리는 두 길: docs/internals.md#any
 class FirstSemigroup extends Semigroup {
     constructor() {
         super(x => x, 'any', Semigroup.types, 'first');
@@ -1004,17 +1007,8 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
     return { key: best, instance };
 };
 /* Identity / Const — traverse 에 넘기는 Applicative 두 개 */
-// Identity: 값을 그대로 나른다. traverse 를 "그냥 매핑" 으로 쓰고 싶을 때 쓴다 (optics 의 over).
-// Const<r>: 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓴다 (optics 의 preview).
-// 담는 모양은 { value } 이므로 type 은 'Object' 다 — types.of({}) 가 'Object' 를 준다.
-// 등록된 다른 모든 Applicative 와 같은 3단이다 — Functor → Apply → Applicative.
-// type 이 'Object' (대문자) 인 것은 types.of({}) 가 'Object' 를 주기 때문이고,
-// **여기를 소문자로 바꾸면 optics 가 전부 죽는다** — Identity/Const 는 Apply.ap 를 지나고
-// 거기 쓰이는 types.equals(a, b, instance.type) 는 types.check 와 달리 대소문자 폴백이
-// 없다. 그 3인자형을 쓰는 곳은 파일 전체에서 Apply.ap 와 Alt.alt 둘뿐이다.
-// (2026-08-13 이전에는 ObjectFilterable/ObjectFoldable 이 소문자 'object' 를 써서 이 자리가
-//  "예외" 처럼 보였다. 그쪽은 폴백이 있는 types.check 만 지나 우연히 살아 있었던 것이고,
-//  지금은 넷 다 정규 태그다. tests/algebra-type.test.js 가 전수로 강제한다.)
+// 캐리어가 { value } 라 type 은 'Object'(대문자). 소문자로 바꾸면 optics 가 죽는다
+// — docs/internals.md#identity-const
 class IdentityFunctor extends Functor {
     constructor() {
         super((f, x) => ({ value: f(x.value) }), 'Object', Functor.types, 'identity');
@@ -1048,9 +1042,9 @@ Applicative.Const = monoid => {
     if (key !== null) {
         // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')
         // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
-        Functor.types[`const(${key})`] = result;
-        Apply.types[`const(${key})`] = result;
-        Applicative.types[`const(${key})`] = result;
+        registerAs(Functor.types, `const(${key})`, result);
+        registerAs(Apply.types, `const(${key})`, result);
+        registerAs(Applicative.types, `const(${key})`, result);
         Applicative.Const._keyCache.set(key, result);
     } else {
         Applicative.Const._instanceCache.set(m, result);
@@ -1458,7 +1452,7 @@ Maybe.Semigroup = innerSG => {
         'Maybe', null
     );
     if (key !== null) {
-        Semigroup.types[`maybe(${key})`] = result;
+        registerAs(Semigroup.types, `maybe(${key})`, result);
         Maybe.Semigroup._keyCache.set(key, result);
     } else {
         Maybe.Semigroup._instanceCache.set(sg, result);
@@ -1476,7 +1470,7 @@ Maybe.Monoid = innerSG => {
     const maybeSG = Maybe.Semigroup(sg);
     const result = new Monoid(maybeSG, () => Maybe.Nothing(), 'Maybe', null);
     if (key !== null) {
-        Monoid.types[`maybe(${key})`] = result;
+        registerAs(Monoid.types, `maybe(${key})`, result);
         Maybe.Monoid._keyCache.set(key, result);
     } else {
         Maybe.Monoid._instanceCache.set(sg, result);
@@ -1497,7 +1491,7 @@ Either.Semigroup = innerSG => {
         'Either', null
     );
     if (key !== null) {
-        Semigroup.types[`either(${key})`] = result;
+        registerAs(Semigroup.types, `either(${key})`, result);
         Either.Semigroup._keyCache.set(key, result);
     } else {
         Either.Semigroup._instanceCache.set(sg, result);
@@ -1522,6 +1516,120 @@ addResolver(Monoid, key => {
 addResolver(Applicative, key => {
     const m = /^const\((.+)\)$/.exec(key);
     return m ? Applicative.Const(m[1]) : null;
+});
+/* Container Setoid / Ord — 안쪽 비교법을 받아 상자 비교법을 만든다 */
+// 안쪽을 항상 밝힌다: Setoid.lookup('maybe(number)'). 매개변수 없는 'maybe' 는 없다.
+// Either 는 자리가 둘이라 비교법도 둘을 받는다 — docs/internals.md#container-setoid
+const normalizeSetoidKey = normalizeTypeClassKey(Setoid, Symbols.Setoid, 'normalizeSetoidKey');
+const normalizeOrdKey = normalizeTypeClassKey(Ord, Symbols.Ord, 'normalizeOrdKey');
+const innerResolver = (normalize, kind) => (label, inner) => {
+    try { return normalize(inner); }
+    catch (e) {
+        if (e instanceof TypeError) raise(new TypeError(`${label}: inner must be a supported ${kind} key or ${kind} instance`));
+        throw e;
+    }
+};
+const resolveInnerSetoid = innerResolver(normalizeSetoidKey, 'Setoid');
+const resolveInnerOrd = innerResolver(normalizeOrdKey, 'Ord');
+// 키가 중첩될 수 있으므로(either(maybe(number),array(string))) 최상위 쉼표에서만 자른다.
+const splitTopLevel = s => {
+    const out = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') depth--;
+        else if (s[i] === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
+    }
+    return (out.push(s.slice(start)), out);
+};
+// Maybe.Semigroup 선례의 캐시 두 개(키/인스턴스)를 뼈대로 뽑았다.
+const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
+    const factory = inner => {
+        const { key, instance } = resolveInner(label, inner);
+        if (key !== null && factory._keyCache.has(key)) return factory._keyCache.get(key);
+        if (key === null && factory._instanceCache.has(instance)) return factory._instanceCache.get(instance);
+        const result = build(instance);
+        if (key !== null) { registerAs(registry, keyOf(key), result); factory._keyCache.set(key, result); }
+        else factory._instanceCache.set(instance, result);
+        return result;
+    };
+    factory._keyCache = new Map();
+    factory._instanceCache = new WeakMap();
+    return factory;
+};
+Maybe.Setoid = cachedInnerFactory('Maybe.Setoid', resolveInnerSetoid, Setoid.types, k => `maybe(${k})`,
+    inner => new Setoid((a, b) => a.isNothing() ? b.isNothing() : b.isJust() && inner.equals(a.value, b.value), 'Maybe', null));
+// Nothing 이 가장 작다 — fp-ts 의 getOrd 와 같고, Haskell 의 생성자 선언 순서와도 같다.
+Maybe.Ord = cachedInnerFactory('Maybe.Ord', resolveInnerOrd, Ord.types, k => `maybe(${k})`,
+    inner => new Ord((a, b) => a.isNothing() || (b.isJust() && inner.lte(a.value, b.value)), 'Maybe', null));
+Setoid.Array = cachedInnerFactory('Setoid.Array', resolveInnerSetoid, Setoid.types, k => `array(${k})`,
+    inner => new Setoid((a, b) => a.length === b.length && a.every((x, i) => inner.equals(x, b[i])), 'Array', null));
+// 사전식. Ord 는 lte 만 있으므로 "양쪽으로 lte" 를 같음으로 읽어 자리를 넘긴다.
+Setoid.Array._ordLte = inner => (a, b) => {
+    const n = Math.min(a.length, b.length);
+    for (let i = 0; i < n; i++) {
+        if (!inner.lte(a[i], b[i])) return false;
+        if (!inner.lte(b[i], a[i])) return true;
+    }
+    return a.length <= b.length;
+};
+Ord.Array = cachedInnerFactory('Ord.Array', resolveInnerOrd, Ord.types, k => `array(${k})`,
+    inner => new Ord(Setoid.Array._ordLte(inner), 'Array', null));
+// Either 만 안쪽이 둘이다. 양쪽 키를 다 알 때만 캐시한다 — 한쪽이 미등록 인스턴스면
+// 키가 없어 캐시할 자리가 없다(선례의 WeakMap 은 인자가 하나일 때의 장치다).
+Either.Setoid = (leftS, rightS) => {
+    const l = resolveInnerSetoid('Either.Setoid', leftS);
+    const r = resolveInnerSetoid('Either.Setoid', rightS);
+    const key = l.key !== null && r.key !== null ? `either(${l.key},${r.key})` : null;
+    if (key !== null && Either.Setoid._keyCache.has(key)) return Either.Setoid._keyCache.get(key);
+    const result = new Setoid((a, b) => a.isLeft()
+        ? b.isLeft() && l.instance.equals(a.value, b.value)
+        : b.isRight() && r.instance.equals(a.value, b.value), 'Either', null);
+    if (key !== null) { registerAs(Setoid.types, key, result); Either.Setoid._keyCache.set(key, result); }
+    return result;
+};
+Either.Setoid._keyCache = new Map();
+// Either 의 Ord 는 만들지 않는다 — Left/Right 중 무엇이 먼저인지에 정답이 없다.
+// fp-ts 도 코어에서 뺐다. 근거: docs/internals.md#container-setoid
+// 레코드는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해진다 — 필드별로 받는다.
+// fp-ts 의 Eq.struct 에 해당. 키는 필드 이름 정렬로 정규화한다: struct(age:number,name:string).
+// 선언한 필드 집합과 실제 키 집합이 정확히 같아야 한다(엄격) — 초과 필드를 무시하면
+// 검사가 아니라 표본 대조가 된다. Ord.Struct 는 없다 — 레코드의 순서에 정답이 없다.
+Setoid.Struct = fields => {
+    types.isPlainObject(fields) || raise(new TypeError('Setoid.Struct: fields must be a plain object'));
+    const names = Object.keys(fields).sort();
+    names.length > 0 || raise(new TypeError('Setoid.Struct: fields must not be empty'));
+    const resolved = names.map(n => [n, resolveInnerSetoid('Setoid.Struct', fields[n])]);
+    // 레지스트리에 올리지 않는다 — maybe/array/either 는 이 라이브러리의 이름 있는
+    // 타입이지만 레코드는 사용자마다 다른 즉석 모양이라 무한히 많다. 전역 명부에
+    // 올리면 Algebra.all('object') 가 오염된다. 캐시는 내부에만 둔다(정규화 유지 —
+    // 필드 순서가 달라도, 안쪽이 전부 키로 밝혀져 있으면 같은 인스턴스).
+    const cacheKey = resolved.every(([, r]) => r.key !== null)
+        ? resolved.map(([n, r]) => `${n}:${r.key}`).join(',')
+        : null;
+    if (cacheKey !== null && Setoid.Struct._cache.has(cacheKey)) return Setoid.Struct._cache.get(cacheKey);
+    const result = new Setoid((a, b) => {
+        const ka = Object.keys(a), kb = Object.keys(b);
+        return ka.length === names.length && kb.length === names.length
+            && names.every(n => n in a && n in b)
+            && resolved.every(([n, r]) => r.instance.equals(a[n], b[n]));
+    }, 'Object', null);
+    if (cacheKey !== null) Setoid.Struct._cache.set(cacheKey, result);
+    return result;
+};
+Setoid.Struct._cache = new Map();
+// struct 는 여기 없다 — 레코드는 즉석 모양이라 레지스트리 밖이다. Setoid.Struct 팩토리만이 입구다.
+addResolver(Setoid, key => {
+    const m = /^(maybe|array|either)\((.+)\)$/.exec(key);
+    if (!m) return null;
+    if (m[1] === 'maybe') return Maybe.Setoid(m[2]);
+    if (m[1] === 'array') return Setoid.Array(m[2]);
+    const parts = splitTopLevel(m[2]);
+    return parts.length === 2 ? Either.Setoid(parts[0], parts[1]) : null;
+});
+addResolver(Ord, key => {
+    const m = /^(maybe|array)\((.+)\)$/.exec(key);
+    return !m ? null : m[1] === 'maybe' ? Maybe.Ord(m[2]) : Ord.Array(m[2]);
 });
 /* Task */
 class Task {
@@ -2397,22 +2505,10 @@ load(...modules);
 // transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
 const { Optics } = (() => {
     // Profunctor 인코딩: Optic s a = P => P a a -> P s s
-    //
-    // 어떤 P를 주입하느냐가 연산을 정한다 — 하나의 정의에서 읽기·쓰기·역생성이 모두 나온다.
-    //   함수      → over/set        (dimap, first, left, wander)
-    //   Forget<r> → view/preview/toList/foldMapOf  (같음. monoid로 누적)
-    //   Tagged    → review          (dimap, left 만)
-    //
-    // Tagged에 first와 wander가 없다는 사실이 타입 안전성을 대신한다 —
-    // Lens나 Traversal에 review를 쓰면 그 자리에서 TypeError가 난다.
-    // P가 첫 인자이므로 plain compose로는 합성 불가 → Optics.compose 제공.
+    // 주입하는 P 가 연산을 정한다(함수=over, Forget=view, Tagged=review).
+    // first=Lens · left=Prism · wander=Traversal — docs/internals.md#optics
 
     // ── 구체 Profunctor 3종 ────────────────────────────────────────────
-    // 세 딕셔너리가 공유하는 메서드가 optic 의 종류를 정한다:
-    //   first  = 곱   — 짝 [a, c] 의 한쪽만 건드린다        → Lens
-    //   left   = 합   — Either 의 Left 만 건드린다          → Prism
-    //   wander = 순회 — 컨테이너 안의 모든 자리를 건드린다   → Traversal
-    // 어느 것을 요구하느냐가 그 optic 에 무엇을 쓸 수 있는지를 정한다.
 
     // 함수: p a b = a -> b.  over/set 이 쓴다.
     const functionProfunctor = {
@@ -2445,9 +2541,7 @@ const { Optics } = (() => {
     };
 
     // ── optic 생성자 ───────────────────────────────────────────────────
-    // dimap만 쓴다 — 세 P가 모두 dimap을 가지므로 Iso는 모든 연산에서 동작한다.
-    // Lens이자 Prism이라 view도 review도 되며, 그래서 optic 계층의 최상단이다.
-    // 법칙: from(to(s)) === s, to(from(a)) === a (무손실 변환)
+    // Iso 는 dimap 만 써서 모든 연산에 통한다(계층 최상단) — docs/internals.md#optics
     const Iso = (to, from) => {
         typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
         typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
@@ -2484,11 +2578,8 @@ const { Optics } = (() => {
         return optic(P)(pab)(s);
     };
     const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
-    // 읽기 셋은 전부 foldMapOf 의 특수 경우다 — 어떤 Monoid 로 모으느냐만 다르다.
-    // 인자 순서는 over(optic, f, s) 에 맞추고 monoid 를 앞에 둔다.
-    // monoid 는 first 경로(Lens/Iso)에서 한 번도 안 쓰이므로, 검사하지 않으면 optic 종류에
-    // 따라 통과 여부가 갈린다. 기존 foldMap(foldable, monoid) 과 같은 규칙으로 요구한다 —
-    // 등록은 필요 없고 new Monoid(...) 로 만든 것이면 된다.
+    // 읽기 셋은 전부 이것의 특수 경우다. monoid 를 항상 요구하는 이유는 Lens/Iso
+    // 경로에서 안 쓰여 검사가 optic 종류에 따라 갈리기 때문 — docs/internals.md#optics
     const foldMapOf = (monoid, optic, f, s) => {
         // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그러므로
         // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
@@ -2508,10 +2599,8 @@ const { Optics } = (() => {
         typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
         return foldMapOf(Monoid.lookup('plus(maybe)'), optic, Maybe.Just, s);
     };
-    // Lens/Iso 전용 — "정확히 1대상" 을 문서가 아니라 코드가 강제한다.
-    // forgetProfunctor 에는 wander 가 있어서 Traversal 을 넘겨도 실행은 된다(review 와 달리
-    // 구조가 막지 못한다). 그래서 대상 수를 세는 것이 유일한 방법이다. 0개면 undefined 를
-    // 흘리지 않고, 2개 이상이면 첫 값을 조용히 주지 않는다.
+    // Lens/Iso 전용. Forget 에는 wander 가 있어 구조가 못 막으므로 대상 수를 센다
+    // — docs/internals.md#optics
     const view = (lens, s) => {
         typeof lens !== 'function' && raise(new TypeError('view: optic must be a function'));
         const targets = toList(lens, s);
@@ -2574,11 +2663,8 @@ const liftCont = f => f._mapChain
     ? a => applyMapChain(f._mapChain, f.cont(a))
     : f.cont;
 
-// 타입 클래스 인스턴스 동적 등록: Functor → Apply → Applicative → Chain → Monad
-// registry=null로 generic 키 오염 방지, alias만 수동 등록
-// nominal typing (instanceof XT) 강제
-// 전제: 호출 시점에 XT.of가 이미 완성되어 있어야 한다.
-// WriterT처럼 추가 파라미터를 캡처하는 경우, of가 해당 클로저를 올바르게 품고 있어야 한다.
+// Functor → Apply → Applicative → Chain → Monad 5단 동적 등록. registry=null 로 키 오염
+// 방지, nominal typing, XT.of 선완성 전제 — docs/internals.md#transformer-register
 const registerTransformerTypeClasses = (XT, typeName, alias) => {
     const check = (val, method) => {
         if (!(val instanceof XT)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
@@ -2587,14 +2673,14 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
         (f, t) => { check(t, 'map'); return new XT(Functor.lookup('free').map(f, t._program)); },
         typeName, null
     );
-    Functor.types[alias] = tFunctor;
+    registerAs(Functor.types, alias, tFunctor);
     const tApply = new Apply(tFunctor, (tf, ta) => {
         check(tf, 'ap'); check(ta, 'ap');
         return new XT(Chain.lookup('free').chain(f => Functor.lookup('free').map(f, ta._program), tf._program));
     }, typeName, null);
-    Apply.types[alias] = tApply;
+    registerAs(Apply.types, alias, tApply);
     const tApplicative = new Applicative(tApply, XT.of, typeName, null);
-    Applicative.types[alias] = tApplicative;
+    registerAs(Applicative.types, alias, tApplicative);
     const tChain = new Chain(tApply, (f, t) => {
         check(t, 'chain');
         return new XT(Chain.lookup('free').chain(x => {
@@ -2603,9 +2689,9 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
             return result._program;
         }, t._program));
     }, typeName, null);
-    Chain.types[alias] = tChain;
+    registerAs(Chain.types, alias, tChain);
     const tMonad = new Monad(tApplicative, tChain, typeName, null);
-    Monad.types[alias] = tMonad;
+    registerAs(Monad.types, alias, tMonad);
     XT.map = tFunctor.map;
     XT.ap = tApply.ap;
     XT.chain = tChain.chain;
@@ -2613,9 +2699,8 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
     XT.composeK = (...fns) => composeK(tMonad)(fns);
 };
 
-// type 없는 커스텀 모나드에 자동 부여되는 alias는 프로세스 실행 순서에 따라 달라진다.
-// 이 alias를 외부에서 Functor.lookup('statet(m1)') 같은 식으로 참조하는 것은 권장하지 않는다.
-// 문자열 M (예: 'maybe', 'either')이나 type 프로퍼티가 있는 객체 M을 사용하면 결정적 alias를 얻을 수 있다.
+// 자동 alias 는 실행 순서에 따라 달라진다 — M 은 문자열로 넘겨라.
+// docs/internals.md#transformer-register
 let _transformerAutoId = 0;
 const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
 
