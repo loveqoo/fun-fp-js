@@ -24,8 +24,11 @@
 // 못 잡는 것 (규칙 31-1):
 //   - 표본이 못 가르는 위반은 못 잡는다. 새 인스턴스를 넣을 때 **그 인스턴스가 유도하는
 //     동치를 가르는 쌍**이 표본에 있는지 확인하라. 없으면 검사는 공허하게 통과한다.
-//   - Functor~Traversable 의 법칙은 여기 없다. 컨테이너 동등이 타입마다 달라
-//     각 tests/*.test.js 가 손으로 진다. 이 파일이 덮는 것은 값 수준 다섯 클래스다.
+//   - Functor 는 등록된 11개 전부에 돈다(아래 OBSERVE). 그러나 Apply·Applicative·Alt·
+//     Chain·ChainRec·Extend·Comonad·Traversable 의 법칙은 여전히 각 tests/*.test.js 가
+//     손으로 고른 인스턴스만 본다 — Ord 를 놓쳤던 것과 같은 모양의 구멍이 그만큼 남아 있다.
+//   - 컨테이너는 값이 아니라 **관측**으로 비교한다(OBSERVE). Reader/State 는 표본 환경·
+//     상태에서만, Task 는 fork 결과로만 본다 — 그 표본이 못 가르는 차이는 못 잡는다.
 //   - 'function' 의 동등은 관측 동등이다 — 표본 입력에서만 같음을 본다.
 //   - FACTORY_CASES 는 손으로 쓴 명단이다. 새 팩토리를 만들고 여기 안 넣으면 감시 밖이다.
 import fp from '../index.js';
@@ -123,6 +126,46 @@ const FACTORY_CASES = [
         [Left(['e']), Left(['e']), Right([1]), Right([1]), Right([2, 3])],
         (a, b) => eitherArrayArrayEq.equals(a, b)],
 ];
+
+// ─── Functor — 컨테이너는 값이 아니라 관측으로 비교한다 ──────────────
+// Task·Reader·State 는 안에 함수가 있어 구조 비교가 안 된다. 그래서 타입마다 "여는 법" 을
+// 정하고 그 결과를 비교한다. 여는 법이 없는 타입이 생기면 아래 검사가 멈추고 요구한다.
+const FN_INPUTS_F = [0, 1, -2, 7];
+const ENVS = [{ n: 1 }, { n: 5 }];
+const STATES = [0, 3];
+const forkSync = t => {
+    let out = ['(안 열림)'];
+    t.fork(e => { out = ['err', String(e)]; }, v => { out = ['ok', v]; });
+    return out;
+};
+const OBSERVE = {
+    function: f => FN_INPUTS_F.map(f),
+    Object: v => v.value,
+    Array: v => v,
+    Maybe: v => (v.isNothing() ? ['Nothing'] : ['Just', v.value]),
+    Either: v => (v.isLeft() ? ['Left', v.value] : ['Right', v.value]),
+    Task: forkSync,
+    Validation: v => (v.isValid() ? ['Valid', v.value] : ['Invalid', v.errors]),
+    Reader: v => ENVS.map(e => v.run(e)),
+    Writer: v => v.run(),
+    State: v => STATES.map(st => v.run(st)),
+    Free: v => v.value,
+};
+// 표본은 **그 타입의 갈림길을 담아야** 한다 — Nothing/Just, Left/Right, 성공/실패처럼.
+const FUNCTOR_SAMPLES = {
+    function: [x => x + 1, x => x * 3],
+    Object: [{ value: 1 }, { value: 7 }],
+    Array: [[], [1], [2, 3]],
+    Maybe: [Nothing(), Just(1)],
+    Either: [Left('e'), Right(1)],
+    Task: [fp.Task.of(1), fp.Task.rejected('boom')],
+    Validation: [fp.Validation.Valid(1), fp.Validation.Invalid(['e'], fp.Monoid.lookup('array'))],
+    Reader: [fp.Reader.of(1), fp.Reader.asks(e => e.n)],
+    Writer: [fp.Writer.of(1), fp.Writer.tell(['w'])],
+    State: [fp.State.of(1), fp.State.get, fp.State.modify(n => n + 1)],
+    Free: [fp.Free.of(1), fp.Free.of(7)],
+};
+const REGISTERED_FUNCTORS = instancesOf('Functor');
 
 // ─── 법칙 ────────────────────────────────────────────────────────────
 const show = v => v instanceof Date ? `Date(${v.getTime()})`
@@ -227,6 +270,49 @@ test('팩토리로만 생기는 인스턴스도 법칙을 지킨다', () => {
     }
     assertEquals(report(broken), '', '팩토리 산물의 법칙');
     assertEquals(FACTORY_CASES.length, 11, '팩토리 명단이 달라졌다 — 새 팩토리를 넣었으면 표본도 넣어라');
+});
+
+test('Functor — 등록된 11개 전부에 항등·합성이 돈다', () => {
+    // 명세: map(id, a) ≡ a · map(compose(f,g), a) ≡ map(f, map(g, a))
+    const idf = x => x;
+    const f = x => (typeof x === 'number' ? x + 1 : x);
+    const g = x => (typeof x === 'number' ? x * 2 : x);
+    const snap = (obs, v) => JSON.stringify(obs(v));
+    const broken = [];
+    let checked = 0;
+    for (const [label, F] of REGISTERED_FUNCTORS) {
+        const obs = OBSERVE[F.type], xs = FUNCTOR_SAMPLES[F.type];
+        if (!obs || !xs) {
+            broken.push(`${label}: .type='${F.type}' 의 여는 법 또는 표본이 없다 — OBSERVE/FUNCTOR_SAMPLES 에 넣어라`);
+            continue;
+        }
+        checked++;
+        for (const a of xs) {
+            snap(obs, F.map(idf, a)) === snap(obs, a)
+                || broken.push(`${label}: 항등 깨짐 — map(id, ${snap(obs, a)})`);
+            snap(obs, F.map(x => f(g(x)), a)) === snap(obs, F.map(f, F.map(g, a)))
+                || broken.push(`${label}: 합성 깨짐 — ${snap(obs, a)}`);
+        }
+    }
+    assertEquals(report(broken), '', 'Functor 법칙');
+    assertEquals(checked, 11, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
+});
+
+test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 잡힌다)', () => {
+    // 표본이 갈림길을 안 담으면 법칙은 자동으로 참이 된다. 각 타입마다 "합성을 안 하는 map"
+    // 을 만들어, 그 차이가 실제로 관측되는지 본다 — 안 잡히면 그 표본은 감시하지 않는 것이다.
+    const f = x => (typeof x === 'number' ? x + 1 : x);
+    const blind = [];
+    for (const [label, F] of REGISTERED_FUNCTORS) {
+        const obs = OBSERVE[F.type], xs = FUNCTOR_SAMPLES[F.type];
+        if (!obs || !xs) continue;
+        const caught = xs.some(a => {
+            try { return JSON.stringify(obs(F.map(x => x, a))) !== JSON.stringify(obs(F.map(f, a))); }
+            catch { return true; }
+        });
+        caught || blind.push(label);
+    }
+    assertEquals(blind.join(','), '', '표본이 map 의 차이를 못 가르는 인스턴스');
 });
 
 test('표본 예외에는 전부 이유가 붙어 있다', () => {

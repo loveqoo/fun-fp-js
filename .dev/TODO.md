@@ -53,7 +53,7 @@
 ```
 ✅ 레지스트리 정합성
 ✅ Ord 를 Setoid 로            ← 이 회차의 본체
-🟡 검증 장치                    ← 지금 여기 — Functor~Traversable 법칙 하나만 남았다
+🟡 검증 장치                    ← Functor 까지 닫음. Apply~Traversable 여덟 클래스가 남음
 ✅ 남은 정리 — 전부 닫힘
 ```
 
@@ -63,7 +63,7 @@
 
 | 상태 | # | 무엇 |
 | --- | --- | --- |
-| 🟡 | — | [Functor~Traversable 법칙이 레지스트리 전체를 안 본다](#functor법칙) |
+| 🟡 | — | [법칙이 레지스트리 전체를 안 본다 — Functor 는 닫음, 나머지 8개 클래스가 남음](#functor법칙) |
 | ✅ | 1차-9 | [컨테이너 인스턴스의 `.type` 이 어떤 게이트에도 안 걸린다](#1차-9) |
 | ✅ | 2차-3 | [`default` 의 동종 제약이 격자·문서에 없다](#2차-3) |
 | ✅ | 2차-6 | [`FunctionFunctor.map` 이 `compose2` 를 손으로 다시 씀](#2차-6) |
@@ -91,6 +91,15 @@
   `staticland-laws.test.js` 의 `LAWS`·`FACTORY_CASES` 구조를 그대로 확장한다.
 - **완료조건** — `Functor` 등록 인스턴스 전부에 항등·합성 법칙이 돌고, 아무 인스턴스의 `map`
   을 뒤집는 뮤테이션이 잡힌다.
+- **검증 (2026-08-13) — Functor 는 닫혔다** — 등록 11개 전부에 항등·합성이 돈다. 컨테이너는
+  값이 아니라 **관측**으로 비교한다(`OBSERVE`): `Task` 는 `fork` 결과, `Reader`/`State` 는
+  표본 환경·상태에서의 `run`, `Writer` 는 `run()`, `Free` 는 `Pure` 의 값.
+  깨끗한 뮤테이션 셋(`Maybe`/`Reader`/`Free` 의 `map` 이 함수를 안 쓰게)을 심어 **새 게이트가
+  단독으로** 잡는 것을 확인했다. 표본이 공허하지 않은지 보는 검사도 함께 넣었다 — 각 타입마다
+  "합성을 안 하는 map" 의 차이가 실제로 관측되는지 본다.
+- **남은 것** — `Apply`·`Applicative`·`Alt`·`Chain`·`ChainRec`·`Extend`·`Comonad`·
+  `Traversable` 여덟은 아직 각 `tests/*.test.js` 가 손으로 고른 인스턴스만 본다.
+  `OBSERVE` 가 있으니 같은 틀로 넓힐 수 있다.
 - **참고** — [`tests/staticland-laws.test.js`](./../tests/staticland-laws.test.js) 머리의
   「못 잡는 것」 · [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
 
