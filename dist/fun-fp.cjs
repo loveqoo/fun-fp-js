@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-13T01:18:06.817Z
+ * Built: 2026-08-13T12:59:58.942Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -219,6 +219,10 @@ const checkAndSet = (config => {
                 typeof equals !== 'function' && raise(new TypeError('Setoid.equals: equals must be a function'));
                 instance.equals = (a, b) => (types.equals(a, b) && types.check(a, instance.type)) ? equals(a, b) : raise(binaryTypeError('Setoid.equals', instance.type));
             }, loose: (instance, equals) => { instance.equals = (a, b) => equals(a, b); }
+        },
+        'Ord.super': {
+            strict: (setoid) => { !(setoid && setoid[Symbols.Setoid]) && raise(new TypeError('Ord: argument must be a Setoid')); },
+            loose: emptyFunc
         },
         Ord: {
             strict: (instance, lte) => {
@@ -477,9 +481,12 @@ class Setoid extends Algebra {
     equals() { raise(new Error('Setoid: equals is not implemented')); }
 }
 Setoid.prototype[Symbols.Setoid] = true;
-class Ord extends Algebra {
-    constructor(lte, type, registry, ...aliases) {
-        super(type);
+// Static Land 의 "Ord must also implement Setoid" — 순서를 아는 것은 같음도 안다.
+class Ord extends Setoid {
+    constructor(setoid, lte, type, registry, ...aliases) {
+        checkAndSet('Ord.super')(setoid);
+        super(setoid.equals, type);
+        unwrapIfSameType(this, setoid, 'equals');
         checkAndSet('Ord')(this, lte);
         registry && register(registry, this, ...aliases);
     }
@@ -720,9 +727,9 @@ class Traversable extends Functor {
 Traversable.prototype[Symbols.Traversable] = true;
 
 // 정적 조회는 lookup 이다. of 는 값 주입 전용 — docs/README.md 「lookup 과 of」
-const withTypeRegistry = (TypeClass, defaultResolver = null) => {
+const withTypeRegistry = TypeClass => {
     TypeClass.types = {};
-    TypeClass.resolver = key => TypeClass.types[key] || defaultResolver?.(key);
+    TypeClass.resolver = key => TypeClass.types[key];
     TypeClass.lookup = key => TypeClass.resolver(key)
         || raise(new TypeError(`${TypeClass.name}.lookup: unsupported key ${key}`));
 };
@@ -751,10 +758,10 @@ Algebra.all = key => {
 };
 
 Setoid.op = (a, b) => a === b;
-withTypeRegistry(Setoid, key => key === 'default' ? { equals: Setoid.op } : null);
+withTypeRegistry(Setoid);
 
 Ord.op = (a, b) => a <= b;
-withTypeRegistry(Ord, key => key === 'default' ? { lte: Ord.op } : null);
+withTypeRegistry(Ord);
 
 withTypeRegistry(Semigroup);
 withTypeRegistry(Monoid);
@@ -812,6 +819,13 @@ class PredicateContravariant extends Contravariant {
     }
 }
 modules.push(PredicateContravariant);
+// 입력을 고정한 (a ->) 의 Functor. map 은 후합성이다 — compose2 와 같은 연산.
+class FunctionFunctor extends Functor {
+    constructor() {
+        super(compose2, 'function', Functor.types, 'function');
+    }
+}
+modules.push(FunctionFunctor);
 class FunctionProfunctor extends Profunctor {
     constructor() {
         super((f, g, fn) => x => g(fn(f(x))), 'function', Profunctor.types, 'function');
@@ -876,7 +890,7 @@ class NumberSetoid extends Setoid {
 modules.push(NumberSetoid);
 class NumberOrd extends Ord {
     constructor() {
-        super(Ord.op, 'number', Ord.types, 'number');
+        super(Setoid.types.NumberSetoid, Ord.op, 'number', Ord.types, 'number');
     }
 }
 modules.push(NumberOrd);
@@ -949,19 +963,33 @@ class StringSetoid extends Setoid {
 modules.push(StringSetoid);
 class StringOrd extends Ord {
     constructor() {
-        super(Ord.op, 'string', Ord.types, 'string');
+        super(Setoid.types.StringSetoid, Ord.op, 'string', Ord.types, 'string');
     }
 }
 modules.push(StringOrd);
+// 길이 순서·로케일 순서는 글자 동등과 다른 동치를 낳는다('ab' 와 'cd' 는 길이로 같은 자리다).
+// 그 동치가 곧 짝 Setoid 이고, Ord 가 그것을 싣는다 — docs/internals.md#ord-setoid
+class StringLengthSetoid extends Setoid {
+    constructor() {
+        super((x, y) => x.length === y.length, 'string', Setoid.types);
+    }
+}
+modules.push(StringLengthSetoid);
 class StringLengthOrd extends Ord {
     constructor() {
-        super((x, y) => x.length <= y.length, 'string', Ord.types);
+        super(Setoid.types.StringLengthSetoid, (x, y) => x.length <= y.length, 'string', Ord.types);
     }
 }
 modules.push(StringLengthOrd);
+class StringLocaleSetoid extends Setoid {
+    constructor() {
+        super((x, y) => x.localeCompare(y) === 0, 'string', Setoid.types);
+    }
+}
+modules.push(StringLocaleSetoid);
 class StringLocaleOrd extends Ord {
     constructor() {
-        super((x, y) => x.localeCompare(y) <= 0, 'string', Ord.types);
+        super(Setoid.types.StringLocaleSetoid, (x, y) => x.localeCompare(y) <= 0, 'string', Ord.types);
     }
 }
 modules.push(StringLocaleOrd);
@@ -991,6 +1019,19 @@ class LastSemigroup extends Semigroup {
     }
 }
 modules.push(LastSemigroup);
+// lookup('default') 의 실체. 값 타입은 안 보지만 인자끼리 같은 타입이어야 한다 — 'any' 의 뜻 그대로다.
+class DefaultSetoid extends Setoid {
+    constructor() {
+        super(Setoid.op, 'any', Setoid.types, 'default');
+    }
+}
+modules.push(DefaultSetoid);
+class DefaultOrd extends Ord {
+    constructor() {
+        super(Setoid.types.DefaultSetoid, Ord.op, 'any', Ord.types, 'default');
+    }
+}
+modules.push(DefaultOrd);
 /* Object */
 class ObjectFilterable extends Filterable {
     constructor() {
@@ -1198,7 +1239,7 @@ class DateSetoid extends Setoid {
 modules.push(DateSetoid);
 class DateOrd extends Ord {
     constructor() {
-        super((x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'Date', Ord.types, 'date');
+        super(Setoid.types.DateSetoid, (x, y) => types.dateCheckAndGet(x).getTime() <= types.dateCheckAndGet(y).getTime(), 'Date', Ord.types, 'date');
     }
 }
 modules.push(DateOrd);
@@ -1445,82 +1486,72 @@ class EitherTraversable extends Traversable {
     }
 }
 modules.push(EitherTraversable);
-/* Container Semigroup / Monoid */
-const normalizeSemigroupKey = normalizeTypeClassKey(Semigroup, Symbols.Semigroup, 'normalizeSemigroupKey');
-const resolveInnerSemigroup = (label, innerSG) => {
-    if (typeof innerSG === 'string') return normalizeSemigroupKey(innerSG);
-    try { return normalizeSemigroupKey(innerSG); }
+/* Container 공용 뼈대 — 아래 두 구역(Semigroup/Monoid, Setoid/Ord)이 함께 쓴다 */
+// 안쪽 해석의 실패는 전부 이 한 문장으로 나간다 — 어느 팩토리에서 났는지를 label 이 남긴다.
+const innerResolver = (normalize, kind) => (label, inner) => {
+    try { return normalize(inner); }
     catch (e) {
-        if (e instanceof TypeError) raise(new TypeError(`${label}: innerSG must be a supported semigroup key or Semigroup instance`));
+        if (e instanceof TypeError) raise(new TypeError(`${label}: inner must be a supported ${kind} key or ${kind} instance`));
         throw e;
     }
 };
-Maybe.Semigroup = innerSG => {
-    const { key, instance: sg } = resolveInnerSemigroup('Maybe.Semigroup', innerSG);
-    if (key !== null && Maybe.Semigroup._keyCache.has(key)) return Maybe.Semigroup._keyCache.get(key);
-    if (key === null && Maybe.Semigroup._instanceCache.has(sg)) return Maybe.Semigroup._instanceCache.get(sg);
-    const result = new Semigroup(
-        (a, b) =>
-            a.isNothing() ? b :
-            b.isNothing() ? a :
-            Maybe.Just(sg.concat(a.value, b.value)),
-        'Maybe', null
-    );
-    if (key !== null) {
-        registerAs(Semigroup.types, `maybe(${key})`, result);
-        Maybe.Semigroup._keyCache.set(key, result);
-    } else {
-        Maybe.Semigroup._instanceCache.set(sg, result);
+// 키가 중첩될 수 있으므로(either(maybe(number),array(string))) 최상위 쉼표에서만 자른다.
+const splitTopLevel = s => {
+    const out = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') depth--;
+        else if (s[i] === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
     }
-    return result;
+    return (out.push(s.slice(start)), out);
 };
-Maybe.Semigroup._keyCache = new Map();
-Maybe.Semigroup._instanceCache = new WeakMap();
-// Maybe는 inner가 Semigroup이기만 해도 Monoid를 구성할 수 있다.
-// Nothing이 항등원 역할을 하므로 inner의 empty()가 필요 없다.
-Maybe.Monoid = innerSG => {
-    const { key, instance: sg } = resolveInnerSemigroup('Maybe.Monoid', innerSG);
-    if (key !== null && Maybe.Monoid._keyCache.has(key)) return Maybe.Monoid._keyCache.get(key);
-    if (key === null && Maybe.Monoid._instanceCache.has(sg)) return Maybe.Monoid._instanceCache.get(sg);
-    const maybeSG = Maybe.Semigroup(sg);
-    const result = new Monoid(maybeSG, () => Maybe.Nothing(), 'Maybe', null);
-    if (key !== null) {
-        registerAs(Monoid.types, `maybe(${key})`, result);
-        Maybe.Monoid._keyCache.set(key, result);
-    } else {
-        Maybe.Monoid._instanceCache.set(sg, result);
-    }
-    return result;
+// 안쪽이 전부 키로 밝혀졌을 때만 레지스트리에 올린다. 인스턴스 캐시(WeakMap)는 안쪽이
+// 하나일 때만 자리가 있다 — 둘 이상이면 무엇을 WeakMap 키로 삼을지 정할 수 없다.
+const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
+    // 받을 안쪽의 개수는 키를 만드는 함수에서 끌어온다 — 따로 적으면 키 모양과 갈라진다.
+    const arity = keyOf.length;
+    arity > 0 || raise(new TypeError(`${label}: keyOf must declare its parameters`));
+    const factory = (...inners) => {
+        // 빈 배열에 every 는 공허하게 참이다 — 개수를 먼저 막지 않으면 undefined 가 키에 박힌다.
+        inners.length === arity || raise(new TypeError(
+            `${label}: expects ${arity} inner argument${arity > 1 ? 's' : ''}, got ${inners.length}`));
+        const resolved = inners.map(inner => resolveInner(label, inner));
+        const key = resolved.every(r => r.key !== null) ? keyOf(...resolved.map(r => r.key)) : null;
+        if (key !== null && factory._keyCache.has(key)) return factory._keyCache.get(key);
+        const only = resolved.length === 1 ? resolved[0].instance : null;
+        if (key === null && only !== null && factory._instanceCache.has(only)) return factory._instanceCache.get(only);
+        const result = build(...resolved.map(r => r.instance));
+        if (key !== null) { registerAs(registry, key, result); factory._keyCache.set(key, result); }
+        else if (only !== null) factory._instanceCache.set(only, result);
+        return result;
+    };
+    factory._keyCache = new Map();
+    factory._instanceCache = new WeakMap();
+    return factory;
 };
-Maybe.Monoid._keyCache = new Map();
-Maybe.Monoid._instanceCache = new WeakMap();
-Either.Semigroup = innerSG => {
-    const { key, instance: sg } = resolveInnerSemigroup('Either.Semigroup', innerSG);
-    if (key !== null && Either.Semigroup._keyCache.has(key)) return Either.Semigroup._keyCache.get(key);
-    if (key === null && Either.Semigroup._instanceCache.has(sg)) return Either.Semigroup._instanceCache.get(sg);
-    const result = new Semigroup(
-        (a, b) =>
-            a.isLeft() ? a :
-            b.isLeft() ? b :
-            Either.Right(sg.concat(a.value, b.value)),
-        'Either', null
-    );
-    if (key !== null) {
-        registerAs(Semigroup.types, `either(${key})`, result);
-        Either.Semigroup._keyCache.set(key, result);
-    } else {
-        Either.Semigroup._instanceCache.set(sg, result);
-    }
-    return result;
-};
-Either.Semigroup._keyCache = new Map();
-Either.Semigroup._instanceCache = new WeakMap();
+/* Container Semigroup / Monoid */
+const normalizeSemigroupKey = normalizeTypeClassKey(Semigroup, Symbols.Semigroup, 'normalizeSemigroupKey');
+const resolveInnerSemigroup = innerResolver(normalizeSemigroupKey, 'Semigroup');
+Maybe.Semigroup = cachedInnerFactory('Maybe.Semigroup', resolveInnerSemigroup, Semigroup.types, k => `maybe(${k})`,
+    sg => new Semigroup((a, b) => a.isNothing() ? b : b.isNothing() ? a : Maybe.Just(sg.concat(a.value, b.value)), 'Maybe', null));
+// inner 가 Semigroup 이기만 해도 Monoid 가 된다 — Nothing 이 항등원이라 inner 의 empty 가 필요 없다.
+Maybe.Monoid = cachedInnerFactory('Maybe.Monoid', resolveInnerSemigroup, Monoid.types, k => `maybe(${k})`,
+    sg => new Monoid(Maybe.Semigroup(sg), () => Maybe.Nothing(), 'Maybe', null));
+// 자리가 둘이면 합치는 법도 둘이다 — Setoid 쪽 either 와 같은 키 형식을 쓴다.
+// 둘 다 Left 면 왼쪽 법으로 **누적**한다(Validation 선례). 한쪽만 Left 면 그것이 이긴다.
+Either.Semigroup = cachedInnerFactory('Either.Semigroup', resolveInnerSemigroup, Semigroup.types,
+    (l, r) => `either(${l},${r})`,
+    (l, r) => new Semigroup((a, b) =>
+        a.isLeft() ? (b.isLeft() ? Either.Left(l.concat(a.value, b.value)) : a)
+        : b.isLeft() ? b
+        : Either.Right(r.concat(a.value, b.value)), 'Either', null));
 addResolver(Semigroup, key => {
     const m = /^(maybe|either)\((.+)\)$/.exec(key);
     if (!m) return null;
-    return m[1] === 'maybe' ? Maybe.Semigroup(m[2])
-         : m[1] === 'either' ? Either.Semigroup(m[2])
-         : null;
+    if (m[1] === 'maybe') return Maybe.Semigroup(m[2]);
+    const parts = splitTopLevel(m[2]);
+    return parts.length === 2 ? Either.Semigroup(parts[0], parts[1]) : null;
 });
 addResolver(Monoid, key => {
     const m = /^maybe\((.+)\)$/.exec(key);
@@ -1537,50 +1568,17 @@ addResolver(Applicative, key => {
 // Either 는 자리가 둘이라 비교법도 둘을 받는다 — docs/internals.md#container-setoid
 const normalizeSetoidKey = normalizeTypeClassKey(Setoid, Symbols.Setoid, 'normalizeSetoidKey');
 const normalizeOrdKey = normalizeTypeClassKey(Ord, Symbols.Ord, 'normalizeOrdKey');
-const innerResolver = (normalize, kind) => (label, inner) => {
-    try { return normalize(inner); }
-    catch (e) {
-        if (e instanceof TypeError) raise(new TypeError(`${label}: inner must be a supported ${kind} key or ${kind} instance`));
-        throw e;
-    }
-};
 const resolveInnerSetoid = innerResolver(normalizeSetoidKey, 'Setoid');
 const resolveInnerOrd = innerResolver(normalizeOrdKey, 'Ord');
-// 키가 중첩될 수 있으므로(either(maybe(number),array(string))) 최상위 쉼표에서만 자른다.
-const splitTopLevel = s => {
-    const out = [];
-    let depth = 0, start = 0;
-    for (let i = 0; i < s.length; i++) {
-        if (s[i] === '(') depth++;
-        else if (s[i] === ')') depth--;
-        else if (s[i] === ',' && depth === 0) { out.push(s.slice(start, i)); start = i + 1; }
-    }
-    return (out.push(s.slice(start)), out);
-};
-// Maybe.Semigroup 선례의 캐시 두 개(키/인스턴스)를 뼈대로 뽑았다.
-const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
-    const factory = inner => {
-        const { key, instance } = resolveInner(label, inner);
-        if (key !== null && factory._keyCache.has(key)) return factory._keyCache.get(key);
-        if (key === null && factory._instanceCache.has(instance)) return factory._instanceCache.get(instance);
-        const result = build(instance);
-        if (key !== null) { registerAs(registry, keyOf(key), result); factory._keyCache.set(key, result); }
-        else factory._instanceCache.set(instance, result);
-        return result;
-    };
-    factory._keyCache = new Map();
-    factory._instanceCache = new WeakMap();
-    return factory;
-};
 Maybe.Setoid = cachedInnerFactory('Maybe.Setoid', resolveInnerSetoid, Setoid.types, k => `maybe(${k})`,
     inner => new Setoid((a, b) => a.isNothing() ? b.isNothing() : b.isJust() && inner.equals(a.value, b.value), 'Maybe', null));
 // Nothing 이 가장 작다 — fp-ts 의 getOrd 와 같고, Haskell 의 생성자 선언 순서와도 같다.
 Maybe.Ord = cachedInnerFactory('Maybe.Ord', resolveInnerOrd, Ord.types, k => `maybe(${k})`,
-    inner => new Ord((a, b) => a.isNothing() || (b.isJust() && inner.lte(a.value, b.value)), 'Maybe', null));
+    inner => new Ord(Maybe.Setoid(inner), (a, b) => a.isNothing() || (b.isJust() && inner.lte(a.value, b.value)), 'Maybe', null));
 Setoid.Array = cachedInnerFactory('Setoid.Array', resolveInnerSetoid, Setoid.types, k => `array(${k})`,
     inner => new Setoid((a, b) => a.length === b.length && a.every((x, i) => inner.equals(x, b[i])), 'Array', null));
 // 사전식. Ord 는 lte 만 있으므로 "양쪽으로 lte" 를 같음으로 읽어 자리를 넘긴다.
-Setoid.Array._ordLte = inner => (a, b) => {
+const arrayOrdLte = inner => (a, b) => {
     const n = Math.min(a.length, b.length);
     for (let i = 0; i < n; i++) {
         if (!inner.lte(a[i], b[i])) return false;
@@ -1589,27 +1587,19 @@ Setoid.Array._ordLte = inner => (a, b) => {
     return a.length <= b.length;
 };
 Ord.Array = cachedInnerFactory('Ord.Array', resolveInnerOrd, Ord.types, k => `array(${k})`,
-    inner => new Ord(Setoid.Array._ordLte(inner), 'Array', null));
-// Either 만 안쪽이 둘이다. 양쪽 키를 다 알 때만 캐시한다 — 한쪽이 미등록 인스턴스면
-// 키가 없어 캐시할 자리가 없다(선례의 WeakMap 은 인자가 하나일 때의 장치다).
-Either.Setoid = (leftS, rightS) => {
-    const l = resolveInnerSetoid('Either.Setoid', leftS);
-    const r = resolveInnerSetoid('Either.Setoid', rightS);
-    const key = l.key !== null && r.key !== null ? `either(${l.key},${r.key})` : null;
-    if (key !== null && Either.Setoid._keyCache.has(key)) return Either.Setoid._keyCache.get(key);
-    const result = new Setoid((a, b) => a.isLeft()
-        ? b.isLeft() && l.instance.equals(a.value, b.value)
-        : b.isRight() && r.instance.equals(a.value, b.value), 'Either', null);
-    if (key !== null) { registerAs(Setoid.types, key, result); Either.Setoid._keyCache.set(key, result); }
-    return result;
-};
-Either.Setoid._keyCache = new Map();
+    inner => new Ord(Setoid.Array(inner), arrayOrdLte(inner), 'Array', null));
+// Either 만 안쪽이 둘이라 양쪽 키를 다 알 때만 캐시된다 — 한쪽이 미등록이면 캐시가 없다.
+Either.Setoid = cachedInnerFactory('Either.Setoid', resolveInnerSetoid, Setoid.types, (l, r) => `either(${l},${r})`,
+    (l, r) => new Setoid((a, b) => a.isLeft()
+        ? b.isLeft() && l.equals(a.value, b.value)
+        : b.isRight() && r.equals(a.value, b.value), 'Either', null));
 // Either 의 Ord 는 만들지 않는다 — Left/Right 중 무엇이 먼저인지에 정답이 없다.
 // fp-ts 도 코어에서 뺐다. 근거: docs/internals.md#container-setoid
 // 레코드는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해진다 — 필드별로 받는다.
-// fp-ts 의 Eq.struct 에 해당. 키는 필드 이름 정렬로 정규화한다: struct(age:number,name:string).
+// fp-ts 의 Eq.struct 에 해당. 내부 캐시 키만 필드 이름 정렬로 정규화한다(조회 키는 없다).
 // 선언한 필드 집합과 실제 키 집합이 정확히 같아야 한다(엄격) — 초과 필드를 무시하면
 // 검사가 아니라 표본 대조가 된다. Ord.Struct 는 없다 — 레코드의 순서에 정답이 없다.
+// 위 뼈대를 안 쓴다 — 안쪽이 위치 인자가 아니라 이름 붙은 필드고, 레지스트리에도 안 올린다.
 Setoid.Struct = fields => {
     types.isPlainObject(fields) || raise(new TypeError('Setoid.Struct: fields must be a plain object'));
     const names = Object.keys(fields).sort();
@@ -1622,17 +1612,17 @@ Setoid.Struct = fields => {
     const cacheKey = resolved.every(([, r]) => r.key !== null)
         ? resolved.map(([n, r]) => `${n}:${r.key}`).join(',')
         : null;
-    if (cacheKey !== null && Setoid.Struct._cache.has(cacheKey)) return Setoid.Struct._cache.get(cacheKey);
+    if (cacheKey !== null && Setoid.Struct._keyCache.has(cacheKey)) return Setoid.Struct._keyCache.get(cacheKey);
     const result = new Setoid((a, b) => {
         const ka = Object.keys(a), kb = Object.keys(b);
         return ka.length === names.length && kb.length === names.length
             && names.every(n => n in a && n in b)
             && resolved.every(([n, r]) => r.instance.equals(a[n], b[n]));
     }, 'Object', null);
-    if (cacheKey !== null) Setoid.Struct._cache.set(cacheKey, result);
+    if (cacheKey !== null) Setoid.Struct._keyCache.set(cacheKey, result);
     return result;
 };
-Setoid.Struct._cache = new Map();
+Setoid.Struct._keyCache = new Map();
 // struct 는 여기 없다 — 레코드는 즉석 모양이라 레지스트리 밖이다. Setoid.Struct 팩토리만이 입구다.
 addResolver(Setoid, key => {
     const m = /^(maybe|array|either)\((.+)\)$/.exec(key);

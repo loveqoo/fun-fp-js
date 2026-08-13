@@ -75,7 +75,7 @@
 | ✅ | 1차-7 | [없어진 `struct(...)` 키를 광고하는 주석](#1차-7) |
 | ✅ | 1차-8 | [`either(...)` 항수가 레지스트리마다 다름](#1차-8) |
 | ✅ | — | [`NumberProductGroup` 이 0에서 군 법칙을 깬다](#곱셈군) |
-| 🔒 | — | [`dist/` 재빌드 — **병합 전 필수**](#dist) |
+| ✅ | — | [`dist/` 재빌드](#dist) |
 
 ---
 
@@ -249,7 +249,7 @@
 
 <h3 id="dist">[⏸] <code>dist/</code> 재빌드</h3>
 
-**결정 (2026-08-13, 소유자)**: (나) 병합 직전에 한 번 한다. 지금 하면 이후 변경마다 큰
+**결정 (2026-08-13, 소유자)**: (나) 병합 직전에 한 번 한다. — 이 회차 끝에 수행했다. 지금 하면 이후 변경마다 큰
 diff 가 다시 생긴다. 저장소의 기존 방식이기도 하다(`build: dist 를 현재 소스로 갱신한다`).
 
 **그러나 병합 전에는 반드시 해야 한다.** `dist/` 는 이 브랜치 시작 시점 그대로이고,
@@ -257,6 +257,12 @@ diff 가 다시 생긴다. 저장소의 기존 방식이기도 하다(`build: di
 **사용자가 받는 것과 소스가 다르다** — `Ord.equals` 없는 옛 동작을 받는다.
 
 - **완료조건** — `npm run build` 후 `dist/fun-fp.js` 에 위 셋이 들어 있고 테스트가 초록.
+- **검증 (2026-08-13)** — `npm run build` 로 ESM·CJS·min·`.d.ts` 넷을 만들었다. 세 산출물
+  전부에 `class Ord extends Setoid`·`FunctionFunctor`·`DefaultSetoid`·`StringLengthSetoid`·
+  `arrayOrdLte`·`Ord.super` 가 들어 있다. **산출물을 직접 로드해 동작도 확인했다** —
+  ESM 에서 `Ord.lookup('number').equals(1,1)` `true`, `StringLengthOrd.equals('ab','cd')`
+  `true`, `Either.Semigroup('string','array')` 의 Left 누적 `e1e2`; CJS 에서
+  `Ord.lookup('number') instanceof Setoid` `true`. 42/42 초록.
 
 ---
 
