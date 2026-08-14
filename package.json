@@ -1,11 +1,26 @@
 {
     "name": "fun-fp-js",
-    "version": "0.0.0",
-    "private": true,
+    "version": "0.1.0",
     "type": "module",
     "main": "./dist/fun-fp.cjs",
     "module": "./dist/fun-fp.js",
     "types": "./dist/fun-fp.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/fun-fp.d.ts",
+            "import": "./dist/fun-fp.js",
+            "require": "./dist/fun-fp.cjs",
+            "default": "./dist/fun-fp.cjs"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "sideEffects": false,
+    "private": true,
     "scripts": {
         "test": "node tests/run.js",
         "baseline": "node tests/baseline-report.js",
