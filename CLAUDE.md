@@ -15,6 +15,15 @@ leave a one-line hint pointing there — doc examples are executed, comments are
 YAGNI is banned — it cost this repo 5 private instances and 11 top-level names,
 all since reverted.
 
+**`index.js` may not use anything above ES2018.** The reference runtime is Google
+Apps Script, which documents no ECMAScript edition — only that `async`/`await`
+work and that ES2022 class fields are a *parsing* error. ES2018 is the last level
+it never contradicts. Syntax and methods differ: a missing method can go in the
+`polyfills` block at line 1, but missing *syntax* kills the file at parse time, so
+the polyfill never runs — `?.` `??` `??=` are therefore banned outright.
+`tests/es-ceiling.test.js` enforces this with the TypeScript parser, not regex.
+Why, and the full replacement table: [`docs/internals.md#es-ceiling`](./docs/internals.md#es-ceiling).
+
 ## How to work here
 
 - **Start by reading [`.dev/TODO.md`](./.dev/TODO.md), and keep it current as you

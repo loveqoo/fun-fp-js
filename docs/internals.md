@@ -595,3 +595,103 @@ console.log(Monoid.lookup('plus(array)') === Monoid.types['plus(array)']);   // 
 의존하는 곳이 0건이고, 그래서 `npm run baseline` 격자도 **정렬해서** 봅니다. 정렬 안 한
 줄을 두면 의미 없는 차이를 보고하고, 누군가 그것을 초록으로 만들려다 우연한 순서를
 계약으로 굳힙니다.
+
+---
+
+## 배포되는 소스의 상한은 ES2018 이다 {#es-ceiling}
+
+`index.js` 1번 줄의 `polyfills` 는 "구형 런타임도 받아준다" 는 약속입니다. 그런데 폴리필이
+메울 수 있는 것은 **메서드뿐**입니다. `Array.prototype.flatMap` 이 없으면 `reduce` 로 대신
+만들어 줄 수 있지만, `?.` 나 `??` 같은 **문법**은 그럴 수 없습니다 — 그 문법을 모르는
+런타임은 파일을 *읽는* 단계에서 죽으므로, 1번 줄의 폴리필은 실행될 기회조차 없습니다.
+
+**그래서 문법과 메서드는 규칙이 다릅니다.**
+
+| | 상한을 넘으면 | 폴리필로 메울 수 있나 |
+| --- | --- | --- |
+| 문법 (`?.` `??` `??=` 클래스 필드) | 파싱 단계에서 죽는다 | **불가능** — 다른 표현으로 바꿔야 한다 |
+| 메서드 (`flatMap` `fromEntries`) | 호출 시점에 죽는다 | 가능 — `polyfills` 블록에 넣는다 |
+
+### 기준은 Google Apps Script 다
+
+구글은 Apps Script 가 지원하는 ECMAScript **판번호를 어디에도 적어두지 않습니다.** 대신
+개별 항목으로만 밝힙니다 — `async`/`await` 와 `Promise` 는 **된다고 명시**하고,
+`#private` 필드는 **파싱 에러**라고, `static` 클래스 필드와 ES 모듈은 **지원 안 함**이라고
+적습니다. 그 사이 구간(ES2018–ES2021)에 대해서는 아무 말이 없습니다.
+
+```
+ES2015 ─── ES2017 ─── ES2018 ─ ES2019 ─ ES2020 ─ ES2021 ─── ES2022
+  │           │          │  └───── 구글이 말이 없는 구간 ──┘      │
+  └─ 명시적으로 된다 ─────┘  ↑ 우리 상한                    파싱 에러 확인됨
+     (async/await 까지)                                  (#private, static 필드)
+```
+
+**말이 없는 구간을 밟지 않는 것**이 방어 가능한 선입니다. 상한을 ES2018 로 둔 이유가
+이것입니다. `Promise.prototype.finally`(ES2018)는 상한 안쪽이라 씁니다.
+
+`?.` 와 `??` 가 Apps Script 에서 실제로 도는지는 **확인하지 않았습니다** — 1차 출처가 없고
+실행해 볼 수단이 없었습니다. 확인되지 않은 것에 기대지 않는 쪽을 골랐습니다.
+
+### 지운 문법을 무엇으로 바꿨나
+
+`??` 는 `||` 와 다릅니다 — `0`·`''`·`false` 를 통과시킵니다. 그래서 `||` 로 갈아타지 않고
+`undefined`/`null` 만 검사합니다.
+
+```javascript no-run 문법 대조표일 뿐이라 실행할 것이 없다
+a.constructor?.name || 'object'      →  (a.constructor && a.constructor.name) || 'object'
+typeof instance?.type !== 'string'   →  !instance || typeof instance.type !== 'string'
+bucket.get(k) ?? { name: null }      →  let e = bucket.get(k); if (e === undefined || e === null) e = { name: null };
+entry.name ??= key                   →  if (entry.name === undefined || entry.name === null) entry.name = key;
+found?.size > 0                      →  (found && found.size > 0)
+```
+
+폴리필을 지나는 경로는 겉으로 티가 나지 않습니다. `Object` 의 `filter` 는 안에서
+`polyfills.object.fromEntries` 를 부르므로, `Object.fromEntries` 가 없는 런타임에서도 같은
+답을 냅니다.
+
+```javascript
+const { Filterable } = FunFP;
+
+const F = Filterable.lookup('object');
+console.log(F.filter(v => v > 1, { a: 1, b: 2, c: 3 }));   // { b: 2, c: 3 }
+```
+
+### 폴리필은 상한 *위*의 것만 검사한다
+
+상한을 정하면 폴리필의 절반이 무의미해집니다. `Object.entries`·`Object.values` 는
+**ES2017** 이라 상한을 지키는 런타임에는 **반드시 있습니다** — 있는지 검사해 봐야 늘 있는
+쪽으로 갑니다. 대체 구현은 영원히 안 불리고, 그렇게 **시험된 적 없는 코드**로 남습니다.
+그래서 뺐습니다. 지금은 그냥 `Object.entries(...)` 를 직접 부릅니다.
+
+남은 둘 — `Array.prototype.flatMap` 과 `Object.fromEntries` — 은 **ES2019** 라 상한 위입니다.
+없을 수 있으므로 검사가 살아 있어야 합니다.
+
+**대체 구현으로 고정하면 안 됩니다.** 검사를 없애고 `reduce`+`concat` 만 쓰면 편하지만,
+그것은 **O(n²)** 입니다. `Array` 모나드의 `chain` 이 이 경로를 지납니다.
+
+| 배열 크기 | 네이티브 `flatMap` | `reduce`+`concat` | 배수 |
+| --- | --- | --- | --- |
+| 100 | 0.0018ms | 0.0087ms | 4.8배 |
+| 1,000 | 0.0180ms | 0.2835ms | 15.7배 |
+| 5,000 | 0.0813ms | 5.6863ms | 69.9배 |
+| 20,000 | 0.3869ms | **277.7724ms** | **718배** |
+
+검사는 "구형에서도 돈다" 와 "신형에서는 빠르다" 를 **동시에** 삽니다. 둘 중 하나만 고르면
+어느 쪽이든 손해입니다.
+
+### 규칙을 지키는 것은 게이트다
+
+[`tests/es-ceiling.test.js`](../tests/es-ceiling.test.js) 가 `index.js` 를 **TypeScript
+파서로** 읽어 구문 트리를 훑습니다. 정규식이 아닌 이유는 이 파일의 주석에 `Forget<r>`,
+`a -> b`, `docs/internals.md#anchor` 같은 표기가 널려 있어 문자열 검색은 오탐이 나기
+때문입니다. 구문 트리는 주석을 보지 않습니다.
+
+면제는 **"폴리필 블록 안"이 아니라 "기능 검사 삼항 안"** 입니다. 처음에는 블록 전체를
+면제했는데, 그러면 블록 안에서 검사 없이 직접 부르는 결함을 못 잡습니다 — 결함을 심어
+확인했습니다. 원본 API 를 볼 자격이 있는 것은 삼항의 **조건과 참-가지뿐**이고, 그 밖의
+자리는 `polyfills.*` 를 거쳐야 합니다.
+
+게이트가 **못 잡는 것**도 파일 머리에 적혀 있습니다. 이름을 문자열로 만들어 부르는 경우
+(`obj['flatMap']()`), 그리고 표준화된 것이 문법이 아니라 *동작*인 경우 — 대표적으로
+`Array.prototype.sort` 의 안정성(ES2019)입니다. 지금 `index.js` 의 유일한 `sort` 는 중복
+없는 키 배열이라 안정성과 무관합니다.

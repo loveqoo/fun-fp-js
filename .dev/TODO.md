@@ -46,20 +46,136 @@
 
 ---
 
-## 현재 위치 — 2026-08-13, 브랜치 `static-land-cleanup`
+## 현재 위치 — 2026-08-14, `main` 에 병합 완료
 
-**목표: Static Land 명세와 실제 코드를 일치시킨다.**
+**목표: Static Land 명세와 실제 코드를 일치시킨다.** — 이 회차는 끝났다.
 
 ```
 ✅ 레지스트리 정합성
 ✅ Ord 를 Setoid 로            ← 이 회차의 본체
-🟡 검증 장치                    ← Functor 까지 닫음. Apply~Traversable 여덟 클래스가 남음
+✅ 검증 장치                    ← Functor 11 + 나머지 15 클래스까지 닫음 (ChainRec·Traversable 은 제외, 아래에 이유)
 ✅ 남은 정리 — 전부 닫힘
 ```
 
-**커밋 3개** — 라이브러리+게이트 · 작업 방식(이 파일과 판정 기록) · `.type` 명단.
-작업 트리 clean. (해시는 안 적는다 — amend·rebase 로 바뀌면 이 줄이 거짓이 된다.)
-`dist/` 는 HEAD 상태다 — 요청 시에만 빌드한다.
+**병합 (2026-08-14)** — `static-land-cleanup` 33 커밋을 `main` 으로 **패스트포워드**하고
+`origin/main` 에 푸시했다. `main` 이력은 여전히 선형이다(머지 커밋 0개 유지).
+병합 직전 게이트: `npm test` **42 파일 전부 통과 + `tsc --noEmit` 통과**.
+(해시는 안 적는다 — amend·rebase 로 바뀌면 이 줄이 거짓이 된다.)
+
+**공개 API 가 깨진 변경 셋** — 사용자에게 알려야 한다.
+`Category.id` 는 이제 **불러서** 얻는다(`C.id` → `C.id()`) ·
+`Filterable.lookup('either'/'task')` 는 던진다(`Either.filter`·`Task.filter` 함수는 그대로) ·
+`Either.Semigroup` 은 인자 둘을 받고 `Left ⊕ Left` 를 누적한다.
+`package.json` 은 `0.0.0` 이라 버전 표기는 손대지 않았다.
+
+**다음 회차의 입력** — 아직 안 덮은 것: `ChainRec`(스택 제약이 법칙에 있어 등가식만으론 부족) ·
+`Traversable`(자연변환·Applicative 합성 필요) · `Foldable` 법칙의 자기참조(`reduce` 전체가
+뒤집혀도 통과한다, 실측). 시작할 때 이 세 줄부터 보면 된다.
+
+---
+
+## 진행 중 — 2026-08-14, ES 상한 (커밋 안 됨)
+
+`main` 병합 뒤 소유자가 `index.js` 의 `?.`·`??` 를 보고 시작됐다. 폴리필이 있는데 문법을
+쓰면 그 폴리필이 무의미해진다 — 문법을 모르는 런타임은 파싱에서 죽어 폴리필이 실행되지도
+않는다. **소유자 결정 (2026-08-14): 상한은 ES2018.** 기준 런타임은 Google Apps Script다
+(배포 목적지가 아니라 참고 기준).
+
+| 상태 | 무엇 |
+| --- | --- |
+| ✅ | [`?.`·`??`·`??=` 7곳 제거](#es-문법제거) |
+| ✅ | [ES2018 상한 게이트 신설](#es-게이트) |
+| ✅ | [폴리필 넷 중 둘을 뺐다 — 상한 아래는 검사가 무의미](#es-폴리필) |
+| ✅ | 근거를 `docs/internals.md#es-ceiling` 에, 규칙을 `CLAUDE.md` 에 |
+| ✅ | [`dist/` 재빌드](#es-dist) |
+| ⏸ | [`tests/`·`build-types.js` 도 상한을 지킬 것인가](#es-tests) |
+| ⏸ | [게이트를 `dist/` 까지 넓힐 것인가](#es-dist) — 소유자: 지금은 `index.js` 만 |
+
+<h3 id="es-문법제거">✅ <code>?.</code>·<code>??</code>·<code>??=</code> 7곳 제거</h3>
+
+- **완료조건** — 잔여 0건이고 관측 가능한 동작이 그대로다.
+- **검증 (2026-08-14)** — `grep` 잔여 **0건**, `node --check` 통과. 동작 동일성은 셋으로 받았다:
+  ① **수정 전후를 한 프로세스에 같이 로드해** 검사 13개 대조 → **불일치 0건**
+  (`git show HEAD:index.js` 로 원본을 꺼냄. `Object.create(null)`·없는 타입·빈 문자열 키·
+  잘못된 인자 같은 실패 경로 포함) ② `npm run baseline` 출력 파일 `diff` → **0줄**
+  ③ `npm test` **43/43 + 타입체크** 통과.
+- **주의** — `??` 를 `||` 로 바꾸지 않았다. `||` 는 `0`·`''`·`false` 도 넘긴다.
+  `undefined`/`null` 만 검사하는 형태로 옮겼다.
+
+<h3 id="es-게이트">✅ ES2018 상한 게이트 신설</h3>
+
+- **원인** — 규칙만 적으면 다음 회차에 다시 샌다. 이 저장소의 방식대로 게이트를 세운다.
+- **해결책** — `tests/es-ceiling.test.js`. 이미 devDependency 인 TypeScript 파서로 구문
+  트리를 훑는다. **정규식을 안 쓴 이유**: `index.js` 주석에 `Forget<r>`·`a -> b`·
+  `docs/internals.md#anchor` 가 널려 있어 문자열 검색은 오탐이 난다.
+- **완료조건** — 상한을 넘는 결함을 심으면 잡힌다.
+- **검증 (2026-08-14)** — 결함 **13종을 심어 13종 전부 잡았다.** `?.`(69번 줄 되돌리기)·
+  `??`·`??=`·`||=`·클래스 필드·`#private`·`catch` 바인딩 생략·`.flat()`·
+  `Object.fromEntries` 직접 호출·`globalThis`·`.replaceAll()`·숫자 구분자·동적 `import()`.
+  매번 `cmp` 로 작업 트리 복원을 확인했다. (`npm test` 가 아니라 테스트 파일을 **직접**
+  돌렸다 — npm 은 종료 코드를 삼킨다.)
+- **게이트 자신의 버그 둘을 게이트가 잡았다** — ① 규칙표를 평범한 객체로 만들어
+  `PROTO_APIS['constructor']` 가 `Object.prototype` 을 타고 참이 됐다(멀쩡한 5곳을 잡음).
+  `Object.create(null)` 로 고쳤다. ② `polyfills.array.flatMap` 의 소유자가 `polyfills.array`
+  라 한 겹 검사로는 면제가 안 됐다. 접근 사슬의 뿌리까지 내려가게 고쳤다.
+- **못 잡는 것** — 이름을 문자열로 만들어 부르는 경우(`obj['flatMap']()`), 그리고 표준화된
+  것이 문법이 아니라 *동작*인 경우(`Array.prototype.sort` 안정성, ES2019). 파일 머리에 적었다.
+
+<h3 id="es-폴리필">✅ 폴리필 넷 중 둘 제거</h3>
+
+- **소유자 질문 (2026-08-14)** — "이미 만든 폴리필도 필요없지 않을까요?" **절반만 맞다.**
+- **원인** — 상한을 ES2018 로 정하면 `Object.entries`·`Object.values`(**ES2017**)는 상한을
+  지키는 런타임에 반드시 있다. 검사해도 늘 네이티브로 가고 대체 가지는 **영원히 안 불린다**
+  — 시험된 적 없는 코드로 남는다. 반면 `Array.prototype.flatMap`·`Object.fromEntries`
+  (**ES2019**)는 상한 위라 없을 수 있다.
+- **왜 넷 다 지우면 안 되나** — 검사를 없애고 대체 구현으로 고정하면 **O(n²)** 이 된다.
+  `Array` 모나드의 `chain` 이 그 경로다. 실측: 20,000개에서 네이티브 0.3869ms 대
+  `reduce`+`concat` 277.7724ms — **718배**. 1,000개에서도 15.7배.
+  검사는 "구형에서도 돈다" 와 "신형에서는 빠르다" 를 동시에 산다.
+- **한 일** — `entries`·`values` 검사 제거(23줄 → 18줄). 호출부는 `Object.entries(...)`·
+  `Object.values(...)` 직접 호출로 바꿨다. 이로써 `index.js:1044` 가 이미 직접 부르던 것과
+  형태가 통일됐다.
+- **검증 (2026-08-14)** — 대체 구현 넷을 꺼내 네이티브와 11개 입력으로 대조 → **불일치 0건**
+  (구멍 있는 배열·중복 키·빈 입력 포함). `npm run baseline` 세션 최초 기록과 **diff 0줄**.
+  `npm test` 43/43 + 타입체크.
+- **게이트에 규칙을 박았다** — "폴리필은 상한 위의 것만 검사한다". 상한 아래를 다시 검사하게
+  되돌리는 뮤테이션 → **잡힘**.
+
+<h3 id="es-게이트-구멍">✅ 게이트의 면제 범위가 너무 넓었다 (같은 회차에 발견·수정)</h3>
+
+- **원인** — 처음에 `polyfills` **블록 전체**를 면제했다. 그러면 블록 *안에서* 검사 없이
+  원본 API 를 직접 부르는 결함이 통과한다.
+- **발견 경위** — 뮤테이션으로 잡혔다. `polyfills.object.fromEntries(` 를
+  `Object.fromEntries(` 로 바꿨는데 게이트가 **초록**이었다. 결함이 실제로 심어졌는지
+  파일을 눈으로 확인한 뒤 판정했다.
+- **해결책** — 면제 단위를 "블록 안" 에서 "**기능 검사 삼항 안**" 으로 좁혔다. 원본 API 를
+  볼 자격은 삼항의 조건과 참-가지뿐이다.
+- **검증 (2026-08-14)** — 뚫렸던 결함 재시도 → **잡힘**. 인접 결함 셋(블록 안 `flatMap` 직접
+  호출 · 상한 아래 재검사 · 블록 밖 `?.`)도 전부 잡힘. 정상 소스는 초록 유지.
+
+<h3 id="es-dist">✅ <code>dist/</code> 재빌드</h3>
+
+- **원인** — `dist/` 는 이 작업 전에 빌드됐다. `?.` 4건·`??` 3건이 산출물에 그대로 있었다.
+  소스는 규칙을 지키는데 사용자가 받는 것은 안 지키는 상태였다.
+- **완료조건** — `npm run build` 후 세 산출물에 `?.`·`??` 가 0건.
+- **검증 (2026-08-14)** — ESM·CJS·min·`.d.ts` 넷을 다시 만들었다. 세 산출물 전부
+  `?.` **0건** · `??` **0건** · `polyfills.object.values` **0건**.
+  산출물을 직접 로드해 동작도 봤다 — CJS 에서 `Ord.lookup('number').equals(1,1)` `true`,
+  `Object` filter(폴리필 경로) `{b:2,c:3}`, `Object` foldable(`Object.values` 직접) `6`,
+  `Array` chain(`flatMap` 경로) `[1,2,2,4,3,6]`, `Category.id()` 가 `function`;
+  ESM 에서 `Ord instanceof Setoid` `true`, `Either.Semigroup` Left 누적 `e1e2`.
+- **결정 (2026-08-14, 소유자)** — 게이트는 **`index.js` 만** 본다. `dist/` 까지 넓히면
+  "빌드를 잊으면 빨개진다" 가 되지만, 지금은 넓히지 않는다. 그래서 **dist 가 낡은 채로 남는
+  상황은 여전히 아무도 안 막는다** — 병합 전 빌드는 사람이 기억해야 한다.
+
+<h3 id="es-tests">⏸ <code>tests/</code>·<code>build-types.js</code> 도 상한을 지킬 것인가</h3>
+
+- **사실** — 개발 전용 파일 6개가 ES2019+ 문법을 쓴다(`build-types.js` 1 ·
+  `algebra-type` 3 · `baseline-report` 2 · `docs-examples` 3 · `registry-api` 2 ·
+  `staticland-laws` 6 · `staticland-spec` 4).
+- **왜 에이전트가 못 정하나** — 이것들은 **배포되지 않고** 개발자의 Node(>=20)에서만 돈다.
+  상한을 걸 이유가 없다는 판단도, 규칙은 하나여야 한다는 판단도 둘 다 말이 된다.
+- **결정 대기** — 소유자.
 
 | 상태 | # | 무엇 |
 | --- | --- | --- |
@@ -81,9 +197,9 @@
 
 ---
 
-## 🟡 진행 중
+## ✅ 닫힘 — 검증 장치
 
-<h3 id="functor법칙">Functor~Traversable 법칙이 레지스트리 전체를 안 본다</h3>
+<h3 id="functor법칙">✅ Functor~Traversable 법칙이 레지스트리 전체를 안 본다</h3>
 
 - **원인** — 값 수준 다섯 클래스(Setoid·Ord·Semigroup·Monoid·Group)는 표본만 있으면 법칙을
   돌릴 수 있어 먼저 했다. 컨테이너는 동등이 타입마다 달라 미뤘다 — `Task`·`Reader`·`State`
@@ -113,7 +229,7 @@
 - **참고** — [`tests/staticland-laws.test.js`](./../tests/staticland-laws.test.js) 머리의
   「못 잡는 것」 · [`learning/INDEX.md`](./learning/INDEX.md) 규칙 31-1
 
-## ⬜ 남은 것
+## ✅ 닫힘 — 리뷰 판정 (2026-08-13)
 
 <h3 id="2차-3">✅ [2차-3] <code>default</code> 의 동종 제약이 격자·문서에 없다</h3>
 
@@ -223,9 +339,9 @@
   `Setoid.Struct({b,a}) === Setoid.Struct({a,b})` → `true`.
 - **참고** — [`review/260813-index-audit.md`](./review/260813-index-audit.md) 7번 · [`index.js:1573`](./../index.js#L1573)
 
-## ⏸ 소유자 결정 대기
+## ✅ 닫힘 — 소유자가 결정한 것
 
-<h3 id="filterable소멸">[⏸] <code>Filterable</code> 소멸 법칙을 <code>Either</code>/<code>Task</code> 가 못 지킨다</h3>
+<h3 id="filterable소멸">✅ <code>Filterable</code> 소멸 법칙을 <code>Either</code>/<code>Task</code> 가 못 지킨다</h3>
 
 - **원인** — 명세: `F.filter(x => false, a) ≡ F.filter(x => false, b)`. 전부 걸러내면 **입력과
   무관하게 같은 것**이 나와야 한다. `Array`·`Maybe`·`Object` 는 `[]`·`Nothing`·`{}` 라는
