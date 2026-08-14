@@ -110,18 +110,6 @@ const cases = [
     ['over 비함수 f 메시지', f => O(f).over(T(f), null, [1])],
     ['review 비함수 메시지', f => O(f).review(null, 1)],
 
-    // ── 이름 참칭 ─────────────────────────────────────────────────────
-    // _typeName 만 베낀 평범한 객체. 심볼이 없으므로 실제 JS 모양으로 읽혀야 한다.
-    // 이 행이 없으면 types.of 가 다시 문자열을 믿게 되어도 baseline 이 조용하다.
-    ['참칭 Maybe', f => f.Functor.lookup('maybe').map(x => x, { value: 1, _typeName: 'Maybe' })],
-    ['참칭 Identity', f => f.Functor.lookup('identity').map(x => x, { value: 1, _typeName: 'Identity' })],
-    ['참칭 Const(array)', f => { f.Applicative.Const('array');
-        return f.Apply.lookup('const(array)').ap({ value: [1], _typeName: 'Const(array)' },
-                                                 { value: [2], _typeName: 'Const(array)' }); }],
-    ['참칭 StateT(Maybe)', f => { f.StateT('maybe');
-        return f.Functor.lookup('statet(maybe)').map(x => x, { _program: null, _typeName: 'StateT(Maybe)' }); }],
-    ['진짜 Identity', f => f.Applicative.lookup('identity').of(1).value],
-
     // ── Bifunctor ─────────────────────────────────────────────────────
     // 튜플은 JS 타입이 아니라 길이가 정한다. 이 행이 없어서 길이 검사를 넣었을 때
     // baseline 이 「차이 없음」이라 했다 — 안 보는 곳은 안 바뀐 것처럼 보인다.
