@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T01:51:51.290Z
+ * Built: 2026-08-14T03:16:22.387Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -2505,13 +2505,16 @@ const { Optics } = (() => {
         dimap: Profunctor.lookup('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
         first: p => t => Bifunctor.lookup('tuple').bimap(p, identity, t),
         left: p => e => Bifunctor.lookup('either').bimap(p, identity, e),
-        wander: (traverse, p) => s =>
-            traverse(Applicative.lookup('identity'), a => ({ value: p(a) }), s).value,
+        // 캐리어를 리터럴로 만들지 않는다 — Identity 의 of 가 곧 { value: x } 다.
+        wander: (traverse, p) => s => {
+            const I = Applicative.lookup('identity');
+            return traverse(I, compose2(I.of, p), s).value;
+        },
     };
     // Forget<r>: p a b = a -> r.  출력을 버리고 r 을 모은다. view/preview/toList/foldMapOf 가 쓴다.
     const forgetProfunctor = monoid => ({
-        // 출력 변환을 버리므로 g 자리에 항등을 넣는다.
-        dimap: (f, _g, p) => Profunctor.lookup('function').promap(f, identity, p),
+        // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다(promap + 항등이 아니라).
+        dimap: (f, _g, p) => Contravariant.lookup('predicate').contramap(f, p),
         // Comonad.lookup('array').extract 가 배열의 head 라 2-튜플에서는 fst 다.
         first: p => t => p(Comonad.lookup('array').extract(t)),
         left: p => e => Either.fold(p, () => monoid.empty(), e),
@@ -2540,7 +2543,7 @@ const { Optics } = (() => {
     const Lens = (getter, setter) => {
         typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
         typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
-        return P => pab => P.dimap(s => [getter(s), s], ([b, s]) => setter(b, s), P.first(pab));
+        return P => pab => P.dimap(s => tuple(getter(s), s), ([b, s]) => setter(b, s), P.first(pab));
     };
     // match: s -> Maybe a,  build: a -> s
     const Prism = (match, build) => {
