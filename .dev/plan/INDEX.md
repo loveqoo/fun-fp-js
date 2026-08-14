@@ -57,9 +57,11 @@
 - `package.json` `engines` 필드 — Node 15 미만에서 unhandled rejection 이 프로세스를 죽이지
   않아 테스트 게이트에 구멍이 남는다. 지원 런타임 결정은 프로젝트 정책
 
-## 2026-08-15 — 타입은 두 겹까지다 (결정)
+## 2026-08-15 — AST 는 안 한다 (결정)
 
-[`260815-type-ast-proposal.md`](./260815-type-ast-proposal.md). 2026-08-14 계획서를 대체한다.
+[`260815-type-ast-proposal.md`](./260815-type-ast-proposal.md). **`.type` 을 타입 AST 로
+바꾸는 일은 하지 않는다.** 2026-08-14 계획서는 이 판정으로 폐기됐고, 그 파일 머리에 판정을
+박아 두었다.
 
 **소유자 결정**: `Maybe<Array>` 이지 `Maybe<Array<number>>` 가 아니다. 안쪽 칸은 이름
 하나이고 재귀가 없다. 관리하는 것은 컨테이너 타입과 값 타입 둘뿐이다.
