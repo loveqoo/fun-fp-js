@@ -46,6 +46,26 @@
 
 ---
 
+## 닫힘 — 팩토리 네임스페이스 통일 (2026-08-14)
+
+- **원인** — 인스턴스 팩토리 관례가 둘이었다. `Maybe.Semigroup`·`Maybe.Monoid`·
+  `Maybe.Setoid`·`Maybe.Ord`·`Either.Semigroup`·`Either.Setoid` **6개**와
+  `Setoid.Array`·`Ord.Array`·`Setoid.Struct`·`Applicative.Const`·`Wander.Forget` **5개**.
+  5:6 이라 어느 쪽도 예외가 아니었고, **아무 게이트도 이것을 안 봤다.**
+- **해결책** — 타입 클래스 쪽으로 통일. 근거 둘: (1) 팩토리가 내는 것은 `lookup` 과 같은
+  인스턴스이므로 타입 클래스에 산다 — `registry-api` 가 원래 지키던 선이다.
+  (2) `Semigroup.Maybe('array')` 가 `Semigroup<Maybe<Array>>` 로 **글자 순서대로** 읽힌다.
+- **완료조건** — 데이터 타입에 타입클래스 이름의 멤버가 0개, 게이트가 부활을 잡는다.
+- **검증** — 138곳 개명(20파일). `npm test` 44/44 + 타입체크. 뮤테이션 3종
+  (별칭 부활 / 완전 되돌림 / 이름 뒤집기) **전부 잡음**. `baseline` 차이 10건은 전부
+  프로브 동시 개명의 파급이고, 「데이터타입 정적 표면」 행 신설로 확인하니
+  **없어진 것 6개 = 옮긴 것 6개, 엉뚱한 것 0건**.
+- **곁가지** — `Semigroup.Either` 의 타입 선언이 인자 **하나**인데 런타임은 **둘**이었다.
+  TS 로 쓰면 통과하고 실행하면 던지는 상태였다. 선언을 런타임에 맞췄다.
+- **참고** — `.dev/retrospect/260814-factory-namespace.md`, 규칙 98·99,
+  `docs/internals.md#constrained-instances`
+
+
 ## 현재 위치 — 2026-08-14, `main` 에 병합 완료
 
 **목표: Static Land 명세와 실제 코드를 일치시킨다.** — 이 회차는 끝났다.

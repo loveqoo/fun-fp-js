@@ -65,7 +65,7 @@ declare module "../TypeClasses" {
 // Monoid default aliases mirror Semigroup for the combinations that have
 // an identity element. first/last have none, so they are absent from
 // MonoidInstances — wrap them in Maybe when a Monoid is needed
-// (Maybe.Monoid('first'); Nothing supplies the identity).
+// (Monoid.Maybe('first'); Nothing supplies the identity).
 // Group:
 //   number  → NumberSumGroup (additive inverse)
 declare module "../TypeClasses" {

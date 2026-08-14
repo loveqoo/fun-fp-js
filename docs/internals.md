@@ -8,6 +8,62 @@
 
 ---
 
+## 제약이 붙은 인스턴스는 어디서 만들어지나 {#constrained-instances}
+
+`Semigroup.lookup('maybe')` 는 없습니다. `Maybe` 의 `Semigroup` 은 **안쪽 타입에도
+`Semigroup` 이 있어야** 존재하기 때문입니다.
+
+```
+instance Semigroup a => Semigroup (Maybe a)
+         ^^^^^^^^^^^ 이 제약
+```
+
+Haskell 은 이 제약을 컴파일러가 풉니다. 여기엔 컴파일러가 없으므로 **제약이 인자로
+들어옵니다** — 그게 팩토리입니다.
+
+```javascript
+Semigroup.lookup('maybe')      // 없다 — 제약을 안 풀었다
+Semigroup.Maybe('array')       // 있다 — 안쪽을 array 로 못박았다
+Semigroup.lookup('maybe(array)')  // 팩토리를 부른 뒤에는 이것도 된다
+```
+
+### 규칙은 하나다 — 타입 클래스 쪽
+
+| | |
+| --- | --- |
+| `Semigroup.Maybe` `Monoid.Maybe` `Setoid.Maybe` `Ord.Maybe` | |
+| `Semigroup.Either` `Setoid.Either` | |
+| `Setoid.Array` `Ord.Array` `Setoid.Struct` | |
+| `Applicative.Const` `Wander.Forget` | |
+
+근거 둘입니다.
+
+**하나 — `lookup` 과 같은 것을 돌려줍니다.** 데이터 타입은 값을 내고(`Maybe.of`)
+타입 클래스는 인스턴스를 냅니다(`Semigroup.lookup`). 팩토리가 내는 건 인스턴스이므로
+타입 클래스 쪽입니다. 이 선은 [`tests/registry-api.test.js`](../tests/registry-api.test.js)
+가 원래부터 지키던 것입니다.
+
+**둘 — 이름이 타입 순서로 읽힙니다.**
+
+```
+Semigroup.Maybe('array')   →  Semigroup < Maybe < Array > >     맞다
+Maybe.Semigroup('array')   →  Maybe < Semigroup < Array > >     그런 값은 없다
+```
+
+`concat(Just([1]), Just([2]))` 은 `Just([1,2])` 입니다. `Just(Semigroup인스턴스)` 가
+아닙니다.
+
+### 한때 규칙이 둘이었다 (2026-08-14 고침)
+
+`Maybe.Semigroup` 쪽 **6개**와 `Setoid.Array` 쪽 **5개**가 나란히 있었습니다. 5:6 이라
+어느 쪽도 예외라 부를 수 없었고, **어떤 게이트도 이것을 안 봤습니다.** 138곳을 개명해
+하나로 합쳤고, 게이트를 `registry-api` 에 넣었습니다(뮤테이션 3종 전부 잡힘).
+
+같이 드러난 것: `Semigroup.Either` 의 타입 선언이 **인자 하나**였는데 런타임은 **둘**을
+요구했습니다. TypeScript 로 쓰면 통과하고 실행하면 던지는 상태였습니다. 선언을 런타임에
+맞췄습니다 — `Either` 는 Left/Right 두 채널을 다 `concat` 하므로 둘이 맞습니다.
+
+
 ## `.type` — 인스턴스가 다루는 타입 {#type}
 
 모든 인스턴스는 `Algebra` 를 상속하고 `.type` 을 하나 가집니다. **그 인스턴스의 연산이
@@ -122,7 +178,7 @@ catch (e) { console.log(e.message); }  // 'Ord.lte: arguments must be the same t
 
 | | 무엇을 하나 |
 | --- | --- |
-| `Maybe.Monoid('first')` (= `maybe(first)`) | 둘 다 `Just` 면 **안쪽 값을** `first` 로 합친다 |
+| `Monoid.Maybe('first')` (= `maybe(first)`) | 둘 다 `Just` 면 **안쪽 값을** `first` 로 합친다 |
 | `Monoid.lookup('maybe')` | 안을 **열지 않고** 첫 `Just` 를 통째로 고른다 |
 
 payload 타입이 같으면 결과도 같습니다. **갈리는 것은 타입이 섞였을 때뿐**이고, 그때 앞엣것은
@@ -131,7 +187,7 @@ payload 타입이 같으면 결과도 같습니다. **갈리는 것은 타입이
 ```javascript
 const { Maybe, Monoid } = FunFP;
 
-const merge = Maybe.Monoid('first');
+const merge = Monoid.Maybe('first');
 const pick = Monoid.lookup('maybe');
 
 console.log(merge.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 안쪽을 합친 결과
@@ -171,7 +227,7 @@ console.log(Plus.lookup('maybe').zero().isNothing());           // true  같은 
 
 유도에서 `register()` 를 쓰지 않는 이유가 있습니다. `register()` 는 `instance.constructor.name`
 도 키로 넣는데, 유도된 것은 클래스 이름이 그냥 `Monoid` 라 `Monoid.types['Monoid']` 가 생기고
-**`Plus` 들이 서로 덮습니다.** 그래서 `Maybe.Monoid` 의 선례대로 키를 직접 넣습니다.
+**`Plus` 들이 서로 덮습니다.** 그래서 `Monoid.Maybe` 의 선례대로 키를 직접 넣습니다.
 
 ---
 

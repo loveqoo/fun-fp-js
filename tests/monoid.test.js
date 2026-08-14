@@ -141,7 +141,7 @@ test('Function Monoid - Left identity: compose(identity, f) === f', () => {
 // === Maybe Monoid ===
 logSection('Maybe Monoid');
 
-const maybeMN = Maybe.Monoid('array');
+const maybeMN = Monoid.Maybe('array');
 // 비교도 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다
 const eqMA = fp.Setoid.lookup('maybe(array(number))');
 const eqAN = fp.Setoid.lookup('array(number)');
@@ -167,11 +167,11 @@ test('Maybe Monoid - Associativity: concat(concat(a, b), c) === concat(a, concat
 });
 
 test('Maybe Monoid - registry: Monoid.lookup resolves parameterized key', () => {
-    assert(Monoid.lookup('maybe(array)') === Maybe.Monoid('array'));
+    assert(Monoid.lookup('maybe(array)') === Monoid.Maybe('array'));
 });
 
 test('Maybe Monoid - invalid input throws', () => {
-    assertThrowsWith(() => Maybe.Monoid({}), 'Maybe.Monoid: inner must be a supported Semigroup key or Semigroup instance');
+    assertThrowsWith(() => Monoid.Maybe({}), 'Monoid.Maybe: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 // === first/last Semigroup — 값 타입을 보지 않는다 ('any') ===
@@ -220,7 +220,7 @@ test("Semigroup 'first'/'last' - Monoid 가 아니다 (항등원이 없다)", ()
 
 // === Plus 에서 유도한 Monoid — 키는 그 타입의 이름 그대로다 ===
 // Haskell 의 Data.Monoid.First 에 해당한다: 안을 열지 않고 봉투째 하나를 고른다.
-// maybe(first)(= Maybe.Monoid('first')) 와는 다른 모노이드다 — 그쪽은 안을 합친다.
+// maybe(first)(= Monoid.Maybe('first')) 와는 다른 모노이드다 — 그쪽은 안을 합친다.
 const plusMaybe = Monoid.lookup('maybe');
 
 test("Monoid 'maybe' - 첫 Just 를 고른다", () => {
@@ -239,7 +239,7 @@ test("Monoid 'maybe' - identity: empty() 는 Nothing", () => {
 test("Monoid 'maybe' - 안을 열지 않으므로 타입이 섞여도 동작한다", () => {
     assertEquals(plusMaybe.concat(Maybe.Just(1), Maybe.Just('a')).value, 1);
     assertEquals(plusMaybe.concat(Maybe.Just(null), Maybe.Just(1)).value, null);
-    assertThrowsWith(() => Maybe.Monoid('first').concat(Maybe.Just(1), Maybe.Just('a')), 'must be the same type');
+    assertThrowsWith(() => Monoid.Maybe('first').concat(Maybe.Just(1), Maybe.Just('a')), 'must be the same type');
 });
 
 // Array 에는 이미 ArrayMonoid 가 있다. 유도본은 동작이 같아 중복이므로 등록하지 않는다 —
@@ -352,7 +352,7 @@ test('identity - Functor/Apply/Applicative 3단이 전부 등록돼 있다', () 
     assertEquals(Applicative.lookup('identity').of(7).value, 7);
 });
 
-// Applicative.Const 는 Maybe.Monoid(innerSG) 선례를 따라야 한다 — 키면 등록, 인스턴스면 캐시.
+// Applicative.Const 는 Monoid.Maybe(innerSG) 선례를 따라야 한다 — 키면 등록, 인스턴스면 캐시.
 test('Applicative.Const - 키로 만들면 레지스트리에 등록된다', () => {
     const c = Applicative.Const('array');
     assert(Applicative.lookup('const(array)') === c);
@@ -366,7 +366,7 @@ test('Applicative.Const - 같은 키/인스턴스는 같은 인스턴스', () =>
     assert(Applicative.Const(mine) === Applicative.Const(mine));
 });
 
-// 지연 해석 — 팩토리를 부르기 전에도 const(<키>) 로 꺼낼 수 있어야 한다(Maybe.Monoid 선례).
+// 지연 해석 — 팩토리를 부르기 전에도 const(<키>) 로 꺼낼 수 있어야 한다(Monoid.Maybe 선례).
 // 'string' 을 쓰는 이유: 다른 테스트가 Applicative.Const('string') 을 부르지 않으므로
 // 이 테스트 전에 등록되지 않는다. 'array' 를 쓰면 앞 테스트가 이미 등록해 구멍을 못 잡는다.
 test('Applicative.Const - 팩토리 호출 전에도 레지스트리에서 해석된다', () => {

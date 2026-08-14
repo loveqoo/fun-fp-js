@@ -136,7 +136,7 @@ console.log(Functor.lookup('identity').map(x => x + 1, Id.of(1)).value);  // 2
 
 `Applicative.Const(monoid)` 는 **매개변수화 팩토리**입니다. 키를 주면 `const(<키>)` 로
 레지스트리에 등록되고, 등록되지 않은 `Monoid` 인스턴스를 주면 인스턴스별로 캐시됩니다
-(`Maybe.Monoid(innerSG)` 와 같은 모양입니다).
+(`Monoid.Maybe(innerSG)` 와 같은 모양입니다).
 
 ```javascript
 const { Applicative } = FunFP;

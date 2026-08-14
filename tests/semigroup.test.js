@@ -2,7 +2,7 @@
 import fp from '../index.js';
 import { test, assertEquals, assertEqualsBy, assert, assertThrowsWith, logSection } from './utils.js';
 
-const { Semigroup, Maybe, Either } = fp;
+const { Semigroup, Monoid, Maybe, Either } = fp;
 
 logSection('Semigroup Laws');
 
@@ -123,7 +123,7 @@ test('Function Semigroup - Associativity: compose(compose(f, g), h) === compose(
 // === Maybe Semigroup ===
 logSection('Maybe Semigroup');
 
-const maybeSG = Maybe.Semigroup('array');
+const maybeSG = Semigroup.Maybe('array');
 // 비교도 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다
 const eqMA = fp.Setoid.lookup('maybe(array(number))');
 
@@ -152,18 +152,18 @@ test('Maybe Semigroup - Nothing concat Nothing', () => {
 });
 
 test('Maybe Semigroup - cache: string and instance produce same reference', () => {
-    assert(Maybe.Semigroup('array') === Maybe.Semigroup(Semigroup.lookup('array')));
+    assert(Semigroup.Maybe('array') === Semigroup.Maybe(Semigroup.lookup('array')));
 });
 
 test('Maybe Semigroup - registry: Semigroup.lookup resolves parameterized key', () => {
-    assert(Semigroup.lookup('maybe(array)') === Maybe.Semigroup('array'));
+    assert(Semigroup.lookup('maybe(array)') === Semigroup.Maybe('array'));
 });
 
 // === Either Semigroup ===
 logSection('Either Semigroup');
 
 // 자리가 둘이면 합치는 법도 둘이다 — 왼쪽도 Semigroup 을 받는다.
-const eitherSG = Either.Semigroup('string', 'array');
+const eitherSG = Semigroup.Either('string', 'array');
 const eqEA = fp.Setoid.lookup('either(string,array(number))');
 
 test('Either Semigroup - Associativity: concat(concat(a, b), c) === concat(a, concat(b, c))', () => {
@@ -193,20 +193,20 @@ test('Either Semigroup - Left concat Left 는 왼쪽 법으로 누적한다', ()
 });
 
 test('Either Semigroup - cache: string and instance produce same reference', () => {
-    assert(Either.Semigroup('string', 'array')
-        === Either.Semigroup(Semigroup.lookup('string'), Semigroup.lookup('array')));
+    assert(Semigroup.Either('string', 'array')
+        === Semigroup.Either(Semigroup.lookup('string'), Semigroup.lookup('array')));
 });
 
 test('Either Semigroup - registry: Semigroup.lookup resolves parameterized key', () => {
-    assert(Semigroup.lookup('either(string,array)') === Either.Semigroup('string', 'array'));
+    assert(Semigroup.lookup('either(string,array)') === Semigroup.Either('string', 'array'));
 });
 
 // Setoid 쪽 either 와 같은 문법이어야 한다 — 한쪽에서 배운 형태가 다른 쪽에서 안 통하면
 // 조립 키가 공용 문법 노릇을 못 한다.
 test('Either Semigroup - 안쪽 하나만 주면 던진다 (Setoid 쪽과 같은 항수)', () => {
     let m = '(안 던짐)';
-    try { Either.Semigroup('array'); } catch (e) { m = e.message; }
-    assertEquals(m, 'Either.Semigroup: expects 2 inner arguments, got 1');
+    try { Semigroup.Either('array'); } catch (e) { m = e.message; }
+    assertEquals(m, 'Semigroup.Either: expects 2 inner arguments, got 1');
     assert(fp.Setoid.lookup('either(string,number)') instanceof fp.Setoid, 'Setoid 쪽도 2항이다');
 });
 
@@ -215,7 +215,7 @@ logSection('Nested Semigroup');
 
 test('Nested maybe - Semigroup.lookup resolves maybe(maybe(array))', () => {
     const nested = Semigroup.lookup('maybe(maybe(array))');
-    assert(nested === Maybe.Semigroup('maybe(array)'));
+    assert(nested === Semigroup.Maybe('maybe(array)'));
 });
 
 test('Nested maybe - concat works on nested structure', () => {
@@ -233,28 +233,28 @@ test('Semigroup.lookup with mixed-case container key throws', () => {
     assertThrowsWith(() => Semigroup.lookup('Maybe(array)'), 'unsupported key Maybe(array)');
 });
 
-test('Maybe.Semigroup with non-Semigroup object throws', () => {
-    assertThrowsWith(() => Maybe.Semigroup({}), 'Maybe.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
+test('Semigroup.Maybe with non-Semigroup object throws', () => {
+    assertThrowsWith(() => Semigroup.Maybe({}), 'Semigroup.Maybe: inner must be a supported Semigroup key or Semigroup instance');
 });
 
-test('Either.Semigroup with non-Semigroup object throws', () => {
-    assertThrowsWith(() => Either.Semigroup({}, 'array'), 'Either.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
+test('Semigroup.Either with non-Semigroup object throws', () => {
+    assertThrowsWith(() => Semigroup.Either({}, 'array'), 'Semigroup.Either: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 // 오타든 잘못된 객체든 한 문장으로 나간다. 예전에는 문자열만 Semigroup.lookup 의 메시지가
 // 새어 나와 'maybe(...)' 를 잃었다 — Setoid/Ord 컨테이너와 같은 형태로 맞췄다.
-test('Maybe.Semigroup with unsupported key names the factory', () => {
-    assertThrowsWith(() => Maybe.Semigroup('unknown'), 'Maybe.Semigroup: inner must be a supported Semigroup key or Semigroup instance');
+test('Semigroup.Maybe with unsupported key names the factory', () => {
+    assertThrowsWith(() => Semigroup.Maybe('unknown'), 'Semigroup.Maybe: inner must be a supported Semigroup key or Semigroup instance');
 });
 
-test('Maybe.Monoid with unsupported key names the factory', () => {
-    assertThrowsWith(() => Maybe.Monoid('unknown'), 'Maybe.Monoid: inner must be a supported Semigroup key or Semigroup instance');
+test('Monoid.Maybe with unsupported key names the factory', () => {
+    assertThrowsWith(() => Monoid.Maybe('unknown'), 'Monoid.Maybe: inner must be a supported Semigroup key or Semigroup instance');
 });
 
 test('Maybe Semigroup - strict mode: type mismatch throws (Just vs Right)', () => {
     fp.setStrictMode(true);
     try {
-        const sg = Maybe.Semigroup('array');
+        const sg = Semigroup.Maybe('array');
         assertThrowsWith(
             () => sg.concat(Maybe.Just([]), Either.Right([])),
             'Semigroup.concat'

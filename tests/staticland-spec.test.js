@@ -11,7 +11,7 @@
 // 못 잡는 것을 먼저 적는다 (규칙 31-1):
 //   - ①은 "메서드가 있는가" 만 본다. `equals` 를 아무 함수로 채워도 통과한다 —
 //     그것이 자기 `lte` 와 맞는지는 법칙 테스트만 안다.
-//   - ①~③은 **등록된** 인스턴스만 본다. 팩토리로만 생기는 것(`Maybe.Ord('number')`)은
+//   - ①~③은 **등록된** 인스턴스만 본다. 팩토리로만 생기는 것(`Ord.Maybe('number')`)은
 //     ④에서 명시적으로 부른다. 명단을 안 늘리면 새 팩토리는 감시 밖이다.
 //   - ③은 `.type` **문자열**만 본다. 같은 태그의 Functor 가 있으면 통과하지, 그것이 명세가
 //     말하는 Functor 인지는 안 본다. 실측: `TupleBifunctor`(.type='Array')는 `ArrayFunctor`
@@ -151,15 +151,15 @@ test('③ Bifunctor / Profunctor 는 같은 타입의 Functor 가 레지스트�
 test('④ 팩토리로만 생기는 인스턴스도 조상의 메서드를 진다', () => {
     // 레지스트리 순회로는 안 닿는다 — 호출해야 생긴다. 새 팩토리를 만들면 여기 추가하라.
     const cases = [
-        ['Maybe.Ord("number")', 'Ord', fp.Maybe.Ord('number')],
+        ['Ord.Maybe("number")', 'Ord', fp.Ord.Maybe('number')],
         ['Ord.Array("number")', 'Ord', fp.Ord.Array('number')],
-        ['Maybe.Setoid("number")', 'Setoid', fp.Maybe.Setoid('number')],
+        ['Setoid.Maybe("number")', 'Setoid', fp.Setoid.Maybe('number')],
         ['Setoid.Array("number")', 'Setoid', fp.Setoid.Array('number')],
-        ['Either.Setoid("string","number")', 'Setoid', fp.Either.Setoid('string', 'number')],
+        ['Setoid.Either("string","number")', 'Setoid', fp.Setoid.Either('string', 'number')],
         ['Setoid.Struct({a:"number"})', 'Setoid', fp.Setoid.Struct({ a: 'number' })],
-        ['Maybe.Semigroup("array")', 'Semigroup', fp.Maybe.Semigroup('array')],
-        ['Maybe.Monoid("array")', 'Monoid', fp.Maybe.Monoid('array')],
-        ['Either.Semigroup("array","array")', 'Semigroup', fp.Either.Semigroup('array', 'array')],
+        ['Semigroup.Maybe("array")', 'Semigroup', fp.Semigroup.Maybe('array')],
+        ['Monoid.Maybe("array")', 'Monoid', fp.Monoid.Maybe('array')],
+        ['Semigroup.Either("array","array")', 'Semigroup', fp.Semigroup.Either('array', 'array')],
         ['Applicative.Const("array")', 'Applicative', fp.Applicative.Const('array')],
         // StateT('maybe') 를 부르는 순간 Functor~Monad 다섯 곳에 statet(maybe) 키가 생긴다.
         ['statet(maybe)', 'Monad', (fp.StateT('maybe'), fp.Monad.lookup('statet(maybe)'))],

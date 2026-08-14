@@ -13,7 +13,7 @@
  *
  * Deferred (added in follow-ups):
  *   traverse, chainRec, pipeK, composeK, bimap (needs Bifunctor class),
- *   Either.pipe, Either.Semigroup, Either.Monoid, Semigroupoid / Category
+ *   Either.pipe, Semigroup.Either, Either.Monoid, Semigroupoid / Category
  */
 
 import type { TypeLambda, Kind } from "../HKT";
@@ -208,25 +208,33 @@ export declare const Either: {
         ): Either<E, D>;
     };
 
-    // Semigroup factory — requires inner Semigroup on the Left (error
-    // accumulation) and/or Right channels.
-    readonly Semigroup: {
-        <K extends keyof SemigroupInstances, A>(
-            innerSG: K
-        ): Semigroup<Either<SemigroupInstances[K], A>>;
-        <E, A>(innerSG: Semigroup<E>): Semigroup<Either<E, A>>;
-    };
-    // Either has two slots with different types, so equality takes two
-    // instances (Haskell: (Eq a, Eq b); fp-ts: getEq(EL, EA)). There is
-    // deliberately no Either Ord — Left-before-Right has no canonical
-    // justification; fp-ts leaves it out of core too.
-    readonly Setoid: {
-        <KL extends keyof SetoidInstances, KR extends keyof SetoidInstances>(
-            left: KL, right: KR
-        ): Setoid<Either<SetoidInstances[KL], SetoidInstances[KR]>>;
-        <E, A>(left: Setoid<E> | string, right: Setoid<A> | string): Setoid<Either<E, A>>;
-    };
 };
+
+// ── 제약이 붙은 Either 인스턴스는 타입 클래스 쪽에 산다 ────────────────
+// Semigroup concats both channels (Left/Left, Right/Right), so it needs
+// two inner Semigroups — the runtime raises on a single argument.
+// Either has two slots with different types, so equality takes two
+// instances (Haskell: (Eq a, Eq b); fp-ts: getEq(EL, EA)). There is
+// deliberately no Ord.Either — Left-before-Right has no canonical
+// justification; fp-ts leaves it out of core too.
+declare module "../TypeClasses" {
+    interface SemigroupStatic {
+        readonly Either: {
+            <KL extends keyof SemigroupInstances, KR extends keyof SemigroupInstances>(
+                left: KL, right: KR
+            ): Semigroup<Either<SemigroupInstances[KL], SemigroupInstances[KR]>>;
+            <E, A>(left: Semigroup<E> | string, right: Semigroup<A> | string): Semigroup<Either<E, A>>;
+        };
+    }
+    interface SetoidStatic {
+        readonly Either: {
+            <KL extends keyof SetoidInstances, KR extends keyof SetoidInstances>(
+                left: KL, right: KR
+            ): Setoid<Either<SetoidInstances[KL], SetoidInstances[KR]>>;
+            <E, A>(left: Setoid<E> | string, right: Setoid<A> | string): Setoid<Either<E, A>>;
+        };
+    }
+}
 
 // ── Register 'either' on the type-class runtime registries ───────────
 // Either runtime has: Functor, Apply, Applicative, Alt, Chain, ChainRec,

@@ -112,8 +112,8 @@ const cases = [
     ['first.concat(1,"a")', f => L(f, 'Semigroup')('first').concat(1, 'a')],
     ['first.concat(obj)', f => L(f, 'Semigroup')('first').concat({ a: 1 }, { a: 2 })],
     ['last.concat(1,2)', f => L(f, 'Semigroup')('last').concat(1, 2)],
-    ['maybe(first) 동종', f => f.Maybe.Monoid('first').concat(f.Maybe.Just(1), f.Maybe.Just(2))],
-    ['maybe(first) 이종', f => f.Maybe.Monoid('first').concat(f.Maybe.Just(1), f.Maybe.Just('a'))],
+    ['maybe(first) 동종', f => f.Monoid.Maybe('first').concat(f.Maybe.Just(1), f.Maybe.Just(2))],
+    ['maybe(first) 이종', f => f.Monoid.Maybe('first').concat(f.Maybe.Just(1), f.Maybe.Just('a'))],
     ['array Monoid', f => L(f, 'Monoid')('array').concat([1], [2])],
     ['array Monoid empty', f => L(f, 'Monoid')('array').empty()],
 
@@ -159,6 +159,13 @@ const cases = [
         'Extend', 'Comonad', 'Traversable']
         .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
 
+    // 데이터 타입의 정적 표면. 위 행은 타입클래스만 보므로 **이름이 데이터 타입에서
+    // 빠져나간 것**을 못 잡는다 — 팩토리 6개를 타입클래스로 옮길 때(2026-08-14) 이 행이
+    // 없어서 없어진 쪽이 baseline 에 안 보였다.
+    ['데이터타입 정적 표면', f => ['Maybe', 'Either', 'Task', 'Validation', 'Reader', 'Writer',
+        'State', 'Free']
+        .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
+
     // ── 인스턴스의 .type — 값으로는 관측되지 않는 자리다 ──────────────────
     // 검사에 쓰이지 않는 타입클래스(Semigroupoid/Category 등)에서는 .type 이 틀려도
     // 동작이 같으므로 위 격자가 전부 통과한다. 필드를 직접 읽어야 드리프트가 보인다.
@@ -180,7 +187,7 @@ const cases = [
     // 지연 등록(팩토리·트랜스포머)이 같은 문을 지나는지. 문을 하나 빠뜨리면 그 인스턴스만
     // 인덱스에 없고 Algebra.all 에서 조용히 사라진다 — 그것을 여기서 잡는다.
     ['지연 등록을 일으킨다', f => {
-        f.Maybe.Semigroup('number'); f.Maybe.Monoid('array'); f.Either.Semigroup('string', 'string');
+        f.Semigroup.Maybe('number'); f.Monoid.Maybe('array'); f.Semigroup.Either('string', 'string');
         f.Applicative.Const('array'); f.Semigroup.lookup('maybe(maybe(array))');
         // 컨테이너 Setoid/Ord — 불러야 생긴다. HEAD 에 없으면 THROW 로 잡히는 것이 맞다.
         try { f.Setoid.lookup('maybe(number)'); f.Setoid.lookup('array(number)');

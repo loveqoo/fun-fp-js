@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T14:19:50.488Z
+ * Built: 2026-08-14T14:43:02.165Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -1215,7 +1215,7 @@ class IdentityComonad extends Comonad {
     }
 }
 modules.push(IdentityComonad);
-// Const 는 monoid 마다 다르므로 매개변수화한다 — Maybe.Monoid(innerSG) 와 같은 모양이다.
+// Const 는 monoid 마다 다르므로 매개변수화한다 — Monoid.Maybe(innerSG) 와 같은 모양이다.
 // 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
 const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
 Applicative.Const = monoid => {
@@ -1673,14 +1673,14 @@ const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
 /* Container Semigroup / Monoid */
 const normalizeSemigroupKey = normalizeTypeClassKey(Semigroup, Symbols.Semigroup, 'normalizeSemigroupKey');
 const resolveInnerSemigroup = innerResolver(normalizeSemigroupKey, 'Semigroup');
-Maybe.Semigroup = cachedInnerFactory('Maybe.Semigroup', resolveInnerSemigroup, Semigroup.types, k => `maybe(${k})`,
+Semigroup.Maybe = cachedInnerFactory('Semigroup.Maybe', resolveInnerSemigroup, Semigroup.types, k => `maybe(${k})`,
     sg => new Semigroup((a, b) => a.isNothing() ? b : b.isNothing() ? a : Maybe.Just(sg.concat(a.value, b.value)), 'Maybe', null));
 // inner 가 Semigroup 이기만 해도 Monoid 가 된다 — Nothing 이 항등원이라 inner 의 empty 가 필요 없다.
-Maybe.Monoid = cachedInnerFactory('Maybe.Monoid', resolveInnerSemigroup, Monoid.types, k => `maybe(${k})`,
-    sg => new Monoid(Maybe.Semigroup(sg), () => Maybe.Nothing(), 'Maybe', null));
+Monoid.Maybe = cachedInnerFactory('Monoid.Maybe', resolveInnerSemigroup, Monoid.types, k => `maybe(${k})`,
+    sg => new Monoid(Semigroup.Maybe(sg), () => Maybe.Nothing(), 'Maybe', null));
 // 자리가 둘이면 합치는 법도 둘이다 — Setoid 쪽 either 와 같은 키 형식을 쓴다.
 // 둘 다 Left 면 왼쪽 법으로 **누적**한다(Validation 선례). 한쪽만 Left 면 그것이 이긴다.
-Either.Semigroup = cachedInnerFactory('Either.Semigroup', resolveInnerSemigroup, Semigroup.types,
+Semigroup.Either = cachedInnerFactory('Semigroup.Either', resolveInnerSemigroup, Semigroup.types,
     (l, r) => `either(${l},${r})`,
     (l, r) => new Semigroup((a, b) =>
         a.isLeft() ? (b.isLeft() ? Either.Left(l.concat(a.value, b.value)) : a)
@@ -1689,13 +1689,13 @@ Either.Semigroup = cachedInnerFactory('Either.Semigroup', resolveInnerSemigroup,
 addResolver(Semigroup, key => {
     const m = /^(maybe|either)\((.+)\)$/.exec(key);
     if (!m) return null;
-    if (m[1] === 'maybe') return Maybe.Semigroup(m[2]);
+    if (m[1] === 'maybe') return Semigroup.Maybe(m[2]);
     const parts = splitTopLevel(m[2]);
-    return parts.length === 2 ? Either.Semigroup(parts[0], parts[1]) : null;
+    return parts.length === 2 ? Semigroup.Either(parts[0], parts[1]) : null;
 });
 addResolver(Monoid, key => {
     const m = /^maybe\((.+)\)$/.exec(key);
-    return m ? Maybe.Monoid(m[1]) : null;
+    return m ? Monoid.Maybe(m[1]) : null;
 });
 // Applicative.Const(monoid) 의 지연 해석 — 팩토리를 부르기 전에도 const(<키>) 로 꺼낼 수 있다.
 // key => 클로저 안에서 부르므로 Applicative.Const 정의(위쪽)와의 순서는 문제되지 않는다.
@@ -1710,11 +1710,11 @@ const normalizeSetoidKey = normalizeTypeClassKey(Setoid, Symbols.Setoid, 'normal
 const normalizeOrdKey = normalizeTypeClassKey(Ord, Symbols.Ord, 'normalizeOrdKey');
 const resolveInnerSetoid = innerResolver(normalizeSetoidKey, 'Setoid');
 const resolveInnerOrd = innerResolver(normalizeOrdKey, 'Ord');
-Maybe.Setoid = cachedInnerFactory('Maybe.Setoid', resolveInnerSetoid, Setoid.types, k => `maybe(${k})`,
+Setoid.Maybe = cachedInnerFactory('Setoid.Maybe', resolveInnerSetoid, Setoid.types, k => `maybe(${k})`,
     inner => new Setoid((a, b) => a.isNothing() ? b.isNothing() : b.isJust() && inner.equals(a.value, b.value), 'Maybe', null));
 // Nothing 이 가장 작다 — fp-ts 의 getOrd 와 같고, Haskell 의 생성자 선언 순서와도 같다.
-Maybe.Ord = cachedInnerFactory('Maybe.Ord', resolveInnerOrd, Ord.types, k => `maybe(${k})`,
-    inner => new Ord(Maybe.Setoid(inner), (a, b) => a.isNothing() || (b.isJust() && inner.lte(a.value, b.value)), 'Maybe', null));
+Ord.Maybe = cachedInnerFactory('Ord.Maybe', resolveInnerOrd, Ord.types, k => `maybe(${k})`,
+    inner => new Ord(Setoid.Maybe(inner), (a, b) => a.isNothing() || (b.isJust() && inner.lte(a.value, b.value)), 'Maybe', null));
 Setoid.Array = cachedInnerFactory('Setoid.Array', resolveInnerSetoid, Setoid.types, k => `array(${k})`,
     inner => new Setoid((a, b) => a.length === b.length && a.every((x, i) => inner.equals(x, b[i])), 'Array', null));
 // 사전식. Ord 는 lte 만 있으므로 "양쪽으로 lte" 를 같음으로 읽어 자리를 넘긴다.
@@ -1729,7 +1729,7 @@ const arrayOrdLte = inner => (a, b) => {
 Ord.Array = cachedInnerFactory('Ord.Array', resolveInnerOrd, Ord.types, k => `array(${k})`,
     inner => new Ord(Setoid.Array(inner), arrayOrdLte(inner), 'Array', null));
 // Either 만 안쪽이 둘이라 양쪽 키를 다 알 때만 캐시된다 — 한쪽이 미등록이면 캐시가 없다.
-Either.Setoid = cachedInnerFactory('Either.Setoid', resolveInnerSetoid, Setoid.types, (l, r) => `either(${l},${r})`,
+Setoid.Either = cachedInnerFactory('Setoid.Either', resolveInnerSetoid, Setoid.types, (l, r) => `either(${l},${r})`,
     (l, r) => new Setoid((a, b) => a.isLeft()
         ? b.isLeft() && l.equals(a.value, b.value)
         : b.isRight() && r.equals(a.value, b.value), 'Either', null));
@@ -1767,14 +1767,14 @@ Setoid.Struct._keyCache = new Map();
 addResolver(Setoid, key => {
     const m = /^(maybe|array|either)\((.+)\)$/.exec(key);
     if (!m) return null;
-    if (m[1] === 'maybe') return Maybe.Setoid(m[2]);
+    if (m[1] === 'maybe') return Setoid.Maybe(m[2]);
     if (m[1] === 'array') return Setoid.Array(m[2]);
     const parts = splitTopLevel(m[2]);
-    return parts.length === 2 ? Either.Setoid(parts[0], parts[1]) : null;
+    return parts.length === 2 ? Setoid.Either(parts[0], parts[1]) : null;
 });
 addResolver(Ord, key => {
     const m = /^(maybe|array)\((.+)\)$/.exec(key);
-    return !m ? null : m[1] === 'maybe' ? Maybe.Ord(m[2]) : Ord.Array(m[2]);
+    return !m ? null : m[1] === 'maybe' ? Ord.Maybe(m[2]) : Ord.Array(m[2]);
 });
 /* Task */
 class Task {

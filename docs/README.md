@@ -206,7 +206,7 @@ console.log(A.all('array').arrayMonoid.empty());  // []   ← Array 는 원래�
 | --- | --- |
 | 키는 **소문자만** | `Algebra.all('Array')` 는 던집니다. 없는 타입도 던집니다 |
 | 묶는 기준은 **`.type`**, 레지스트리 키가 아님 | `Semigroupoid` 의 `maybe` 인스턴스는 Kleisli 합성이라 `.type` 이 `'function'` 입니다 — `all('function')` 에 있고 `all('maybe')` 에는 없습니다 |
-| **열거가 아니라 "지금 있는 것"** | 매개변수화 인스턴스는 팩토리를 불러야 생깁니다. `Maybe.Semigroup('number')` 뒤의 `all('maybe')` 에는 `maybeNumberSemigroup` 이 더 있습니다 |
+| **열거가 아니라 "지금 있는 것"** | 매개변수화 인스턴스는 팩토리를 불러야 생깁니다. `Semigroup.Maybe('number')` 뒤의 `all('maybe')` 에는 `maybeNumberSemigroup` 이 더 있습니다 |
 
 **키 순서는 약속이 아닙니다.** 이름으로 구조분해해서 쓰십시오 — `Object.keys` 의 순서는
 등록 순서를 따라가므로 라이브러리 내부가 바뀌면 함께 바뀝니다.

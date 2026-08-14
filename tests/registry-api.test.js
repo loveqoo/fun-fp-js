@@ -69,6 +69,57 @@ test('types 레지스트리는 lookup 과 같은 인스턴스를 준다', () => 
     assert(fp.Functor.lookup('maybe') === fp.Functor.types.maybe, '소문자 키도 같은 인스턴스');
 });
 
+logSection('제약이 붙은 인스턴스 팩토리는 어디 사는가');
+
+// 한때 규칙이 **두 개**였다 — Maybe.Semigroup(k) 와 Setoid.Array(k) 가 나란히 있었고
+// 어느 쪽도 예외라 부를 수 없는 5:6 이었다. 아무 게이트도 그것을 안 봤다.
+//
+// 규칙은 하나다: **인스턴스를 돌려주는 것은 전부 타입 클래스에 산다.**
+//
+//   Semigroup.lookup('maybe')     제약이 없으면 그냥 꺼낸다
+//   Semigroup.Maybe('array')      제약이 있으면 인자로 풀고 꺼낸다
+//
+// 근거 둘. (1) 위의 lookup/of 분리와 같은 선이다 — 데이터 타입은 값만 내고
+// 타입 클래스는 인스턴스만 낸다. (2) 글자 순서가 타입 순서와 같다:
+// Semigroup.Maybe('array') 는 Semigroup<Maybe<Array>> 다. 뒤집으면
+// Maybe<Semigroup<Array>> 로 읽히는데 그런 값은 없다.
+
+test('데이터 타입에는 타입클래스 이름의 멤버가 없다', () => {
+    const found = [];
+    for (const d of DATA_TYPES) {
+        for (const k of Object.keys(fp[d])) {
+            if (TYPE_CLASSES.includes(k)) found.push(`${d}.${k}`);
+        }
+    }
+    assertEquals(found.join(', '), '',
+        '데이터 타입에 타입클래스 이름이 붙었다 — 인스턴스 팩토리는 타입 클래스 쪽이다');
+});
+
+test('옮겨온 팩토리 여섯이 타입 클래스에 있고 인스턴스를 돌려준다', () => {
+    const cases = [
+        ['Semigroup', 'Maybe', ['array'], 'Maybe'],
+        ['Monoid', 'Maybe', ['array'], 'Maybe'],
+        ['Setoid', 'Maybe', ['number'], 'Maybe'],
+        ['Ord', 'Maybe', ['number'], 'Maybe'],
+        ['Semigroup', 'Either', ['array', 'array'], 'Either'],
+        ['Setoid', 'Either', ['number', 'number'], 'Either']
+    ];
+    for (const [cls, type, args, expected] of cases) {
+        const factory = fp[cls][type];
+        assert(typeof factory === 'function', `${cls}.${type} 가 없다`);
+        assertEquals(factory.apply(null, args).type, expected, `${cls}.${type} 가 돌려준 .type`);
+    }
+});
+
+test('이름이 타입을 순서대로 읽는다 — Semigroup.Maybe 는 Semigroup<Maybe<_>> 다', () => {
+    // 바깥이 Semigroup 이므로 concat 은 Maybe 를 받아 Maybe 를 돌려준다.
+    // 뒤집힌 읽기(Maybe<Semigroup<_>>)라면 concat 이 Semigroup 인스턴스를 받았을 것이다.
+    const sg = fp.Semigroup.Maybe('array');
+    const joined = sg.concat(fp.Maybe.Just([1]), fp.Maybe.Just([2]));
+    assert(fp.Maybe.isJust(joined), 'concat 결과가 Maybe 다');
+    assertEquals(JSON.stringify(joined.value), '[1,2]', '안쪽은 Array 의 concat 이다');
+});
+
 logSection('Algebra.all — 한 타입의 인스턴스를 한 번에');
 
 test('구조분해로 원하는 구현체만 받는다', () => {
@@ -97,7 +148,7 @@ test('묶는 기준은 .type 이지 레지스트리 키가 아니다', () => {
 test('조립 키로 만들어진 것은 키 조각을 이름 앞에 붙인다', () => {
     // plus(array) 로 이것을 보던 때가 있었는데 그 키는 버그였다 — f(x) 는 F<X> 를 뜻하는데
     // Plus 가 아니라 Monoid 를 돌려줬다. 진짜 조립 키로 같은 규칙을 확인한다.
-    fp.Maybe.Semigroup('array');
+    fp.Semigroup.Maybe('array');
     const mb = fp.Algebra.all('maybe');
     assert('maybeFunctor' in mb, '이름 있는 것은 클래스 이름 그대로');
     assert('maybeArraySemigroup' in mb, '조립 키는 maybe + Array + Semigroup');
@@ -119,7 +170,7 @@ test('조회 시점의 레지스트리를 반영한다 — 열거가 아니다',
     // (maybe(maybe(maybe(array))) 도 된다) 미리 열거할 수 없다.
     const before = Object.keys(fp.Algebra.all('maybe'));
     assert(!before.includes('maybeStringSemigroup'), '아직 없다');
-    fp.Maybe.Semigroup('string');
+    fp.Semigroup.Maybe('string');
     const after = Object.keys(fp.Algebra.all('maybe'));
     assert(after.includes('maybeStringSemigroup'), '팩토리를 부른 뒤에는 있다');
     assertEquals(after.length, before.length + 1, '하나만 늘었다');
@@ -171,8 +222,8 @@ test('역인덱스와 실제 레지스트리가 일치한다 — 문을 우회�
 test('지연 등록도 같은 문을 지난다', () => {
     // 팩토리·트랜스포머가 만드는 인스턴스는 나중에 생긴다. 그것들이 문을 안 지나면
     // 위 대조가 그 시점 이후에만 깨지므로, 여기서 직접 만들어 확인한다.
-    fp.Maybe.Semigroup('boolean');
-    assert('maybeBooleanSemigroup' in fp.Algebra.all('maybe'), 'Maybe.Semigroup 파생');
+    fp.Semigroup.Maybe('boolean');
+    assert('maybeBooleanSemigroup' in fp.Algebra.all('maybe'), 'Semigroup.Maybe 파생');
     fp.Applicative.Const('boolean');
     // Const 는 이제 자기 타입이다 — Object 묶음이 아니라 const(boolean) 묶음에 있다.
     assert('constBooleanApplicative' in fp.Algebra.all('const(boolean)'), 'Applicative.Const 파생');

@@ -103,7 +103,7 @@ console.log(Monoid.lookup('array') === Monoid.types.ArrayMonoid);   // true
 const { Monoid, Maybe } = FunFP;
 
 const plus = Monoid.lookup('maybe');       // 봉투째 고른다 — 안을 열지 않는다
-const inner = Maybe.Monoid('first');       // 안을 열어 first 로 합친다
+const inner = Monoid.Maybe('first');       // 안을 열어 first 로 합친다
 
 // payload 타입이 같으면 결과도 같다
 console.log(plus.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1

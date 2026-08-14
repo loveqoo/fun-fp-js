@@ -60,6 +60,11 @@ Rebuild `dist/` before you commit. Why, and what to write instead:
 - `lookup(key)` pulls an instance from a registry (type classes); `of(value)` lifts
   a value (data types, `Applicative` instances). Type classes have no `of` — no
   test says so, and `instance.of(x)` is all over `tests/`, which reads as the opposite.
+- **An instance factory lives on the type class, never on the data type** —
+  `Semigroup.Maybe('array')`, not `Maybe.Semigroup('array')`. It returns the same
+  thing `lookup` does, so it belongs in the same place; and the name then reads in
+  type order (`Semigroup<Maybe<Array>>`). Two conventions coexisted 5:6 until
+  2026-08-14 with nothing watching. `tests/registry-api.test.js` watches now.
 - `Algebra.all(type)` groups by the instance's `.type`, not by registry key, and
   reads the registry as it stands. `all('maybe').maybeSemigroupoid` is `undefined`
   — that instance is Kleisli, so its `.type` is `'function'`.

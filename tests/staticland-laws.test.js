@@ -122,37 +122,37 @@ const EQ = {
     any: (a, b) => fp.Setoid.lookup('default').equals(a, b),
     Date: (a, b) => fp.Setoid.lookup('date').equals(a, b),
     Array: (a, b) => fp.Setoid.Array('number').equals(a, b),
-    Maybe: (a, b) => fp.Maybe.Setoid('number').equals(a, b),
+    Maybe: (a, b) => fp.Setoid.Maybe('number').equals(a, b),
     // 관측 동등 — 함수의 동등은 결정 불가라 표본 입력에서만 본다.
     function: (f, g) => FN_INPUTS.every(x => Object.is(f(x), g(x))),
 };
 
 // ─── 팩토리로만 생기는 인스턴스 ──────────────────────────────────────
 // 레지스트리 순회로는 안 닿는다. 표본이 인스턴스마다 다르므로 함께 적는다.
-const maybeArrayEq = fp.Maybe.Setoid(fp.Setoid.Array('number'));
-const eitherArrayArrayEq = fp.Either.Setoid(fp.Setoid.Array('string'), fp.Setoid.Array('number'));
+const maybeArrayEq = fp.Setoid.Maybe(fp.Setoid.Array('number'));
+const eitherArrayArrayEq = fp.Setoid.Either(fp.Setoid.Array('string'), fp.Setoid.Array('number'));
 // 안쪽이 StringLengthOrd 인 경우가 중요하다. 이 순서는 'ab' 와 'cd' 를 같은 자리에 놓으므로
 // 반대칭이 equals(['ab'],['cd']) === true 를 요구한다. 짝 Setoid 를 안쪽 Ord 가 아니라
 // **키로** 조회하면(Setoid.Array('string')) false 가 나와 법칙이 깨진다 — 그 지름길을 막는다.
 const lengthOrd = fp.Ord.lookup('StringLengthOrd');
 const FACTORY_CASES = [
-    ['Maybe.Ord("number")', 'Ord', fp.Maybe.Ord('number'), SAMPLES.Maybe],
+    ['Ord.Maybe("number")', 'Ord', fp.Ord.Maybe('number'), SAMPLES.Maybe],
     ['Ord.Array("number")', 'Ord', fp.Ord.Array('number'), SAMPLES.Array],
     ['Ord.Array(StringLengthOrd)', 'Ord', fp.Ord.Array(lengthOrd),
         [[], [], ['ab'], ['cd'], ['xyz'], ['ab', 'q']]],
-    ['Maybe.Ord(StringLengthOrd)', 'Ord', fp.Maybe.Ord(lengthOrd),
+    ['Ord.Maybe(StringLengthOrd)', 'Ord', fp.Ord.Maybe(lengthOrd),
         [Nothing(), Nothing(), Just('ab'), Just('cd'), Just('xyz')]],
-    ['Maybe.Setoid("number")', 'Setoid', fp.Maybe.Setoid('number'), SAMPLES.Maybe],
+    ['Setoid.Maybe("number")', 'Setoid', fp.Setoid.Maybe('number'), SAMPLES.Maybe],
     ['Setoid.Array("number")', 'Setoid', fp.Setoid.Array('number'), SAMPLES.Array],
-    ['Either.Setoid("string","number")', 'Setoid', fp.Either.Setoid('string', 'number'),
+    ['Setoid.Either("string","number")', 'Setoid', fp.Setoid.Either('string', 'number'),
         [Left('a'), Left('a'), Left('b'), Right(1), Right(1), Right(2)]],
     ['Setoid.Struct({a:"number"})', 'Setoid', fp.Setoid.Struct({ a: 'number' }),
         [{ a: 1 }, { a: 1 }, { a: 2 }]],
-    ['Maybe.Semigroup("array")', 'Semigroup', fp.Maybe.Semigroup('array'),
+    ['Semigroup.Maybe("array")', 'Semigroup', fp.Semigroup.Maybe('array'),
         [Nothing(), Just([1]), Just([1]), Just([2, 3])], (a, b) => maybeArrayEq.equals(a, b)],
-    ['Maybe.Monoid("array")', 'Monoid', fp.Maybe.Monoid('array'),
+    ['Monoid.Maybe("array")', 'Monoid', fp.Monoid.Maybe('array'),
         [Nothing(), Just([1]), Just([1]), Just([2, 3])], (a, b) => maybeArrayEq.equals(a, b)],
-    ['Either.Semigroup("array","array")', 'Semigroup', fp.Either.Semigroup('array', 'array'),
+    ['Semigroup.Either("array","array")', 'Semigroup', fp.Semigroup.Either('array', 'array'),
         [Left(['e']), Left(['e']), Right([1]), Right([1]), Right([2, 3])],
         (a, b) => eitherArrayArrayEq.equals(a, b)],
 ];
@@ -302,7 +302,7 @@ for (const [name, count] of [['Setoid', 7], ['Ord', 6], ['Semigroup', 13], ['Mon
 }
 
 test('팩토리로만 생기는 인스턴스도 법칙을 지킨다', () => {
-    // 레지스트리 순회로는 안 닿는다 — 이것이 없으면 Ord.Array/Maybe.Ord 의 짝 Setoid 가
+    // 레지스트리 순회로는 안 닿는다 — 이것이 없으면 Ord.Array/Ord.Maybe 의 짝 Setoid 가
     // 엉뚱해도 초록이 난다(실측으로 확인했다).
     const broken = [];
     for (const [label, name, instance, xs, eq] of FACTORY_CASES) {

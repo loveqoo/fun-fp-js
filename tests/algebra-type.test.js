@@ -110,7 +110,7 @@ const expectedTypeOf = ({ label, composedKey, isNamed }) => {
     return prefix ? BY_PREFIX[prefix] : null;
 };
 
-// **로드 시점에 한 번 뜬다.** 레지스트리는 조회로 늘어난다 — `Maybe.Semigroup('number')`
+// **로드 시점에 한 번 뜬다.** 레지스트리는 조회로 늘어난다 — `Semigroup.Maybe('number')`
 // 나 `StateT('maybe')` 를 부르면 `types` 에 키가 생긴다. 아래 테스트들이 그것을 부르므로,
 // 매번 다시 훑으면 개수 고정이 **테스트 순서에 따라** 깨진다.
 const REGISTERED = everyInstance();
@@ -178,18 +178,18 @@ test('예외표의 항목에는 전부 이유가 붙어 있다', () => {
 test('팩토리로만 생기는 파생 인스턴스도 정규 태그다', () => {
     // 레지스트리 순회로는 안 닿는다 — 호출해야 생긴다. 여기서 명시적으로 부른다.
     const cases = [
-        ['Maybe.Semigroup("number")', fp.Maybe.Semigroup('number'), 'Maybe'],
-        ['Maybe.Monoid("number")', fp.Maybe.Monoid('number'), 'Maybe'],
-        ['Either.Semigroup("string","number")', fp.Either.Semigroup('string', 'number'), 'Either'],
+        ['Semigroup.Maybe("number")', fp.Semigroup.Maybe('number'), 'Maybe'],
+        ['Monoid.Maybe("number")', fp.Monoid.Maybe('number'), 'Maybe'],
+        ['Semigroup.Either("string","number")', fp.Semigroup.Either('string', 'number'), 'Either'],
         ['Applicative.Const("array")', fp.Applicative.Const('array'), 'Const(array)'],
         ['Semigroup.lookup("maybe(maybe(array))")', fp.Semigroup.lookup('maybe(maybe(array))'), 'Maybe'],
         // 컨테이너 Setoid/Ord. 명세 게이트도 법칙 게이트도 .type **값**은 안 본다 —
         // 여기가 유일한 감시자다. Setoid.Struct 는 레지스트리 밖이라 더욱 그렇다.
-        ['Maybe.Setoid("number")', fp.Maybe.Setoid('number'), 'Maybe'],
-        ['Maybe.Ord("number")', fp.Maybe.Ord('number'), 'Maybe'],
+        ['Setoid.Maybe("number")', fp.Setoid.Maybe('number'), 'Maybe'],
+        ['Ord.Maybe("number")', fp.Ord.Maybe('number'), 'Maybe'],
         ['Setoid.Array("number")', fp.Setoid.Array('number'), 'Array'],
         ['Ord.Array("number")', fp.Ord.Array('number'), 'Array'],
-        ['Either.Setoid("string","number")', fp.Either.Setoid('string', 'number'), 'Either'],
+        ['Setoid.Either("string","number")', fp.Setoid.Either('string', 'number'), 'Either'],
         ['Setoid.Struct({a:"number"})', fp.Setoid.Struct({ a: 'number' }), 'Object'],
     ];
     for (const [label, instance, expected] of cases) {

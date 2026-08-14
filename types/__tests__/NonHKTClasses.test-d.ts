@@ -74,7 +74,7 @@ const fId = Functor.lookup("identity");
 const aId = Applicative.lookup("identity");
 const idVal: { readonly value: number } = aId.of(42);
 
-// Applicative.Const — 키/인스턴스 양쪽 오버로드가 선언돼 있어야 한다(Maybe.Monoid 선례).
+// Applicative.Const — 키/인스턴스 양쪽 오버로드가 선언돼 있어야 한다(Monoid.Maybe 선례).
 const cArr = Applicative.Const("array");
 const cUser = Applicative.Const(Monoid.lookup("number"));
 

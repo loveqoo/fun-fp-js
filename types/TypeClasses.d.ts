@@ -336,7 +336,7 @@ export declare const Applicative: {
         name: K
     ) => Applicative<ApplicativeInstances[K]>;
     // Const<r> — 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓸 때 넘긴다.
-    // Maybe.Monoid(innerSG) 와 같은 모양: 키면 const(<키>) 로 등록하고, 인스턴스면 캐시한다.
+    // Monoid.Maybe(innerSG) 와 같은 모양: 키면 const(<키>) 로 등록하고, 인스턴스면 캐시한다.
     readonly Const: {
         <K extends keyof MonoidInstances>(monoid: K): Applicative<ConstTypeLambda>;
         <R>(monoid: Monoid<R>): Applicative<ConstTypeLambda>;
@@ -444,8 +444,11 @@ export declare const Category: {
 
 // ─── Concrete-type class dispatch entry points ───────────────────────
 // These return instances keyed by concrete type (not TypeLambda).
+//
+// 제약이 붙은 인스턴스(Semigroup.Maybe 등)는 데이터 타입 파일이 `*Static` 을 증강해
+// 여기 붙인다 — 인스턴스를 돌려주는 것은 전부 타입 클래스 쪽에 산다(lookup 과 같은 자리).
 
-export declare const Setoid: {
+export interface SetoidStatic {
     readonly lookup: <K extends keyof SetoidInstances>(
         name: K
     ) => Setoid<SetoidInstances[K]>;
@@ -466,8 +469,9 @@ export declare const Setoid: {
         fields: Record<string, string | Setoid<unknown>>
     ) => Setoid<Record<string, unknown>>;
 };
+export declare const Setoid: SetoidStatic;
 
-export declare const Ord: {
+export interface OrdStatic {
     readonly lookup: <K extends keyof OrdInstances>(
         name: K
     ) => Ord<OrdInstances[K]>;
@@ -477,18 +481,21 @@ export declare const Ord: {
         <A>(inner: Ord<A>): Ord<ReadonlyArray<A>>;
     };
 };
+export declare const Ord: OrdStatic;
 
-export declare const Semigroup: {
+export interface SemigroupStatic {
     readonly lookup: <K extends keyof SemigroupInstances>(
         name: K
     ) => Semigroup<SemigroupInstances[K]>;
 };
+export declare const Semigroup: SemigroupStatic;
 
-export declare const Monoid: {
+export interface MonoidStatic {
     readonly lookup: <K extends keyof MonoidInstances>(
         name: K
     ) => Monoid<MonoidInstances[K]>;
 };
+export declare const Monoid: MonoidStatic;
 
 export declare const Group: {
     readonly lookup: <K extends keyof GroupInstances>(

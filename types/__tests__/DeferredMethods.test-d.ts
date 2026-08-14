@@ -4,7 +4,7 @@
  *   - chainRec, traverse, pipeK, composeK on Maybe / Either / Task
  *   - Maybe.pipe / Either.pipe utility helpers
  *   - Maybe.toEither conversion
- *   - Maybe.Semigroup / Maybe.Monoid / Either.Semigroup factories
+ *   - Semigroup.Maybe / Monoid.Maybe / Semigroup.Either factories
  *   - Validation.collect variadic validator combinator
  *   - Reader / Writer / State / Free pipeK/composeK/lift
  */
@@ -17,8 +17,7 @@ import { Reader } from "../data/Reader";
 import { Writer } from "../data/Writer";
 import { State } from "../data/State";
 import { Free } from "../data/Free";
-import { Applicative } from "../TypeClasses";
-import type { Semigroup, Monoid } from "../TypeClasses";
+import { Applicative, Semigroup, Monoid } from "../TypeClasses";
 import type { Equals, Expect, AssignableTo } from "./_test-utils";
 
 
@@ -70,11 +69,11 @@ const p1 = Maybe.pipe(
 );
 type _m3 = Expect<Equals<typeof p1, Maybe<string>>>;
 
-// ── Maybe.Semigroup / Monoid (via string key) ────────────────────────
-const sgMaybeNum = Maybe.Semigroup("number");
+// ── Semigroup.Maybe / Monoid (via string key) ────────────────────────
+const sgMaybeNum = Semigroup.Maybe("number");
 type _s1 = Expect<Equals<typeof sgMaybeNum, Semigroup<Maybe<number>>>>;
 
-const mMaybeArr = Maybe.Monoid("array");
+const mMaybeArr = Monoid.Maybe("array");
 type _s2 = Expect<Equals<typeof mMaybeArr, Monoid<Maybe<ReadonlyArray<unknown>>>>>;
 const emptyM = mMaybeArr.empty(); // Maybe<readonly unknown[]>
 
@@ -93,9 +92,9 @@ const parseE = (s: string): Either<string, number> =>
 const ePipe = Either.pipeK(parseE, (n) => Either.Right(n + 1));
 type _e2 = Expect<Equals<typeof ePipe, (s: string) => Either<string, number>>>;
 
-// Either.Semigroup (via string key)
-const sgEitherStr = Either.Semigroup<"string", unknown>("string");
-type _e3 = Expect<Equals<typeof sgEitherStr, Semigroup<Either<string, unknown>>>>;
+// Semigroup.Either (via string key)
+const sgEitherStr = Semigroup.Either("string", "string");
+type _e3 = Expect<Equals<typeof sgEitherStr, Semigroup<Either<string, string>>>>;
 
 // ── Task.chainRec / pipeK ────────────────────────────────────────────
 const tc = Task.chainRec<number, string>(

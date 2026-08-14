@@ -7,7 +7,7 @@
  *
  * Deferred (added in follow-ups):
  *   traverse, chainRec, pipeK, composeK, toEither, Maybe.pipe,
- *   Maybe.Semigroup, Maybe.Monoid
+ *   Semigroup.Maybe, Monoid.Maybe
  */
 
 import type { TypeLambda, Kind } from "../HKT";
@@ -182,32 +182,39 @@ export declare const Maybe: {
         ): Maybe<D>;
     };
 
-    // Semigroup / Monoid factories. Inner type A needs a Semigroup for
-    // value-level concat on Just/Just; Nothing is the identity, so the
-    // Monoid factory takes a Semigroup (not a Monoid) of A as input.
-    readonly Semigroup: {
-        <K extends keyof SemigroupInstances>(
-            innerSG: K
-        ): Semigroup<Maybe<SemigroupInstances[K]>>;
-        <A>(innerSG: Semigroup<A>): Semigroup<Maybe<A>>;
-    };
-    readonly Monoid: {
-        <K extends keyof SemigroupInstances>(
-            innerSG: K
-        ): Monoid<Maybe<SemigroupInstances[K]>>;
-        <A>(innerSG: Semigroup<A>): Monoid<Maybe<A>>;
-    };
-    // Equality/order need the inner instance. Nothing equals only Nothing;
-    // for Ord, Nothing is the least value (matches fp-ts getOrd).
-    readonly Setoid: {
-        <K extends keyof SetoidInstances>(inner: K): Setoid<Maybe<SetoidInstances[K]>>;
-        <A>(inner: Setoid<A>): Setoid<Maybe<A>>;
-    };
-    readonly Ord: {
-        <K extends keyof OrdInstances>(inner: K): Ord<Maybe<OrdInstances[K]>>;
-        <A>(inner: Ord<A>): Ord<Maybe<A>>;
-    };
 };
+
+// ── 제약이 붙은 Maybe 인스턴스는 타입 클래스 쪽에 산다 ─────────────────
+// Inner type A needs a Semigroup for value-level concat on Just/Just;
+// Nothing is the identity, so Monoid.Maybe takes a Semigroup (not a Monoid).
+// Equality/order need the inner instance. Nothing equals only Nothing;
+// for Ord, Nothing is the least value (matches fp-ts getOrd).
+declare module "../TypeClasses" {
+    interface SemigroupStatic {
+        readonly Maybe: {
+            <K extends keyof SemigroupInstances>(innerSG: K): Semigroup<Maybe<SemigroupInstances[K]>>;
+            <A>(innerSG: Semigroup<A>): Semigroup<Maybe<A>>;
+        };
+    }
+    interface MonoidStatic {
+        readonly Maybe: {
+            <K extends keyof SemigroupInstances>(innerSG: K): Monoid<Maybe<SemigroupInstances[K]>>;
+            <A>(innerSG: Semigroup<A>): Monoid<Maybe<A>>;
+        };
+    }
+    interface SetoidStatic {
+        readonly Maybe: {
+            <K extends keyof SetoidInstances>(inner: K): Setoid<Maybe<SetoidInstances[K]>>;
+            <A>(inner: Setoid<A>): Setoid<Maybe<A>>;
+        };
+    }
+    interface OrdStatic {
+        readonly Maybe: {
+            <K extends keyof OrdInstances>(inner: K): Ord<Maybe<OrdInstances[K]>>;
+            <A>(inner: Ord<A>): Ord<Maybe<A>>;
+        };
+    }
+}
 
 // ── Register 'maybe' on every type-class runtime registry ────────────
 declare module "../TypeClasses" {
