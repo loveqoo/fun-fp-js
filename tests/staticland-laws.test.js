@@ -41,6 +41,12 @@
 //     고정하지는 못한다 — 컨테이너의 순서는 각 타입의 테스트가 져야 한다.
 //   - KNOWN_DEVIATIONS 에 있는 것은 검사에서 빠진다. 조용히 빠지지 않도록 목록과 이유를
 //     별도 검사가 고정한다.
+//   - **Strong/Choice 는 표준 법칙 넷 중 둘만 돈다.** 쌍대(first ≡ swap∘second∘swap)와
+//     사영(lmap(fst) ≡ rmap(fst)∘first)은 돌지만, 결합(first∘first ≡ dimap assoc unassoc ∘ first)
+//     과 자연성은 튜플·Either 재결합 함수가 더 필요해 넣지 않았다.
+//   - **Wander 는 법칙이 0개다.** wander 는 순회 자연변환과 Applicative 합성을 요구해
+//     등가식만으로 부족하다 — Traversable 을 뺀 것과 같은 이유이고 KNOWN_DEVIATIONS 에 있다.
+//     부모인 Strong/Choice 법칙은 그 인스턴스에도 돈다.
 import fp from '../index.js';
 import { test, assertEquals, logSection } from './utils.js';
 
@@ -56,6 +62,10 @@ const { Left, Right } = fp.Either;
 // 아래 Object 표본(`{ value: 1 }`)이 그대로 유효한 상자가 되기 때문이다 — 배열 모노이드면
 // 상자 안이 배열이어야 해서 표본 장치를 통째로 고쳐야 한다.
 fp.Applicative.Const(fp.Monoid.lookup('number'));
+// Forget 도 같다 — monoid 마다 하나씩이라 불러야 생긴다. **숫자 모노이드를 쓴다**:
+// Forget 은 안에서 Applicative.Const 를 만드는데, 배열이면 상자 안이 배열이어야 해서
+// 위와 같은 이유로 Object 표본과 어긋난다.
+fp.Wander.Forget(fp.Monoid.lookup('number'));
 
 // 등록된 인스턴스를 (표시키, 인스턴스)로. 별칭으로 여러 번 나오므로 한 번만 본다.
 const instancesOf = name => {
@@ -159,6 +169,8 @@ const forkSync = t => {
     return out;
 };
 const OBSERVE = {
+    // 'any' 는 "값 타입을 보지 않는다" 는 뜻이라 열 것이 없다 — 값 자체가 관측이다.
+    any: v => v,
     function: f => FN_INPUTS_F.map(f),
     Object: v => v.value,
     Array: v => v,
@@ -381,10 +393,30 @@ const BIFUNCTOR = {
     ValidationBifunctor: { xs: [fp.Validation.Valid(1), fp.Validation.Invalid(['e'], fp.Monoid.lookup('array'))], obs: OBSERVE.Validation },
 };
 
+// ─── Strong / Choice — profunctor 값에는 공통 모양이 없어 라벨별로 도구를 준다 ──────
+// function·Forget 의 값은 함수라 표본 입력에 태워야 관측되고, Tagged 의 값은 그 자체가 관측이다.
+const swapT = ([a, b]) => [b, a];
+const swapE = e => (e.isLeft() ? Right(e.value) : Left(e.value));
+const lmap = (P, f, p) => P.promap(f, x => x, p);
+const rmap = (P, g, p) => P.promap(x => x, g, p);
+const snapOne = v => JSON.stringify(
+    v && v._typeName === 'Either' ? [v.isLeft() ? 'L' : 'R', v.value] : v);
+const applyTo = xs => p => JSON.stringify(xs.map(x => { try { return snapOne(p(x)); } catch (e) { return 'THROW'; } }));
+const PROFUNCTOR_KIT = {
+    FunctionStrong: { p: x => x * 10, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
+    // 숫자 합 모노이드라 p 가 숫자를 낸다. left 가 못 모으는 자리는 empty()=0 이 된다.
+    FunctionChoice: { p: x => x * 10, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
+    'forget(number)': { p: a => a, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
+    // Tagged 의 값은 함수가 아니다 — 태울 것이 없으니 값 자체를 본다.
+    TaggedChoice: { p: 7, tuples: null, eithers: null, seeds: null, obs: () => snapOne },
+};
+
 // 명세를 지키지 못하는 자리. **이유가 곧 판정 근거다** — 이유 없이 여기 추가하지 마라.
 // 소유자 결정이 필요한 것은 .dev/TODO.md 에 항목으로 올린다.
 // 2026-08-13 현재 비어 있다. Either/Task 의 Filterable 은 등록을 뗐다(docs/internals.md#filterable).
-const KNOWN_DEVIATIONS = {};
+const KNOWN_DEVIATIONS = {
+    'Wander.*': 'wander 의 법칙은 순회 자연변환과 Applicative 합성을 요구해 등가식만으로는 불충분하다 — Traversable 을 이 게이트에서 뺀 것과 같은 이유다. 부모인 Strong/Choice 법칙은 돌고 있다',
+};
 
 const CLASS_LAWS = {
     Semigroupoid: (S, _obs, key) => {
@@ -444,6 +476,40 @@ const CLASS_LAWS = {
             === P.promap(fnB, fnA, P.promap(fnA, fnB, fn))(x)) || bad.push('합성 깨짐');
         return bad;
     },
+    // Static Land 밖. 표준 Strong 법칙 넷 중 둘을 넣는다 — 결합(assoc)과 second 자연성은
+    // 튜플 재결합 함수가 더 필요해 넣지 않았다(아래 「못 잡는 것」).
+    Strong: (S, _obs, _key, label) => {
+        const kit = PROFUNCTOR_KIT[label]; if (!kit || !kit.tuples) return null;
+        const see = kit.obs(kit.tuples);
+        const bad = [];
+        see(S.first(kit.p)) === see(S.promap(swapT, swapT, S.second(kit.p)))
+            || bad.push('first ≡ promap(swap, swap, second) 깨짐');
+        see(lmap(S, fp.fst, kit.p)) === see(rmap(S, fp.fst, S.first(kit.p)))
+            || bad.push('lmap(fst) ≡ rmap(fst) ∘ first 깨짐');
+        return bad;
+    },
+    Choice: (C, _obs, _key, label) => {
+        const kit = PROFUNCTOR_KIT[label]; if (!kit) return null;
+        const bad = [];
+        if (kit.eithers) {
+            const seeE = kit.obs(kit.eithers), seeS = kit.obs(kit.seeds);
+            seeE(C.left(kit.p)) === seeE(C.promap(swapE, swapE, C.right(kit.p)))
+                || bad.push('left ≡ promap(swapE, swapE, right) 깨짐');
+            seeS(rmap(C, Left, kit.p)) === seeS(lmap(C, Left, C.left(kit.p)))
+                || bad.push('rmap(Left) ≡ lmap(Left) ∘ left 깨짐');
+        } else {
+            // Tagged — 값 자체가 관측이다.
+            const see = kit.obs();
+            see(C.left(kit.p)) === see(C.promap(swapE, swapE, C.right(kit.p)))
+                || bad.push('left ≡ promap(swapE, swapE, right) 깨짐');
+            see(rmap(C, Left, kit.p)) === see(lmap(C, Left, C.left(kit.p)))
+                || bad.push('rmap(Left) ≡ lmap(Left) ∘ left 깨짐');
+        }
+        return bad;
+    },
+    // 위 KNOWN_DEVIATIONS 가 전부 건너뛴다. 그래도 목록에 두는 이유는, 빼 버리면 "Wander 는
+    // 왜 법칙이 없나" 가 아무 데도 안 남기 때문이다.
+    Wander: () => [],
     Apply: (A, obs, _key, label) => {
         const xs = FUNCTOR_SAMPLES[A.type], of = OF_BY_LABEL[label] || OF[A.type]; if (!xs || !of) return null;
         const fns = [of(fnA), of(fnB), ...(DEGENERATE[A.type] ? [DEGENERATE[A.type]] : [])];
@@ -569,7 +635,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 71, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 76, '법칙을 돌린 인스턴스 수가 달라졌다');
 });
 
 test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {
@@ -578,7 +644,7 @@ test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () =
     for (const [k, why] of Object.entries(KNOWN_DEVIATIONS)) {
         assertEquals(typeof why === 'string' && why.length > 20, true, `${k}: 이유가 없거나 너무 짧다`);
     }
-    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','), '',
+    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','), 'Wander.*',
         '명세 미준수 목록이 달라졌다 — .dev/TODO.md 에 항목으로 올려라');
 });
 

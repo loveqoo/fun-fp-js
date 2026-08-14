@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T07:20:26.069Z
+ * Built: 2026-08-14T08:04:34.821Z
  * Static Land specification compliant
  */
 (function(root, factory) {
