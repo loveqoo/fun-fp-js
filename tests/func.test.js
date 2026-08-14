@@ -41,6 +41,24 @@ test('tuple - creates array from arguments', () => {
     assertEquals(tuple(), []);
 });
 
+// tuple 로 만드는 수단만 있고 꺼내는 수단이 없었다. 셋 다 조합자로 세운 것이라
+// 손으로 쓴 인덱스 접근이 아니다 — 그래서 apply 의 검증을 그대로 물려받는다.
+test('fst / snd - tuple 에서 꺼낸다', () => {
+    assertEquals(fp.fst([7, 9]), 7);
+    assertEquals(fp.snd([7, 9]), 9);
+    // 서로 다른 자리를 본다 — 바꿔치기하면 여기서 잡힌다.
+    assert(fp.fst([1, 2]) !== fp.snd([1, 2]), 'fst 와 snd 가 같은 자리를 본다');
+    assertEquals(fp.fst(['a', { x: 1 }]), 'a');
+    assertEquals(fp.snd(['a', { x: 1 }]), { x: 1 });
+});
+
+test('fst / snd - 배열이 아니면 던진다 (apply 의 검증을 물려받는다)', () => {
+    for (const f of [fp.fst, fp.snd]) {
+        assertThrows(() => f(42), /args must be an array/);
+        assertThrows(() => f(null), /args must be an array/);
+    }
+});
+
 // === Binary Function Manipulation ===
 logSection('Binary Function Manipulation');
 

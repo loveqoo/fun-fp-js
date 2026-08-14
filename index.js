@@ -120,6 +120,12 @@ const flip = f => (...args) => types.checkFunction(f, 'flip')(...args.slice().re
 const flipCurried = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurried')(...bs)(...as);
 const pipe = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipe(${fs.length})`)(acc), x);
 const compose = (...fs) => pipe(...fs.slice().reverse());
+// tuple 로 만드는 수단은 있는데 꺼내는 수단이 없었다. 새로 쓰지 않고 조합자로 세운다 —
+// apply(f)([a,b]) 가 f(a,b) 이므로 identity 는 첫 인자를, flip 을 씌우면 마지막 인자를 준다.
+const fst = apply(identity);
+const snd = apply(flip(identity));
+// 모듈 지역이다 — second/right 유도(dimap(swap, swap) ∘ first)에만 쓰이므로 공개하지 않는다.
+const swap = apply(flip(tuple));
 const tap = (...fs) => x => (fs.forEach(f => runCatch(f, config.tapErrorHandler)(x)), x);
 const also = flipCurried(tap);
 const into = flipCurried(pipe);
@@ -1065,6 +1071,19 @@ class IdentityApplicative extends Applicative {
     }
 }
 modules.push(IdentityApplicative);
+// Optics 가 캐리어에서 값을 꺼낼 때 `.value` 를 직접 읽고 있었다 — 꺼내는 것의 이름은 extract 다.
+class IdentityExtend extends Extend {
+    constructor() {
+        super(Functor.types.IdentityFunctor, (f, w) => ({ value: f(w) }), 'Object', Extend.types, 'identity');
+    }
+}
+modules.push(IdentityExtend);
+class IdentityComonad extends Comonad {
+    constructor() {
+        super(Extend.types.IdentityExtend, w => w.value, 'Object', Comonad.types, 'identity');
+    }
+}
+modules.push(IdentityComonad);
 // Const 는 monoid 마다 다르므로 매개변수화한다 — Maybe.Monoid(innerSG) 와 같은 모양이다.
 // 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
 const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
@@ -3066,7 +3085,7 @@ export default {
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
-    constant, tuple, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
+    constant, tuple, fst, snd, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,

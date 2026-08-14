@@ -545,7 +545,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 67, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 69, '법칙을 돌린 인스턴스 수가 달라졌다');
 });
 
 test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {
