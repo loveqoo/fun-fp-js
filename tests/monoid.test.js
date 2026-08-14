@@ -299,6 +299,35 @@ test('Applicative.Const - monoid 로 모으고 값은 버린다', () => {
     assertEqualsBy(eqAN, c.map(x => x + 1, { value: [9] }).value, [9]);   // 값을 버린다
 });
 
+// of 는 값을 버린다 — 법칙이 그것을 요구한다. 그래서 값을 담는 수단이 따로 필요하다.
+// Optics 가 이것이 없어서 { value: … } 리터럴을 직접 썼다.
+test('Applicative.Const - wrap 은 담고 of 는 버린다', () => {
+    const c = Applicative.Const(Monoid.lookup('array'));
+    assertEqualsBy(eqAN, c.unwrap(c.wrap([7])), [7]);
+    // 같은 입력에 정반대로 답한다 — 둘을 바꿔치기하면 여기서 잡힌다.
+    assertEqualsBy(eqAN, c.unwrap(c.of([7])), []);
+    assert(c.unwrap(c.wrap([7])).length !== c.unwrap(c.of([7])).length,
+        'wrap 과 of 가 같은 답을 낸다 — 하나가 다른 하나로 바뀌었다');
+});
+
+test('Applicative.Const - wrap 은 모노이드 값이 아니면 던진다', () => {
+    const c = Applicative.Const(Monoid.lookup('array'));
+    assertThrowsWith(() => c.wrap('배열이 아니다'),
+        'Semigroup.concat: arguments must be the same type and match Array');
+});
+
+// ap(of(f), x) 는 map(f, x) 와 같아야 한다. wrap 을 of 자리에 쓰면 이 법칙이 깨진다 —
+// 함수는 모노이드 값이 아니라 concat 에서 죽는다. of 가 값을 버리는 이유가 이것이다.
+test('Applicative.Const - of 가 값을 버려야 Applicative 법칙이 선다', () => {
+    const c = Applicative.Const(Monoid.lookup('array'));
+    const f = n => n * 10;
+    const x = { value: [1, 2] };
+    assertEqualsBy(eqAN, c.ap(c.of(f), x).value, c.map(f, x).value);
+    // of 대신 값을 담았다면 같은 자리가 죽는다 — 함수는 모노이드 값이 아니다.
+    assertThrowsWith(() => c.ap({ value: f }, x),
+        'Semigroup.concat: arguments must be the same type and match Array');
+});
+
 
 // 등록된 다른 모든 Applicative 는 등록된 Apply 로부터 만들어진다
 // (MaybeFunctor → MaybeApply → MaybeApplicative). identity 도 같아야 한다.

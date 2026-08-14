@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T05:44:14.772Z
+ * Built: 2026-08-14T06:22:18.338Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -1100,6 +1100,10 @@ Applicative.Const = monoid => {
         new Apply(new Functor((_f, x) => x, 'Object'),
                   (a, b) => ({ value: m.concat(a.value, b.value) }), 'Object'),
         () => ({ value: m.empty() }), 'Object');
+    // of 는 값을 버린다 — 법칙이 그것을 요구한다(아무 값이나 들어오는데 상자는 모노이드 값만
+    // 담는다). 값을 담는 수단이 따로 있어야 한다 — docs/internals.md#identity-const
+    result.wrap = v => ({ value: m.concat(m.empty(), v) });
+    result.unwrap = c => c.value;
     if (key !== null) {
         // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')
         // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
@@ -2524,21 +2528,23 @@ const { Optics } = (() => {
         dimap: Profunctor.lookup('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
         first: p => t => Bifunctor.lookup('tuple').bimap(p, identity, t),
         left: p => e => Bifunctor.lookup('either').bimap(p, identity, e),
-        // 캐리어를 리터럴로 만들지 않는다 — Identity 의 of 가 곧 { value: x } 다.
+        // 캐리어를 리터럴로 만들지도 .value 로 뜯지도 않는다 — 만드는 것은 of, 꺼내는 것은 extract 다.
         wander: (traverse, p) => s => {
             const I = Applicative.lookup('identity');
-            return traverse(I, compose2(I.of, p), s).value;
+            return Comonad.lookup('identity').extract(traverse(I, compose2(I.of, p), s));
         },
     };
     // Forget<r>: p a b = a -> r.  출력을 버리고 r 을 모은다. view/preview/toList/foldMapOf 가 쓴다.
     const forgetProfunctor = monoid => ({
         // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다(promap + 항등이 아니라).
         dimap: (f, _g, p) => Contravariant.lookup('predicate').contramap(f, p),
-        // Comonad.lookup('array').extract 가 배열의 head 라 2-튜플에서는 fst 다.
-        first: p => t => p(Comonad.lookup('array').extract(t)),
+        first: p => compose2(p, fst),
         left: p => e => Either.fold(p, () => monoid.empty(), e),
-        wander: (traverse, p) => s =>
-            traverse(Applicative.Const(monoid), a => ({ value: p(a) }), s).value,
+        // Const 의 of 는 값을 버리므로(법칙) 담는 것은 wrap 이고 꺼내는 것은 그 짝인 unwrap 이다.
+        wander: (traverse, p) => s => {
+            const C = Applicative.Const(monoid);
+            return C.unwrap(traverse(C, compose2(C.wrap, p), s));
+        },
     });
     // Tagged: p a b = b.  입력을 무시하므로 거꾸로만 쓸 수 있다. review 가 쓴다.
     const taggedProfunctor = {
