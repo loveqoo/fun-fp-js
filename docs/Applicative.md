@@ -124,11 +124,12 @@ const result = liftA3(fullName, Maybe.of('John'), Maybe.of('Michael'), Maybe.of(
 const { Applicative, Functor } = FunFP;
 
 const Id = Applicative.lookup('identity');
-console.log(Id.of(1));                              // { value: 1 }
-console.log(Id.ap({ value: x => x * 3 }, Id.of(2))); // { value: 6 }
+console.log(Id.of(1).value);                            // 1
+console.log(Id.ap(Id.of(x => x * 3), Id.of(2)).value);  // 6
 
 // Functor / Apply 층도 같은 키로 등록돼 있습니다
-console.log(Functor.lookup('identity').map(x => x + 1, { value: 1 }));  // { value: 2 }
+// 캐리어는 반드시 of 로 만든다 — { value: 1 } 리터럴은 Identity 가 아니라 평범한 객체다.
+console.log(Functor.lookup('identity').map(x => x + 1, Id.of(1)).value);  // 2
 ```
 
 ### Const — 값을 버리고 monoid 로 모은다
@@ -142,9 +143,13 @@ const { Applicative } = FunFP;
 
 const C = Applicative.Const('array');
 
-console.log(C.of());                                     // { value: [] }   — monoid 의 항등원
-console.log(C.ap({ value: [1] }, { value: [2] }));       // { value: [1, 2] } — monoid 로 합침
-console.log(C.map(x => x + 1, { value: [9] }));          // { value: [9] }  — 값을 버린다
+console.log(C.of().value);                               // []        monoid 의 항등원
+console.log(C.ap(C.wrap([1]), C.wrap([2])).value);       // [ 1, 2 ]  monoid 로 합침
+console.log(C.map(x => x + 1, C.wrap([9])).value);       // [ 9 ]     값을 버린다
+
+// of 는 값을 버리고 wrap 은 담는다 — 법칙이 of 를 그렇게 요구한다.
+console.log(C.of([7]).value);                            // []
+console.log(C.wrap([7]).value);                          // [ 7 ]
 
 // 키로 만든 것은 레지스트리에서도 꺼낼 수 있습니다
 console.log(Applicative.lookup('const(array)') === C);       // true

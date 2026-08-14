@@ -1159,37 +1159,39 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
     return { key: best, instance };
 };
 /* Identity / Const — traverse 에 넘기는 Applicative 두 개 */
-// 캐리어가 { value } 라 type 은 'Object'(대문자). 소문자로 바꾸면 optics 가 죽는다
-// — docs/internals.md#identity-const
+// 캐리어가 스스로를 밝힌다 — { value } 만 두면 Identity·Const·평범한 객체가 한 태그를
+// 공유해 서로 섞여 들어간다(실측). 모양이 객체인 것과 타입이 Object 인 것은 다른 말이다.
+// docs/internals.md#identity-const
+const identityOf = value => ({ value, _typeName: 'Identity' });
 class IdentityFunctor extends Functor {
     constructor() {
-        super((f, x) => ({ value: f(x.value) }), 'Object', Functor.types, 'identity');
+        super((f, x) => identityOf(f(x.value)), 'Identity', Functor.types, 'identity');
     }
 }
 modules.push(IdentityFunctor);
 class IdentityApply extends Apply {
     constructor() {
         super(Functor.types.IdentityFunctor,
-              (ff, fa) => ({ value: ff.value(fa.value) }), 'Object', Apply.types, 'identity');
+              (ff, fa) => identityOf(ff.value(fa.value)), 'Identity', Apply.types, 'identity');
     }
 }
 modules.push(IdentityApply);
 class IdentityApplicative extends Applicative {
     constructor() {
-        super(Apply.types.IdentityApply, v => ({ value: v }), 'Object', Applicative.types, 'identity');
+        super(Apply.types.IdentityApply, identityOf, 'Identity', Applicative.types, 'identity');
     }
 }
 modules.push(IdentityApplicative);
 // Optics 가 캐리어에서 값을 꺼낼 때 `.value` 를 직접 읽고 있었다 — 꺼내는 것의 이름은 extract 다.
 class IdentityExtend extends Extend {
     constructor() {
-        super(Functor.types.IdentityFunctor, (f, w) => ({ value: f(w) }), 'Object', Extend.types, 'identity');
+        super(Functor.types.IdentityFunctor, (f, w) => identityOf(f(w)), 'Identity', Extend.types, 'identity');
     }
 }
 modules.push(IdentityExtend);
 class IdentityComonad extends Comonad {
     constructor() {
-        super(Extend.types.IdentityExtend, w => w.value, 'Object', Comonad.types, 'identity');
+        super(Extend.types.IdentityExtend, w => w.value, 'Identity', Comonad.types, 'identity');
     }
 }
 modules.push(IdentityComonad);
@@ -1200,13 +1202,17 @@ Applicative.Const = monoid => {
     const { key, instance: m } = normalizeConstMonoid(monoid);
     if (key !== null && Applicative.Const._keyCache.has(key)) return Applicative.Const._keyCache.get(key);
     if (key === null && Applicative.Const._instanceCache.has(m)) return Applicative.Const._instanceCache.get(m);
+    // 태그가 안쪽까지 말한다 — const(array) 는 "배열로 모으는 Const" 다. 그냥 Object 라고
+    // 하면 Identity 와도, 평범한 객체와도 구분되지 않는다.
+    const tag = key === null ? 'Const' : `Const(${key})`;
+    const constOf = value => ({ value, _typeName: tag });
     const result = new Applicative(
-        new Apply(new Functor((_f, x) => x, 'Object'),
-                  (a, b) => ({ value: m.concat(a.value, b.value) }), 'Object'),
-        () => ({ value: m.empty() }), 'Object');
+        new Apply(new Functor((_f, x) => x, tag),
+                  (a, b) => constOf(m.concat(a.value, b.value)), tag),
+        () => constOf(m.empty()), tag);
     // of 는 값을 버린다 — 법칙이 그것을 요구한다(아무 값이나 들어오는데 상자는 모노이드 값만
     // 담는다). 값을 담는 수단이 따로 있어야 한다 — docs/internals.md#identity-const
-    result.wrap = v => ({ value: m.concat(m.empty(), v) });
+    result.wrap = v => constOf(m.concat(m.empty(), v));
     result.unwrap = c => c.value;
     if (key !== null) {
         // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')

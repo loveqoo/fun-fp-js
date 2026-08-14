@@ -2,7 +2,7 @@
 import fp from '../index.js';
 import { test, assertEquals, assertEqualsBy, assert, assertThrowsWith, logSection } from './utils.js';
 
-const { Monoid, Maybe, Apply } = fp;
+const { Monoid, Maybe, Apply, Comonad } = fp;
 
 logSection('Monoid Laws');
 
@@ -286,23 +286,31 @@ test('Applicative identity - 레지스트리에서 꺼낼 수 있다', () => {
     const id = Applicative.lookup('identity');
     assert(id instanceof Applicative);
     assertEquals(id.of(1).value, 1);
-    assertEquals(id.map(x => x + 1, { value: 1 }).value, 2);
-    assertEquals(id.ap({ value: x => x * 3 }, { value: 2 }).value, 6);
+    // 캐리어는 of 로 만든다 — { value: 1 } 리터럴은 Identity 가 아니라 평범한 객체다.
+    assertEquals(id.map(x => x + 1, id.of(1)).value, 2);
+    assertEquals(id.ap(id.of(x => x * 3), id.of(2)).value, 6);
 });
 
 // 심볼 위조로는 이 검사들이 전부 사라진다.
 test('Applicative identity - 검사가 살아 있다', () => {
     const id = Applicative.lookup('identity');
-    assertThrowsWith(() => id.map(1, { value: 1 }), 'Functor.map');
+    assertThrowsWith(() => id.map(1, id.of(1)), 'Functor.map');
     assertThrowsWith(() => id.map(x => x, [1]), 'Functor.map');
-    assertThrowsWith(() => id.ap({ value: x => x }, [1]), 'Apply.ap');
+    assertThrowsWith(() => id.ap(id.of(x => x), [1]), 'Apply.ap');
+    // 평범한 객체는 Identity 가 아니다 — 한때 둘이 같은 태그라 섞여 들어갔다.
+    assertThrowsWith(() => id.map(x => x, { value: 1 }), 'Functor.map: arguments must be (function, Identity)');
 });
 
 test('Applicative.Const - monoid 로 모으고 값은 버린다', () => {
     const c = Applicative.Const(Monoid.lookup('array'));
     assertEqualsBy(eqAN, c.of().value, []);
-    assertEqualsBy(eqAN, c.ap({ value: [1] }, { value: [2] }).value, [1, 2]);
-    assertEqualsBy(eqAN, c.map(x => x + 1, { value: [9] }).value, [9]);   // 값을 버린다
+    assertEqualsBy(eqAN, c.ap(c.wrap([1]), c.wrap([2])).value, [1, 2]);
+    assertEqualsBy(eqAN, c.map(x => x + 1, c.wrap([9])).value, [9]);   // 값을 버린다
+    // Const 는 Identity 도 평범한 객체도 아니다 — 셋이 한 태그를 공유하던 때가 있었다.
+    assertThrowsWith(() => c.map(x => x, { value: [9] }),
+        'Functor.map: arguments must be (function, Const(array))');
+    assertThrowsWith(() => c.map(x => x, Applicative.lookup('identity').of([9])),
+        'Functor.map: arguments must be (function, Const(array))');
 });
 
 // of 는 값을 버린다 — 법칙이 그것을 요구한다. 그래서 값을 담는 수단이 따로 필요하다.
@@ -327,10 +335,10 @@ test('Applicative.Const - wrap 은 모노이드 값이 아니면 던진다', () 
 test('Applicative.Const - of 가 값을 버려야 Applicative 법칙이 선다', () => {
     const c = Applicative.Const(Monoid.lookup('array'));
     const f = n => n * 10;
-    const x = { value: [1, 2] };
+    const x = c.wrap([1, 2]);
     assertEqualsBy(eqAN, c.ap(c.of(f), x).value, c.map(f, x).value);
     // of 대신 값을 담았다면 같은 자리가 죽는다 — 함수는 모노이드 값이 아니다.
-    assertThrowsWith(() => c.ap({ value: f }, x),
+    assertThrowsWith(() => c.ap(c.wrap(f), x),
         'Semigroup.concat: arguments must be the same type and match Array');
 });
 
@@ -340,7 +348,7 @@ test('Applicative.Const - of 가 값을 버려야 Applicative 법칙이 선다',
 test('identity - Functor/Apply/Applicative 3단이 전부 등록돼 있다', () => {
     assert(Functor.lookup('identity') instanceof Functor);
     assert(Applicative.lookup('identity') instanceof Applicative);
-    assertEquals(Functor.lookup('identity').map(x => x + 1, { value: 1 }).value, 2);
+    assertEquals(Functor.lookup('identity').map(x => x + 1, Applicative.lookup('identity').of(1)).value, 2);
     assertEquals(Applicative.lookup('identity').of(7).value, 7);
 });
 
@@ -377,10 +385,17 @@ test('Applicative.Const - Monoid 가 아니면 거부한다', () => {
 // 같은 파일의 ObjectFilterable/ObjectFoldable 은 'object'(소문자)를 쓰므로,
 // 누가 "일관성" 을 이유로 여기를 소문자로 바꾸면 Apply.ap 이 전부 던져
 // optics 의 traversal 이 통째로 죽는다. 주석만으로 막아두지 않는다.
-test("Identity/Const 의 type 은 'Object' 대문자여야 한다", () => {
-    assertEquals(Functor.lookup('identity').type, 'Object');
-    assertEquals(Applicative.lookup('identity').type, 'Object');
-    assertEquals(Applicative.Const(Monoid.lookup('array')).type, 'Object');
+// 모양이 객체인 것과 타입이 Object 인 것은 다른 말이다. 셋이 'Object' 를 공유하던 때는
+// Identity·Const·평범한 객체가 서로 섞여 들어갔다(실측) — 소유자 판정으로 갈랐다.
+test("Identity/Const 는 각자 자기 타입이다 — Object 가 아니다", () => {
+    assertEquals(Functor.lookup('identity').type, 'Identity');
+    assertEquals(Applicative.lookup('identity').type, 'Identity');
+    assertEquals(Comonad.lookup('identity').type, 'Identity');
+    // Const 는 안쪽 모노이드까지 태그가 말한다.
+    assertEquals(Applicative.Const(Monoid.lookup('array')).type, 'Const(array)');
+    assertEquals(Applicative.Const('string').type, 'Const(string)');
+    // 평범한 객체를 다루는 것은 여전히 Object 다.
+    assertEquals(fp.Foldable.lookup('object').type, 'Object');
 });
 
 // identity 를 3단으로 고쳐놓고 같은 회차에 새로 쓴 Const 에서 재발시켰다.

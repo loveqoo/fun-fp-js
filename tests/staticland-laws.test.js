@@ -172,6 +172,9 @@ const OBSERVE = {
     // 'any' 는 "값 타입을 보지 않는다" 는 뜻이라 열 것이 없다 — 값 자체가 관측이다.
     any: v => v,
     function: f => FN_INPUTS_F.map(f),
+    // Identity·Const 는 자기 타입이다. 한때 셋이 'Object' 를 공유해 서로 섞여 들어갔다.
+    Identity: v => v.value,
+    'Const(number)': v => v.value,
     Object: v => v.value,
     Array: v => v,
     Maybe: v => (v.isNothing() ? ['Nothing'] : ['Just', v.value]),
@@ -186,6 +189,9 @@ const OBSERVE = {
 // 표본은 **그 타입의 갈림길을 담아야** 한다 — Nothing/Just, Left/Right, 성공/실패처럼.
 const FUNCTOR_SAMPLES = {
     function: [x => x + 1, x => x * 3],
+    // 캐리어는 반드시 그 타입의 생성자로 만든다 — { value } 리터럴은 평범한 객체다.
+    Identity: [fp.Applicative.lookup('identity').of(1), fp.Applicative.lookup('identity').of(7)],
+    'Const(number)': [fp.Applicative.Const('number').wrap(1), fp.Applicative.Const('number').wrap(7)],
     Object: [{ value: 1 }, { value: 7 }],
     Array: [[], [1], [2, 3]],
     Maybe: [Nothing(), Just(1)],
@@ -368,6 +374,7 @@ const OF_BY_LABEL = {
 };
 
 const OF = {
+    Identity: x => fp.Applicative.lookup('identity').of(x),
     Object: x => ({ value: x }), Array: x => [x], Maybe: x => Just(x), Either: x => Right(x),
     Task: x => fp.Task.of(x), Validation: x => fp.Validation.Valid(x), Reader: x => fp.Reader.of(x),
     Writer: x => fp.Writer.of(x), State: x => fp.State.of(x), Free: x => fp.Free.of(x),

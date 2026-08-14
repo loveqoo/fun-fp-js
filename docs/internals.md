@@ -182,19 +182,34 @@ console.log(Plus.lookup('maybe').zero().isNothing());           // true  같은 
 | `identity` | 값을 그대로 나른다 | `traverse` 를 "그냥 매핑" 으로 — optics 의 `over` |
 | `const(<monoid>)` | 값을 버리고 monoid 로만 모은다 | `traverse` 를 "접기" 로 — optics 의 `preview` |
 
-담는 모양이 `{ value }` 라 **`.type` 이 `'Object'`(대문자)** 입니다.
+**모양이 객체인 것과 타입이 `Object` 인 것은 다른 말입니다.** 둘은 각자 자기 타입을 가집니다 —
+`Identity` 와 `Const(<모노이드키>)` 입니다. 캐리어가 스스로를 밝힙니다.
+
+한때 `Identity`·`Const`·평범한 객체가 **셋 다 `'Object'`** 였습니다. 그때는 서로 섞여
+들어갔습니다(실측):
+
+```
+Identity.map 에 Const 캐리어를   → 통과
+Const.map 에 Identity 캐리어를   → 통과
+Identity.map 에 그냥 { a: 1 } 을 → 통과 (결과가 {} 였다)
+ObjectFoldable 에 Identity 를    → 통과
+```
+
+지금은 넷 다 거부합니다. **안쪽 값 타입이 있으면 `Object` 가 아니라 자기 타입이어야 하고,
+그 타입의 값이 무엇인지를 태그가 말해야 합니다**(소유자 판단, 2026-08-14).
 
 ```javascript
 const { Traversable, Applicative, Functor } = FunFP;
 
 const Id = Applicative.lookup('identity');
-console.log(Traversable.lookup('array').traverse(Id, x => ({ value: x + 1 }), [1, 2, 3]));
-// { value: [ 2, 3, 4 ] }
-console.log(Functor.lookup('identity').map(x => x + 1, { value: 1 }));   // { value: 2 }
+console.log(Traversable.lookup('array').traverse(Id, x => Id.of(x + 1), [1, 2, 3]).value);
+// [ 2, 3, 4 ]
+console.log(Functor.lookup('identity').map(x => x + 1, Id.of(1)).value);   // 2
 ```
 
-**여기를 소문자로 바꾸면 optics 가 전부 죽습니다.** Identity/Const 는 `Apply.ap` 를 지나고,
-거기 쓰이는 `types.equals(a, b, instance.type)` 에는 [대소문자 폴백이 없습니다](#type).
+`Apply.ap` 는 `types.equals(a, b, instance.type)` 로 태그를 **글자 그대로** 비교하므로
+([대소문자 폴백이 없습니다](#type)) 캐리어의 `_typeName` 과 인스턴스의 `.type` 이 정확히
+같아야 합니다. `Const` 는 모노이드마다 태그가 달라집니다 — `Const(array)`·`Const(number)`.
 
 등록은 `Functor` → `Apply` → `Applicative` **3단**입니다. `Applicative` 만 올리면
 `Functor.lookup('const(array)')` 가 실패합니다.

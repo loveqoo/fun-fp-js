@@ -174,7 +174,8 @@ test('지연 등록도 같은 문을 지난다', () => {
     fp.Maybe.Semigroup('boolean');
     assert('maybeBooleanSemigroup' in fp.Algebra.all('maybe'), 'Maybe.Semigroup 파생');
     fp.Applicative.Const('boolean');
-    assert('constBooleanApplicative' in fp.Algebra.all('object'), 'Applicative.Const 파생');
+    // Const 는 이제 자기 타입이다 — Object 묶음이 아니라 const(boolean) 묶음에 있다.
+    assert('constBooleanApplicative' in fp.Algebra.all('const(boolean)'), 'Applicative.Const 파생');
     fp.StateT('either');
     assert('statetEitherFunctor' in fp.Algebra.all('statet(either)'), 'StateT 등록');
 });

@@ -41,7 +41,7 @@ const BY_PREFIX = {
     Function: 'function', Boolean: 'boolean', Number: 'number', String: 'string',
     Date: 'Date', Array: 'Array', Maybe: 'Maybe', Either: 'Either', Task: 'Task',
     Validation: 'Validation', Reader: 'Reader', Writer: 'Writer', State: 'State',
-    Free: 'Free', Object: 'Object',
+    Free: 'Free', Object: 'Object', Identity: 'Identity',
 };
 
 // 접두사 규칙을 벗어나는 것. **이유 없이 여기 추가하지 마라** — 이유가 곧 판정 근거다.
@@ -53,11 +53,6 @@ const EXCEPTIONS = {
     TaskSemigroupoid: ['function', '같은 이유'],
     TaskCategory: ['function', '같은 이유'],
     TupleBifunctor: ['Array', '런타임 튜플은 Array 다'],
-    IdentityFunctor: ['Object', '캐리어가 { value } 라서'],
-    IdentityApply: ['Object', '캐리어가 { value } 라서'],
-    IdentityApplicative: ['Object', '캐리어가 { value } 라서'],
-    IdentityExtend: ['Object', '캐리어가 { value } 라서'],
-    IdentityComonad: ['Object', '캐리어가 { value } 라서'],
     PredicateContravariant: ['function', 'predicate 는 함수다'],
     FirstSemigroup: ['any', '값 타입을 보지 않는다 — CLAUDE.md 「Traps」'],
     LastSemigroup: ['any', '값 타입을 보지 않는다 — CLAUDE.md 「Traps」'],
@@ -77,6 +72,8 @@ const SAMPLE = {
     Either: fp.Either.Right(1), Task: fp.Task.of(1), Validation: fp.Validation.Valid(1),
     Reader: fp.Reader.of(1), Writer: fp.Writer.of(1), State: fp.State.of(1),
     Free: fp.Free.of(1), number: 1, string: 'a', boolean: true, function: x => x,
+    // Identity·Const 는 자기 타입이다 — { value } 만으로는 평범한 객체와 안 갈린다.
+    Identity: fp.Applicative.lookup('identity').of(1),
 };
 
 // 'any' 는 "값 타입을 보지 않는다" 는 뜻이라 대표값이 없고 엄격 비교를 통과하지 못한다.
@@ -184,7 +181,7 @@ test('팩토리로만 생기는 파생 인스턴스도 정규 태그다', () => 
         ['Maybe.Semigroup("number")', fp.Maybe.Semigroup('number'), 'Maybe'],
         ['Maybe.Monoid("number")', fp.Maybe.Monoid('number'), 'Maybe'],
         ['Either.Semigroup("string","number")', fp.Either.Semigroup('string', 'number'), 'Either'],
-        ['Applicative.Const("array")', fp.Applicative.Const('array'), 'Object'],
+        ['Applicative.Const("array")', fp.Applicative.Const('array'), 'Const(array)'],
         ['Semigroup.lookup("maybe(maybe(array))")', fp.Semigroup.lookup('maybe(maybe(array))'), 'Maybe'],
         // 컨테이너 Setoid/Ord. 명세 게이트도 법칙 게이트도 .type **값**은 안 본다 —
         // 여기가 유일한 감시자다. Setoid.Struct 는 레지스트리 밖이라 더욱 그렇다.
