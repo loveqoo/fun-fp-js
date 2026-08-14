@@ -287,6 +287,81 @@ catch (e) { console.log(e.message); }
 
 ---
 
+### 세 P 는 사설 딕셔너리가 아니라 등록된 인스턴스다
+
+주입하는 셋은 `Strong`/`Choice`/`Wander` 인스턴스이고 레지스트리에 있습니다. 그래서 법칙·
+명세·`.type` 게이트가 전부 봅니다.
+
+| 레지스트리 | 키 |
+| --- | --- |
+| `Strong` | `FunctionStrong` · `forget(<모노이드키>)` |
+| `Choice` | `FunctionChoice` · `forget(<모노이드키>)` · `TaggedChoice` |
+| `Wander` | `FunctionWander` · `forget(<모노이드키>)` |
+
+```javascript
+const { Strong, Choice, Wander, Either } = FunFP;
+
+const S = Strong.lookup('function');
+console.log(S.first(x => x * 10)([3, 'c']));    // [ 30, 'c' ]   왼쪽만 건드린다
+console.log(S.second(x => x * 10)(['c', 3]));   // [ 'c', 30 ]   오른쪽만 건드린다
+
+const W = Wander.lookup('function');
+console.log(W.left(x => x * 10)(Either.Left(4)).value);    // 40   Left 만
+console.log(W.left(x => x * 10)(Either.Right(4)).value);   // 4    Right 는 통과
+```
+
+**`Tagged` 는 `Choice` 에만 있습니다.** `Strong` 에도 `Wander` 에도 없고, 그 **부재**가
+"Lens 와 Traversal 은 `review` 할 수 없다" 입니다. 던지는 스텁이 하던 일을 구조가 합니다.
+
+`Tagged` 는 `Profunctor` 레지스트리에도 안 올립니다. 명세가 `Profunctor` 에 "첫 매개변수를
+고정하면 `Functor`" 를 요구하는데 `.type` 이 `'any'` 인 `Functor` 는 없습니다 — **지킬 수
+없는 보증은 걸지 않습니다**(`Filterable` 에서 `Either`/`Task` 를 뺀 것과 같은 판단).
+
+### 왜 처음에는 타입 클래스로 안 올렸나 — 그리고 왜 뒤집었나
+
+**2026-08-11 에는 반대로 결정했습니다.** 근거가 셋이었습니다.
+
+1. **JS/TS 선례가 만장일치로 내부화다.** `optika` 는 profunctor 인코딩을 쓰면서도
+   "Internals — Functions which you probably never need to use directly" 로 분류하고,
+   `monocle-ts` 는 전체 profunctor 버전이 있지만 "only used internally" 입니다.
+2. **노출해도 실제 확장 용도가 안 열린다.** 커스텀 profunctor 의 대표 용도인 indexed
+   optics 는 `Indexed`/`StarI`/`ForgetI` 같은 **별도 계열**과 `itraversed` 생성자를
+   요구합니다 — 이 셋만으로는 안 됩니다.
+3. Haskell `well-typed/optics` 가 내부화한 주된 이유는 **에러 메시지 품질**인데, 그건 타입
+   추론의 문제라 JS 에는 해당하지 않습니다. 우리 근거가 아니었습니다.
+
+**앞의 둘은 지금도 사실입니다.** 이 라이브러리는 선례를 따르지 않는 쪽을 골랐고,
+**확장성이 열린 것도 아닙니다.** 뒤집은 근거는 다른 데 있습니다(2026-08-14).
+
+- **이미 필요해서 쓰고 있었다.** 숨겨서 안 쓴 게 아니라 **쓰면서 숨겼습니다.** 그 결과
+  Optics 가 남의 타입 내부 표현(`{ value: … }`)을 리터럴로 만들고 `.value` 로 뜯었습니다.
+- **감시가 0이었다.** 레지스트리 밖이라 법칙·명세·`.type` 게이트 셋 다 optics 를 안 봤습니다.
+  `Ord` 가 `Setoid` 를 잃은 채 살아 있던 것과 같은 모양의 구멍입니다.
+- **던지는 스텁이 구조로 바뀐다.** 위의 `Tagged` 이야기가 그것입니다.
+
+당시 기록에는 **바꿔야 할 조건**도 적혀 있었습니다 — *"사용자가 자기 profunctor 를 등록해
+optic 을 확장하려는 실제 요구가 생겼을 때."* 실제로 온 요구는 그것과 달랐습니다. 확장이
+아니라 **"내부에 필요한 타입 클래스는 명시적으로 구현되어야 한다"**(소유자, 2026-08-14)
+였고, `Free` 가 그 선례입니다 — 트랜스포머 넷이 내부에서 쓰지만 10개 키로 등록돼 있고
+전용 문서가 있습니다.
+
+> 이 글은 한 번 사라진 적이 있습니다. 원래 `CLAUDE.md` 에 있었는데 하네스를 걷어내며
+> (`b970b96`) 함께 지워졌고 `docs/` 로 옮겨지지 않았습니다. 그래서 같은 질문이 사흘 뒤에
+> 다시 나왔습니다. **근거는 항상 로드되는 파일이 아니라 찾아올 수 있는 곳에 둡니다.**
+
+### 못 하는 것
+
+- **`Wander` 는 법칙이 0개입니다.** `wander` 의 법칙 셋 중 ①항등만 검사할 수 있고,
+  ②합성은 두 Applicative 를 겹치는 `Compose` 가 필요한데 이 라이브러리에 없으며,
+  ③자연성은 **모든** Applicative 준동형에 대한 요구라 표본으로 확인할 수 없습니다.
+  `Traversable`·`ChainRec` 이 같은 이유로 빠져 있습니다. 하나만 넣고 "법칙이 돈다" 고 하면
+  게이트가 막는 것을 과장하게 되므로 0개로 두고 `KNOWN_DEVIATIONS` 에 이유를 적었습니다.
+- **`Strong`/`Choice` 도 표준 넷 중 둘만** 돕니다(쌍대·사영). 결합과 자연성은 튜플·`Either`
+  재결합 함수가 더 필요합니다.
+- **indexed optics 는 여전히 안 열립니다.** 위 근거 2번은 유효합니다.
+
+---
+
 ## 트랜스포머의 타입클래스 등록 {#transformer-register}
 
 트랜스포머는 만들어질 때 `Functor` → `Apply` → `Applicative` → `Chain` → `Monad` 다섯 곳에

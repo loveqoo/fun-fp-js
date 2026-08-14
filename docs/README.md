@@ -58,6 +58,7 @@
 - [Bifunctor](./Bifunctor.md) - 양방향 변환
 - [Contravariant](./Contravariant.md) - 입력 변환
 - [Profunctor](./Profunctor.md) - 입력/출력 변환
+- [Strong · Choice · Wander](./Profunctor.md#extensions) - profunctor 확장 셋 (**명세 밖** — optics 가 쓴다)
 
 ### 8단계: 재귀와 Comonad
 - [ChainRec](./ChainRec.md) - 스택 안전 재귀
