@@ -287,7 +287,7 @@ const report = broken => broken.length <= CAP
 
 logSection('Static Land 법칙 — 등록된 전 인스턴스');
 
-for (const [name, count] of [['Setoid', 7], ['Ord', 6], ['Semigroup', 14], ['Monoid', 12], ['Group', 3]]) {
+for (const [name, count] of [['Setoid', 7], ['Ord', 6], ['Semigroup', 13], ['Monoid', 11], ['Group', 3]]) {
     test(`${name} — 등록된 ${count}개 전부`, () => {
         const { broken, checked } = runAll(name);
         assertEquals(report(broken), '', `${name} 법칙`);

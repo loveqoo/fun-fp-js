@@ -290,7 +290,7 @@ const { traversed, foldMapOf } = FunFP.Optics;
 console.log(foldMapOf(Monoid.lookup('number'), traversed('array'), x => x, []));  // 0
 ```
 
-`toList` 와 `preview` 는 이것의 특수 경우입니다 — Monoid 가 각각 `array` 와 `plus(maybe)` 로
+`toList` 와 `preview` 는 이것의 특수 경우입니다 — Monoid 가 각각 `array` 와 `maybe` 로
 고정된 것입니다.
 
 ```javascript

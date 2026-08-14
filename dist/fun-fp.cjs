@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T09:50:45.258Z
+ * Built: 2026-08-14T13:54:29.390Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -725,13 +725,18 @@ class Alt extends Functor {
 }
 Alt.prototype[Symbols.Alt] = true;
 // Plus 는 alt + zero 를 다 가져 구조적으로 Monoid 다 — docs/internals.md#plus-monoid
+// 키는 **그 타입의 이름 그대로**다. 한때 `plus(<별칭>)` 이었는데 그것은 버그였다 —
+// `f(x)` 는 `F<X>` 를 뜻하는 문법인데 `plus(maybe)` 는 Plus 가 아니라 Monoid 를 돌려줬고,
+// 괄호 안이 원소가 아니라 **출신**이었다. 출신 기록은 타입이 아니다. docs/internals.md#plus-monoid
 const deriveFromPlus = (plus, type, aliases) => {
     const semigroup = new Semigroup(plus.alt, type);
     const monoid = new Monoid(semigroup, plus.zero, type);
     for (const alias of aliases) {
-        const key = `plus(${alias.toLowerCase()})`;
-        registerAs(Semigroup.types, key, semigroup);
-        registerAs(Monoid.types, key, monoid);
+        const key = alias.toLowerCase();
+        // 그 타입에 이미 Monoid 가 있으면 유도본은 중복이다 — Array 가 그렇다(alt 가 곧 concat).
+        // registerAs 는 조용히 덮으므로 여기서 막지 않으면 기존 인스턴스가 사라진다.
+        if (Semigroup.types[key] === undefined) registerAs(Semigroup.types, key, semigroup);
+        if (Monoid.types[key] === undefined) registerAs(Monoid.types, key, monoid);
     }
 };
 class Plus extends Alt {
@@ -2791,11 +2796,11 @@ const { Optics } = (() => {
         return foldMapOf(Monoid.lookup('array'), optic, a => [a], s);
     };
     // preview 는 대상을 "합치는" 게 아니라 "고르는" 것이므로 컨테이너를 열지 않는 Monoid 를
-    // 쓴다 — plus(maybe) 다. maybe(first) 를 쓰면 안쪽 값을 합치려 들어 [1, 'a'] 처럼 타입이
+    // 쓴다 — Monoid.lookup('maybe') 다. maybe(first) 를 쓰면 안쪽 값을 합치려 들어 [1, 'a'] 처럼 타입이
     // 섞인 대상에서 던진다. 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 한다.
     const preview = (optic, s) => {
         typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
-        return foldMapOf(Monoid.lookup('plus(maybe)'), optic, Maybe.Just, s);
+        return foldMapOf(Monoid.lookup('maybe'), optic, Maybe.Just, s);
     };
     // Lens/Iso 전용. Forget 에는 wander 가 있어 구조가 못 막으므로 대상 수를 센다
     // — docs/internals.md#optics

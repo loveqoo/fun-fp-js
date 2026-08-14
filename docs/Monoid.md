@@ -68,34 +68,41 @@ num.empty();  // 0
 num.concat(5, num.empty());  // 5
 ```
 
-## `plus(<타입>)` — Plus 에서 유도된 Monoid
+## `Plus` 에서 유도된 Monoid
 
 `Plus` 는 `alt`(결합 연산)와 `zero`(항등원)를 **둘 다** 가집니다. 즉 구조적으로 Monoid 인데
-태그만 없습니다. 그래서 **등록된 `Plus` 마다 짝 `Semigroup`/`Monoid` 가 `plus(<alias>)` 키로
-자동으로 생깁니다.**
+태그만 없습니다. 그래서 등록된 `Plus` 는 짝 `Semigroup`/`Monoid` 를 **그 타입의 이름 그대로**
+얻습니다.
+
+**단, 그 타입에 이미 `Monoid` 가 있으면 유도하지 않습니다.** `Array` 가 그렇습니다 — `alt` 가
+곧 `concat` 이라 유도본과 `ArrayMonoid` 의 동작이 같아 중복입니다.
 
 ```javascript
 const { Monoid, Semigroup, Maybe } = FunFP;
 
-console.log(Monoid.lookup('plus(array)').concat([1], [2]));   // [1, 2]
-console.log(Monoid.lookup('plus(array)').empty());            // []
-
-const pm = Monoid.lookup('plus(maybe)');
+const pm = Monoid.lookup('maybe');                           // Plus 에서 유도된 것
 console.log(pm.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 첫 Just 를 고른다
 console.log(pm.empty().isNothing());                         // true
 
 // Semigroup 짝도 함께 등록됩니다
-console.log(Semigroup.lookup('plus(array)').concat([1], [2]));   // [1, 2]
+console.log(Semigroup.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1
+
+// Array 는 이미 ArrayMonoid 가 있으므로 유도본이 등록되지 않습니다
+console.log(Monoid.lookup('array') === Monoid.types.ArrayMonoid);   // true
 ```
 
-### `plus(maybe)` 와 `maybe(first)` — 안을 여느냐
+> **한때 이 키가 `plus(array)`·`plus(maybe)` 였습니다. 그것은 버그였습니다.** 이 라이브러리에서
+> `f(x)` 는 `F<X>` 를 뜻하는데 `plus(maybe)` 는 `Plus` 가 아니라 `Monoid` 를 돌려줬습니다.
+> 괄호 안이 원소가 아니라 **출신**이었고, 출신 기록은 타입이 아닙니다.
+
+### `Monoid.lookup('maybe')` 와 `maybe(first)` — 안을 여느냐
 
 이름이 비슷하지만 **다른 모노이드**입니다. 갈리는 지점은 **payload 타입이 섞였을 때**입니다.
 
 ```javascript
 const { Monoid, Maybe } = FunFP;
 
-const plus = Monoid.lookup('plus(maybe)');    // 봉투째 고른다 — 안을 열지 않는다
+const plus = Monoid.lookup('maybe');       // 봉투째 고른다 — 안을 열지 않는다
 const inner = Maybe.Monoid('first');       // 안을 열어 first 로 합친다
 
 // payload 타입이 같으면 결과도 같다
@@ -111,7 +118,8 @@ try {
 }
 ```
 
-**"합치기" 면 `maybe(first)`, "고르기" 면 `plus(maybe)`** 입니다.
+**"합치기" 면 `maybe(first)`, "고르기" 면 `maybe`** 입니다. 괄호의 유무가 그 차이를 말합니다 —
+괄호가 있으면 안쪽 비교법을 받았다는 뜻이고, 그래야 안을 열 수 있습니다.
 `Optics.preview` 가 후자를 씁니다 — 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 하니까요.
 
 항등원은 양쪽 다 `Nothing` 입니다.

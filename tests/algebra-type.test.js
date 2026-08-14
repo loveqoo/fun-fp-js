@@ -66,9 +66,10 @@ const EXCEPTIONS = {
     TaggedChoice: ['any', 'Tagged a b = b 라 캐리어가 아무 값이다 — 값 타입을 보지 않는다. review 가 쓰는 P'],
 };
 
-// 조립 키로만 닿는 파생 인스턴스 — 대문자 클래스 이름이 없어 접두사 규칙이 안 통한다.
-// 키의 바깥 이름이 곧 다루는 타입이다.
-const BY_COMPOSED_KEY = { 'plus(array)': 'Array', 'plus(maybe)': 'Maybe' };
+// 소문자 키로만 닿는 파생 인스턴스 — 대문자 클래스 이름이 없어 접두사 규칙이 안 통한다.
+// 키가 곧 다루는 타입이다. 한때 `plus(maybe)` 였는데 그것은 버그였다 — `f(x)` 는 `F<X>`
+// 를 뜻하는데 Plus 가 아니라 Monoid 를 돌려줬다(docs/internals.md#plus-monoid).
+const BY_COMPOSED_KEY = { maybe: 'Maybe' };
 
 // 정규 태그 -> 그 태그를 내는 실제 값. 아래 ① 검사가 이 값을 라이브러리에 태운다.
 const SAMPLE = {
@@ -94,7 +95,7 @@ const everyInstance = () => {
         }
     }
     return [...byInstance.entries()].map(([instance, { names, keys }]) => ({
-        // 조립 키로만 닿는 파생은 이름이 없다. `plus(array)` 는 Semigroup·Monoid 두
+        // 소문자 키로만 닿는 파생은 이름이 없다. 유도된 `maybe` 는 Semigroup·Monoid 두
         // 인스턴스로 존재하므로 소속 클래스를 붙여야 서로 구분된다.
         label: names.length > 0 ? names[0] : `${instance.constructor.name}(${keys[0]})`,
         composedKey: names.length > 0 ? null : keys[0],
@@ -130,10 +131,10 @@ test('레지스트리 순회가 인스턴스를 빠뜨리지도 늘리지도 않
     // 개수를 못 박는다. 인스턴스를 더하거나 지우면 여기서 멈춰 "이 게이트를 갱신하라" 고
     // 말한다 — `>= N` 으로 두면 **느는 쪽**을 통째로 못 본다.
     const all = REGISTERED;
-    assertEquals(all.length, 133, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
+    assertEquals(all.length, 131, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
     const unnamed = all.filter(r => !r.isNamed).map(r => r.label).sort();
     assertEquals(unnamed.join(','),
-        'Monoid(plus(array)),Monoid(plus(maybe)),Semigroup(plus(array)),Semigroup(plus(maybe))',
+        'Monoid(maybe),Semigroup(maybe)',
         '대문자 클래스 이름이 없는 파생 인스턴스 목록이 달라졌다');
 });
 

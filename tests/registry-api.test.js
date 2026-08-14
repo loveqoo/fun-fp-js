@@ -72,17 +72,17 @@ test('types 레지스트리는 lookup 과 같은 인스턴스를 준다', () => 
 logSection('Algebra.all — 한 타입의 인스턴스를 한 번에');
 
 test('구조분해로 원하는 구현체만 받는다', () => {
-    const { arraySemigroup, arrayFoldable, plusArrayMonoid } = fp.Algebra.all('array');
+    const { arraySemigroup, arrayFoldable, arrayMonoid } = fp.Algebra.all('array');
     assertEquals(JSON.stringify(arraySemigroup.concat([1], [2])), '[1,2]');
     assertEquals(arrayFoldable.reduce((a, b) => a + b, 0, [1, 2, 3]), 6);
-    assertEquals(JSON.stringify(plusArrayMonoid.empty()), '[]');
+    assertEquals(JSON.stringify(arrayMonoid.empty()), '[]');
 });
 
 test('lookup 이 주는 것과 같은 인스턴스다 — 사본이 아니다', () => {
     const all = fp.Algebra.all('array');
     assert(all.arraySemigroup === fp.Semigroup.lookup('array'), 'arraySemigroup');
     assert(all.arrayFoldable === fp.Foldable.lookup('array'), 'arrayFoldable');
-    assert(all.plusArrayMonoid === fp.Monoid.lookup('plus(array)'), 'plusArrayMonoid');
+    assert(all.arrayMonoid === fp.Monoid.lookup('array'), 'arrayMonoid');
 });
 
 test('묶는 기준은 .type 이지 레지스트리 키가 아니다', () => {
@@ -95,10 +95,23 @@ test('묶는 기준은 .type 이지 레지스트리 키가 아니다', () => {
 });
 
 test('조립 키로 만들어진 것은 키 조각을 이름 앞에 붙인다', () => {
-    const arr = fp.Algebra.all('array');
-    assert('arraySemigroup' in arr, '이름 있는 것은 클래스 이름 그대로');
-    assert('plusArraySemigroup' in arr, '조립 키는 plus + Array + Semigroup');
-    assert(arr.arraySemigroup !== arr.plusArraySemigroup, '서로 다른 인스턴스다');
+    // plus(array) 로 이것을 보던 때가 있었는데 그 키는 버그였다 — f(x) 는 F<X> 를 뜻하는데
+    // Plus 가 아니라 Monoid 를 돌려줬다. 진짜 조립 키로 같은 규칙을 확인한다.
+    fp.Maybe.Semigroup('array');
+    const mb = fp.Algebra.all('maybe');
+    assert('maybeFunctor' in mb, '이름 있는 것은 클래스 이름 그대로');
+    assert('maybeArraySemigroup' in mb, '조립 키는 maybe + Array + Semigroup');
+    assert(mb.maybeArraySemigroup === fp.Semigroup.lookup('maybe(array)'), '같은 인스턴스다');
+});
+
+// Plus 유도본은 이제 그 타입의 이름을 그대로 쓴다. Array 는 이미 Monoid 가 있어 유도가
+// 등록되지 않고, Maybe 는 비어 있어 유도본이 그 자리를 갖는다.
+test('Plus 유도본은 타입 이름을 그대로 쓴다 — plus(...) 키는 없다', () => {
+    const mb = fp.Algebra.all('maybe');
+    assert('maybeMonoid' in mb, 'Maybe 의 Monoid 는 유도본이고 이름이 maybeMonoid 다');
+    assert(mb.maybeMonoid === fp.Monoid.lookup('maybe'), '같은 인스턴스다');
+    assert(!('plusMaybeMonoid' in mb), '옛 이름이 남아 있다');
+    assert(!('plusArrayMonoid' in fp.Algebra.all('array')), '옛 이름이 남아 있다');
 });
 
 test('조회 시점의 레지스트리를 반영한다 — 열거가 아니다', () => {

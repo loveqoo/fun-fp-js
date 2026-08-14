@@ -190,14 +190,14 @@ console.log(arrayFoldable.reduce((a, b) => a + b, 0, [1, 2, 3]));  // 6
 ```
 
 이름은 **카멜케이스**입니다. 클래스 이름을 그대로 쓰고(`ArraySemigroup` → `arraySemigroup`),
-조립 키로 만들어진 것은 키 조각을 앞에 붙입니다(`plus(array)` 의 Monoid → `plusArrayMonoid`).
+조립 키로 만들어진 것은 키 조각을 앞에 붙입니다(`maybe(array)` 의 Semigroup → `maybeArraySemigroup`).
 
 ```javascript
 const { Algebra: A } = FunFP;
 
-const { plusArrayMonoid, arrayMonoid } = A.all('array');
-console.log(plusArrayMonoid.empty());   // []   ← Plus 에서 유도된 것
-console.log(arrayMonoid.empty());       // []   ← 원래의 ArrayMonoid, 다른 인스턴스다
+const { maybeMonoid } = A.all('maybe');
+console.log(maybeMonoid.empty().isNothing());   // true   ← Plus 에서 유도된 것
+console.log(A.all('array').arrayMonoid.empty());  // []   ← Array 는 원래의 ArrayMonoid 를 쓴다
 ```
 
 **세 가지를 기억하십시오.**
@@ -231,7 +231,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 | `<타입>` | 그 타입의 기본 인스턴스 | `array`, `maybe`, `number` | 각 타입 문서 |
 | `<클래스이름>` | 같은 타입의 다른 인스턴스 | `NumberProductMonoid`, `NumberMaxMonoid` | [Monoid](./Monoid.md) |
 | `maybe(<inner>)` | 안쪽 Semigroup 을 지정한 Maybe | `maybe(first)`, `maybe(array)` | [Monoid](./Monoid.md) |
-| `plus(<타입>)` | **`Plus` 에서 유도된 Monoid** | `plus(maybe)`, `plus(array)` | [Plus](./Plus.md) |
+| `<타입>` | **`Plus` 에서 유도된 Monoid** — 그 타입에 Monoid 가 없을 때만 | `Monoid.lookup('maybe')` | [Plus](./Plus.md) |
 | `const(<monoid>)` | **`Const` Applicative** | `const(array)`, `const(number)` | [Applicative](./Applicative.md) |
 | `statet(<M>)` 등 | Transformer | `statet(maybe)`, `eithert(task)` | [StateT](./StateT.md) |
 

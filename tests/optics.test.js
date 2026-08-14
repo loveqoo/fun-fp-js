@@ -466,7 +466,7 @@ test('foldMapOf — toList 와 preview 가 그 특수 경우다', () => {
     const t = traversed('array');
     assertEqualsBy(eqAN, foldMapOf(Monoid.lookup('array'), t, a => [a], [1, 2, 3]), toList(t, [1, 2, 3]));
     assertEquals(
-        foldMapOf(Monoid.lookup('plus(maybe)'), t, Maybe.Just, [1, 2, 3]).value,
+        foldMapOf(Monoid.lookup('maybe'), t, Maybe.Just, [1, 2, 3]).value,
         preview(t, [1, 2, 3]).value
     );
 });

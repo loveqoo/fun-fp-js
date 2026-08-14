@@ -123,7 +123,7 @@ catch (e) { console.log(e.message); }  // 'Ord.lte: arguments must be the same t
 | | 무엇을 하나 |
 | --- | --- |
 | `Maybe.Monoid('first')` (= `maybe(first)`) | 둘 다 `Just` 면 **안쪽 값을** `first` 로 합친다 |
-| `Monoid.lookup('plus(maybe)')` | 안을 **열지 않고** 첫 `Just` 를 통째로 고른다 |
+| `Monoid.lookup('maybe')` | 안을 **열지 않고** 첫 `Just` 를 통째로 고른다 |
 
 payload 타입이 같으면 결과도 같습니다. **갈리는 것은 타입이 섞였을 때뿐**이고, 그때 앞엣것은
 안쪽 `concat` 의 타입 검사에 걸려 던집니다.
@@ -132,7 +132,7 @@ payload 타입이 같으면 결과도 같습니다. **갈리는 것은 타입이
 const { Maybe, Monoid } = FunFP;
 
 const merge = Maybe.Monoid('first');
-const pick = Monoid.lookup('plus(maybe)');
+const pick = Monoid.lookup('maybe');
 
 console.log(merge.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 안쪽을 합친 결과
 console.log(pick.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1  — 같다
@@ -149,15 +149,24 @@ console.log(pick.concat(Maybe.Just(1), Maybe.Just('a')).value); // 1  — 안 �
 ## `Plus` 에서 `Monoid` 를 유도한다 {#plus-monoid}
 
 `Plus` 는 `alt`(결합 이항 연산)와 `zero`(항등원)를 둘 다 가지므로 **구조적으로 Monoid 입니다** —
-태그만 없습니다. 그래서 등록된 `Plus` 는 전부 짝 `Semigroup`/`Monoid` 를 `plus(<별칭>)` 키로
+태그만 없습니다. 그래서 등록된 `Plus` 는 짝 `Semigroup`/`Monoid` 를 **그 타입의 이름 그대로**
 얻습니다. 특례를 따로 적어 두지 않으므로 **`Plus` 를 새로 등록하면 짝도 자동으로 따라옵니다.**
 
-```javascript
-const { Semigroup, Monoid, Plus } = FunFP;
+**단, 그 타입에 이미 `Monoid` 가 있으면 유도하지 않습니다.** `Array` 가 그렇습니다 — `alt` 가
+곧 `concat` 이라 유도본과 `ArrayMonoid` 의 동작이 같습니다(실측). 등록을 강행하면 `registerAs`
+가 조용히 `ArrayMonoid` 를 덮습니다.
 
-console.log(Monoid.lookup('plus(array)').empty());              // []
-console.log(Semigroup.lookup('plus(array)').concat([1], [2]));  // [1, 2]
-console.log(Plus.lookup('array').zero());                       // []   같은 연산이다
+> **한때 이 키가 `plus(<별칭>)` 이었습니다. 그것은 버그였습니다.** 이 라이브러리에서 `f(x)` 는
+> `F<X>` 를 뜻하는데 `plus(maybe)` 는 `Plus` 가 아니라 `Monoid` 를 돌려줬고, 진짜 `Plus<Maybe>`
+> 는 그냥 `Plus.lookup('maybe')` 였습니다. 괄호 안이 원소가 아니라 **출신**이었던 것입니다 —
+> 출신 기록은 타입이 아닙니다(소유자 판단, 2026-08-14).
+
+```javascript
+const { Semigroup, Monoid, Plus, Maybe } = FunFP;
+
+console.log(Monoid.lookup('maybe').empty().isNothing());        // true   Plus 에서 유도된 것
+console.log(Semigroup.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1
+console.log(Plus.lookup('maybe').zero().isNothing());           // true  같은 연산이다
 ```
 
 유도에서 `register()` 를 쓰지 않는 이유가 있습니다. `register()` 는 `instance.constructor.name`
@@ -635,14 +644,14 @@ const { Semigroup, Monoid } = FunFP;
 // register() 로 들어간 것: 클래스 이름과 소문자 별칭 둘 다 같은 인스턴스를 준다
 console.log(Semigroup.lookup('array') === Semigroup.types.ArraySemigroup);   // true
 // registerAs 로 키를 직접 넣은 것: 조립 키 하나만 있다
-console.log(Monoid.lookup('plus(array)') === Monoid.types['plus(array)']);   // true
+console.log(Monoid.lookup('maybe') === Monoid.types['maybe']);   // true
 ```
 
 **직접 대입하지 마십시오.** `X.types[키] = 인스턴스` 로 쓰면 `lookup` 은 되지만
 [역인덱스](#algebra-all)에 안 들어가서 `Algebra.all` 에서 **조용히 사라집니다.**
 
 2026-08-13 이전에는 문이 14개였습니다(`register()` 1개 + 직접 대입 13곳). 그래서 등록 규칙을
-한 자리에서 강제할 수 없었고, 같은 날의 `.type` 드리프트도 `.type` 게이트가 `plus(array)` 를
+한 자리에서 강제할 수 없었고, 같은 날의 `.type` 드리프트도 `.type` 게이트가 유도 인스턴스를
 못 훑던 것도 거기서 나왔습니다.
 
 **문법으로는 우회를 막을 수 없습니다.** `tests/registry-api.test.js` 가 "레지스트리에 있는

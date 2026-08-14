@@ -218,45 +218,51 @@ test("Semigroup 'first'/'last' - Monoid 가 아니다 (항등원이 없다)", ()
     assertThrowsWith(() => Monoid.lookup('last'), 'unsupported key');
 });
 
-// === plus(maybe) — Plus 에서 유도한 Monoid ===
+// === Plus 에서 유도한 Monoid — 키는 그 타입의 이름 그대로다 ===
 // Haskell 의 Data.Monoid.First 에 해당한다: 안을 열지 않고 봉투째 하나를 고른다.
 // maybe(first)(= Maybe.Monoid('first')) 와는 다른 모노이드다 — 그쪽은 안을 합친다.
-const plusMaybe = Monoid.lookup('plus(maybe)');
+const plusMaybe = Monoid.lookup('maybe');
 
-test("Monoid 'plus(maybe)' - 첫 Just 를 고른다", () => {
+test("Monoid 'maybe' - 첫 Just 를 고른다", () => {
     assertEquals(plusMaybe.concat(Maybe.Just(1), Maybe.Just(2)).value, 1);
     assertEquals(plusMaybe.concat(Maybe.Nothing(), Maybe.Just(2)).value, 2);
     assert(plusMaybe.concat(Maybe.Nothing(), Maybe.Nothing()).isNothing());
 });
 
-test("Monoid 'plus(maybe)' - identity: empty() 는 Nothing", () => {
+test("Monoid 'maybe' - identity: empty() 는 Nothing", () => {
     const a = Maybe.Just(7);
     assertEquals(plusMaybe.concat(a, plusMaybe.empty()).value, 7);
     assertEquals(plusMaybe.concat(plusMaybe.empty(), a).value, 7);
 });
 
 // 이것이 maybe(first) 와 갈리는 지점이다 — 안을 안 보므로 타입이 섞여도 고를 수 있다.
-test("Monoid 'plus(maybe)' - 안을 열지 않으므로 타입이 섞여도 동작한다", () => {
+test("Monoid 'maybe' - 안을 열지 않으므로 타입이 섞여도 동작한다", () => {
     assertEquals(plusMaybe.concat(Maybe.Just(1), Maybe.Just('a')).value, 1);
     assertEquals(plusMaybe.concat(Maybe.Just(null), Maybe.Just(1)).value, null);
     assertThrowsWith(() => Maybe.Monoid('first').concat(Maybe.Just(1), Maybe.Just('a')), 'must be the same type');
 });
 
-test("Monoid 'plus(array)' - Plus 유도가 array 에도 대칭으로 있다", () => {
-    assertEqualsBy(eqAN, Monoid.lookup('plus(array)').concat([1], [2]), [1, 2]);
-    assertEqualsBy(eqAN, Monoid.lookup('plus(array)').empty(), []);
+// Array 에는 이미 ArrayMonoid 가 있다. 유도본은 동작이 같아 중복이므로 등록하지 않는다 —
+// 그러지 않으면 registerAs 가 조용히 ArrayMonoid 를 덮는다.
+test("Plus 유도 - 이미 Monoid 가 있는 타입에는 등록하지 않는다", () => {
+    assert(Monoid.lookup('array') === Monoid.types.ArrayMonoid, 'ArrayMonoid 가 덮였다');
+    assertEqualsBy(eqAN, Monoid.lookup('array').concat([1], [2]), [1, 2]);
+    assertEqualsBy(eqAN, Monoid.lookup('array').empty(), []);
+    // 옛 키는 사라졌다 — f(x) 는 F<X> 를 뜻하는데 plus(array) 는 Plus 가 아니었다.
+    assertThrowsWith(() => Monoid.lookup('plus(array)'), 'Monoid.lookup: unsupported key plus(array)');
+    assertThrowsWith(() => Monoid.lookup('plus(maybe)'), 'Monoid.lookup: unsupported key plus(maybe)');
 });
 
 // 유도는 수동으로 적은 특례 2개가 아니라 Plus 생성자의 규칙이다 — Plus 를 새로 등록하면
 // 짝 Monoid/Semigroup 이 자동으로 따라온다.
 test("Plus 유도 - 짝 Semigroup 도 레지스트리에 있다", () => {
-    assertEquals(Semigroup.lookup('plus(maybe)').concat(Maybe.Just(1), Maybe.Just(2)).value, 1);
-    assertEqualsBy(eqAN, Semigroup.lookup('plus(array)').concat([1], [2]), [1, 2]);
+    assertEquals(Semigroup.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value, 1);
+    assertEqualsBy(eqAN, Semigroup.lookup('array').concat([1], [2]), [1, 2]);
 });
 
 test("Plus 유도 - 같은 키는 같은 인스턴스", () => {
-    assert(Monoid.lookup('plus(maybe)') === Monoid.lookup('plus(maybe)'));
-    assert(Semigroup.lookup('plus(maybe)') === Semigroup.lookup('plus(maybe)'));
+    assert(Monoid.lookup('maybe') === Monoid.lookup('maybe'));
+    assert(Semigroup.lookup('maybe') === Semigroup.lookup('maybe'));
 });
 
 // register() 가 instance.constructor.name 을 키로 쓰므로, 유도에서 그것을 쓰면
@@ -268,7 +274,7 @@ test("Plus 유도 - 생성자 이름 키를 오염시키지 않는다", () => {
 
 test("Plus 유도 - alt 와 같은 결과를 준다", () => {
     const a = Maybe.Just(1), b = Maybe.Just(2);
-    assertEquals(Monoid.lookup('plus(maybe)').concat(a, b).value, fp.Alt.lookup('maybe').alt(a, b).value);
+    assertEquals(Monoid.lookup('maybe').concat(a, b).value, fp.Alt.lookup('maybe').alt(a, b).value);
 });
 
 // === Identity / Const Applicative — traverse 에 넘기는 것들 ===
