@@ -25,7 +25,7 @@
 // 못 잡는 것 (규칙 31-1):
 //   - 표본이 못 가르는 위반은 못 잡는다. 새 인스턴스를 넣을 때 **그 인스턴스가 유도하는
 //     동치를 가르는 쌍**이 표본에 있는지 확인하라. 없으면 검사는 공허하게 통과한다.
-//   - Functor 는 등록된 11개 전부에 돈다(아래 OBSERVE). 그러나 Apply·Applicative·Alt·
+//   - Functor 는 등록된 12개 전부에 돈다(아래 OBSERVE). 그러나 Apply·Applicative·Alt·
 //     Chain·ChainRec·Extend·Comonad·Traversable 의 법칙은 여전히 각 tests/*.test.js 가
 //     이름을 적어 둔 인스턴스만 본다(레지스트리를 순회하지 않는다) — Ord 를 놓쳤던 것과
 //     같은 모양의 구멍이 그만큼 남아 있다.
@@ -46,6 +46,16 @@ import { test, assertEquals, logSection } from './utils.js';
 
 const { Just, Nothing } = fp.Maybe;
 const { Left, Right } = fp.Either;
+
+// Const 는 **불러야 생긴다** — 모노이드마다 하나씩이고 조립 키로 무한히 만들 수 있어
+// 미리 다 만들 수 없다. 그래서 로드 직후 레지스트리에 const(...) 키가 0개이고, 아무도
+// 안 부르면 이 파일의 순회가 볼 것이 없다(실측: of 를 망가뜨려도 이 게이트가 초록이었다).
+//
+// 라이브러리가 미리 만들 일은 아니다 — 요구하면 만들어 주면 된다. 다만 **검사를 위해
+// 기본 하나는 여기서 부른다**(소유자 판단 2026-08-14). 숫자 모노이드를 고른 이유는
+// 아래 Object 표본(`{ value: 1 }`)이 그대로 유효한 상자가 되기 때문이다 — 배열 모노이드면
+// 상자 안이 배열이어야 해서 표본 장치를 통째로 고쳐야 한다.
+fp.Applicative.Const(fp.Monoid.lookup('number'));
 
 // 등록된 인스턴스를 (표시키, 인스턴스)로. 별칭으로 여러 번 나오므로 한 번만 본다.
 const instancesOf = name => {
@@ -286,7 +296,7 @@ test('팩토리로만 생기는 인스턴스도 법칙을 지킨다', () => {
     assertEquals(FACTORY_CASES.length, 11, '팩토리 명단이 달라졌다 — 새 팩토리를 넣었으면 표본도 넣어라');
 });
 
-test('Functor — 등록된 11개 전부에 항등·합성이 돈다', () => {
+test('Functor — 등록된 12개 전부에 항등·합성이 돈다', () => {
     // 명세: map(id, a) ≡ a · map(compose(f,g), a) ≡ map(f, map(g, a))
     const idf = x => x;
     const f = x => (typeof x === 'number' ? x + 1 : x);
@@ -309,13 +319,17 @@ test('Functor — 등록된 11개 전부에 항등·합성이 돈다', () => {
         }
     }
     assertEquals(report(broken), '', 'Functor 법칙');
-    assertEquals(checked, 11, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
+    assertEquals(checked, 12, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
 });
 
 test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 잡힌다)', () => {
     // 표본이 갈림길을 안 담으면 법칙은 자동으로 참이 된다. 각 타입마다 "합성을 안 하는 map"
     // 을 만들어, 그 차이가 실제로 관측되는지 본다 — 안 잡히면 그 표본은 감시하지 않는 것이다.
     const f = x => (typeof x === 'number' ? x + 1 : x);
+    // map 이 인자를 무시하는 것이 **정의인** 인스턴스. 이유 없이 여기 추가하지 마라.
+    const MAP_IS_BLIND = {
+        'const(number)': 'Const 의 map 은 정의상 아무것도 안 한다 — 값을 버리고 모노이드만 나른다. 그것이 traverse 를 fold 로 바꾸는 장치다',
+    };
     const blind = [];
     for (const [label, F] of REGISTERED_FUNCTORS) {
         const obs = OBSERVE[F.type], xs = FUNCTOR_SAMPLES[F.type];
@@ -324,13 +338,23 @@ test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 
             try { return JSON.stringify(obs(F.map(x => x, a))) !== JSON.stringify(obs(F.map(f, a))); }
             catch (e) { return true; }
         });
-        caught || blind.push(label);
+        caught || MAP_IS_BLIND[label] || blind.push(label);
     }
     assertEquals(blind.join(','), '', '표본이 map 의 차이를 못 가르는 인스턴스');
+    for (const [k, why] of Object.entries(MAP_IS_BLIND)) {
+        assertEquals(typeof why === 'string' && why.length > 20, true, `${k}: 이유가 없거나 너무 짧다`);
+    }
 });
 
 // ─── 나머지 타입 클래스 ──────────────────────────────────────────────
 // 값을 담는 법과 "실패/빈 상자". 컨테이너 법칙의 표본을 이 둘로 만든다.
+// Const 의 상자에는 **모노이드 값만** 들어간다. OF.Object 는 아무 값이나 담는 Identity 용이라
+// Apply 법칙이 함수를 넣어 concat 에서 죽는다 — Const 는 자기 wrap 이 그 자리다.
+// 라벨로 거는 이유: .type 이 'Object' 로 Identity 와 같아서 타입으로는 못 가른다.
+const OF_BY_LABEL = {
+    'const(number)': f => fp.Applicative.Const(fp.Monoid.lookup('number')).wrap(f === fnA ? 1 : 2),
+};
+
 const OF = {
     Object: x => ({ value: x }), Array: x => [x], Maybe: x => Just(x), Either: x => Right(x),
     Task: x => fp.Task.of(x), Validation: x => fp.Validation.Valid(x), Reader: x => fp.Reader.of(x),
@@ -420,8 +444,8 @@ const CLASS_LAWS = {
             === P.promap(fnB, fnA, P.promap(fnA, fnB, fn))(x)) || bad.push('합성 깨짐');
         return bad;
     },
-    Apply: (A, obs) => {
-        const xs = FUNCTOR_SAMPLES[A.type], of = OF[A.type]; if (!xs || !of) return null;
+    Apply: (A, obs, _key, label) => {
+        const xs = FUNCTOR_SAMPLES[A.type], of = OF_BY_LABEL[label] || OF[A.type]; if (!xs || !of) return null;
         const fns = [of(fnA), of(fnB), ...(DEGENERATE[A.type] ? [DEGENERATE[A.type]] : [])];
         const comp = A.map(ff => gg => x => ff(gg(x)), fns[0]);
         const bad = [];
@@ -545,7 +569,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 69, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 71, '법칙을 돌린 인스턴스 수가 달라졌다');
 });
 
 test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {
