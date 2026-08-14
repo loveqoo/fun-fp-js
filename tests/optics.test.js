@@ -1,6 +1,6 @@
 // Lens (Optics) Tests
 import fp from '../index.js';
-import { test, assertEquals, assertEqualsBy, assertThrowsWith, logSection } from './utils.js';
+import { test, assertEquals, assertEqualsBy, assert, assertThrowsWith, logSection } from './utils.js';
 
 // 비교는 라이브러리의 Setoid 로 한다 — 사설 deepEquals 를 대체했다.
 // 레코드는 struct(필드:키) 로 필드마다 비교법을 밝힌다.
@@ -11,7 +11,7 @@ const eqAS = fp.Setoid.lookup('array(string)');
 const { Functor, Maybe, Either, Monoid } = fp;
 // optics 는 모듈 객체 하나로 나온다 — 최상위에 view/set/over 같은 흔한 이름을 두지 않는다.
 const {
-    Iso, Lens, Prism, traversed, compose,
+    Iso, Lens, Prism, prop, traversed, compose,
     view, preview, toList, foldMapOf, review, set, over,
 } = fp.Optics;
 
@@ -523,6 +523,37 @@ test('foldMapOf — Monoid 키도 받는다', () => {
 test('runOptic 의 라벨이 호출자에 귀속된다', () => {
     assertThrowsWith(() => over(null, x => x, {}), 'over: optic must be a function');
     assertThrowsWith(() => foldMapOf(Monoid.lookup('array'), null, a => [a], {}), 'foldMapOf: optic must be a function');
+});
+
+// ─── prop — 없어서 쓰는 사람마다 같은 한 줄을 직접 썼다 ───────────────
+logSection('Optics.prop');
+
+test('prop - 객체 속성을 보고 고친다 (원본 보존)', () => {
+    const cityL = compose(prop('address'), prop('city'));
+    const s = { id: 7, address: { city: 'Seoul', zip: '04524' } };
+    assertEquals(view(cityL, s), 'Seoul');
+    assertEquals(set(cityL, 'Busan', s), { id: 7, address: { city: 'Busan', zip: '04524' } });
+    assertEquals(s, { id: 7, address: { city: 'Seoul', zip: '04524' } });
+});
+
+// 복사가 자기 모양을 지켜야 한다. 배열을 객체로 베끼면 뒤에 오는 순회 optic 이 죽는다.
+test('prop - 배열 인덱스도 받고 배열로 남는다', () => {
+    const first = prop(0);
+    assertEquals(view(first, [10, 20, 30]), 10);
+    const out = set(first, 99, [10, 20, 30]);
+    assertEquals(out, [99, 20, 30]);
+    assert(Array.isArray(out), '배열이 객체가 됐다');
+});
+
+test('prop - 순회 optic 과 합성된다', () => {
+    const xs = compose(prop('xs'), traversed('array'));
+    assertEquals(toList(xs, { xs: [1, 2, 3] }), [1, 2, 3]);
+    assertEquals(over(xs, x => x * 10, { xs: [1, 2, 3] }), { xs: [10, 20, 30] });
+});
+
+test('prop - 키가 문자열도 숫자도 아니면 던진다', () => {
+    assertThrowsWith(() => prop({}), 'Optics.prop: key must be a string or number');
+    assertThrowsWith(() => prop(), 'Optics.prop: key must be a string or number');
 });
 
 console.log('\n✅ Optics tests completed');

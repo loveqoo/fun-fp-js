@@ -16,6 +16,35 @@ Optic은 큰 구조 안의 부분을 **읽고 쓰는 방법을 값으로 만든 
 
 ## 빠르게 보기
 
+## 속성 하나를 보려면 `prop`
+
+가장 흔한 Lens 다. 중첩된 것은 `compose` 로 잇는다.
+
+```javascript
+const { Optics } = FunFP;
+
+const cityL = Optics.compose(Optics.prop('address'), Optics.prop('city'));
+const user = { id: 7, address: { city: 'Seoul', zip: '04524' } };
+
+console.log(Optics.view(cityL, user));              // 'Seoul'
+console.log(Optics.set(cityL, 'Busan', user).address.city);   // 'Busan'
+console.log(user.address.city);                     // 'Seoul'  원본은 그대로
+```
+
+**배열 인덱스도 받는다.** 복사가 자기 모양을 지키므로 배열은 배열로 남는다 — 그래야 뒤에
+오는 순회 optic 과 합성된다.
+
+```javascript
+const { Optics } = FunFP;
+
+console.log(Optics.set(Optics.prop(0), 99, [10, 20, 30]));   // [ 99, 20, 30 ]
+
+const xs = Optics.compose(Optics.prop('xs'), Optics.traversed('array'));
+console.log(Optics.over(xs, x => x * 10, { xs: [1, 2, 3] }));   // { xs: [ 10, 20, 30 ] }
+```
+
+직접 만들려면 `Lens(getter, setter)` 를 쓴다 — `prop` 은 그 특수한 경우다.
+
 ```javascript
 const { Maybe, Either } = FunFP;
 const { Lens, Prism, traversed, compose, preview, toList, over } = FunFP.Optics;

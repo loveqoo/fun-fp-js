@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T08:04:34.821Z
+ * Built: 2026-08-14T09:13:33.299Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -2738,6 +2738,17 @@ const { Optics } = (() => {
             P.left(pab)
         );
     };
+    // 속성 하나를 보는 Lens. 이것이 없어서 쓰는 사람마다 같은 한 줄을 직접 썼다.
+    // 배열도 받는다 — 복사가 자기 모양을 지켜야 순회 optic 과 합성해도 배열로 남는다.
+    const prop = key => {
+        (typeof key === 'string' || typeof key === 'number')
+            || raise(new TypeError('Optics.prop: key must be a string or number'));
+        return Lens(o => o[key], (v, o) => {
+            const copy = Array.isArray(o) ? o.slice() : Object.assign({}, o);
+            copy[key] = v;
+            return copy;
+        });
+    };
     // 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
     const traversed = key => {
         const instance = Traversable.lookup(key);
@@ -2806,7 +2817,7 @@ const { Optics } = (() => {
     // 그래서 정의는 composeOptic 으로 두고 모듈 키에서만 compose 로 낸다.
     return {
         Optics: {
-            Iso, Lens, Prism, traversed,
+            Iso, Lens, Prism, prop, traversed,
             compose: composeOptic, view, preview, toList, foldMapOf,
             over, set, review,
         },

@@ -220,12 +220,12 @@
 
 | 상태 | # | 무엇 | 왜 아픈가 |
 | --- | --- | --- | --- |
-| ⬜ | 사용-1 | [`Optics` 에 속성 렌즈 헬퍼가 없다](#사용-1) | 모든 사용자가 첫 시간에 같은 한 줄을 직접 쓴다 |
+| ✅ | 사용-1 | [`Optics.prop` 신설](#사용-1) | 닫힘 |
 | ⬜ | 사용-2 | [배포 메타데이터가 비어 있다](#사용-2) | **아무도 의존할 수 없다** — 가장 크다 |
 | ⬜ | 사용-3 | [`lookup` / `of` 구분이 첫 화면에 없다](#사용-3) | 만드는 쪽도 헷갈려 「Traps」에 적어 뒀다 |
 | ⬜ | 사용-4 | [`Maybe`/`Either` 의 출력이 안 읽힌다](#사용-4) | 디버깅할 때 눈에 안 들어온다 |
 
-<h3 id="사용-1">⬜ [사용-1] <code>Optics</code> 에 속성 렌즈 헬퍼가 없다</h3>
+<h3 id="사용-1">✅ [사용-1] <code>Optics.prop</code> 신설</h3>
 
 - **원인** — `Optics.Lens` 는 `(getter, setter)` 를 받는다. 그런데 처음 쓰는 사람이 가장
   자연스럽게 쓰는 것은 `Optics.Lens('address')` 다. 실측: `Lens: getter must be a function`
@@ -238,6 +238,12 @@
 - **완료조건** — `Optics.compose(Optics.prop('address'), Optics.prop('city'))` 가 읽기·수정·
   원본 보존 셋을 만족하고, **`docs/Optics.md` 의 첫 예제가 그것으로 시작한다.** 문서 예제는
   실행되므로 그것이 곧 회귀 테스트다.
+- **검증 (2026-08-14)** — `compose(prop('address'), prop('city'))` 로 읽기·수정·원본 보존이
+  된다. **배열 인덱스도 받는다** — 복사가 자기 모양을 지켜서 배열은 배열로 남고, 그래야 뒤에
+  오는 순회 optic 과 합성된다(`compose(prop('xs'), traversed('array'))` 실측).
+  뮤테이션 셋 전부 잡힘: 배열 복사를 객체로 / 원본을 직접 고침 / 키 검증 제거.
+  `docs/Optics.md` 에 절을 더했고 예제가 실행된다(413 → 415).
+  `npm run baseline` 차이 0, `npm test` 44/44.
 - **참고** — 규칙 「'어렵다' 를 숫자로 바꿔라 — 첫 실행 예제까지의 거리」
   ([`retrospect/260811-77313b-1-optics-docs.md`](./retrospect/260811-77313b-1-optics-docs.md))
 
