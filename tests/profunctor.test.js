@@ -113,9 +113,73 @@ test('Strong - 타입이 안 맞는 profunctor 값을 거부한다', () => {
 test('Strong / Choice / Wander - 각자 자기 레지스트리를 가진다', () => {
     for (const [name, C] of [['Strong', Strong], ['Choice', Choice], ['Wander', Wander]]) {
         assert(C.types !== Profunctor.types, `${name}.types 가 Profunctor.types 를 가리킨다`);
-        assertEquals(Object.keys(C.types).length, 0, `${name} 은 아직 등록된 인스턴스가 없어야 한다`);
-        assertThrowsWith(() => C.lookup('function'), `${name}.lookup: unsupported key function`);
     }
+    // 각자 다른 것을 담는다. 같은 것을 가리키면 이 셋이 서로를 덮어쓴다.
+    assert(Strong.types !== Choice.types && Choice.types !== Wander.types, '레지스트리가 겹친다');
+    // Tagged 는 Choice 에만 있다 — Strong·Wander 가 아니라는 사실이 여기 드러난다.
+    assert(Choice.types.TaggedChoice, 'Choice 에 Tagged 가 있어야 한다');
+    assertEquals(Object.keys(Strong.types).includes('tagged'), false, 'Tagged 는 Strong 이 아니다');
+    assertEquals(Object.keys(Wander.types).includes('tagged'), false, 'Tagged 는 Wander 가 아니다');
+    // Profunctor 레지스트리에도 안 올린다 — .type 이 'any' 인 Functor 가 없어 명세를 못 지킨다.
+    assertEquals(Object.keys(Profunctor.types).includes('tagged'), false,
+        'Tagged 를 Profunctor 로 등록하면 명세 게이트 ③이 멈춘다');
+});
+
+
+// ─── 등록된 인스턴스 다섯 ────────────────────────────────────────────
+// 표준대로 second/right 도 진다. Optics 는 first/left/wander 만 쓰므로, 짝을 테스트가
+// 안 잡으면 감시 밖이다 — 실제로 Forget.right 를 망가뜨려도 아무 데서도 안 걸렸다.
+logSection('Profunctor 확장 인스턴스');
+
+test('function - Strong/Choice/Wander 셋이 등록돼 있다', () => {
+    assert(Strong.lookup('function') instanceof Strong);
+    assert(Choice.lookup('function') instanceof Choice);
+    assert(Wander.lookup('function') instanceof Wander);
+});
+
+test('function Wander - 네 메서드가 서로 다른 자리를 본다', () => {
+    const W = Wander.lookup('function');
+    assertEquals(W.first(x => x * 10)([3, 9]), [30, 9]);
+    assertEquals(W.second(x => x * 10)([3, 9]), [3, 90]);
+    assertEquals(W.left(x => x * 10)(Either.Left(4)).value, 40);
+    assertEquals(W.left(x => x * 10)(Either.Right(4)).value, 4);
+    assertEquals(W.right(x => x * 10)(Either.Right(4)).value, 40);
+    assertEquals(W.right(x => x * 10)(Either.Left(4)).value, 4);
+});
+
+test('Forget - 3단으로 등록되고 같은 키는 같은 인스턴스', () => {
+    const F = Wander.Forget(fp.Monoid.lookup('array'));
+    assert(Strong.lookup('forget(array)') === F, 'Strong 층에 없다');
+    assert(Choice.lookup('forget(array)') === F, 'Choice 층에 없다');
+    assert(Wander.lookup('forget(array)') === F, 'Wander 층에 없다');
+    assert(Wander.Forget('array') === F, '같은 키가 다른 인스턴스를 낸다');
+});
+
+test('Forget - 모으는 쪽만 모으고 나머지는 빈 것을 낸다', () => {
+    const F = Wander.Forget(fp.Monoid.lookup('array'));
+    const p = a => [a];
+    assertEquals(F.first(p)([7, 9]), [7]);
+    assertEquals(F.second(p)([7, 9]), [9]);
+    // left 는 Left 를 모으고 Right 는 버린다. right 는 그 반대다.
+    assertEquals(F.left(p)(Either.Left(5)), [5]);
+    assertEquals(F.left(p)(Either.Right(5)), []);
+    assertEquals(F.right(p)(Either.Right(5)), [5]);
+    assertEquals(F.right(p)(Either.Left(5)), []);
+});
+
+// Tagged 가 Strong·Wander 가 아니라는 것이 "Lens/Traversal 은 review 할 수 없다" 다.
+test('Tagged - Choice 이지만 Strong 도 Wander 도 아니다', () => {
+    const T = Choice.lookup('tagged');
+    assert(T instanceof Choice);
+    assert(!(T instanceof Strong), 'Tagged 가 Strong 이면 안 된다');
+    assertEquals(typeof T.first, 'undefined');
+    assertEquals(typeof T.wander, 'undefined');
+    // .value 만 보면 안 된다 — Left(7) 과 Right(7) 의 value 가 둘 다 7 이라
+    // right 를 Left 로 바꿔치기해도 통과한다(실측). 어느 쪽인지를 봐야 잡힌다.
+    assert(T.left(7).isLeft() && T.left(7).value === 7, 'left 는 Left 를 내야 한다');
+    assert(T.right(7).isRight() && T.right(7).value === 7, 'right 는 Right 를 내야 한다');
+    // 입력을 무시하므로 promap 은 출력 변환만 태운다.
+    assertEquals(T.promap(x => x, x => x * 2, 7), 14);
 });
 
 console.log('\n✅ Profunctor tests completed\n');

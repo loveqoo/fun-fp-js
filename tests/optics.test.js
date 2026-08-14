@@ -112,13 +112,14 @@ test('compose — 3-level nesting (variadic)', () => {
 // optic은 P를 받는 함수다. 임의의 Profunctor 딕셔너리로 동작해야 한다.
 test('Lens — 임의의 Profunctor 딕셔너리로 동작한다', () => {
     const calls = [];
+    // 사용자가 자기 profunctor 를 들고 와도 돈다 — 이름은 이 라이브러리의 promap 이다.
     const spy = {
-        dimap: (f, g, p) => { calls.push('dimap'); return s => g(p(f(s))); },
+        promap: (f, g, p) => { calls.push('promap'); return s => g(p(f(s))); },
         first: p => { calls.push('first'); return ([a, c]) => [p(a), c]; },
     };
     const run = nameLens(spy)(a => a.toUpperCase());
     assertEqualsBy(eqPerson, run({ name: 'a', age: 1 }), { name: 'A', age: 1 });
-    assertEqualsBy(eqAS, calls, ['first', 'dimap']);
+    assertEqualsBy(eqAS, calls, ['first', 'promap']);
 });
 
 test('optic은 순수 함수다 — 프로퍼티를 이고 다니지 않는다', () => {

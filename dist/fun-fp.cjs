@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T07:10:03.146Z
+ * Built: 2026-08-14T07:20:26.069Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -324,7 +324,10 @@ const checkAndSet = (config => {
         Profunctor: {
             strict: (instance, promap) => {
                 typeof promap !== 'function' && raise(new TypeError('Profunctor.promap: promap must be a function'));
-                instance.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.isFunction(fn)) ? promap(f, g, fn) : raise(new TypeError('Profunctor.promap: all arguments must be functions'));
+                // 세 번째 인자는 profunctor 값이지 반드시 함수는 아니다 — Tagged a b = b 다.
+                // isFunction 으로 못 박으면 Tagged 를 등록할 수 없다(2026-08-11 기록이 남긴 숙제).
+                // instance.type 으로 보면 'function' 은 전과 같고 'any' 는 통과한다.
+                instance.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.check(fn, instance.type)) ? promap(f, g, fn) : raise(new TypeError(`Profunctor.promap: f and g must be functions and the third argument must match ${instance.type}`));
             },
             loose: (instance, promap) => { instance.promap = (f, g, fn) => promap(f, g, fn); }
         },
@@ -2628,6 +2631,79 @@ class FreeMonad extends Monad {
     }
 }
 modules.push(FreeMonad);
+/* Profunctor 확장 인스턴스 — optics 가 주입하는 세 P. docs/internals.md#optics */
+// 함수: p a b = a -> b.  over/set 이 쓴다.
+class FunctionStrong extends Strong {
+    constructor() {
+        super(Profunctor.types.FunctionProfunctor,
+            p => t => Bifunctor.types.TupleBifunctor.bimap(p, identity, t),
+            p => t => Bifunctor.types.TupleBifunctor.bimap(identity, p, t),
+            'function', Strong.types, 'function');
+    }
+}
+modules.push(FunctionStrong);
+class FunctionChoice extends Choice {
+    constructor() {
+        super(Profunctor.types.FunctionProfunctor,
+            p => e => Bifunctor.types.EitherBifunctor.bimap(p, identity, e),
+            p => e => Bifunctor.types.EitherBifunctor.bimap(identity, p, e),
+            'function', Choice.types, 'function');
+    }
+}
+modules.push(FunctionChoice);
+class FunctionWander extends Wander {
+    constructor() {
+        super(Strong.types.FunctionStrong, Choice.types.FunctionChoice,
+            (traverse, p) => s => {
+                const I = Applicative.types.IdentityApplicative;
+                return Comonad.types.IdentityComonad.extract(traverse(I, compose2(I.of, p), s));
+            },
+            'function', Wander.types, 'function');
+    }
+}
+modules.push(FunctionWander);
+// Tagged: p a b = b.  입력을 무시하므로 거꾸로만 쓸 수 있다 — review 가 쓴다.
+// **Strong 도 Wander 도 아니다.** Tagged 는 입력을 만들어낼 수 없어 first/wander 가 원리적으로
+// 정의되지 않는다. 그 부재가 곧 "Lens/Traversal 은 review 할 수 없다" 다 — 던지는 스텁을 대신한다.
+// Profunctor 레지스트리에는 안 올린다. 명세는 Profunctor 에 "첫 매개변수를 고정하면 Functor"
+// 를 요구하는데 .type 이 'any' 인 Functor 는 없다 — 지킬 수 없는 보증은 걸지 않는다
+// (Filterable 에서 Either/Task 를 뺀 것과 같은 판단). Forget 의 내부 P 도 같은 이유로 익명이다.
+const taggedProfunctorBase = new Profunctor((_f, g, p) => g(p), 'any');
+class TaggedChoice extends Choice {
+    constructor() {
+        super(taggedProfunctorBase, Either.Left, Either.Right, 'any', Choice.types, 'tagged');
+    }
+}
+modules.push(TaggedChoice);
+// Forget<r>: p a b = a -> r.  monoid 마다 다르므로 Applicative.Const 와 같은 팩토리다.
+const normalizeForgetMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Wander.Forget');
+Wander.Forget = monoid => {
+    const { key, instance: m } = normalizeForgetMonoid(monoid);
+    if (key !== null && Wander.Forget._keyCache.has(key)) return Wander.Forget._keyCache.get(key);
+    if (key === null && Wander.Forget._instanceCache.has(m)) return Wander.Forget._instanceCache.get(m);
+    const C = Applicative.Const(m);
+    // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다.
+    const P = new Profunctor((f, _g, p) => Contravariant.types.PredicateContravariant.contramap(f, p), 'function');
+    const S = new Strong(P, p => compose2(p, fst), p => compose2(p, snd), 'function');
+    const Ch = new Choice(P,
+        p => e => Either.fold(p, () => m.empty(), e),
+        p => e => Either.fold(() => m.empty(), p, e), 'function');
+    const result = new Wander(S, Ch,
+        (traverse, p) => s => C.unwrap(traverse(C, compose2(C.wrap, p), s)), 'function');
+    if (key !== null) {
+        // Const 와 같이 3단으로 등록한다 — Wander 만 올리면 Strong.lookup('forget(array)') 가 안 된다.
+        registerAs(Strong.types, `forget(${key})`, result);
+        registerAs(Choice.types, `forget(${key})`, result);
+        registerAs(Wander.types, `forget(${key})`, result);
+        Wander.Forget._keyCache.set(key, result);
+    } else {
+        Wander.Forget._instanceCache.set(m, result);
+    }
+    return result;
+};
+Wander.Forget._keyCache = new Map();
+Wander.Forget._instanceCache = new WeakMap();
+
 load(...modules);
 
 /* Optics */
@@ -2637,60 +2713,37 @@ const { Optics } = (() => {
     // 주입하는 P 가 연산을 정한다(함수=over, Forget=view, Tagged=review).
     // first=Lens · left=Prism · wander=Traversal — docs/internals.md#optics
 
-    // ── 구체 Profunctor 3종 ────────────────────────────────────────────
-
-    // 함수: p a b = a -> b.  over/set 이 쓴다.
-    const functionProfunctor = {
-        dimap: Profunctor.lookup('function').promap,      // promap(f, g, fn) 이 dimap 과 같은 시그니처다
-        first: p => t => Bifunctor.lookup('tuple').bimap(p, identity, t),
-        left: p => e => Bifunctor.lookup('either').bimap(p, identity, e),
-        // 캐리어를 리터럴로 만들지도 .value 로 뜯지도 않는다 — 만드는 것은 of, 꺼내는 것은 extract 다.
-        wander: (traverse, p) => s => {
-            const I = Applicative.lookup('identity');
-            return Comonad.lookup('identity').extract(traverse(I, compose2(I.of, p), s));
-        },
-    };
-    // Forget<r>: p a b = a -> r.  출력을 버리고 r 을 모은다. view/preview/toList/foldMapOf 가 쓴다.
-    const forgetProfunctor = monoid => ({
-        // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다(promap + 항등이 아니라).
-        dimap: (f, _g, p) => Contravariant.lookup('predicate').contramap(f, p),
-        first: p => compose2(p, fst),
-        left: p => e => Either.fold(p, () => monoid.empty(), e),
-        // Const 의 of 는 값을 버리므로(법칙) 담는 것은 wrap 이고 꺼내는 것은 그 짝인 unwrap 이다.
-        wander: (traverse, p) => s => {
-            const C = Applicative.Const(monoid);
-            return C.unwrap(traverse(C, compose2(C.wrap, p), s));
-        },
-    });
-    // Tagged: p a b = b.  입력을 무시하므로 거꾸로만 쓸 수 있다. review 가 쓴다.
-    const taggedProfunctor = {
-        // 여기만 Profunctor.promap 에 위임할 수 없다 — Tagged a b = b 라 profunctor 값이
-        // 함수가 아닌데 promap 의 strict 검사가 세 인자 모두 함수일 것을 요구한다.
-        dimap: (_f, g, p) => g(p),
-        left: Either.Left,
-        // Tagged 는 입력을 만들어낼 수 없으므로 곱(first)과 순회(wander)를 구현할 수 없다.
-        // 그 부재가 곧 "Lens/Traversal 은 review 할 수 없다" 는 제약이다 — 명시적으로 거부한다.
+    // ── 주입하는 P 셋 — 전부 레지스트리에서 온다 ──────────────────────
+    // 사설 딕셔너리가 아니다. Strong/Choice/Wander 인스턴스라 법칙·명세·.type 게이트가 본다.
+    const functionProfunctor = Wander.types.FunctionWander;
+    const forgetProfunctor = monoid => Wander.Forget(monoid);
+    // Tagged 는 **Choice 일 뿐이다.** Strong·Wander 가 아니라 first/wander 가 아예 없다 —
+    // 던지는 스텁이 아니라 그 부재가 "Lens/Traversal 은 review 할 수 없다" 를 말한다.
+    const taggedProfunctor = Choice.types.TaggedChoice;
+    // 없는 메서드를 부르면 "P.first is not a function" 이라는 뜻 모를 말이 나온다.
+    // 등록 인스턴스는 깨끗하게 두고, review 경로에서만 그 **부재**를 사용자 언어로 옮긴다.
+    const taggedForReview = Object.assign(Object.create(taggedProfunctor), {
         first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
         wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
-    };
+    });
 
     // ── optic 생성자 ───────────────────────────────────────────────────
     // Iso 는 dimap 만 써서 모든 연산에 통한다(계층 최상단) — docs/internals.md#optics
     const Iso = (to, from) => {
         typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
         typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
-        return P => pab => P.dimap(to, from, pab);
+        return P => pab => P.promap(to, from, pab);
     };
     const Lens = (getter, setter) => {
         typeof getter !== 'function' && raise(new TypeError('Lens: getter must be a function'));
         typeof setter !== 'function' && raise(new TypeError('Lens: setter must be a function'));
-        return P => pab => P.dimap(s => tuple(getter(s), s), ([b, s]) => setter(b, s), P.first(pab));
+        return P => pab => P.promap(s => tuple(getter(s), s), ([b, s]) => setter(b, s), P.first(pab));
     };
     // match: s -> Maybe a,  build: a -> s
     const Prism = (match, build) => {
         typeof match !== 'function' && raise(new TypeError('Prism: match must be a function'));
         typeof build !== 'function' && raise(new TypeError('Prism: build must be a function'));
-        return P => pab => P.dimap(
+        return P => pab => P.promap(
             s => {
                 const m = match(s);
                 Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
@@ -2753,7 +2806,7 @@ const { Optics } = (() => {
     // review는 Tagged를 주입한다. Lens/Traversal이면 first/wander가 없어 여기서 실패한다.
     const review = (prism, a) => {
         typeof prism !== 'function' && raise(new TypeError('review: prism must be a function'));
-        return prism(taggedProfunctor)(a);
+        return prism(taggedForReview)(a);
     };
     // optic 합성 = 함수 합성. P를 모두에 주입한 뒤 그 층에서 잇는다.
     const composeOptic = (...optics) => {
