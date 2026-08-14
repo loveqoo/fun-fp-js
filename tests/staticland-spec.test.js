@@ -59,6 +59,12 @@ const SPEC = {
     Extend: { method: 'extend', sameT: ['Functor'] },
     Comonad: { method: 'extract', sameT: ['Extend'] },
     Traversable: { method: 'traverse', sameT: ['Functor', 'Foldable'] },
+    // ── Static Land 밖 ── optics 가 요구하는 profunctor 확장. spec: false 가 그 사실을 말한다.
+    // 표를 둘로 쪼개지 않는 이유: Free 처럼 "내부용이라고 숨기지 않는다". 검사 ①②⑤⑥은 표
+    // 전체를 보고, 명세 소속을 주장하는 검사(②-1)만 걸러 본다. docs/internals.md#optics
+    Strong: { method: 'first', sameT: ['Profunctor'], spec: false },
+    Choice: { method: 'left', sameT: ['Profunctor'], spec: false },
+    Wander: { method: 'wander', sameT: ['Strong', 'Choice'], spec: false },
 };
 
 // 조상까지 훑어 이 클래스의 인스턴스가 반드시 지고 있어야 하는 메서드를 모은다.
@@ -121,7 +127,8 @@ test('② 런타임 클래스의 상속이 명세의 부모 사슬 안에 있다
 });
 
 test('② -1 명세 부모가 둘인 클래스는 셋뿐이다 — 늘면 여기서 멈춘다', () => {
-    const multi = Object.entries(SPEC).filter(([, s]) => s.sameT.length > 1).map(([n]) => n).sort();
+    const multi = Object.entries(SPEC)
+        .filter(([, s]) => s.spec !== false && s.sameT.length > 1).map(([n]) => n).sort();
     assertEquals(multi.join(','), 'Alternative,Monad,Traversable',
         '명세 부모가 둘인 클래스 목록이 달라졌다 — ②의 예외 처리를 다시 보라');
 });

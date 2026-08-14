@@ -142,6 +142,36 @@ export interface Profunctor<F extends TypeLambda> extends TypeClass<F> {
     ) => Kind<F, In2, Out2, Out1, T2>;
 }
 
+// ─── Strong / Choice / Wander (Static Land 밖 — optics 확장) ─────────
+// first/left/wander 가 각각 Lens/Prism/Traversal 을 낸다. 표준 이름이라 짝(second/right)도 진다.
+// 근거: docs/internals.md#optics
+export interface Strong<F extends TypeLambda> extends Profunctor<F> {
+    readonly first: <In1, Out2, Out1, T1, C>(
+        pab: Kind<F, In1, Out2, Out1, T1>
+    ) => Kind<F, readonly [In1, C], Out2, Out1, readonly [T1, C]>;
+    readonly second: <In1, Out2, Out1, T1, C>(
+        pab: Kind<F, In1, Out2, Out1, T1>
+    ) => Kind<F, readonly [C, In1], Out2, Out1, readonly [C, T1]>;
+}
+
+export interface Choice<F extends TypeLambda> extends Profunctor<F> {
+    readonly left: <In1, Out2, Out1, T1, C>(
+        pab: Kind<F, In1, Out2, Out1, T1>
+    ) => Kind<F, Either<C, In1>, Out2, Out1, Either<C, T1>>;
+    readonly right: <In1, Out2, Out1, T1, C>(
+        pab: Kind<F, In1, Out2, Out1, T1>
+    ) => Kind<F, Either<C, In1>, Out2, Out1, Either<C, T1>>;
+}
+
+// 명세 부모가 둘이다. JS 는 다중 상속이 안 되므로 런타임은 Strong 만 extends 하고
+// Choice 의 메서드는 생성자가 받아 복사한다(Traversable 선례) — 타입 쪽은 둘 다 extends 한다.
+export interface Wander<F extends TypeLambda> extends Strong<F>, Choice<F> {
+    readonly wander: <In1, Out2, Out1, T1>(
+        traverse: (...args: readonly any[]) => any,
+        pab: Kind<F, In1, Out2, Out1, T1>
+    ) => Kind<F, any, Out2, Out1, any>;
+}
+
 // ─── Filterable ─────────────────────────────────────────────────────
 // Base form: 2-arg (pred, fa). Instances that accept extra args (like
 // Either's `onFalse`) expose those on their own const namespace, not on
@@ -264,6 +294,9 @@ export interface TraversableInstances {}
 export interface BifunctorInstances {}
 export interface ContravariantInstances {}
 export interface ProfunctorInstances {}
+export interface StrongInstances {}
+export interface ChoiceInstances {}
+export interface WanderInstances {}
 export interface FilterableInstances {}
 export interface ChainRecInstances {}
 export interface ExtendInstances {}

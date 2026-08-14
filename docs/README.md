@@ -111,7 +111,16 @@ Functor + Foldable ──> Traversable
 
 Bifunctor, Profunctor — 첫 매개변수를 고정한 타입이 Functor 여야 한다 (같은 T 가 아니다)
 Filterable, Contravariant — 요구하는 상위 클래스가 없다
+
+명세 밖 — optics 가 요구하는 profunctor 확장이다
+Profunctor ──────────> Strong          first · second
+Profunctor ──────────> Choice          left  · right
+Strong + Choice ─────> Wander          wander
 ```
+
+마지막 셋은 Static Land 명세에 없다. optics 가 요구해서 명시적으로 구현한 것이고, 각각이
+어떤 optic 을 내는지는 [Optics](./Optics.md) 에 있다. 근거는
+[internals.md#optics](./internals.md#optics).
 
 ## 핵심 개념 요약
 

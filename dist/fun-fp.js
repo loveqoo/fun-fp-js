@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T06:22:18.338Z
+ * Built: 2026-08-14T07:10:03.146Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -47,6 +47,10 @@ const Symbols = {
     Extend: Symbol.for('fun-fp-js/Extend'),
     Comonad: Symbol.for('fun-fp-js/Comonad'),
     Traversable: Symbol.for('fun-fp-js/Traversable'),
+    // Static Land 밖이다 — optics 가 요구하는 profunctor 확장 셋. docs/internals.md#optics
+    Strong: Symbol.for('fun-fp-js/Strong'),
+    Choice: Symbol.for('fun-fp-js/Choice'),
+    Wander: Symbol.for('fun-fp-js/Wander'),
     Maybe: Symbol.for('fun-fp-js/Maybe'),
     Either: Symbol.for('fun-fp-js/Either'),
     Task: Symbol.for('fun-fp-js/Task'),
@@ -201,6 +205,9 @@ const binaryTypeError = (label, type) => new TypeError(
         ? `${label}: arguments must be the same type`
         : `${label}: arguments must be the same type and match ${type}`
 );
+// 인자가 하나뿐인 연산용. **type 이 'any' 면 검사가 남지 않는다** — 짝이 없어 "서로 같은
+// 타입" 을 물을 수 없기 때문이다(CLAUDE.md 「Traps」). 그 사실을 메시지가 숨기지 않는다.
+const unaryTypeError = (label, type) => new TypeError(`${label}: argument must match ${type}`);
 const checkAndSet = (config => {
     const rules = {
         Setoid: {
@@ -305,6 +312,58 @@ const checkAndSet = (config => {
                 instance.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.isFunction(fn)) ? promap(f, g, fn) : raise(new TypeError('Profunctor.promap: all arguments must be functions'));
             },
             loose: (instance, promap) => { instance.promap = (f, g, fn) => promap(f, g, fn); }
+        },
+        // profunctor 값에는 공통 모양이 없다 — 함수(function·Forget)일 수도, 아무 값(Tagged)일
+        // 수도 있다. 그래서 인자를 함수로 못 박지 않고 instance.type 으로만 본다.
+        // Tagged 는 .type 이 'any' 라 그 검사를 통과한다 — 값 타입을 안 본다는 뜻이다.
+        'Strong.super': {
+            strict: (profunctor) => { !(profunctor && profunctor[Symbols.Profunctor]) && raise(new TypeError('Strong: argument must be a Profunctor')); },
+            loose: emptyFunc
+        },
+        Strong: {
+            strict: (instance, _profunctor, first, second) => {
+                typeof first !== 'function' && raise(new TypeError('Strong.first: first must be a function'));
+                typeof second !== 'function' && raise(new TypeError('Strong.second: second must be a function'));
+                instance.first = p => types.check(p, instance.type) ? first(p) : raise(unaryTypeError('Strong.first', instance.type));
+                instance.second = p => types.check(p, instance.type) ? second(p) : raise(unaryTypeError('Strong.second', instance.type));
+            },
+            loose: (instance, _profunctor, first, second) => {
+                instance.first = p => first(p);
+                instance.second = p => second(p);
+            }
+        },
+        'Choice.super': {
+            strict: (profunctor) => { !(profunctor && profunctor[Symbols.Profunctor]) && raise(new TypeError('Choice: argument must be a Profunctor')); },
+            loose: emptyFunc
+        },
+        Choice: {
+            strict: (instance, _profunctor, left, right) => {
+                typeof left !== 'function' && raise(new TypeError('Choice.left: left must be a function'));
+                typeof right !== 'function' && raise(new TypeError('Choice.right: right must be a function'));
+                instance.left = p => types.check(p, instance.type) ? left(p) : raise(unaryTypeError('Choice.left', instance.type));
+                instance.right = p => types.check(p, instance.type) ? right(p) : raise(unaryTypeError('Choice.right', instance.type));
+            },
+            loose: (instance, _profunctor, left, right) => {
+                instance.left = p => left(p);
+                instance.right = p => right(p);
+            }
+        },
+        // Traversable.super 와 같은 모양 — JS 는 다중 상속이 안 되므로 둘째 부모를 받아 검증한다.
+        'Wander.super': {
+            strict: (strong, choice) => {
+                !(strong && strong[Symbols.Strong]) && raise(new TypeError('Wander: first argument must be a Strong'));
+                !(choice && choice[Symbols.Choice]) && raise(new TypeError('Wander: second argument must be a Choice'));
+            },
+            loose: emptyFunc
+        },
+        Wander: {
+            strict: (instance, _strong, _choice, wander) => {
+                typeof wander !== 'function' && raise(new TypeError('Wander.wander: wander must be a function'));
+                instance.wander = (traverse, p) => types.isFunction(traverse)
+                    ? wander(traverse, p)
+                    : raise(new TypeError('Wander.wander: first argument must be a traverse function'));
+            },
+            loose: (instance, _strong, _choice, wander) => { instance.wander = (traverse, p) => wander(traverse, p); }
         },
         'Apply.super': {
             strict: (functor) => { !(functor && functor[Symbols.Functor]) && raise(new TypeError('Apply: argument must be a Functor')); },
@@ -577,6 +636,43 @@ class Profunctor extends Algebra {
     promap() { raise(new Error('Profunctor: promap is not implemented')); }
 }
 Profunctor.prototype[Symbols.Profunctor] = true;
+// ── Static Land 밖의 셋 — optics 가 요구한다. 근거는 docs/internals.md#optics ──
+// first/left/wander 가 각각 Lens/Prism/Traversal 을 낸다. 표준 이름을 쓰므로 짝(second/right)도 진다.
+class Strong extends Profunctor {
+    constructor(profunctor, first, second, type, registry, ...aliases) {
+        checkAndSet('Strong.super')(profunctor);
+        super(profunctor.promap, type);
+        checkAndSet('Strong')(this, profunctor, first, second);
+        registry && register(registry, this, ...aliases);
+    }
+    first() { raise(new Error('Strong: first is not implemented')); }
+    second() { raise(new Error('Strong: second is not implemented')); }
+}
+Strong.prototype[Symbols.Strong] = true;
+class Choice extends Profunctor {
+    constructor(profunctor, left, right, type, registry, ...aliases) {
+        checkAndSet('Choice.super')(profunctor);
+        super(profunctor.promap, type);
+        checkAndSet('Choice')(this, profunctor, left, right);
+        registry && register(registry, this, ...aliases);
+    }
+    left() { raise(new Error('Choice: left is not implemented')); }
+    right() { raise(new Error('Choice: right is not implemented')); }
+}
+Choice.prototype[Symbols.Choice] = true;
+// 부모가 둘이라 Traversable 선례를 따른다 — 하나만 상속하고 나머지는 생성자로 받아 복사한다.
+class Wander extends Strong {
+    constructor(strong, choice, wander, type, registry, ...aliases) {
+        checkAndSet('Wander.super')(strong, choice);
+        super(strong, strong.first, strong.second, type);
+        this.left = choice.left;
+        this.right = choice.right;
+        checkAndSet('Wander')(this, strong, choice, wander);
+        registry && register(registry, this, ...aliases);
+    }
+    wander() { raise(new Error('Wander: wander is not implemented')); }
+}
+Wander.prototype[Symbols.Wander] = true;
 class Apply extends Functor { // F(a -> b) => F(a) => F(b)
     constructor(functor, ap, type, registry, ...aliases) {
         checkAndSet('Apply.super')(functor);
@@ -763,6 +859,11 @@ withTypeRegistry(Functor);
 withTypeRegistry(Bifunctor);
 withTypeRegistry(Contravariant);
 withTypeRegistry(Profunctor);
+// 빼먹으면 Strong.types 가 정적 상속으로 Profunctor.types 를 가리켜, 남의 인스턴스를
+// 자기 것으로 착각한다 — 명세 게이트 ①이 그것을 잡았다.
+withTypeRegistry(Strong);
+withTypeRegistry(Choice);
+withTypeRegistry(Wander);
 withTypeRegistry(Apply);
 withTypeRegistry(Applicative);
 withTypeRegistry(Alt);
@@ -3090,7 +3191,7 @@ const extra = (() => {
 
 export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
-    Filterable, Functor, Bifunctor, Contravariant, Profunctor,
+    Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
     Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,

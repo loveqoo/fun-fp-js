@@ -32,7 +32,8 @@ const TYPE_CLASSES = [
     'Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
     'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
     'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad',
-    'Foldable', 'Extend', 'Comonad', 'Traversable'
+    'Foldable', 'Extend', 'Comonad', 'Traversable',
+    'Strong', 'Choice', 'Wander'
 ];
 
 // 이름 접두사가 곧 "다루는 타입" 이다.
