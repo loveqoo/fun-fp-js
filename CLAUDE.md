@@ -60,6 +60,12 @@ Rebuild `dist/` before you commit. Why, and what to write instead:
 - `lookup(key)` pulls an instance from a registry (type classes); `of(value)` lifts
   a value (data types, `Applicative` instances). Type classes have no `of` — no
   test says so, and `instance.of(x)` is all over `tests/`, which reads as the opposite.
+- **A type is two levels deep, never three** — `Maybe<Array>`, not `Maybe<Array<number>>`;
+  the inner slot holds a bare name. Deeper checking is legitimate but comes from *delegation*
+  (each instance checks its own one level), never from a type expression. Containers holding
+  N values (`Array`, `Set`, `Map`) get no inner slot at all — checking them means iterating,
+  and iterating is a sample, not a type: `[]` passes `array(number)` and `array(string)` both.
+  Owner's ruling, 2026-08-15: [`.dev/plan/260815-type-ast-proposal.md`](./.dev/plan/260815-type-ast-proposal.md).
 - **An instance factory lives on the type class, never on the data type** —
   `Semigroup.Maybe('array')`, not `Maybe.Semigroup('array')`. It returns the same
   thing `lookup` does, so it belongs in the same place; and the name then reads in

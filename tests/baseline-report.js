@@ -110,6 +110,15 @@ const cases = [
     ['over 비함수 f 메시지', f => O(f).over(T(f), null, [1])],
     ['review 비함수 메시지', f => O(f).review(null, 1)],
 
+    // ── Bifunctor ─────────────────────────────────────────────────────
+    // 튜플은 JS 타입이 아니라 길이가 정한다. 이 행이 없어서 길이 검사를 넣었을 때
+    // baseline 이 「차이 없음」이라 했다 — 안 보는 곳은 안 바뀐 것처럼 보인다.
+    ['tuple.bimap 길이 2', f => f.Bifunctor.lookup('tuple').bimap(x => x * 10, x => x + 1, [1, 2])],
+    ['tuple.bimap 길이 5', f => f.Bifunctor.lookup('tuple').bimap(x => x * 10, x => x + 1, [1, 2, 3, 4, 5])],
+    ['tuple.bimap 빈 배열', f => f.Bifunctor.lookup('tuple').bimap(x => x * 10, x => x + 1, [])],
+    ['tuple.bimap 길이 1', f => f.Bifunctor.lookup('tuple').bimap(x => x * 10, x => x + 1, [7])],
+    ['either.bimap', f => f.Bifunctor.lookup('either').bimap(x => x * 10, x => x + 1, f.Either.Left(1))],
+
     // ── 모으기에 쓰는 Monoid ──────────────────────────────────────────
     ['first.concat(1,2)', f => L(f, 'Semigroup')('first').concat(1, 2)],
     ['first.concat(1,"a")', f => L(f, 'Semigroup')('first').concat(1, 'a')],

@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T15:15:12.197Z
+ * Built: 2026-08-14T16:51:28.112Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -1258,9 +1258,13 @@ class ArrayFunctor extends Functor {
     }
 }
 modules.push(ArrayFunctor);
+// 튜플은 JS 타입이 아니다 — .type 이 'Array' 인 것은 사실이라 그대로 두고, 길이를 여기서 본다.
+// 느슨한 모드에서도 산다: [] 에서 [NaN, NaN] 이 나오는 것은 타입 문제가 아니라 결함이다.
 class TupleBifunctor extends Bifunctor {
     constructor() {
-        super((f, g, [a, b]) => [f(a), g(b)], 'Array', Bifunctor.types, 'tuple');
+        super((f, g, t) => t.length === 2 ? [f(t[0]), g(t[1])]
+            : raise(new TypeError(`Bifunctor.bimap: tuple must have exactly 2 elements, got ${t.length}`)),
+            'Array', Bifunctor.types, 'tuple');
     }
 }
 modules.push(TupleBifunctor);

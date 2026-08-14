@@ -1253,9 +1253,13 @@ class ArrayFunctor extends Functor {
     }
 }
 modules.push(ArrayFunctor);
+// 튜플은 JS 타입이 아니다 — .type 이 'Array' 인 것은 사실이라 그대로 두고, 길이를 여기서 본다.
+// 느슨한 모드에서도 산다: [] 에서 [NaN, NaN] 이 나오는 것은 타입 문제가 아니라 결함이다.
 class TupleBifunctor extends Bifunctor {
     constructor() {
-        super((f, g, [a, b]) => [f(a), g(b)], 'Array', Bifunctor.types, 'tuple');
+        super((f, g, t) => t.length === 2 ? [f(t[0]), g(t[1])]
+            : raise(new TypeError(`Bifunctor.bimap: tuple must have exactly 2 elements, got ${t.length}`)),
+            'Array', Bifunctor.types, 'tuple');
     }
 }
 modules.push(TupleBifunctor);
