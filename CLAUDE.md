@@ -15,28 +15,10 @@ leave a one-line hint pointing there — doc examples are executed, comments are
 YAGNI is banned — it cost this repo 5 private instances and 11 top-level names,
 all since reverted.
 
-**No hand-written JavaScript here may use anything above ES2018** — `index.js`,
-both build scripts, and every file in `tests/`. The reference runtime is Google
-Apps Script, which documents no ECMAScript edition — only that `async`/`await`
-work and that ES2022 class fields are a *parsing* error. ES2018 is the last level
-it never contradicts. Syntax and methods differ: a missing method can go in the
-`polyfills` block at line 1, but missing *syntax* kills the file at parse time, so
-the polyfill never runs — `?.` `??` `??=` are therefore banned outright. Use
-`tests/utils.js`'s `allMatches` in place of `String.prototype.matchAll`. The rule
-covers dev files not for compatibility (they are Node-only anyway) but so there is
-one rule: people copy the idiom from the file next door, and a repo half-full of
-`?.` leaks it back into `index.js`. Exceptions live in a table in the gate and
-must carry a reason; the gate fails on a reasonless or stale one.
-`tests/es-ceiling.test.js` enforces this with the TypeScript parser, not regex.
-`dist/` needs no scan of its own, because
-`tests/dist-sync.test.js` ties every built file to its source, so anything proven
-about the source holds for the build. Two pairs: `index.js` → the three JS
-outputs, `types/` → `dist/fun-fp.d.ts`. That check calls the builders' exported
-`buildOutputs` / `buildTypeDeclarations` rather than copying the transforms; a
-copy would drift and go falsely green. It also cross-checks the hand-written file
-roster in `build-types.js` against `types/` — a declaration file missing from the
-roster vanishes from the shipped `.d.ts` with no runtime symptom.
-Why, and the full replacement table: [`docs/internals.md#es-ceiling`](./docs/internals.md#es-ceiling).
+**Nothing above ES2018**, in every hand-written `.js` here — `?.` `??` `??=` are
+out (syntax cannot be polyfilled); `matchAll` → `allMatches` in `tests/utils.js`.
+Rebuild `dist/` before you commit. Why, and what to write instead:
+[`docs/internals.md#es-ceiling`](./docs/internals.md#es-ceiling).
 
 ## How to work here
 
