@@ -182,6 +182,9 @@ test('팩토리로만 생기는 파생 인스턴스도 정규 태그다', () => 
         ['Monoid.Maybe("number")', fp.Monoid.Maybe('number'), 'Maybe'],
         ['Semigroup.Either("string","number")', fp.Semigroup.Either('string', 'number'), 'Either'],
         ['Applicative.Const("array")', fp.Applicative.Const('array'), 'Const(array)'],
+        // 이 표에 Forget 이 없어서 .type 이 'function' 인 채로 살아남았다 — FunctionWander 와
+        // 한 태그라 캐리어가 서로 섞여 들어갔다(2026-08-15 고침).
+        ['Wander.Forget("array")', fp.Wander.Forget('array'), 'Forget(array)'],
         ['Semigroup.lookup("maybe(maybe(array))")', fp.Semigroup.lookup('maybe(maybe(array))'), 'Maybe'],
         // 컨테이너 Setoid/Ord. 명세 게이트도 법칙 게이트도 .type **값**은 안 본다 —
         // 여기가 유일한 감시자다. Setoid.Struct 는 레지스트리 밖이라 더욱 그렇다.

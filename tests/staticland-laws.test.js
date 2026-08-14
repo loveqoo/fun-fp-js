@@ -175,6 +175,8 @@ const OBSERVE = {
     // Identity·Const 는 자기 타입이다. 한때 셋이 'Object' 를 공유해 서로 섞여 들어갔다.
     Identity: v => v.value,
     'Const(number)': v => v.value,
+    // Forget<r> 의 캐리어는 함수를 감싼 것이다 — 열어서 같은 입력들을 먹인다.
+    'Forget(number)': p => FN_INPUTS_F.map(p.run),
     Object: v => v.value,
     Array: v => v,
     Maybe: v => (v.isNothing() ? ['Nothing'] : ['Just', v.value]),
@@ -413,7 +415,12 @@ const PROFUNCTOR_KIT = {
     FunctionStrong: { p: x => x * 10, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
     // 숫자 합 모노이드라 p 가 숫자를 낸다. left 가 못 모으는 자리는 empty()=0 이 된다.
     FunctionChoice: { p: x => x * 10, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
-    'forget(number)': { p: a => a, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
+    // Forget 은 캐리어가 함수를 감싼 것이라 만들 때 wrap 을, 볼 때 run 을 지난다.
+    'forget(number)': {
+        p: fp.Wander.Forget('number').wrap(a => a),
+        tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5],
+        obs: xs => q => applyTo(xs)(q.run)
+    },
     // Tagged 의 값은 함수가 아니다 — 태울 것이 없으니 값 자체를 본다.
     TaggedChoice: { p: 7, tuples: null, eithers: null, seeds: null, obs: () => snapOne },
 };

@@ -99,7 +99,10 @@ console.log(Wander.lookup('function') instanceof Strong);  // true
 const { Strong, Choice, Wander, Monoid, Optics } = FunFP;
 
 const F = Wander.Forget(Monoid.lookup('array'));
-console.log(F.first(a => [a])([7, 9]));          // [ 7 ]   왼쪽만 모은다
+console.log(F.type);                             // 'Forget(array)'  자기 타입이다
+// 캐리어는 wrap 을 지난다 — 벌거벗은 함수는 FunctionWander 의 것이라 거부된다.
+const p = F.wrap(a => [a]);
+console.log(F.unwrap(F.first(p))([7, 9]));       // [ 7 ]   왼쪽만 모은다
 console.log(Strong.lookup('forget(array)') === F);  // true  3단으로 등록된다
 
 console.log(typeof Choice.lookup('tagged').first);  // 'undefined'

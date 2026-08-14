@@ -33,7 +33,10 @@ const L = (f, name) => (f[name].lookup ? f[name].lookup : f[name].of);
 const TYPE_CLASSES = ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
     'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply', 'Applicative',
     'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'Foldable', 'Extend', 'Comonad',
-    'Traversable'];
+    'Traversable',
+    // Static Land 밖이지만 레지스트리를 가진다. 빠져 있어서 Forget 인스턴스가 이 격자에
+    // 아예 안 보였다 — .type 이 'function' 이던 동안 function 묶음에 얹혀 보였을 뿐이다.
+    'Strong', 'Choice', 'Wander'];
 const allRegistryKeys = f => TYPE_CLASSES.map(c => `${c}: ${Object.keys(f[c].types).sort().join(',')}`);
 // **정렬해서 본다.** 묶음의 키 순서는 계약이 아니다 — 쓰는 쪽은 이름으로 구조분해하므로
 // 순서에 의존하는 곳이 0건이다. 정렬 안 한 줄을 두면 등록 순서를 건드릴 때마다 의미 없는
@@ -156,7 +159,7 @@ const cases = [
     ['타입클래스 정적 표면', f => ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid',
         'Category', 'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
         'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'Foldable',
-        'Extend', 'Comonad', 'Traversable']
+        'Extend', 'Comonad', 'Traversable', 'Strong', 'Choice', 'Wander']
         .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
 
     // 데이터 타입의 정적 표면. 위 행은 타입클래스만 보므로 **이름이 데이터 타입에서

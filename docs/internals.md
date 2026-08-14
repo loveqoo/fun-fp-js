@@ -304,6 +304,31 @@ Optic s a = P => P a a -> P s s
 **`Tagged` 에 `first` 와 `wander` 가 없다는 사실이 타입 안전성을 대신합니다** — Lens 나
 Traversal 에 `review` 를 쓰면 그 자리에서 `TypeError` 가 납니다.
 
+### `Forget` 의 캐리어는 감싼다 {#forget-newtype}
+
+`Forget<r> a b = a -> r` 이라 캐리어가 **벌거벗은 함수**일 수 있습니다. 실제로 그랬고,
+그래서 `.type` 이 `'function'` 이었습니다 — `FunctionWander` 와 **한 태그**였습니다.
+
+셋 다 통과하던 것들(실측, 2026-08-15 이전):
+
+```
+Forget 인스턴스에 평범한 함수 x=>x*2 를    → 통과
+function 인스턴스에 Forget 캐리어를        → 통과
+Forget<array>.left 가 가지에 따라 6 과 [] → 둘을 concat 하면 그제야 던진다
+```
+
+지금은 캐리어가 `{ run, _typeName: 'Forget(array)' }` 이고 `wrap`/`unwrap` 이 문입니다
+(`Applicative.Const` 와 같은 모양). 넷 다 거부합니다.
+
+`wrap` 이 `Const.wrap` 을 지나므로 **`f` 가 모노이드 값을 안 내놓으면 거기서 걸립니다.**
+전에는 Traversal 경로만 걸렸습니다 — `traverse` 를 지나야 `concat` 이 나오는데 Lens 는
+`first` 만 쓰기 때문입니다:
+
+```
+foldMapOf('array', traversed('array'), x => x*2, [1,2])  → 던졌다   (Traversal)
+foldMapOf('array', prop('a'),          x => x*2, {a:3})  → 6 이었다 (Lens)
+```
+
 ```javascript
 const { Optics } = FunFP;
 

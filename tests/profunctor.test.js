@@ -157,14 +157,37 @@ test('Forget - 3단으로 등록되고 같은 키는 같은 인스턴스', () =>
 
 test('Forget - 모으는 쪽만 모으고 나머지는 빈 것을 낸다', () => {
     const F = Wander.Forget(fp.Monoid.lookup('array'));
-    const p = a => [a];
-    assertEquals(F.first(p)([7, 9]), [7]);
-    assertEquals(F.second(p)([7, 9]), [9]);
+    // 캐리어는 반드시 wrap 을 지난다 — 벌거벗은 함수는 FunctionWander 의 것이다.
+    const p = F.wrap(a => [a]);
+    assertEquals(F.unwrap(F.first(p))([7, 9]), [7]);
+    assertEquals(F.unwrap(F.second(p))([7, 9]), [9]);
     // left 는 Left 를 모으고 Right 는 버린다. right 는 그 반대다.
-    assertEquals(F.left(p)(Either.Left(5)), [5]);
-    assertEquals(F.left(p)(Either.Right(5)), []);
-    assertEquals(F.right(p)(Either.Right(5)), [5]);
-    assertEquals(F.right(p)(Either.Left(5)), []);
+    assertEquals(F.unwrap(F.left(p))(Either.Left(5)), [5]);
+    assertEquals(F.unwrap(F.left(p))(Either.Right(5)), []);
+    assertEquals(F.unwrap(F.right(p))(Either.Right(5)), [5]);
+    assertEquals(F.unwrap(F.right(p))(Either.Left(5)), []);
+});
+
+// Forget 은 한때 .type 이 'function' 이라 FunctionWander 와 한 태그였다. 넷 다 통과했다.
+test('Forget - 벌거벗은 함수와 서로 섞이지 않는다', () => {
+    const F = Wander.Forget(fp.Monoid.lookup('array'));
+    const FN = Wander.lookup('function');
+    const messageOf = fn => { try { fn(); return '(안 던짐)'; } catch (e) { return e.message; } };
+    assertEquals(messageOf(() => F.first(a => [a])),
+        'Strong.first: argument must match Forget(array)');
+    assertEquals(messageOf(() => FN.first(F.wrap(a => [a]))),
+        'Strong.first: argument must match function');
+    assertEquals(F.type, 'Forget(array)', 'Forget 은 자기 타입이다');
+    assert(FN.type === 'function' && F.type !== FN.type, '두 인스턴스가 한 태그를 쓰면 안 된다');
+});
+
+// wrap 이 Const 의 문을 지나므로 fn 의 결과가 모노이드 값이 아니면 거기서 걸린다.
+test('Forget.wrap - 모노이드가 아닌 값을 내는 함수는 부를 때 걸린다', () => {
+    const F = Wander.Forget(fp.Monoid.lookup('array'));
+    const bad = F.wrap(a => a * 2);        // array 를 내야 하는데 숫자를 낸다
+    let message = '(안 던짐)';
+    try { F.unwrap(F.first(bad))([7, 9]); } catch (e) { message = e.message; }
+    assertEquals(message, 'Semigroup.concat: arguments must be the same type and match Array');
 });
 
 // Tagged 가 Strong·Wander 가 아니라는 것이 "Lens/Traversal 은 review 할 수 없다" 다.

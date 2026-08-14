@@ -46,6 +46,24 @@
 
 ---
 
+## 닫힘 — Forget 이 자기 타입을 갖는다 (2026-08-15)
+
+- **원인** — `Wander.Forget(m).type` 이 `'function'` 이라 `FunctionWander` 와 한 태그였다.
+  `Forget<r> a b = a -> r` 이라 캐리어가 벌거벗은 함수여서 구분할 표식이 없었다.
+  `.type` 게이트의 팩토리 표에 **Forget 이 아예 없었다** — 그래서 살아남았다.
+- **해결책** — 캐리어를 `{ run, _typeName: 'Forget(<키>)' }` 로 감싸고 `wrap`/`unwrap` 을
+  문으로 둔다(`Applicative.Const` 와 같은 모양). `wrap` 이 `Const.wrap` 을 지나므로
+  `f` 가 모노이드 값을 안 내놓는 것도 같이 걸린다.
+- **완료조건** — 두 인스턴스가 서로의 캐리어를 거부하고, Lens 경로에서도 `f` 가 검사된다.
+- **검증** — 네 혼동 사례 전부 거부, `foldMapOf('array', prop('a'), x=>x*2, {a:3})` 가
+  `6` 에서 거부로 바뀜. 뮤테이션 2종(태그를 `'function'` 으로 / `wrap` 에서 검사 제거)
+  전부 잡음. `npm test` 44/44 + 타입체크. `baseline` 차이는 인스턴스 2개가 `function`
+  묶음에서 `forget(array)`·`forget(maybe)` 묶음으로 이동한 것뿐, 그 외 0건.
+- **곁가지** — `baseline` 의 명단에 `Strong`/`Choice`/`Wander` 가 없어 **세 레지스트리를
+  통째로 안 보고 있었다.** 넣었다. `.type` 게이트의 팩토리 표에도 Forget 을 넣었다.
+- **참고** — `docs/internals.md#forget-newtype`
+
+
 ## 닫힘 — 팩토리 네임스페이스 통일 (2026-08-14)
 
 - **원인** — 인스턴스 팩토리 관례가 둘이었다. `Maybe.Semigroup`·`Maybe.Monoid`·

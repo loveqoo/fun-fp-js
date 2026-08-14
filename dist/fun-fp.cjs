@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T14:43:02.165Z
+ * Built: 2026-08-14T15:15:12.197Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -2693,14 +2693,23 @@ Wander.Forget = monoid => {
     if (key !== null && Wander.Forget._keyCache.has(key)) return Wander.Forget._keyCache.get(key);
     if (key === null && Wander.Forget._instanceCache.has(m)) return Wander.Forget._instanceCache.get(m);
     const C = Applicative.Const(m);
+    // 캐리어가 스스로를 밝힌다 — 벌거벗은 함수로 두면 FunctionWander 와 한 태그가 된다.
+    const tag = key === null ? 'Forget' : `Forget(${key})`;
+    const forgetOf = fn => ({ run: fn, _typeName: tag });
     // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다.
-    const P = new Profunctor((f, _g, p) => Contravariant.types.PredicateContravariant.contramap(f, p), 'function');
-    const S = new Strong(P, p => compose2(p, fst), p => compose2(p, snd), 'function');
+    const P = new Profunctor((f, _g, p) =>
+        forgetOf(Contravariant.types.PredicateContravariant.contramap(f, p.run)), tag);
+    const S = new Strong(P, p => forgetOf(compose2(p.run, fst)), p => forgetOf(compose2(p.run, snd)), tag);
     const Ch = new Choice(P,
-        p => e => Either.fold(p, () => m.empty(), e),
-        p => e => Either.fold(() => m.empty(), p, e), 'function');
+        p => forgetOf(e => Either.fold(p.run, () => m.empty(), e)),
+        p => forgetOf(e => Either.fold(() => m.empty(), p.run, e)), tag);
     const result = new Wander(S, Ch,
-        (traverse, p) => s => C.unwrap(traverse(C, compose2(C.wrap, p), s)), 'function');
+        (traverse, p) => forgetOf(s => C.unwrap(traverse(C, compose2(C.wrap, p.run), s))), tag);
+    // Const 와 같은 문이다 — 벌거벗은 함수를 Forget 으로 만들고, 다시 꺼낸다.
+    // 들어올 때 C.wrap 을 지나므로 fn 이 모노이드 값을 안 내놓으면 거기서 걸린다.
+    // Lens 경로는 traverse 를 안 지나 검사가 없었다 — docs/internals.md#optics
+    result.wrap = fn => forgetOf(a => C.unwrap(C.wrap(fn(a))));
+    result.unwrap = p => p.run;
     if (key !== null) {
         // Const 와 같이 3단으로 등록한다 — Wander 만 올리면 Strong.lookup('forget(array)') 가 안 된다.
         registerAs(Strong.types, `forget(${key})`, result);
@@ -2782,9 +2791,10 @@ const { Optics } = (() => {
     };
 
     // ── 연산: P를 고르는 것이 전부 ─────────────────────────────────────
-    const runOptic = (name, optic, P, pab, s) => {
+    // 결과에 s 를 적용하는 것은 호출자 몫이다 — Forget 은 결과가 벌거벗은 함수가 아니다.
+    const runOptic = (name, optic, P, pab) => {
         typeof optic !== 'function' && raise(new TypeError(`${name}: optic must be a function`));
-        return optic(P)(pab)(s);
+        return optic(P)(pab);
     };
     const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
     // 읽기 셋은 전부 이것의 특수 경우다. monoid 를 항상 요구하는 이유는 Lens/Iso
@@ -2794,7 +2804,8 @@ const { Optics } = (() => {
         // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
         const { instance: m } = resolveFoldMonoid(monoid);
         typeof f !== 'function' && raise(new TypeError('foldMapOf: f must be a function'));
-        return runOptic('foldMapOf', optic, forgetProfunctor(m), f, s);
+        const P = forgetProfunctor(m);
+        return P.unwrap(runOptic('foldMapOf', optic, P, P.wrap(f)))(s);
     };
     // 읽기 셋은 각자의 이름으로 던져야 한다 — foldMapOf 에 위임하면 귀속을 잃는다.
     const toList = (optic, s) => {
@@ -2819,7 +2830,7 @@ const { Optics } = (() => {
     };
     const over = (optic, f, s) => {
         typeof f !== 'function' && raise(new TypeError('over: f must be a function'));
-        return runOptic('over', optic, functionProfunctor, f, s);
+        return runOptic('over', optic, functionProfunctor, f)(s);
     };
     const set = (optic, b, s) => {
         typeof optic !== 'function' && raise(new TypeError('set: optic must be a function'));
