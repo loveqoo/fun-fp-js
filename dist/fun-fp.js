@@ -1,8 +1,9 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-13T15:41:01.605Z
+ * Built: 2026-08-14T01:22:11.050Z
  * Static Land specification compliant
  */
+// ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
 const polyfills = {
     array: {
         flatMap: Array.prototype.flatMap
@@ -15,14 +16,8 @@ const polyfills = {
             : entries => entries.reduce((obj, [k, v]) => (Object.defineProperty(obj, k, {
                 value: v, writable: true, enumerable: true, configurable: true
             }), obj), {}),
-        entries: Object.entries
-            ? obj => Object.entries(obj)
-            : obj => Object.keys(obj).map(k => [k, obj[k]]),
-        values: Object.values
-            ? obj => Object.values(obj)
-            : obj => Object.keys(obj).map(k => obj[k]),
         filter: (pred, obj) => polyfills.object.fromEntries(
-            polyfills.object.entries(obj).filter(([k, v]) => pred(v, k))
+            Object.entries(obj).filter(([k, v]) => pred(v, k))
         )
     }
 };
@@ -71,7 +66,7 @@ const types = {
         const typeName = typeof a;
         if (typeName !== 'object') return typeName;
         if (Array.isArray(a)) return 'Array';
-        return a.constructor?.name || 'object';
+        return (a.constructor && a.constructor.name) || 'object';
     },
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
@@ -159,12 +154,15 @@ const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => 
 const registryIndex = new Map();
 const registerAs = (types, key, instance) => {
     types[key] = instance;
-    if (typeof instance?.type !== 'string') return;
-    const bucket = registryIndex.get(instance.type.toLowerCase())
-        ?? registryIndex.set(instance.type.toLowerCase(), new Map()).get(instance.type.toLowerCase());
-    const entry = bucket.get(instance) ?? { name: null, key: null };
+    if (!instance || typeof instance.type !== 'string') return;
+    const typeKey = instance.type.toLowerCase();
+    if (!registryIndex.has(typeKey)) registryIndex.set(typeKey, new Map());
+    const bucket = registryIndex.get(typeKey);
+    let entry = bucket.get(instance);
+    if (entry === undefined || entry === null) entry = { name: null, key: null };
     // 대문자로 시작하는 키는 클래스 이름이고, 그것이 표시 이름이 된다.
-    if (key[0] === key[0].toUpperCase()) entry.name ??= key; else entry.key ??= key;
+    const field = key[0] === key[0].toUpperCase() ? 'name' : 'key';
+    if (entry[field] === undefined || entry[field] === null) entry[field] = key;
     bucket.set(instance, entry);
 };
 const register = (target, instance, ...aliases) => {
@@ -735,7 +733,7 @@ Algebra.all = key => {
     // `.type` 이 대문자('Maybe')인 것과 소문자('number')인 것이 섞여 있어 더 헷갈린다.
     key === key.toLowerCase() || raise(new TypeError(`Algebra.all: key must be lowercase, got ${key}`));
     const found = registryIndex.get(key);
-    found?.size > 0 || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
+    (found && found.size > 0) || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
     const result = {};
     for (const [instance, { name, key: composed }] of found) {
         result[name ? camelHead(name) : composedName(composed, instance.constructor.name)] = instance;
@@ -1027,7 +1025,7 @@ class ObjectFilterable extends Filterable {
 modules.push(ObjectFilterable);
 class ObjectFoldable extends Foldable {
     constructor() {
-        super((f, init, obj) => polyfills.object.values(obj).reduce(f, init), 'Object', Foldable.types, 'object');
+        super((f, init, obj) => Object.values(obj).reduce(f, init), 'Object', Foldable.types, 'object');
     }
 }
 modules.push(ObjectFoldable);
@@ -1039,7 +1037,9 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
     if (typeof x !== 'string' && !(x && x[symbol] === true)) {
         raise(new TypeError(`${label}: argument must be a string or ${TypeClass.name} instance`));
     }
-    const ctorName = instance.constructor?.name?.toLowerCase?.() || '';
+    const ctor = instance.constructor;
+    const rawName = ctor && ctor.name;
+    const ctorName = (rawName && typeof rawName.toLowerCase === 'function') ? rawName.toLowerCase() : '';
     let best = null;
     for (const [k, v] of Object.entries(TypeClass.types)) {
         if (v === instance && k === k.toLowerCase() && k !== ctorName) {
