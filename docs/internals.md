@@ -132,6 +132,31 @@ catch (e) { console.log(e.message); }  // 'Filterable.filter: arguments must be 
 
 ---
 
+### 이름은 심볼이 지닌다 — 문자열은 권위가 아니다
+
+한때 `types.of` 가 `_typeName` **문자열**을 먼저 읽었고, 그 분기가 JS 의 실제 모양을
+덮었습니다. 그래서 평범한 객체가 이름만 베끼면 통과했습니다.
+
+```javascript
+const { Functor } = FunFP;
+try { Functor.lookup('maybe').map(x => x, { value: 1, _typeName: 'Maybe' }); }
+catch (e) { console.log(e.message); }
+// 'Functor.map: arguments must be (function, Maybe)'
+```
+
+지금 값은 이름을 **심볼 키**로 지닙니다 — `Symbol.for('fun-fp-js/typeName')`. 소유자
+설계 그대로입니다: *"타입은 심볼로 정의하고 값은 문자열로 넣으려고 했습니다."*
+
+- **합타입은 부모 prototype 에 한 번** 심습니다. `Maybe.prototype` 에 `'Maybe'` 를 두면
+  `Just` 와 `Nothing` 이 함께 수렴합니다 — 그것이 `_typeName` 의 원래 직무였습니다.
+- **매개변수화된 것**(`Const(array)`·`Forget(array)`·`StateT(Maybe)`)은 캐리어를 만들 때
+  심습니다.
+- `_typeName` 은 **눈에 보이라고 남긴 필드**입니다. 둘이 어긋나면 심볼이 이깁니다.
+
+**대조표 방식은 버렸습니다.** `_typeName` 문자열을 이름별 심볼 표로 검증하는 방법도 같은
+보호를 주지만 `types.check` 가 **2.12배** 느렸습니다(2천만 회 5회 교차 실행). 심볼이 이름을
+직접 지니면 **1.04배**입니다 — 읽기가 한 번이라 그렇습니다.
+
 ## `'any'` — 값 타입을 보지 않는 인스턴스 {#any}
 
 `first`/`last` 는 `(a, b) => a` · `(a, b) => b` 라 값의 타입과 무관합니다. 그래서 `.type` 이
@@ -253,6 +278,45 @@ ObjectFoldable 에 Identity 를    → 통과
 
 지금은 넷 다 거부합니다. **안쪽 값 타입이 있으면 `Object` 가 아니라 자기 타입이어야 하고,
 그 타입의 값이 무엇인지를 태그가 말해야 합니다**(소유자 판단, 2026-08-14).
+
+### 태그만으로는 부족했다 — `Identity` 는 클래스다
+
+처음에는 `{ value, _typeName: 'Identity' }` 객체 리터럴에 이름만 넣었습니다. **이름은
+베끼면 됩니다.** 소유자 판정(2026-08-15): *"Object의 하위타입을 만들고 타입이름을 넣으면서
+값싸게 해결하려고 한 것이 잘못된 겁니다."*
+
+`_typeName` 의 직무는 **합타입 수렴**입니다 — `Just` 와 `Nothing` 이 둘 다 `'Maybe'` 를
+넣어 `types.of` 가 한 인스턴스로 보냅니다. 타입 선언이 아닙니다. 이 저장소의 설계는
+**타입은 심볼로 정의하고 값은 문자열로 넣는다** 입니다.
+
+그래서 `Identity` 는 `Maybe` 와 같은 급입니다.
+
+```javascript
+const { Identity } = FunFP;
+
+const id = Identity.of(5);
+console.log(id.constructor.name);          // 'Identity'   객체 리터럴이면 'Object' 다
+console.log(id instanceof Identity);       // true
+console.log(id.map(x => x * 2).value);     // 10
+console.log(id.extract());                 // 5
+
+console.log(Identity.isIdentity(id));                                   // true
+console.log(Identity.isIdentity({ value: 5, _typeName: 'Identity' }));  // false  베낀 것
+```
+
+그리고 **`types.of` 는 심볼만 봅니다**([#type](#type)). 베낀 이름은 그 값의 실제 JS 모양
+(`'Object'`)으로 읽히므로 타입 클래스 메서드를 통과하지 못합니다.
+
+```javascript
+const { Functor } = FunFP;
+
+try { Functor.lookup('identity').map(x => x + 1, { value: 5, _typeName: 'Identity' }); }
+catch (e) { console.log(e.message); }
+// 'Functor.map: arguments must be (function, Identity)'
+```
+
+`Const` 와 `Forget` 은 아직 클래스가 아닙니다 — 모노이드마다 태그가 달라 모양이 다르고,
+별도 작업입니다. 다만 캐리어가 심볼을 지니므로 **위조는 이미 막힙니다.**
 
 ```javascript
 const { Traversable, Applicative, Functor } = FunFP;

@@ -34,6 +34,7 @@ export * from "./TypeLambdas";
 import "./data/builtins";
 
 // ── Data types ───────────────────────────────────────────────────────
+export * from "./data/Identity";
 export * from "./data/Maybe";
 export * from "./data/Either";
 export * from "./data/Task";

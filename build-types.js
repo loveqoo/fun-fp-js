@@ -28,6 +28,7 @@ export const TYPE_FILES = [
     'HKT.d.ts',
     'TypeClasses.d.ts',
     'TypeLambdas.d.ts',
+    'data/Identity.d.ts',
     'data/Maybe.d.ts',
     'data/Either.d.ts',
     'data/Task.d.ts',

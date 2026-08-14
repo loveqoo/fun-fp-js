@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T16:51:28.112Z
+ * Built: 2026-08-14T17:12:20.429Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -51,6 +51,10 @@ const Symbols = {
     Strong: Symbol.for('fun-fp-js/Strong'),
     Choice: Symbol.for('fun-fp-js/Choice'),
     Wander: Symbol.for('fun-fp-js/Wander'),
+    // 값이 자기 합타입 이름을 지니는 자리. 문자열 _typeName 은 베낄 수 있지만
+    // 심볼 키는 이 표에서만 온다 — 설계상 "타입은 심볼로 정의한다".
+    TypeName: Symbol.for('fun-fp-js/typeName'),
+    Identity: Symbol.for('fun-fp-js/Identity'),
     Maybe: Symbol.for('fun-fp-js/Maybe'),
     Either: Symbol.for('fun-fp-js/Either'),
     Task: Symbol.for('fun-fp-js/Task'),
@@ -66,7 +70,11 @@ const Symbols = {
 const types = {
     of: a => {
         if (a == null) return a === null ? 'null' : 'undefined';
-        if (a._typeName !== undefined) return a._typeName;
+        // **심볼만이 권위다.** _typeName 은 눈에 보이라고 남긴 필드이고 베낄 수 있다.
+        // 이름 대조표로 문자열을 검증하는 방식도 같은 보호를 주지만 2.12배 느렸다(실측).
+        // docs/internals.md#type
+        const named = a[Symbols.TypeName];
+        if (named !== undefined) return named;
         const typeName = typeof a;
         if (typeName !== 'object') return typeName;
         if (Array.isArray(a)) return 'Array';
@@ -1167,7 +1175,18 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
 // 캐리어가 스스로를 밝힌다 — { value } 만 두면 Identity·Const·평범한 객체가 한 태그를
 // 공유해 서로 섞여 들어간다(실측). 모양이 객체인 것과 타입이 Object 인 것은 다른 말이다.
 // docs/internals.md#identity-const
-const identityOf = value => ({ value, _typeName: 'Identity' });
+class Identity {
+    constructor(value) { this.value = value; this._typeName = 'Identity'; }
+    map(f) { return Functor.lookup('identity').map(f, this); }
+    extend(f) { return Extend.lookup('identity').extend(f, this); }
+    extract() { return Comonad.lookup('identity').extract(this); }
+}
+Identity.prototype[Symbols.Identity] = true;
+Identity.prototype[Symbols.TypeName] = 'Identity';
+Identity.of = value => new Identity(value);
+// 문자열은 베낄 수 있지만 심볼은 이 표에서만 온다 — isIdentity 는 위조를 가른다.
+Identity.isIdentity = x => x != null && x[Symbols.Identity] === true;
+const identityOf = Identity.of;
 class IdentityFunctor extends Functor {
     constructor() {
         super((f, x) => identityOf(f(x.value)), 'Identity', Functor.types, 'identity');
@@ -1210,7 +1229,7 @@ Applicative.Const = monoid => {
     // 태그가 안쪽까지 말한다 — const(array) 는 "배열로 모으는 Const" 다. 그냥 Object 라고
     // 하면 Identity 와도, 평범한 객체와도 구분되지 않는다.
     const tag = key === null ? 'Const' : `Const(${key})`;
-    const constOf = value => ({ value, _typeName: tag });
+    const constOf = value => { const c = { value, _typeName: tag }; c[Symbols.TypeName] = tag; return c; };
     const result = new Applicative(
         new Apply(new Functor((_f, x) => x, tag),
                   (a, b) => constOf(m.concat(a.value, b.value)), tag),
@@ -1393,6 +1412,7 @@ class Nothing extends Maybe {
     chain(f) { return Chain.lookup('maybe').chain(f, this); }
 }
 Maybe.prototype[Symbols.Maybe] = true;
+Maybe.prototype[Symbols.TypeName] = 'Maybe';
 Maybe.Just = x => new Just(x);
 Maybe.Nothing = () => new Nothing();
 Maybe.of = x => new Just(x);
@@ -1516,6 +1536,7 @@ class Right extends Either {
     chain(f) { return Chain.lookup('either').chain(f, this); }
 }
 Either.prototype[Symbols.Either] = true;
+Either.prototype[Symbols.TypeName] = 'Either';
 Either.Left = x => new Left(x);
 Either.Right = x => new Right(x);
 Either.of = x => new Right(x);
@@ -1787,6 +1808,7 @@ class Task {
     catchError(handler) { return Task.catchError(handler, this); }
 }
 Task.prototype[Symbols.Task] = true;
+Task.prototype[Symbols.TypeName] = 'Task';
 const settledFork = (task, onReject, onResolve) => {
     let settled = false;
     task.fork(
@@ -1985,6 +2007,7 @@ class Invalid extends Validation {
     map(f) { return this; }
 }
 Validation.prototype[Symbols.Validation] = true;
+Validation.prototype[Symbols.TypeName] = 'Validation';
 Validation.Valid = x => new Valid(x);
 Validation.Invalid = (errors, monoid) => new Invalid(errors, monoid);
 Validation.of = x => new Valid(x);
@@ -2078,6 +2101,7 @@ class Reader {
     chain(f) { return Chain.lookup('reader').chain(f, this); }
 }
 Reader.prototype[Symbols.Reader] = true;
+Reader.prototype[Symbols.TypeName] = 'Reader';
 Reader.of = x => new Reader(_ => x);
 Reader.isReader = x => x != null && x[Symbols.Reader] === true;
 Reader.ask = new Reader(env => env);
@@ -2131,6 +2155,7 @@ class Writer {
     chain(f) { return Chain.lookup('writer').chain(f, this); }
 }
 Writer.prototype[Symbols.Writer] = true;
+Writer.prototype[Symbols.TypeName] = 'Writer';
 Writer.of = (x, monoid = Monoid.lookup('array')) => new Writer(x, monoid.empty(), monoid);
 Writer.isWriter = x => x != null && x[Symbols.Writer] === true;
 Writer.tell = (output, monoid = Monoid.lookup('array')) => new Writer(undefined, output, monoid);
@@ -2192,6 +2217,7 @@ class State {
     chain(f) { return Chain.lookup('state').chain(f, this); }
 }
 State.prototype[Symbols.State] = true;
+State.prototype[Symbols.TypeName] = 'State';
 State.of = x => new State(s => [x, s]);
 State.isState = x => x != null && x[Symbols.State] === true;
 State.get = new State(s => [s, s]);
@@ -2465,6 +2491,7 @@ const { Free, trampoline } = (() => {
         chain(f) { return Chain.lookup('free').chain(f, this); }
     }
     Free.prototype[Symbols.Free] = true;
+    Free.prototype[Symbols.TypeName] = 'Free';
     class Thunk {
         constructor(f) {
             types.checkFunction(f, 'Thunk');
@@ -2684,7 +2711,7 @@ Wander.Forget = monoid => {
     const C = Applicative.Const(m);
     // 캐리어가 스스로를 밝힌다 — 벌거벗은 함수로 두면 FunctionWander 와 한 태그가 된다.
     const tag = key === null ? 'Forget' : `Forget(${key})`;
-    const forgetOf = fn => ({ run: fn, _typeName: tag });
+    const forgetOf = fn => { const p = { run: fn, _typeName: tag }; p[Symbols.TypeName] = tag; return p; };
     // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다.
     const P = new Profunctor((f, _g, p) =>
         forgetOf(Contravariant.types.PredicateContravariant.contramap(f, p.run)), tag);
@@ -2921,7 +2948,7 @@ const StateT = (M) => {
     const alias = typeName.toLowerCase();
 
     class ST {
-        constructor(program) { this._program = program; this._typeName = typeName; }
+        constructor(program) { this._program = program; this._typeName = typeName; this[Symbols.TypeName] = typeName; }
         run(s) {
             if (!(this instanceof ST)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return ST.runState(s, this);
@@ -2975,7 +3002,7 @@ const EitherT = (M) => {
     const alias = typeName.toLowerCase();
 
     class ET {
-        constructor(program) { this._program = program; this._typeName = typeName; }
+        constructor(program) { this._program = program; this._typeName = typeName; this[Symbols.TypeName] = typeName; }
         run() {
             if (!(this instanceof ET)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return ET.runEitherT(this);
@@ -3034,7 +3061,7 @@ const ReaderT = (M) => {
     const alias = typeName.toLowerCase();
 
     class RT {
-        constructor(program) { this._program = program; this._typeName = typeName; }
+        constructor(program) { this._program = program; this._typeName = typeName; this[Symbols.TypeName] = typeName; }
         run(env) {
             if (!(this instanceof RT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return RT.runReaderT(env, this);
@@ -3092,7 +3119,7 @@ const WriterT = (M, writerMonoid) => {
     const alias = typeName.toLowerCase();
 
     class WT {
-        constructor(program) { this._program = program; this._typeName = typeName; }
+        constructor(program) { this._program = program; this._typeName = typeName; this[Symbols.TypeName] = typeName; }
         run() {
             if (!(this instanceof WT)) raise(new TypeError(`${typeName}.run: must be called on a ${typeName} instance`));
             return WT.runWriterT(this);
@@ -3283,7 +3310,7 @@ export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
-    Extend, Comonad, Traversable, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
+    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
