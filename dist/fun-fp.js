@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-14T09:13:33.299Z
+ * Built: 2026-08-14T09:50:45.258Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling

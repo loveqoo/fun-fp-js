@@ -19,9 +19,11 @@ const indexUrl = pathToFileURL(join(rootDir, 'index.js')).href;
 
 // Assign to globalThis rather than declaring consts: many examples start with their own
 // `const { Maybe } = FunFP;`, which would collide with an injected `const Maybe`.
+// `fp` 도 함께 둔다 — README 는 진짜 import 문(`import fp from 'fun-fp-js'`)을 보여줘야
+// 하는데 그 줄은 아래에서 떼어내므로, 그 이름이 없으면 예제가 죽는다.
 const PREAMBLE =
     `import FunFP from ${JSON.stringify(indexUrl)};\n` +
-    'Object.assign(globalThis, FunFP); globalThis.FunFP = FunFP;\n';
+    'Object.assign(globalThis, FunFP); globalThis.FunFP = FunFP; globalThis.fp = FunFP;\n';
 
 // Captures the fence info string so `no-run` (and its reason) can be read.
 const FENCE = /^```javascript([^\n]*)\n([\s\S]*?)^```/gm;
@@ -50,12 +52,18 @@ const firstLine = code => code.trim().split('\n')[0];
 
 logSection('Docs examples');
 
-const docs = readdirSync(docsDir).filter(n => n.endsWith('.md')).sort();
+// 루트 README 도 넣는다. **npm 패키지의 첫 화면**이라 여기가 낡으면 가장 먼저 눈에 띈다 —
+// 그런데 한때 이 파일은 "# TODO" 한 줄이었고 아무도 몰랐다.
+const docs = [
+    { label: 'README.md', path: join(rootDir, 'README.md') },
+    ...readdirSync(docsDir).filter(n => n.endsWith('.md')).sort()
+        .map(n => ({ label: `docs/${n}`, path: join(docsDir, n) })),
+];
 let totalRun = 0;
 let totalSkipped = 0;
 
-for (const name of docs) {
-    const blocks = extract(readFileSync(join(docsDir, name), 'utf8'));
+for (const { label: name, path } of docs) {
+    const blocks = extract(readFileSync(path, 'utf8'));
     if (blocks.length === 0) continue;
 
     const runnable = blocks.filter(b => b.run);
@@ -63,11 +71,11 @@ for (const name of docs) {
     totalRun += runnable.length;
     totalSkipped += skipped.length;
 
-    console.log(`\ndocs/${name} — ${runnable.length} run, ${skipped.length} skipped`);
+    console.log(`\n${name} — ${runnable.length} run, ${skipped.length} skipped`);
 
     // A bare `no-run` would let anyone silence a failing example without saying why.
     skipped.forEach((block, i) => {
-        test(`docs/${name} no-run ${i + 1} has a reason`, () => {
+        test(`${name} no-run ${i + 1} has a reason`, () => {
             if (!block.reason) {
                 throw new Error(
                     `\`\`\`javascript no-run 에 이유가 없다 — "no-run <이유>" 로 쓰라\n   at: ${firstLine(block.code)}`
@@ -77,7 +85,7 @@ for (const name of docs) {
     });
 
     runnable.forEach((block, i) => {
-        test(`docs/${name} example ${i + 1}`, () => {
+        test(`${name} example ${i + 1}`, () => {
             const { status, signal, error, stderr } = runBlock(block.code);
             if (error) throw new Error(`could not start: ${error.message}`);
             if (signal) throw new Error(`killed by ${signal}`);
