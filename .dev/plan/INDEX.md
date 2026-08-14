@@ -8,7 +8,7 @@
 | --- | --- |
 | `260805-02c344-1-candidates.md` | 작업 후보 4건 (A 채택 / B **기각** / C·D 미착수) |
 | `260805-02c344-1-test-gate.md` | 테스트 게이트 복구 계획 — **완료** (npm test 도입) |
-| `260814-strong-choice-wander.md` | `Strong`/`Choice`/`Wander` 타입 클래스 — **타당성 + 계획, 착수 전.** 결정 넷이 열려 있다 |
+| `260814-strong-choice-wander.md` | `Strong`/`Choice`/`Wander` 타입 클래스 — **완료 (5단계 전부).** 완료조건 하나 미달(optics 테스트 3줄 수정) — `.dev/TODO.md` 참조 |
 
 ## 정정 — 개별 문서보다 이쪽이 우선한다
 
