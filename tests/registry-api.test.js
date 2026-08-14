@@ -139,9 +139,10 @@ test('역인덱스와 실제 레지스트리가 일치한다 — 문을 우회�
     const inRegistry = new Map();          // .type(소문자) -> Set<인스턴스>
     for (const name of TYPE_CLASSES) {
         for (const instance of Object.values(fp[name].types)) {
-            if (typeof instance?.type !== 'string') continue;
+            if (!instance || typeof instance.type !== 'string') continue;
             const t = instance.type.toLowerCase();
-            (inRegistry.get(t) ?? inRegistry.set(t, new Set()).get(t)).add(instance);
+            if (!inRegistry.has(t)) inRegistry.set(t, new Set());
+            inRegistry.get(t).add(instance);
         }
     }
     const missing = [];

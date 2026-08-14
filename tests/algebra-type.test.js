@@ -83,7 +83,8 @@ const everyInstance = () => {
     const byInstance = new Map();
     for (const name of TYPE_CLASSES) {
         for (const [key, instance] of Object.entries(fp[name].types)) {
-            const seen = byInstance.get(instance) ?? { names: [], keys: [] };
+            const found = byInstance.get(instance);
+            const seen = found === undefined ? { names: [], keys: [] } : found;
             (key[0] === key[0].toUpperCase() ? seen.names : seen.keys).push(key);
             byInstance.set(instance, seen);
         }
@@ -91,7 +92,7 @@ const everyInstance = () => {
     return [...byInstance.entries()].map(([instance, { names, keys }]) => ({
         // 조립 키로만 닿는 파생은 이름이 없다. `plus(array)` 는 Semigroup·Monoid 두
         // 인스턴스로 존재하므로 소속 클래스를 붙여야 서로 구분된다.
-        label: names[0] ?? `${instance.constructor.name}(${keys[0]})`,
+        label: names.length > 0 ? names[0] : `${instance.constructor.name}(${keys[0]})`,
         composedKey: names.length > 0 ? null : keys[0],
         instance, isNamed: names.length > 0,
     }));
@@ -99,7 +100,10 @@ const everyInstance = () => {
 
 const expectedTypeOf = ({ label, composedKey, isNamed }) => {
     if (EXCEPTIONS[label]) return EXCEPTIONS[label][0];
-    if (!isNamed) return BY_COMPOSED_KEY[composedKey] ?? null;
+    if (!isNamed) {
+        const byKey = BY_COMPOSED_KEY[composedKey];
+        return byKey === undefined ? null : byKey;
+    }
     const prefix = Object.keys(BY_PREFIX).find(p => label.startsWith(p));
     return prefix ? BY_PREFIX[prefix] : null;
 };

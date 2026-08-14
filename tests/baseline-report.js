@@ -185,7 +185,7 @@ const cases = [
         // 컨테이너 Setoid/Ord — 불러야 생긴다. HEAD 에 없으면 THROW 로 잡히는 것이 맞다.
         try { f.Setoid.lookup('maybe(number)'); f.Setoid.lookup('array(number)');
               f.Setoid.lookup('either(string,number)'); f.Ord.lookup('maybe(number)');
-              f.Ord.lookup('array(number)'); } catch { /* HEAD 에는 없다 */ }
+              f.Ord.lookup('array(number)'); } catch (e) { /* HEAD 에는 없다 */ }
         f.StateT('maybe'); f.EitherT('task'); f.ReaderT('maybe');
         f.WriterT('maybe', f.Monoid.lookup('array'));
         return 'done';
@@ -194,7 +194,13 @@ const cases = [
     ['지연 등록 후 Algebra.all 키', allBundles],
 ];
 
-const { changed } = await diffCases(cases, { ref: process.argv[2] || 'HEAD' });
-console.log(changed
-    ? '\n판정: 위 차이를 계획서와 하나씩 대조하라. 계획에 없으면 회귀다.'
-    : '\n판정: 관측 가능한 동작이 그대로다.');
+// 최상위 await 는 ES2022 라 상한 위다 — async 함수로 감싼다. 덤으로 거부를 잡게 됐다:
+// 최상위 await 가 거부되면 처리되지 않은 거부로 새어 나간다.
+const main = async () => {
+    const { changed } = await diffCases(cases, { ref: process.argv[2] || 'HEAD' });
+    console.log(changed
+        ? '\n판정: 위 차이를 계획서와 하나씩 대조하라. 계획에 없으면 회귀다.'
+        : '\n판정: 관측 가능한 동작이 그대로다.');
+};
+
+main().catch(e => { console.error(e); process.exitCode = 1; });

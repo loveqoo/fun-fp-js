@@ -176,7 +176,7 @@ test('법칙 — 반사·대칭·추이 (Either)', () => {
 
 test('다른 타입을 넘기면 던진다', () => {
     let threw = false;
-    try { Setoid.lookup('maybe(number)').equals(J(1), 1); } catch { threw = true; }
+    try { Setoid.lookup('maybe(number)').equals(J(1), 1); } catch (e) { threw = true; }
     assertEquals(threw, true, 'Maybe 아닌 것을 섞으면 거부한다');
 });
 

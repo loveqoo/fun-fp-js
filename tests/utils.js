@@ -88,3 +88,18 @@ export const assertThrowsWith = (fn, expectedMessage, desc) => {
 };
 
 export const logSection = title => console.log(`\n=== ${title} ===\n`);
+
+// String.prototype.matchAll 은 ES2020 이라 저장소 상한(ES2018) 위다 — exec 루프로 같은 것을
+// 만든다. 근거는 docs/internals.md#es-ceiling. 원본 정규식의 lastIndex 를 건드리지 않도록
+// 복제해서 돌린다(matchAll 도 그렇게 한다).
+export const allMatches = (re, text) => {
+    if (!re.global) throw new Error('allMatches: 정규식에 g 플래그가 필요하다');
+    const scan = new RegExp(re.source, re.flags);
+    const out = [];
+    let m;
+    while ((m = scan.exec(text)) !== null) {
+        out.push(m);
+        if (m[0] === '') scan.lastIndex++;   // 빈 매치에서 제자리걸음하지 않게
+    }
+    return out;
+};

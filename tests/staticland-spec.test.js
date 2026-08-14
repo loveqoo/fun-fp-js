@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fp from '../index.js';
-import { test, assertEquals, assert, logSection } from './utils.js';
+import { test, assertEquals, assert, logSection, allMatches } from './utils.js';
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -107,7 +107,8 @@ test('② 런타임 클래스의 상속이 명세의 부모 사슬 안에 있다
     // 하나만 extends 로 비추고 나머지는 메서드 복사로 진다 — 그 복사는 ①이 검사한다.
     const bad = [];
     for (const [name, { sameT }] of Object.entries(SPEC)) {
-        const jsParent = Object.getPrototypeOf(fp[name])?.name;
+        const proto = Object.getPrototypeOf(fp[name]);
+        const jsParent = proto === null || proto === undefined ? undefined : proto.name;
         if (sameT.length === 0) {
             jsParent === 'Algebra'
                 || bad.push(`${name}: 명세에 부모가 없는데 ${jsParent} 를 상속한다`);
@@ -178,7 +179,7 @@ test('⑤ 표·타입 선언·문서가 같은 타입 클래스 집합을 말한
 
     // (b) types/TypeClasses.d.ts 가 선언하는 것
     const dts = readFileSync(join(rootDir, 'types', 'TypeClasses.d.ts'), 'utf8');
-    const declared = [...dts.matchAll(/^export interface ([A-Z][A-Za-z]*)[<\s]/gm)]
+    const declared = allMatches(/^export interface ([A-Z][A-Za-z]*)[<\s]/gm, dts)
         .map(m => m[1]).filter(n => SPEC[n]);
     assertEquals([...new Set(declared)].sort().join(','), expected.join(','),
         '타입 선언에서 빠졌거나 더 있는 타입 클래스');
@@ -187,7 +188,8 @@ test('⑤ 표·타입 선언·문서가 같은 타입 클래스 집합을 말한
     const readme = readFileSync(join(rootDir, 'docs', 'README.md'), 'utf8');
     const graph = /## 타입 클래스 의존성 그래프[\s\S]*?```([\s\S]*?)```/.exec(readme);
     assert(graph, 'docs/README.md 에서 의존성 그래프 블록을 못 찾았다');
-    const drawn = [...new Set(graph[1].match(/[A-Z][A-Za-z]+/g) ?? [])].sort();
+    const names = graph[1].match(/[A-Z][A-Za-z]+/g);
+    const drawn = [...new Set(names === null ? [] : names)].sort();
     assertEquals(drawn.join(','), expected.join(','),
         '문서 그래프가 코드에 없는 이름을 그렸거나 있는 이름을 빠뜨렸다');
 });
@@ -200,7 +202,7 @@ test('⑥ 타입 선언의 extends 가 명세의 "same T" 부모와 일치한다
         // 선언은 여러 줄에 걸칠 수 있다: `interface X<F> \n extends A<F>, B<F> {`
         const m = new RegExp(`^export interface ${name}[<\\s][\\s\\S]*?\\{`, 'm').exec(dts);
         assert(m, `${name}: 타입 선언을 못 찾았다`);
-        const parents = [...m[0].matchAll(/(?:extends|,)\s*([A-Z][A-Za-z]*)/g)]
+        const parents = allMatches(/(?:extends|,)\s*([A-Z][A-Za-z]*)/g, m[0])
             .map(x => x[1]).filter(n => SPEC[n]).sort();
         assertEquals(parents.join(','), [...sameT].sort().join(','),
             `${name} 의 타입 선언 extends 가 명세 부모와 다르다`);

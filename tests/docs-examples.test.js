@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { test, logSection } from './utils.js';
+import { test, logSection, allMatches } from './utils.js';
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const docsDir = join(rootDir, 'docs');
@@ -33,7 +33,7 @@ const parseFence = info => {
 };
 
 const extract = source =>
-    [...source.matchAll(FENCE)].map(([, info, code]) => ({ ...parseFence(info), code }));
+    allMatches(FENCE, source).map(([, info, code]) => ({ ...parseFence(info), code }));
 
 // Many examples open with `import FunFP from 'fun-fp-js';` to show readers how to import.
 // That line is useful in the docs but collides with the preamble's own import, so strip it

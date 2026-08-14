@@ -62,8 +62,8 @@ const instancesOf = name => {
 // **팩토리를 부르기 전에 뜬다.** 레지스트리는 조회로 늘어나므로, 아래 FACTORY_CASES 가
 // maybe(array) 같은 키를 만들어 넣으면 순회가 그것까지 훑는다. 그런데 컨테이너 인스턴스는
 // .type('Maybe')만으로 표본을 정할 수 없다 — 안쪽 타입이 다르면 concat 이 던진다.
-const REGISTERED = Object.fromEntries(
-    ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group'].map(n => [n, instancesOf(n)]));
+const REGISTERED = ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group']
+    .reduce((acc, n) => { acc[n] = instancesOf(n); return acc; }, {});
 
 // ─── 표본 ────────────────────────────────────────────────────────────
 const SAMPLES = {
@@ -180,7 +180,7 @@ const REGISTERED_FUNCTORS = instancesOf('Functor');
 // ─── 법칙 ────────────────────────────────────────────────────────────
 const show = v => v instanceof Date ? `Date(${v.getTime()})`
     : typeof v === 'function' ? '<function>'
-    : v && typeof v.toString === 'function' && !Array.isArray(v) && typeof v === 'object' && v.constructor?.name !== 'Object'
+    : v && typeof v.toString === 'function' && !Array.isArray(v) && typeof v === 'object' && (v.constructor && v.constructor.name) !== 'Object'
         ? String(v) : JSON.stringify(v);
 
 const LAWS = {
@@ -234,7 +234,11 @@ const LAWS = {
 // Monoid·Group 은 상위의 법칙도 함께 져야 한다 — 명세의 "same T" 사슬 그대로다.
 const LAW_CHAIN = { Setoid: ['Setoid'], Ord: ['Ord'], Semigroup: ['Semigroup'], Monoid: ['Semigroup', 'Monoid'], Group: ['Semigroup', 'Monoid', 'Group'] };
 
-const samplesFor = (label, type) => SAMPLE_OVERRIDES[label]?.[0] ?? SAMPLES[type];
+const samplesFor = (label, type) => {
+    const override = SAMPLE_OVERRIDES[label];
+    const picked = override === undefined || override === null ? undefined : override[0];
+    return picked === undefined || picked === null ? SAMPLES[type] : picked;
+};
 
 const runAll = name => {
     const broken = [];
@@ -275,7 +279,7 @@ test('팩토리로만 생기는 인스턴스도 법칙을 지킨다', () => {
     const broken = [];
     for (const [label, name, instance, xs, eq] of FACTORY_CASES) {
         for (const law of LAW_CHAIN[name]) {
-            LAWS[law](instance, xs, eq ?? EQ[instance.type], msg => broken.push(`${label}: ${msg}`));
+            LAWS[law](instance, xs, (eq === undefined || eq === null) ? EQ[instance.type] : eq, msg => broken.push(`${label}: ${msg}`));
         }
     }
     assertEquals(report(broken), '', '팩토리 산물의 법칙');
@@ -318,7 +322,7 @@ test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 
         if (!obs || !xs) continue;
         const caught = xs.some(a => {
             try { return JSON.stringify(obs(F.map(x => x, a))) !== JSON.stringify(obs(F.map(f, a))); }
-            catch { return true; }
+            catch (e) { return true; }
         });
         caught || blind.push(label);
     }
@@ -338,7 +342,7 @@ const DEGENERATE = {
 };
 const fnA = x => (typeof x === 'number' ? x + 1 : x);
 const fnB = x => (typeof x === 'number' ? x * 2 : x);
-const same = (obs, a, b) => { try { return JSON.stringify(obs(a)) === JSON.stringify(obs(b)); } catch { return false; } };
+const same = (obs, a, b) => { try { return JSON.stringify(obs(a)) === JSON.stringify(obs(b)); } catch (e) { return false; } };
 
 // Kleisli 클래스는 .type 이 전부 'function' 이라 레지스트리 키로 갈라야 한다.
 const KLEISLI = {
@@ -494,7 +498,7 @@ const CLASS_LAWS = {
     Extend: (E, obs) => {
         const xs = FUNCTOR_SAMPLES[E.type]; if (!xs) return null;
         const ff = w => (Array.isArray(w) ? w.length : 0);
-        const gg = w => (Array.isArray(w) ? (w[0] ?? 0) : 0);
+        const gg = w => (Array.isArray(w) ? (w[0] === undefined || w[0] === null ? 0 : w[0]) : 0);
         const bad = [];
         for (const w of xs)
             same(obs, E.extend(ff, E.extend(gg, w)), E.extend(_w => ff(E.extend(gg, _w)), w)) || bad.push('결합 깨짐');
@@ -502,7 +506,8 @@ const CLASS_LAWS = {
     },
     Comonad: (C, obs) => {
         // extract 는 빈 상자에서 꺼낼 것이 없다 — 비어 있지 않은 표본만 쓴다.
-        const xs = (FUNCTOR_SAMPLES[C.type] ?? []).filter(v => !Array.isArray(v) || v.length > 0);
+        const raw = FUNCTOR_SAMPLES[C.type];
+        const xs = (raw === undefined || raw === null ? [] : raw).filter(v => !Array.isArray(v) || v.length > 0);
         if (!xs.length) return null;
         const ff = w => (Array.isArray(w) ? w.length : 0);
         const bad = [];
