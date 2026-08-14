@@ -145,40 +145,154 @@ Wander  extends Strong,Choice?  메서드 wander  ← 다중 상속 불가, 결�
 
 ---
 
-## 결정이 필요한 것 — 코드에서 답이 안 나온다
+## 결정
 
-### ① `SPEC` 표에 넣을 것인가
+### ① `SPEC` 표 — ✅ 결정 (2026-08-14, 소유자: "Free 의 예시와 결을 맞춘다")
 
-그 표의 이름은 **"Static Land 명세와 이 라이브러리를 대조하는 게이트"** 다. `Strong`·
-`Choice`·`Wander` 는 **Static Land 에 없다.** 그대로 넣으면 표가 거짓말을 한다.
+**`Free` 가 실제로 어떻게 다뤄지는지 확인했다.**
 
-- (가) `SPEC` 에 넣고 "명세 밖" 표시를 단다
-- (나) `EXTENSIONS` 표를 따로 만들고 검사 ①②⑤⑥이 두 표를 합쳐 본다
-- (다) 넣지 않는다 — 그러면 이 셋만 다시 감시 밖이 되어 이 회차의 목적이 사라진다
+| | 값 |
+| --- | --- |
+| `SPEC` 표에 `Free` | **0건** — Free 는 데이터 타입이지 타입 클래스가 아니다 |
+| 레지스트리 등록 | **10개 키** (`Functor.free` · `Apply.free` · `Applicative.free` · `Chain.free` · `Monad.free` + 클래스 이름 별칭) |
+| 전용 문서 | `docs/Free.md` **있음** |
+| 법칙 게이트 표본 | **3곳** |
+| 별도의 2등 표 | **없음** |
 
-**(다)는 자기모순이다.** (가)와 (나) 중 소유자가 정한다.
+**Free 의 교훈은 "내부용이라는 것이 숨긴다는 뜻은 아니다" 이다.** 등록되고, 문서가 있고,
+게이트가 보고, 그러면서 **별도의 2등 명단을 만들지 않는다.**
 
-### ② `second` / `right` 를 함께 낼 것인가
+따라서 `EXTENSIONS` 표를 따로 만드는 안(나)은 뺀다 — 그것이 곧 2등 명단이다.
+**표는 하나로 두고 각 항목이 명세 소속을 스스로 말하게 한다.**
 
-표준 `Strong` 은 `first`·`second` 둘, `Choice` 는 `left`·`right` 둘이다. Optics 는 각각
-하나만 쓴다. 안 내면 "표준 이름을 쓰면서 절반만 지는" 물건이 되고, 내면 **쓰지 않는 코드**가
-생긴다(법칙으로는 서로 유도된다 — `second = dimap(swap, swap) ∘ first`).
+```javascript
+Traversable: { method: 'traverse', sameT: ['Functor', 'Foldable'] },
+Strong:      { method: 'first',    sameT: ['Profunctor'], spec: false },
+Choice:      { method: 'left',     sameT: ['Profunctor'], spec: false },
+Wander:      { method: 'wander',   sameT: ['Strong', 'Choice'], spec: false },
+```
 
-### ③ `Wander` 의 부모
+- 검사 ①②⑤⑥은 표 전체를 본다 — 그래서 새 셋도 똑같이 감시된다.
+- **Static Land 소속을 주장하는 검사만 `spec !== false` 로 거른다.** 지금 그런 검사는
+  ②-1 하나다.
+- `spec` 이 없으면 `true` 다 — 기존 24항목은 한 글자도 안 고친다.
 
-표준은 `Traversing extends Strong, Choice` 다. **JS 클래스는 다중 상속이 안 된다.**
+이렇게 하면 표 머리의 "Static Land 명세와 대조" 라는 이름이 거짓이 되지 않는다.
 
-- (가) `Wander extends Profunctor` 로 두고 부모 사슬을 포기한다
-- (나) `Wander extends Strong` 으로 두고 `Choice` 는 문서로만 말한다
-- (다) `Ord extends Setoid` 처럼 **생성자가 짝을 받는다** — `new Wander(strong, choice, wander, …)`
+### ② `second` / `right` — ⏸ 설명 보강, 소유자 판단 대기
 
-(다)가 이 저장소의 기존 해법이다(`Ord.super`·`Monoid.super`·`Apply.super` 가 전부 그 모양).
-다만 검사 ②-1 이 **"명세 부모가 둘인 클래스는 셋뿐"** 을 못 박고 있어 그 단언도 함께 바뀐다.
+아래 「`second`/`right` 를 왜 물었나」 절에 옮겼다.
 
-### ④ 공개 표면을 어디까지 넓히나
+### ③ `Wander` 의 부모 — ✅ 결정 (선례가 저장소 안에 있었다)
+
+**소유자 지시대로 찾아보니 같은 문제를 이미 두 번 풀었다.** JS 다중 상속 없이 부모 둘을
+지는 클래스가 **셋** 있다(검사 ②-1 이 그 목록을 못 박고 있다):
+`Alternative` · `Monad` · `Traversable`.
+
+`Traversable` 이 `Wander` 와 **정확히 같은 모양**이다 — 부모가 둘이고 자기 메서드도 있다.
+
+```javascript
+class Traversable extends Functor {                    // ← 하나만 상속
+    constructor(functor, foldable, traverse, type, registry, ...aliases) {
+        checkAndSet('Traversable.super')(functor, foldable);   // ← 둘 다 검증
+        super(functor.map, type);
+        this.reduce = foldable.reduce;                  // ← 둘째 부모의 메서드를 복사
+        checkAndSet('Traversable')(this, functor, foldable, traverse);
+        registry && register(registry, this, ...aliases);
+    }
+    traverse() { raise(new Error('Traversable: traverse is not implemented')); }
+}
+```
+
+`Alternative` 은 같은 모양에 자기 메서드가 없는 판이다(`method: null`) —
+`this.alt = plus.alt; this.zero = plus.zero;`.
+
+**그대로 따른다.**
+
+```javascript
+class Wander extends Strong {
+    constructor(strong, choice, wander, type, registry, ...aliases) {
+        checkAndSet('Wander.super')(strong, choice);
+        super(strong.promap, strong.first, type);
+        this.left = choice.left;                        // ← Traversable 의 this.reduce 자리
+        checkAndSet('Wander')(this, strong, choice, wander);
+        registry && register(registry, this, ...aliases);
+    }
+    wander() { raise(new Error('Wander: wander is not implemented')); }
+}
+```
+
+`'Wander.super'` 규칙도 `'Traversable.super'` 를 본뜬다 — 첫 인자가 `Symbols.Strong`,
+둘째가 `Symbols.Choice` 인지 본다.
+
+**함께 바뀌는 것**: 검사 ②-1 의 단언이 `'Alternative,Monad,Traversable'` →
+`'Alternative,Monad,Traversable,Wander'` 가 된다. 그 검사는 "늘면 여기서 멈춘다" 가
+목적이므로 **의도된 멈춤**이다.
+
+### ④ 공개 표면을 어디까지 넓히나 — ⬜ ①②③ 확정 후 논의 (소유자 지시)
 
 `Const` 생성자 · `identity` Comonad · `fst`/`snd` 는 **되돌리기 어렵다.** 한 번 내보내면
 사용자가 쓴다. 특히 `fst`/`snd` 는 최상위 이름 둘을 차지한다.
+
+---
+
+## `second` / `right` 를 왜 물었나 — 보강
+
+### 표준은 둘씩이다
+
+`Strong` 은 곱의 **어느 쪽**을 건드릴지로 둘이 나온다.
+
+```
+first  : p a b -> p (a, c) (b, c)      왼쪽만 건드리고 오른쪽은 통과
+second : p a b -> p (c, a) (c, b)      오른쪽만 건드리고 왼쪽은 통과
+```
+
+`Choice` 는 합에서 같은 모양이다 — `left` 는 `Left` 만, `right` 는 `Right` 만 건드린다.
+
+### 그런데 서로 유도된다 — 실측
+
+`swap` 을 앞뒤로 끼우면 하나에서 다른 하나가 나온다.
+
+```javascript
+second = p => dimap(swap, swap, first(p))
+```
+
+실행 결과:
+
+```
+first  (x*10, [3, 9])  ->  [30, 9]
+second (x*10, [3, 9])  ->  [3, 90]     ← first + swap 두 번으로 만든 것
+```
+
+### Optics 는 하나도 안 쓴다 — 실측
+
+`index.js` 의 Optics 구역에서 `.second(` / `.right(` 호출은 **0건**이다.
+이유는 `Lens` 가 **자기가 원하는 모양으로 `dimap` 해서 들어가기 때문**이다.
+
+```javascript
+Lens = (getter, setter) => P => pab =>
+    P.dimap(s => tuple(getter(s), s), ([b, s]) => setter(b, s), P.first(pab));
+```
+
+초점을 항상 튜플의 **첫 자리**에 놓고 들어간다. 그래서 둘째 자리 렌즈도 `first` 만으로
+만들어진다 — 실측: `view(sndLens, ['a', 7])` → `7`, `over` → `['a', 14]`.
+
+### 그래서 무엇을 고르는 문제인가
+
+| | 안 낸다 (`first`·`left` 만) | 낸다 (`second`·`right` 도) |
+| --- | --- | --- |
+| 이름 | 표준 이름을 쓰면서 **절반만 진다** | 표준과 같다 |
+| 코드 | 쓰는 것만 있다 | **쓰지 않는 코드 2개**가 생긴다 |
+| 법칙 게이트 | 검사할 것이 적다 | `first`↔`second` 유도 관계를 **법칙으로 고정**할 수 있다 |
+| 사용자 확장 | 자기 profunctor 를 만들 때 절반만 구현하면 된다 | 넷을 다 구현해야 한다 |
+
+**YAGNI 가 금지된 저장소라는 점이 판단에 걸린다.** 다만 `Filterable` 선례가 반대 방향을
+가리킨다 — *"지킬 수 없는 보증은 거둔다."* 여기서는 *"쓰지 않는 것을 이름만 세운다"* 가
+같은 부류인지가 쟁점이다.
+
+**한 가지 사실은 분명하다.** 안 내기로 하면 그 사실이 문서에 있어야 한다 — 표준 `Strong` 을
+아는 사람이 `second` 를 찾을 것이기 때문이다. 그리고 `second = dimap(swap, swap) ∘ first`
+한 줄을 문서 예제로 두면 실행되는 회귀 테스트가 된다.
 
 ---
 
@@ -211,7 +325,7 @@ Wander  extends Strong,Choice?  메서드 wander  ← 다중 상속 불가, 결�
 
 | 단계 | 무엇 | 되돌릴 수 있나 |
 | --- | --- | --- |
-| 0 | 위 결정 넷을 소유자와 확정 | — |
+| 0 | 결정 ①③ **확정됨**. ②④ 남음 | — |
 | 1 | `Const` 생성자 · `identity` Comonad · `fst`/`snd` — 공개 표면 먼저 | 어려움 |
 | 2 | 클래스 셋 + 규칙표 + `Symbols` | 쉬움 |
 | 3 | 인스턴스 다섯 등록, Optics 를 조회로 전환 | 쉬움 |
