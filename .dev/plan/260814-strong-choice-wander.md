@@ -90,36 +90,49 @@ wander: () => raise(new TypeError('review: argument must be a Traversal cannot b
 
 ## 무엇을 만드나
 
-### 클래스 셋
+### 클래스 셋 — 표준 그대로 (소유자 결정 2026-08-14)
 
-`Profunctor` 를 상속한다. 부모 인스턴스를 받는 모양은 `Apply extends Functor` 선례를 따른다.
+`Profunctor` 를 상속한다. `Wander` 의 부모 둘은 `Traversable` 선례를 따른다(결정 ③).
 
 ```
-Strong  extends Profunctor   메서드 first   (+ second?  ← 결정 필요)
-Choice  extends Profunctor   메서드 left    (+ right?   ← 결정 필요)
-Wander  extends Strong,Choice?  메서드 wander  ← 다중 상속 불가, 결정 필요
+Strong extends Profunctor      first  · second
+Choice extends Profunctor      left   · right
+Wander extends Strong          wander        (choice 를 생성자로 받아 this.left/right 복사)
 ```
 
-### 인스턴스 다섯
+### 인스턴스 다섯 — 여섯 메서드가 전부 구현되는지 실측했다
 
-| 인스턴스 | 클래스 | `.type` | 등록 키 |
-| --- | --- | --- | --- |
-| `FunctionStrong` | Strong | `'function'` | `function` |
-| `FunctionChoice` | Choice | `'function'` | `function` |
-| `FunctionWander` | Wander | `'function'` | `function` |
-| `Strong.Forget(m)` | Strong·Choice·Wander | `'function'` | `forget(array)` 등 조립 키 |
-| `TaggedChoice` | **Choice 만** | `'any'` | `tagged` |
+| 인스턴스 | 클래스 | `first` | `second` | `left` | `right` | `wander` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `FunctionStrong/Choice/Wander` | 셋 다 | ✅ | ✅ 실측 `[3,90]` | ✅ | ✅ 실측 | ✅ |
+| `Forget(m)` | 셋 다 | ✅ | ✅ 실측 `[5]` | ✅ | ✅ 실측 `Left→[]` | ✅ |
+| `Tagged` | **Choice 만** | — | — | ✅ | **✅ 신설** | — |
 
-`Tagged` 의 `.type` 이 `'any'` 인 근거: 캐리어가 `Tagged a b = b` 라 값 타입을 보지 않는다.
-선례가 넷 있다 — `firstSemigroup` · `lastSemigroup` · `defaultSetoid` · `defaultOrd`(실측).
+`.type` 은 `Function`/`Forget` 이 `'function'`(캐리어가 함수다), `Tagged` 가 `'any'`
+(`Tagged a b = b` 라 값 타입을 안 본다 — 선례 넷: `firstSemigroup`·`lastSemigroup`·
+`defaultSetoid`·`defaultOrd`).
 
-### 함께 나와야 하는 것 (2차에서 확인된 구멍)
+**표준으로 가면 빠진 것이 채워진다 — 이것은 대칭을 위한 장식이 아니다.**
+지금 `taggedProfunctor` 에는 `left` 만 있고 **`right` 가 없다.** `Choice` 는 둘을 요구하므로
+현재의 Tagged 는 **불완전한 Choice** 다. `right` 가 생기면 `Right` 쪽으로 향한 Prism 도
+`review` 할 수 있게 된다 — **지금은 안 되는 일이다.**
 
-이것 없이는 Optics 가 리터럴을 못 버린다.
+`Tagged` 가 `Strong`/`Wander` 가 아닌 것은 구조가 막는 것이다. `Tagged a b = b` 는 입력을
+만들어낼 수 없어 `first`/`wander` 가 원리적으로 정의되지 않는다. 그 **부재**가 곧
+"Lens/Traversal 은 review 할 수 없다" 이고, 지금의 던지는 스텁 둘을 대신한다.
 
-- `Const` 캐리어 생성자 — `of` 로는 불가능(값을 버린다)
-- `identity` `Comonad` — `.value` 를 대신할 `extract`
-- `fst` / `snd` — `Comonad.lookup('array').extract` 를 대신할 것
+### 함께 내는 공개 표면 — ✅ 결정 (소유자: "미루면 결국 부채가 된다")
+
+이것 없이는 Optics 가 리터럴을 못 버린다. **미루지 않고 이번에 함께 낸다.**
+
+| 무엇 | 왜 필요한가 | 넓이 |
+| --- | --- | --- |
+| `Const` 캐리어 생성자 | `Forget.wander` 의 `{ value: … }` 제거. **`of` 로는 불가능** — 값을 버린다 | 좁다 |
+| `identity` `Comonad` | `.value` 직접 읽기 제거 (`extract`) | 좁다 — 레지스트리 인스턴스 1개 |
+| `fst` / `snd` | `Comonad.lookup('array').extract` 대체 | **넓다 — 최상위 이름 둘** |
+
+`fst`/`snd` 는 optics 와 무관하게도 정당하다 — `tuple` 로 **만드는** 수단은 있는데
+**꺼내는** 수단이 없는 비대칭을 메운다.
 
 ---
 
@@ -179,9 +192,18 @@ Wander:      { method: 'wander',   sameT: ['Strong', 'Choice'], spec: false },
 
 이렇게 하면 표 머리의 "Static Land 명세와 대조" 라는 이름이 거짓이 되지 않는다.
 
-### ② `second` / `right` — ⏸ 설명 보강, 소유자 판단 대기
+### ② `second` / `right` — ✅ 결정 (2026-08-14, 소유자)
 
-아래 「`second`/`right` 를 왜 물었나」 절에 옮겼다.
+> *"표준으로 갑니다. YAGNI 는 반대합니다. 미루면 결국 부채가 됩니다."*
+
+**표준대로 넷을 다 낸다.** 판단 재료는 아래 「`second`/`right` 를 왜 물었나」 절에 있다.
+
+이 결정으로 드러난 사실 하나: **`Tagged` 에 `right` 가 없었다.** `Choice` 가 둘을 요구하는데
+지금은 `left` 만 있으니 불완전한 `Choice` 다. 표준으로 가는 것이 "안 쓰는 코드를 더하는 것"
+이 아니라 **빠진 것을 채우는 것**인 자리가 최소 하나 있다는 뜻이다.
+
+내가 "쓰지 않는 코드 2개가 생긴다" 고 적었던 것은 **Optics 의 현재 사용처만 센 것**이었다.
+클래스가 요구하는 것을 안 세었다.
 
 ### ③ `Wander` 의 부모 — ✅ 결정 (선례가 저장소 안에 있었다)
 
@@ -229,10 +251,10 @@ class Wander extends Strong {
 `'Alternative,Monad,Traversable,Wander'` 가 된다. 그 검사는 "늘면 여기서 멈춘다" 가
 목적이므로 **의도된 멈춤**이다.
 
-### ④ 공개 표면을 어디까지 넓히나 — ⬜ ①②③ 확정 후 논의 (소유자 지시)
+### ④ 공개 표면 — ✅ 결정 (2026-08-14, 소유자: "미루면 결국 부채가 된다")
 
-`Const` 생성자 · `identity` Comonad · `fst`/`snd` 는 **되돌리기 어렵다.** 한 번 내보내면
-사용자가 쓴다. 특히 `fst`/`snd` 는 최상위 이름 둘을 차지한다.
+셋 다 이번에 낸다. 되돌리기 어려운 것은 사실이므로 **순서에서 1단계에 둔다** — 가장 먼저
+하고, 틀렸으면 그 위에 아무것도 쌓기 전에 안다.
 
 ---
 
@@ -325,7 +347,7 @@ Lens = (getter, setter) => P => pab =>
 
 | 단계 | 무엇 | 되돌릴 수 있나 |
 | --- | --- | --- |
-| 0 | 결정 ①③ **확정됨**. ②④ 남음 | — |
+| 0 | 결정 ①②③④ **전부 확정됨** | — |
 | 1 | `Const` 생성자 · `identity` Comonad · `fst`/`snd` — 공개 표면 먼저 | 어려움 |
 | 2 | 클래스 셋 + 규칙표 + `Symbols` | 쉬움 |
 | 3 | 인스턴스 다섯 등록, Optics 를 조회로 전환 | 쉬움 |
