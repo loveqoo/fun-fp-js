@@ -158,6 +158,10 @@ console.log(Applicative.lookup('const(array)') === C);       // true
 `map` 이 값을 버리는 것이 핵심입니다 — 그래서 `traverse` 가 "구조를 훑으며 monoid 로 모으는"
 동작이 됩니다. `Optics.foldMapOf(monoid, optic, f, s)` 가 정확히 그것입니다.
 
+같은 모양의 팩토리가 하나 더 있습니다 — `Applicative.Writer(monoid)`. 등록된 `writer` 는
+Array Monoid 전용이라, 다른 Monoid 로 `of` 를 잇는 Writer Applicative/Monad 는 이 팩토리로
+만듭니다. 자세한 것은 [Writer](./Writer.md#writer-factory) 에 있습니다.
+
 ## 실용적 예시
 
 ### 폼 검증

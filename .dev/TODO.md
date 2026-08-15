@@ -349,6 +349,21 @@
 - **참고** — `docs/internals.md#chainrec-stack`(예제가 실행되는 회귀 테스트),
   `tests/staticland-laws.test.js` 머리의 「못 잡는 것」.
 
+## 닫힘 — Static Land 준수·호환성 감사, compose 방향은 의도된 이탈 (2026-08-16)
+
+- **경위** — 소유자 질문: "Static Land 를 온전히 구현했나, 호환성 문제는." staticland-reviewer
+  적대 감사 + 주 에이전트 실측 + 명세 원문 대조.
+- **판정** — 거의 온전. 24개 타입클래스 전부, compose 외 모든 인자 순서 명세 일치, 딕셔너리
+  상호운용 온전(메서드가 this 비의존 own 함수), of 계약 부합. **유일 이탈: `Semigroupoid.compose`
+  방향이 명세와 반대**(라이브러리 우→좌=fp.compose, 명세 좌→우=fp.pipe).
+- **소유자 판단** — "이건 Static Land 쪽 버그다. 같은 고민한 사람들이 있을 것." → 웹 조사:
+  ① TC39 proposal-function-helpers #5 가 이 방향을 재론 ② Ramda·Sanctuary 도 사용자용 compose 는
+  관례대로 우→좌로 뒤집어 제시 — **이 라이브러리 방향이 그들이 사용자에게 주는 방향과 같다**
+  ③ 자동 요약이 같은 시그니처를 두 번 반대로 오독(혼란 실증).
+- **결정 (소유자)** — **의도된 이탈로 확정.** 구현 무변경. `docs/internals.md#compose-direction`
+  신설(근거·출처), `docs/Semigroupoid.md` 포인터. 예제 실행이 회귀 잠금.
+- **참고** — [`review/260816-staticland-conformance.md`](./review/260816-staticland-conformance.md)
+
 ## 닫힘 — 코덱스 index.js 적대적 리뷰 3차, 7건 처리 (2026-08-16)
 
 - **경위** — 소유자 지시로 영역 특정 없이 파일 전체 재검토. 7건 CONFIRMED(2회 실측). 이번은

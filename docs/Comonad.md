@@ -41,24 +41,27 @@ extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 
 ## 예시
 
+등록된 인스턴스가 둘 있습니다 — `identity` 와 `array`. `lookup` 으로 꺼냅니다.
+
 ```javascript
-const { Comonad } = FunFP;
+const { Comonad, Identity } = FunFP;
 
-// Identity Comonad (가장 간단한 예시)
-const identityExtend = {
-    map: (f, { value }) => ({ value: f(value) }),
-    extend: (f, w) => ({ value: f(w) }),
-    extract: ({ value }) => value
-};
+// Identity Comonad — 상자 하나에 값 하나
+const IC = Comonad.lookup('identity');
+const w = Identity.of(42);
+console.log(IC.extract(w));                          // 42 — 값 추출
+console.log(IC.extract(IC.extend(IC.extract, w)));   // 42 — 좌항등 관측 (extend(extract, w) ≡ w)
 
-const w = { value: 42 };
-
-// extract: 값 추출
-identityExtend.extract(w);  // 42
-
-// extend with extract: 원본 유지 (left identity)
-identityExtend.extend(identityExtend.extract, w);  // { value: 42 }
+// Array Comonad — extract 는 첫 원소, extend 는 각 꼬리(suffix)에 f 를 적용
+const AC = Comonad.lookup('array');
+console.log(AC.extract([1, 2, 3]));                  // 1
+console.log(AC.extend(xs => xs.length, [1, 2, 3]));  // [3, 2, 1] — 각 위치에서 남은 길이
 ```
+
+> **주의 — `Array` 는 비어 있지 않을 때만 `Comonad` 다.** `extract([])` 는 꺼낼 값이 없어
+> `undefined` 입니다(수학에서도 배열 comonad 는 NonEmptyArray 에서만 성립). 빈 배열은 이
+> 인스턴스의 정의역 밖입니다 —
+> 근거: [`internals.md#array-comonad`](./internals.md#array-comonad).
 
 ## 실용적 사용
 

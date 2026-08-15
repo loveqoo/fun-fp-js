@@ -278,7 +278,7 @@ w2.run();
 // ['step2', 35] - 숫자 합산
 ```
 
-### 등록된 `writer` 인스턴스는 Array Monoid 전용 — 다른 Monoid 는 `Monad.Writer(m)`
+### 등록된 `writer` 인스턴스는 Array Monoid 전용 — 다른 Monoid 는 `Monad.Writer(m)` {#writer-factory}
 
 `Monad.lookup('writer')`·`Applicative.lookup('writer')` 의 `of` 는 **항상 Array Monoid** 를
 씁니다(`Writer.of` 의 기본값). 그래서 이 등록 인스턴스로 Number Monoid Writer 에 `chain(of, w)`

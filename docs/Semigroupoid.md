@@ -14,6 +14,11 @@ const compose = (f, g) => x => f(g(x))
 // f ∘ g: 먼저 g를 실행하고 결과를 f에 전달
 ```
 
+> **방향 주의** — 이 `compose` 는 우→좌(수학·Ramda식, `fp.compose` 와 같음)입니다.
+> Static Land 명세의 `compose` 는 방향이 **반대**(좌→우, 첫 인자 먼저)라 이 라이브러리의
+> `pipe` 와 같습니다. 관례를 택한 의도된 이탈이며, 근거는
+> [`internals.md#compose-direction`](./internals.md#compose-direction) 에 있습니다.
+
 ### 법칙
 
 #### 결합법칙 (Associativity)

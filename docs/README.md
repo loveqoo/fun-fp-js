@@ -264,6 +264,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 | `maybe(<inner>)` | 안쪽 Semigroup 을 지정한 Maybe | `maybe(first)`, `maybe(array)` | [Monoid](./Monoid.md) |
 | `<타입>` | **`Plus` 에서 유도된 Monoid** — 그 타입에 Monoid 가 없을 때만 | `Monoid.lookup('maybe')` | [Plus](./Plus.md) |
 | `const(<monoid>)` | **`Const` Applicative** | `const(array)`, `const(number)` | [Applicative](./Applicative.md) |
+| `writer(<monoid>)` | **그 Monoid 를 쓰는 `Writer` 모나드** — 등록된 `writer` 는 Array 전용 | `writer(number)`, `writer(string)` | [Writer](./Writer.md) |
 | `statet(<M>)` 등 | Transformer | `statet(maybe)`, `eithert(task)` | [StateT](./StateT.md) |
 
 `identity` 도 `Functor`/`Apply`/`Applicative` 세 곳에 등록돼 있습니다 —
@@ -273,6 +274,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 
 | 타입 | 주요 용도 | 핵심 특징 |
 |------|----------|----------|
+| Identity | 효과 없는 래퍼 | `traverse` 에 넘겨 "그냥 매핑" 으로 쓴다 |
 | Maybe | null 안전 처리 | Just / Nothing |
 | Either | 에러 처리 (fail-fast) | Right / Left |
 | Validation | 병렬 검증 (에러 누적) | Valid / Invalid (Monoid) |

@@ -328,6 +328,38 @@ console.log(Functor.lookup('identity').map(x => x + 1, Id.of(1)).value);   // 2
 ([대소문자 폴백이 없습니다](#type)) 캐리어의 `_typeName` 과 인스턴스의 `.type` 이 정확히
 같아야 합니다. `Const` 는 모노이드마다 태그가 달라집니다 — `Const(array)`·`Const(number)`.
 
+### 키 없는 모노이드는 고유 번호로 갈린다 {#anon-monoid-tag}
+
+등록된 모노이드는 키가 있어 `Const(array)` 처럼 태그가 갈립니다. 그런데 **손으로 만든
+미등록 모노이드**는 키가 없어, 한때 전부 벌거벗은 `'Const'` 태그를 공유했습니다 — 합 모노이드
+Const 와 곱 모노이드 Const 의 캐리어가 서로 섞였습니다(코덱스 리뷰가 잡음). 지금은 트랜스포머의
+`_transformerAutoId` 와 같은 수법으로 **인스턴스별 고유 번호**를 붙입니다 — `Const(#1)`·`Const(#2)`.
+`Forget` 도 같은 병이라 같이 고쳤습니다(`Forget(#N)`).
+
+```javascript
+const { Applicative, Semigroup, Monoid } = FunFP;
+
+const sum = new Monoid(new Semigroup((a, b) => a + b, 'number'), () => 0, 'number');
+const product = new Monoid(new Semigroup((a, b) => a * b, 'number'), () => 1, 'number');
+const A = Applicative.Const(sum), B = Applicative.Const(product);
+if (A.wrap(2)._typeName === B.wrap(3)._typeName) throw new Error('익명 모노이드 태그가 안 갈렸다');
+console.log(A.wrap(2)._typeName !== B.wrap(3)._typeName);   // true — 서로 다른 태그라 안 섞인다
+```
+
+이 번호는 레지스트리 조회 키가 아니라 **런타임 캐리어 판별용**이라(태그는 `types.of` 가
+읽습니다) "한 실행 안에서 고유" 하기만 하면 됩니다. WeakMap 캐시가 모노이드당 한 번만
+만들어 그 모노이드에 안정적입니다.
+
+### `Writer` 팩토리 — 등록본은 Array 전용, 다른 모노이드는 팩토리 {#writer-factory-internals}
+
+등록된 `writer` 인스턴스의 `of` 는 `Writer.of` 의 기본값이라 **항상 Array 모노이드**를 박습니다.
+그래서 다른 모노이드 Writer 에 `chain(of, w)` 같은 법칙식을 걸면 서로 다른 모노이드를 섞어
+던집니다(코덱스 리뷰가 잡음). `Const` 와 같은 팩토리로 해결합니다 — `buildWriterMonad(monoid)`
+가 그 모노이드로 `of` 를 잇는 Applicative/Monad 를 만들고, 키가 있으면 `writer(<키>)` 로
+5층(Functor~Monad)에 등록합니다. **모노이드에 의존하는 것은 `of` 뿐**이라 `map`/`ap`/`chain` 은
+등록 인스턴스를 그대로 빌립니다. 캐시는 `Const` 와 같은 모양입니다 — 키면 `_keyCache`,
+미등록 인스턴스면 `_instanceCache`(WeakMap). 사용법은 [`docs/Writer.md#writer-factory`](./Writer.md#writer-factory).
+
 등록은 `Functor` → `Apply` → `Applicative` **3단**입니다. `Applicative` 만 올리면
 `Functor.lookup('const(array)')` 가 실패합니다.
 
@@ -778,6 +810,42 @@ console.log(C.extract([]));                // undefined — 꺼낼 것이 없다
 이유가 이것입니다 — 빈 배열은 이 인스턴스의 정의역 밖입니다.
 
 ---
+
+## `Semigroupoid.compose` 는 우→좌다 — Static Land 와 방향이 반대다 {#compose-direction}
+
+이 라이브러리의 `Semigroupoid.compose(f, g)` 는 **`f(g(x))`** 입니다 — g 를 먼저 실행합니다
+(수학·Ramda 의 우→좌 합성). 그런데 **Static Land 명세의 `compose` 는 방향이 반대**입니다.
+명세 시그니처는 `compose :: (T i j, T j k) → T i k` 로, 첫 인자(i→j)가 입력을 먼저 받으므로
+`compose(f, g)(x) = g(f(x))` — **f 를 먼저** 실행하는 도식식(좌→우)입니다. 이름은 같은데
+방향이 정반대입니다.
+
+```javascript
+const { Semigroupoid, compose, pipe } = FunFP;
+
+const A = x => x + 'A', B = x => x + 'B';
+// 이 라이브러리: 우→좌 (fp.compose 와 같은 방향)
+if (Semigroupoid.lookup('function').compose(A, B)('_') !== '_BA') throw new Error('compose 방향이 바뀌었다');
+console.log(Semigroupoid.lookup('function').compose(A, B)('_'));  // '_BA' — B 먼저, 그다음 A
+// Static Land 명세의 방향이 필요하면 pipe 를 쓰십시오 — 그것이 명세의 compose 와 같습니다
+if (pipe(A, B)('_') !== compose(B, A)('_')) throw new Error('pipe ≠ 명세 compose');
+console.log(pipe(A, B)('_'));   // '_AB' — 명세 compose(A, B) 와 같은 방향
+```
+
+**왜 명세를 안 따랐나 — 관례를 택한 결정입니다(이탈, 결함 아님).** 근거 셋:
+
+1. **저장소 전체가 우→좌로 일관됩니다.** `fp.compose`·`compose2`·모든 Kleisli
+   `Semigroupoid` 가 우→좌입니다. `Semigroupoid` 만 명세로 뒤집으면 `fp.compose` 와 어긋나,
+   같은 라이브러리 안에서 "compose" 두 개가 반대 방향이 됩니다.
+2. **레퍼런스 구현도 명세 방향을 뒤집어 감춥니다.** Ramda·Sanctuary 는 사용자용 `compose` 를
+   관례대로 우→좌로 제시하고 Fantasy Land 메서드의 좌→우는 내부에 숨깁니다. 이 라이브러리의
+   방향은 **그들이 사용자에게 주는 방향과 같습니다.**
+3. **명세 방향 자체가 논쟁거리입니다.** TC39 `proposal-function-helpers` 이슈 #5 가 좌→우
+   합성을 별도 이름(`flow`)으로 두고 우→좌 `compose` 를 재론합니다 — 방향이 "이름은 compose
+   인데 pipe 처럼 동작" 해서 혼란을 준다는 것입니다.
+
+조사 기록·출처: [`.dev/review/260816-staticland-conformance.md`](../.dev/review/260816-staticland-conformance.md).
+그 외 모든 타입클래스 메서드(`map`·`ap`·`chain`·`reduce`·`bimap`·`traverse` …)의 인자
+순서는 명세와 일치합니다 — 이탈은 `compose` 방향 하나뿐입니다.
 
 ## `Either`·`Task` 는 `Filterable` 이 아니다 {#filterable}
 

@@ -293,7 +293,7 @@ validateAndDouble2('5');   // Right(10) - 동일한 결과
 - **Either**: 에러 처리 파이프라인
 - **Task**: 비동기 워크플로우
 - **Reader**: 환경 공유 합성
-- **Writer**: 출력 누적 합성
+- **Writer**: 출력 누적 합성 (등록본은 Array Monoid 전용 — 다른 Monoid 는 `Monad.Writer(m)` 팩토리, [Writer](./Writer.md))
 - **State**: 상태 흐름 합성
 - **Free**: DSL 합성
 
