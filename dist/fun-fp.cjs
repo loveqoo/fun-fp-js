@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-15T07:29:38.206Z
+ * Built: 2026-08-15T10:10:40.515Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -145,6 +145,14 @@ const flip = f => (...args) => types.checkFunction(f, 'flip')(...args.slice().re
 const flipCurried = f => (...as) => (...bs) => types.checkFunction(f, 'flipCurried')(...bs)(...as);
 const pipe = (...fs) => x => fs.reduce((acc, f) => types.checkFunction(f, `pipe(${fs.length})`)(acc), x);
 const compose = (...fs) => pipe(...fs.slice().reverse());
+// predicate 가 참인 동안만 잇는 pipe — 값이 안 바뀌면 predicate 도 안 바뀌므로 사실상 멈춘다.
+const pipeWhile = predicate => {
+    types.checkFunction(predicate, 'pipeWhile');
+    return (value, ...fns) => fns.reduce(
+        (acc, fn) => predicate(acc) ? types.checkFunction(fn, 'pipeWhile')(acc) : acc,
+        value
+    );
+};
 // tuple 로 만드는 수단은 있는데 꺼내는 수단이 없었다. 새로 쓰지 않고 조합자로 세운다 —
 // apply(f)([a,b]) 가 f(a,b) 이므로 identity 는 첫 인자를, flip 을 씌우면 마지막 인자를 준다.
 const fst = apply(identity);
@@ -2354,20 +2362,15 @@ const composeK = (monad, foldable = Foldable.lookup('array')) => {
     return fns => pipeK(monad, foldable)(fns.slice().reverse());
 };
 Maybe.toEither = (defaultLeft, m) => Maybe.fold(() => Either.Left(defaultLeft), Either.Right, m);
+// Just 인 동안만 잇는다 — Maybe.isJust 가 「타입이 맞고 성공인가」를 한 몸에 담고 있다.
 Maybe.pipe = (m, ...fns) => {
     if (!Maybe.isMaybe(m)) raise(new TypeError('Maybe.pipe: first argument must be a Maybe'));
-    return fns.reduce((acc, fn) => {
-        if (!Maybe.isMaybe(acc)) return acc;
-        return acc.isJust() ? fn(acc) : acc;
-    }, m);
+    return pipeWhile(Maybe.isJust)(m, ...fns);
 };
 Either.toMaybe = e => Either.fold(Maybe.Nothing, Maybe.Just, e);
 Either.pipe = (e, ...fns) => {
     if (!Either.isEither(e)) raise(new TypeError('Either.pipe: first argument must be an Either'));
-    return fns.reduce((acc, fn) => {
-        if (!Either.isEither(acc)) return acc;
-        return acc.isRight() ? fn(acc) : acc;
-    }, e);
+    return pipeWhile(Either.isRight)(e, ...fns);
 };
 const { transducer } = (() => {
     class Reduced {
@@ -3355,7 +3358,7 @@ return {
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
     constant, tuple, fst, snd, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
-    flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
+    flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
     extra, setStrictMode, setTapErrorHandler
 };
