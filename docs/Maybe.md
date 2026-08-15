@@ -275,3 +275,18 @@ const getCityFromUser = Maybe.pipeK(getAddress, getCity);
 getCityFromUser({ name: 'Alice', address: { city: 'Seoul' } });  // Just('Seoul')
 getCityFromUser({ name: 'Bob' });  // Nothing
 ```
+
+## 출력에서 읽기 — `toString` {#tostring}
+
+`Just(1)` 과 `Nothing()` 은 속만 보면 거의 같은 객체라, 문자열이 될 때 갈리게 해 두었습니다.
+JSON 표현은 그대로입니다 — `_typeName` 은 타입 판정이 읽는 값이라 건드리지 않습니다.
+
+```javascript
+const { Maybe } = FunFP;
+
+if (String(Maybe.Just(1)) !== 'Just(1)') throw new Error('Just 표기가 다르다');
+if (String(Maybe.Nothing()) !== 'Nothing') throw new Error('Nothing 표기가 다르다');
+if (String(Maybe.Just(Maybe.Just('a'))) !== 'Just(Just("a"))') throw new Error('중첩 표기가 다르다');
+if (JSON.stringify(Maybe.Just(1)) !== '{"value":1,"_typeName":"Maybe"}') throw new Error('JSON 이 달라졌다');
+console.log(`${Maybe.Just([1, 2])}`);   // Just([1,2])
+```

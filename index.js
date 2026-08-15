@@ -1383,6 +1383,17 @@ class DateOrd extends Ord {
 }
 modules.push(DateOrd);
 /* Maybe */
+// 상자 표기용 — 자기 toString 을 지닌 값(중첩 상자·Date)은 그것을, 나머지는 JSON 을 쓴다.
+const showValue = v => {
+    if (typeof v === 'string') return JSON.stringify(v);
+    if (typeof v === 'function') return '<function>';
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)
+        && typeof v.toString === 'function' && v.toString !== Object.prototype.toString) return String(v);
+    try {
+        const s = JSON.stringify(v);
+        return s === undefined ? String(v) : s;
+    } catch (e) { return '[unprintable]'; }
+};
 class Maybe {
     isJust() { return false; }
     isNothing() { return false; }
@@ -1394,6 +1405,7 @@ class Just extends Maybe {
     isJust() { return true; }
     map(f) { return Functor.lookup('maybe').map(f, this); }
     chain(f) { return Chain.lookup('maybe').chain(f, this); }
+    toString() { return `Just(${showValue(this.value)})`; }
 }
 class Nothing extends Maybe {
     constructor() {
@@ -1402,6 +1414,7 @@ class Nothing extends Maybe {
     isNothing() { return true; }
     map(f) { return Functor.lookup('maybe').map(f, this); }
     chain(f) { return Chain.lookup('maybe').chain(f, this); }
+    toString() { return 'Nothing'; }
 }
 Maybe.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
@@ -1519,12 +1532,14 @@ class Left extends Either {
     isLeft() { return true; }
     map(f) { return Functor.lookup('either').map(f, this); }
     chain(f) { return Chain.lookup('either').chain(f, this); }
+    toString() { return `Left(${showValue(this.value)})`; }
 }
 class Right extends Either {
     constructor(value) { super(); this.value = value; this._typeName = 'Either'; }
     isRight() { return true; }
     map(f) { return Functor.lookup('either').map(f, this); }
     chain(f) { return Chain.lookup('either').chain(f, this); }
+    toString() { return `Right(${showValue(this.value)})`; }
 }
 Either.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);

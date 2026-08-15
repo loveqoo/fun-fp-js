@@ -335,3 +335,18 @@ validateNumber('abc');  // Left('Not a number')
 validateNumber('-5');   // Left('Must be positive')
 validateNumber('200');  // Left('Must be <= 100')
 ```
+
+## 출력에서 읽기 — `toString` {#tostring}
+
+`Left` 와 `Right` 도 문자열이 될 때 갈립니다. JSON 표현은 그대로입니다 — `_typeName` 은
+타입 판정이 읽는 값이라 건드리지 않습니다.
+
+```javascript
+const { Either, Maybe } = FunFP;
+
+if (String(Either.Right(1)) !== 'Right(1)') throw new Error('Right 표기가 다르다');
+if (String(Either.Left('boom')) !== 'Left("boom")') throw new Error('Left 표기가 다르다');
+if (String(Either.Right(Maybe.Nothing())) !== 'Right(Nothing)') throw new Error('중첩 표기가 다르다');
+if (JSON.stringify(Either.Left('e')) !== '{"value":"e","_typeName":"Either"}') throw new Error('JSON 이 달라졌다');
+console.log(`${Either.Right({ id: 7 })}`);   // Right({"id":7})
+```
