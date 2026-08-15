@@ -278,6 +278,34 @@ w2.run();
 // ['step2', 35] - 숫자 합산
 ```
 
+### 등록된 `writer` 인스턴스는 Array Monoid 전용 — 다른 Monoid 는 `Monad.Writer(m)`
+
+`Monad.lookup('writer')`·`Applicative.lookup('writer')` 의 `of` 는 **항상 Array Monoid** 를
+씁니다(`Writer.of` 의 기본값). 그래서 이 등록 인스턴스로 Number Monoid Writer 에 `chain(of, w)`
+같은 법칙식을 걸면 **서로 다른 Monoid 를 섞게 되어 던집니다**. 다른 Monoid 를 쓰려면 그
+Monoid 로 만든 인스턴스가 필요합니다 — `Const` 가 Monoid 마다 하나씩인 것과 같습니다.
+
+```javascript
+const { Monoid, Monad, Applicative, Writer } = FunFP;
+const num = Monoid.lookup('number');
+
+// Number Monoid 를 아는 Writer 모나드
+const W = Monad.Writer(num);
+
+// of 가 그 Monoid 의 empty(0)를 잇는다 — 등록 writer 였다면 [] 를 박아 chain 에서 던졌다
+if (JSON.stringify(W.of(9).run()) !== JSON.stringify([9, 0])) throw new Error('of 가 monoid 를 안 잇는다');
+console.log(W.of(9).run());   // [9, 0]
+
+// 우항등 법칙 chain(of, w) ≡ w 가 이제 성립한다
+const w = new Writer(7, 3, num);
+if (JSON.stringify(W.chain(W.of, w).run()) !== JSON.stringify([7, 3])) throw new Error('우항등 깨짐');
+console.log(W.chain(W.of, w).run());   // [7, 3]
+
+// 등록된 writer 는 그대로 Array 전용 — 키로도 조회된다
+console.log(Monad.lookup('writer').of(1).run());     // [1, []]
+console.log(Monad.Writer(num) === Monad.lookup('writer(number)'));   // true
+```
+
 ## 타입 체크
 
 ```javascript

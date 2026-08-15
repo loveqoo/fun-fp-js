@@ -714,7 +714,7 @@ console.log(G.concat(49, G.invert(49)));  // 1.0000000000000002  — 어긋난�
 console.log(G.concat(0, G.invert(0)));    // NaN   — 0 은 역원이 없다
 ```
 
-덧셈 쪽은 이 문제가 없습니다 — `a + (-a)` 는 항상 정확히 0입니다.
+덧셈 쪽은 **유한한 값에서는** 이 문제가 없습니다 — `a + (-a)` 는 정확히 0입니다.
 
 ```javascript
 const { Group } = FunFP;
@@ -724,9 +724,58 @@ console.log(G.concat(0.1, G.invert(0.1)));  // 0
 console.log(G.concat(49, G.invert(49)));    // 0
 ```
 
+**그러나 `Infinity` 는 덧셈 군에서도 역원이 없습니다** — `∞ + (-∞) = NaN` 이지 0이 아닙니다.
+곱셈의 0과 같은 부류입니다. 무한대는 유한한 수가 아니므로 수 위의 군에 들지 않습니다.
+
+```javascript
+const { Group } = FunFP;
+
+const G = Group.lookup('NumberSumGroup');
+if (!Number.isNaN(G.concat(Infinity, G.invert(Infinity)))) throw new Error('Infinity 역원이 생겼다');
+console.log(G.concat(Infinity, G.invert(Infinity)));  // NaN — 무한대는 역원이 없다
+```
+
 **정확한 나눗셈이 필요하면 `NumberProductGroup` 대신 유리수나 십진 타입을 쓰십시오.**
 `tests/staticland-laws.test.js` 의 군 법칙 검사가 이 인스턴스만 표본을 따로 두는 이유가
 이것이고, 그 표본에 이유가 적혀 있습니다.
+
+## `NaN` 은 수 `Setoid`·`Ord` 밖이다 {#number-nan}
+
+`Setoid` 는 반사성을 약속합니다 — `equals(a, a)` 는 항상 참. **`NaN` 은 이것을 깹니다.**
+`NaN === NaN` 이 거짓이기 때문이고, 이는 자바스크립트가 아니라 IEEE 754 의 정의입니다
+(`NaN` 은 "수가 아님" 이라 자기 자신과도 같지 않습니다). `Ord` 는 더합니다 — `NaN` 은
+어떤 수와도 순서를 매길 수 없어(`NaN <= x` 가 늘 거짓) 전순서 밖입니다.
+
+```javascript
+const { Setoid, Ord } = FunFP;
+
+const eq = Setoid.lookup('number'), ord = Ord.lookup('number');
+console.log(eq.equals(2, 2), ord.lte(2, 2));       // true true — 유한한 수는 정상
+if (eq.equals(NaN, NaN)) throw new Error('NaN 이 반사성을 지켰다');
+console.log(eq.equals(NaN, NaN));                   // false — NaN 은 자기와도 같지 않다
+```
+
+`Object.is(NaN, NaN)` 은 참이라 그것으로 바꿀 수 있어 보이지만, 그러면 `-0` 과 `0` 이
+갈립니다(`Object.is(-0, 0)` 은 거짓). 동등의 정의를 통째로 바꾸는 값이라 그대로 둡니다 —
+**`NaN` 을 비교·정렬에 넣지 마십시오.** 법칙 게이트의 수 표본에 `NaN` 이 없는 이유입니다.
+
+## `Array` 는 비어 있지 않을 때만 `Comonad` 다 {#array-comonad}
+
+`Comonad` 의 `extract` 는 "상자에서 값 하나를 꺼낸다" 입니다. **빈 배열에는 꺼낼 값이
+없습니다** — `extract([])` 는 `undefined` 입니다. 수학에서도 배열의 comonad 는
+NonEmptyArray(비지 않은 배열)에서만 성립합니다.
+
+```javascript
+const { Comonad } = FunFP;
+
+const C = Comonad.lookup('array');
+console.log(C.extract([1, 2]));            // 1 — 첫 원소
+if (C.extract([]) !== undefined) throw new Error('빈 배열에서 값이 나왔다');
+console.log(C.extract([]));                // undefined — 꺼낼 것이 없다
+```
+
+법칙 게이트(`tests/staticland-laws.test.js`)의 `Comonad` 검사가 빈 배열을 표본에서 걸러내는
+이유가 이것입니다 — 빈 배열은 이 인스턴스의 정의역 밖입니다.
 
 ---
 
