@@ -292,7 +292,28 @@ console.log(Functor.lookup('identity').map(x => x + 1, { value: 5, _typeName: 'I
 (2026-08-15) — 합의되지 않은 구현이었습니다. 그리고 그 기제도 완전한 차단은 아니었습니다.
 `Symbol.for` 는 전역 등록소라 작정하면 같은 칸을 열 수 있습니다(실측).
 
-`Const` 와 `Forget` 은 아직 클래스가 아닙니다 — 모노이드마다 태그가 달라 모양이 다릅니다.
+`Const` 와 `Forget` 도 클래스입니다 — **담는 모양이 정해져 있으면 클래스로 선언한다**는
+같은 규칙입니다(소유자, 2026-08-15). 다만 `Identity` 와 반대 모양입니다.
+
+| | 클래스 | `_typeName` |
+| --- | --- | --- |
+| `Maybe` | `Just` · `Nothing` **둘** | `'Maybe'` **하나** — 변형이 수렴한다 |
+| `Const` | `Const` **하나** | `'Const(array)'` · `'Const(number)'` **여럿** — 모노이드마다 |
+
+```javascript
+const { Applicative, Wander, Monoid } = FunFP;
+
+const c = Applicative.Const('array').wrap([1]);
+console.log(c.constructor.name);   // 'Const'          객체 리터럴이면 'Object' 다
+console.log(c._typeName);          // 'Const(array)'
+
+const p = Wander.Forget(Monoid.lookup('array')).wrap(a => [a]);
+console.log(p.constructor.name);   // 'Forget'
+console.log(typeof p.run);         // 'function'       안에 든 것은 함수다
+```
+
+셋 다 공개 문은 없습니다 — `fp.Identity` 만 최상위에 있고 `Const`·`Forget` 은 팩토리로만
+닿습니다.
 
 ```javascript
 const { Traversable, Applicative, Functor } = FunFP;

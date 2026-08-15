@@ -181,6 +181,18 @@ test('Forget - 벌거벗은 함수와 서로 섞이지 않는다', () => {
     assert(FN.type === 'function' && F.type !== FN.type, '두 인스턴스가 한 태그를 쓰면 안 된다');
 });
 
+// 담는 모양이 있으면 클래스로 선언한다 — 객체 리터럴은 모양을 말하지 않는다(소유자, 2026-08-15).
+test('Forget - 캐리어는 클래스다', () => {
+    const F = Wander.Forget(fp.Monoid.lookup('array'));
+    const p = F.wrap(a => [a]);
+    assertEquals(p.constructor.name, 'Forget', '객체 리터럴이면 Object 가 나온다');
+    assertEquals(typeof p.run, 'function', '안에 든 것은 함수다');
+    // 태그는 모노이드마다 다르지만 클래스는 하나다.
+    assertEquals(p._typeName, 'Forget(array)');
+    assertEquals(Wander.Forget(fp.Monoid.lookup('number')).wrap(a => a)._typeName, 'Forget(number)');
+    assertEquals(F.unwrap(F.first(p))([7, 9]).join(','), '7', '클래스로 바뀌어도 그대로 돈다');
+});
+
 // wrap 이 Const 의 문을 지나므로 fn 의 결과가 모노이드 값이 아니면 거기서 걸린다.
 test('Forget.wrap - 모노이드가 아닌 값을 내는 함수는 부를 때 걸린다', () => {
     const F = Wander.Forget(fp.Monoid.lookup('array'));

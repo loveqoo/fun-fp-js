@@ -46,6 +46,23 @@
 
 ---
 
+## 닫힘 — Const · Forget 캐리어도 클래스다 (2026-08-15)
+
+- **원인** — `Identity` 만 클래스가 되고 `Const`·`Forget` 은 객체 리터럴로 남았다. 셋 다
+  `traverse` 에 넘기는 같은 자리인데 격이 달랐다.
+- **소유자 판정** — *"데이터를 받는 것도 형식이 있다면 클래스를 정의하고 그 타입으로 받읍시다."*
+- **해결책** — `class Const { value, _typeName }` · `class Forget { run, _typeName }`.
+  태그가 모노이드마다 다르므로 **클래스는 하나이고 태그를 인스턴스가 지닌다** — `Maybe` 의
+  반대 모양이다(`Just`/`Nothing` 둘이 `'Maybe'` 하나로 수렴).
+- **검증** — `constructor.name` 이 `'Object'` 에서 `'Const'`·`'Forget'` 으로. optics 셋
+  (`view`/`toList`/`preview`)과 `Const.ap` 그대로. 모노이드가 다르면 여전히 섞이지 않는다.
+  뮤테이션 둘(각각 객체 리터럴로 되돌림) 전부 잡음. `npm test` 45/45 + 타입체크.
+  **`baseline` 차이 0 — 다만 baseline 은 `constructor.name` 을 안 보므로 이 변경을 애초에
+  못 본다.** 영수증은 뮤테이션 쪽이다.
+- **안 한 것** — `fp.Const`·`fp.Forget` 공개 문을 만들지 않았고 심볼도 안 붙였다. 새 공개
+  표면이라 별도 승인이 필요하다. 지금은 팩토리로만 닿는다.
+- **참고** — `docs/internals.md#identity-const`
+
 ## 닫힘 — Identity 를 클래스로 세웠다 (2026-08-15)
 
 - **원인** — `Identity` 를 `{ value, _typeName: 'Identity' }` 객체 리터럴로 만들고 이름만

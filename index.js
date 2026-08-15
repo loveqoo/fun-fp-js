@@ -1208,6 +1208,11 @@ class IdentityComonad extends Comonad {
 modules.push(IdentityComonad);
 // Const 는 monoid 마다 다르므로 매개변수화한다 — Monoid.Maybe(innerSG) 와 같은 모양이다.
 // 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
+// 담는 모양이 정해져 있으면 클래스로 선언한다 — 객체 리터럴은 모양을 말하지 않는다.
+// 태그는 모노이드마다 달라(Const(array)·Const(number)) 인스턴스가 지닌다.
+class Const {
+    constructor(value, typeName) { this.value = value; this._typeName = typeName; }
+}
 const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
 Applicative.Const = monoid => {
     const { key, instance: m } = normalizeConstMonoid(monoid);
@@ -1216,7 +1221,7 @@ Applicative.Const = monoid => {
     // 태그가 안쪽까지 말한다 — const(array) 는 "배열로 모으는 Const" 다. 그냥 Object 라고
     // 하면 Identity 와도, 평범한 객체와도 구분되지 않는다.
     const tag = key === null ? 'Const' : `Const(${key})`;
-    const constOf = value => ({ value, _typeName: tag });
+    const constOf = value => new Const(value, tag);
     const result = new Applicative(
         new Apply(new Functor((_f, x) => x, tag),
                   (a, b) => constOf(m.concat(a.value, b.value)), tag),
@@ -2682,6 +2687,10 @@ class TaggedChoice extends Choice {
 }
 modules.push(TaggedChoice);
 // Forget<r>: p a b = a -> r.  monoid 마다 다르므로 Applicative.Const 와 같은 팩토리다.
+// Const 와 같다 — 담는 모양이 있으니 클래스로 선언한다. 안에 든 것은 함수다.
+class Forget {
+    constructor(run, typeName) { this.run = run; this._typeName = typeName; }
+}
 const normalizeForgetMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Wander.Forget');
 Wander.Forget = monoid => {
     const { key, instance: m } = normalizeForgetMonoid(monoid);
@@ -2690,7 +2699,7 @@ Wander.Forget = monoid => {
     const C = Applicative.Const(m);
     // 캐리어가 스스로를 밝힌다 — 벌거벗은 함수로 두면 FunctionWander 와 한 태그가 된다.
     const tag = key === null ? 'Forget' : `Forget(${key})`;
-    const forgetOf = fn => ({ run: fn, _typeName: tag });
+    const forgetOf = fn => new Forget(fn, tag);
     // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다.
     const P = new Profunctor((f, _g, p) =>
         forgetOf(Contravariant.types.PredicateContravariant.contramap(f, p.run)), tag);
