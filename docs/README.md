@@ -2,6 +2,37 @@
 
 함수형 프로그래밍 타입 클래스 문서 모음
 
+## 먼저 이것부터 — `lookup` 과 `of` {#lookup-of}
+
+이 라이브러리의 문은 둘이고, 역할이 다릅니다. 어느 것을 부를지 여기서 갈립니다.
+
+| 부르는 것 | 하는 일 | 어디에 있나 | 예 |
+| --- | --- | --- | --- |
+| `lookup(키)` | 명부에서 **도구(인스턴스)를 꺼낸다** | 타입 클래스 (`Monoid`, `Functor`, …) | `Monoid.lookup('array')` |
+| `of(값)` | **값을 상자에 넣는다** | 데이터 타입 (`Maybe`, `Task`, …) | `Maybe.of(1)` |
+
+타입 클래스에는 `of` 가 없습니다. 다만 `lookup` 으로 **꺼낸 인스턴스**가 `of` 를 지니는
+경우는 있습니다(`Applicative` 계열) — 그때도 순서는 "먼저 꺼내고, 그 도구로 넣는다" 입니다.
+
+```javascript
+const { Monoid, Maybe, Applicative } = FunFP;
+
+// lookup: 명부에서 도구를 꺼낸다 — 값이 아니라 연산 묶음이 나온다
+const arrayMonoid = Monoid.lookup('array');
+console.log(arrayMonoid.concat([1], [2]));   // [1, 2]
+
+// of: 값을 상자에 넣는다
+console.log(Maybe.of(1).isJust());           // true
+
+// 꺼낸 인스턴스가 of 를 지니기도 한다 — 먼저 꺼내고, 그 도구로 넣는다
+console.log(Applicative.lookup('maybe').of(1).isJust());   // true
+
+// 반대로 부르면 던진다 — lookup 은 값을 받지 않는다
+let thrown = '';
+try { Monoid.lookup([1, 2]); } catch (e) { thrown = e.constructor.name; }
+console.log(thrown);   // 'TypeError'
+```
+
 ## 학습 순서 (권장)
 
 ### 1단계: 기본 대수 구조
