@@ -19,6 +19,7 @@
 
 import type { Kind, TypeClass, TypeLambda } from "./HKT";
 import type { ConstTypeLambda } from "./TypeLambdas";
+import type { WriterTypeLambda } from "./data/Writer";
 
 // ── Algebra — base class for every type-class instance at runtime ────
 // Exposed for completeness (the default export includes `Algebra`);
@@ -341,6 +342,11 @@ export declare const Applicative: {
         <K extends keyof MonoidInstances>(monoid: K): Applicative<ConstTypeLambda>;
         <R>(monoid: Monoid<R>): Applicative<ConstTypeLambda>;
     };
+    // Writer<w> — 등록된 writer 는 Array Monoid 전용이라, 다른 Monoid 는 여기서 만든다.
+    readonly Writer: {
+        <K extends keyof MonoidInstances>(monoid: K): Applicative<WriterTypeLambda>;
+        <R>(monoid: Monoid<R>): Applicative<WriterTypeLambda>;
+    };
 };
 
 export declare const Chain: {
@@ -353,6 +359,11 @@ export declare const Monad: {
     readonly lookup: <K extends keyof MonadInstances>(
         name: K
     ) => Monad<MonadInstances[K]>;
+    // Writer<w> — 등록된 writer 는 Array Monoid 전용이라, 다른 Monoid 는 여기서 만든다.
+    readonly Writer: {
+        <K extends keyof MonoidInstances>(monoid: K): Monad<WriterTypeLambda>;
+        <R>(monoid: Monoid<R>): Monad<WriterTypeLambda>;
+    };
 };
 
 export declare const Alt: {
