@@ -343,6 +343,23 @@
 - **참고** — `docs/internals.md#chainrec-stack`(예제가 실행되는 회귀 테스트),
   `tests/staticland-laws.test.js` 머리의 「못 잡는 것」.
 
+## 닫힘 — 합성 감사, A 목록 적용 (2026-08-15)
+
+- **경위** — 소유자 요청으로 "합성으로 되는데 개별 구현한 자리" 를 전수 조사했다(3,337줄).
+  결과는 A. 확실한 후보 12건(약 27곳) · B. 스타일 패밀리 3건 · C. 그대로가 맞는 자리.
+- **결정 (2026-08-15, 소유자)** — *"일단 A"*. **B 는 보류** — 튜플 리터럴 ~12곳,
+  Kleisli Semigroupoid 3형제, Maybe/Either.pipe 중복. 필요해지면 다시 올린다.
+- **적용** — A 전부(23개 치환): `identity` 7곳 + first/xor 2곳, `fold` 6곳,
+  `fst`/`snd` 5곳, `compose2`/`compose` 2곳, 에타 2곳(Prism `Either.Left`·`Reader.asks`),
+  `Validation.collect` 의 `lift` 재구현 제거.
+- **검증 (2026-08-15)** — ① 사전에 합성형과 원형의 동등을 실측 22건 대조(불일치 0) ②
+  적용 후 **HEAD 와 수정본을 한 프로세스에 같이 로드해 33건 대조** — 실패 경로 포함
+  (extract 비배열, contramap 비함수, Prism 빗나감, collect 0인자, 트랜스포머 run/eval/exec).
+  **32건 동일, 차이 1건은 의도된 개선**: `Reader.asks(비함수)` 가 실행 시점의 벌거벗은
+  에러에서 생성 시점의 라벨 있는 에러로(생성자 검사가 이미 있었다 — 감사 문서에 예고됨).
+  ③ `npm test` 45/45 + 타입체크, `npm run baseline` **차이 없음**, `dist/` 재빌드.
+- **참고** — [`review/260815-composition-audit.md`](./review/260815-composition-audit.md)
+
 ## 닫힘 — `Foldable` 의 순서를 `traverse` 에 잇는다 (2026-08-15)
 
 - **원인** — Foldable 명세 법칙은 reduce 를 reduce 로 정의하는 자기참조라, `reduce` 순회
