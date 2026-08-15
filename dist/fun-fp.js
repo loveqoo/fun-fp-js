@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-15T21:28:55.174Z
+ * Built: 2026-08-15T22:08:38.382Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -154,9 +154,10 @@ const once = f => {
     let called = false;
     let result;
     return (...args) => {
+        // called 를 f 실행 전에 세운다 — 안 그러면 f 안에서 자기를 다시 부를 때 두 번 실행된다.
         if (!called) {
-            result = f(...args);
             called = true;
+            result = f(...args);
         }
         return result;
     };
@@ -1227,14 +1228,18 @@ modules.push(IdentityComonad);
 class Const {
     constructor(value, typeName) { this.value = value; this._typeName = typeName; }
 }
+// 키 없는(미등록) 모노이드에 붙이는 고유 번호 — 트랜스포머의 _transformerAutoId 와 같은 수법.
+// 조회 키가 아니라 런타임 캐리어 판별(_typeName)용이라 "한 실행 안에서 고유" 면 충분하다.
+// 이게 없으면 합 모노이드 Const 와 곱 모노이드 Const 가 같은 'Const' 태그로 섞인다.
+let _anonMonoidId = 0;
 const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
 Applicative.Const = monoid => {
     const { key, instance: m } = normalizeConstMonoid(monoid);
     if (key !== null && Applicative.Const._keyCache.has(key)) return Applicative.Const._keyCache.get(key);
     if (key === null && Applicative.Const._instanceCache.has(m)) return Applicative.Const._instanceCache.get(m);
     // 태그가 안쪽까지 말한다 — const(array) 는 "배열로 모으는 Const" 다. 그냥 Object 라고
-    // 하면 Identity 와도, 평범한 객체와도 구분되지 않는다.
-    const tag = key === null ? 'Const' : `Const(${key})`;
+    // 하면 Identity 와도, 평범한 객체와도 구분되지 않는다. 키가 없으면 고유 번호로 갈린다.
+    const tag = key === null ? `Const(#${++_anonMonoidId})` : `Const(${key})`;
     const constOf = value => new Const(value, tag);
     const result = new Applicative(
         new Apply(new Functor((_f, x) => x, tag),
@@ -1794,9 +1799,11 @@ Setoid.Struct = fields => {
         : null;
     if (cacheKey !== null && Setoid.Struct._keyCache.has(cacheKey)) return Setoid.Struct._keyCache.get(cacheKey);
     const result = new Setoid((a, b) => {
+        // 자기 소유 필드만 본다 — n in a 는 상속 필드까지 인정한다(Object.create({a:1}) 통과).
+        const own = (o, n) => Object.prototype.hasOwnProperty.call(o, n);
         const ka = Object.keys(a), kb = Object.keys(b);
         return ka.length === names.length && kb.length === names.length
-            && names.every(n => n in a && n in b)
+            && names.every(n => own(a, n) && own(b, n))
             && resolved.every(([n, r]) => r.instance.equals(a[n], b[n]));
     }, 'Object', null);
     if (cacheKey !== null) Setoid.Struct._keyCache.set(cacheKey, result);
@@ -2242,6 +2249,34 @@ class WriterMonad extends Monad {
     }
 }
 modules.push(WriterMonad);
+// 등록된 writer 인스턴스의 of 는 array monoid 를 박는다 — 다른 monoid Writer 에는 법칙이
+// 깨진다(chain(of, w) 가 monoid 를 섞어 던진다). Const 처럼 monoid 마다 하나씩 만든다.
+// monoid 에 의존하는 것은 of 뿐이라 map/ap/chain 은 등록 인스턴스를 그대로 빌린다.
+const normalizeWriterMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Writer factory');
+const buildWriterMonad = monoid => {
+    const { key, instance: m } = normalizeWriterMonoid(monoid);
+    if (key !== null && buildWriterMonad._keyCache.has(key)) return buildWriterMonad._keyCache.get(key);
+    if (key === null && buildWriterMonad._instanceCache.has(m)) return buildWriterMonad._instanceCache.get(m);
+    const applicative = new Applicative(Apply.types.WriterApply, x => Writer.of(x, m), 'Writer');
+    const monad = new Monad(applicative, Chain.types.WriterChain, 'Writer');
+    const bundle = { applicative, monad };
+    if (key !== null) {
+        // const(<키>) 와 같이 등록한다 — of 를 지닌 두 층만 새것, 나머지 셋은 등록 인스턴스.
+        registerAs(Functor.types, `writer(${key})`, Functor.types.WriterFunctor);
+        registerAs(Apply.types, `writer(${key})`, Apply.types.WriterApply);
+        registerAs(Applicative.types, `writer(${key})`, applicative);
+        registerAs(Chain.types, `writer(${key})`, Chain.types.WriterChain);
+        registerAs(Monad.types, `writer(${key})`, monad);
+        buildWriterMonad._keyCache.set(key, bundle);
+    } else {
+        buildWriterMonad._instanceCache.set(m, bundle);
+    }
+    return bundle;
+};
+buildWriterMonad._keyCache = new Map();
+buildWriterMonad._instanceCache = new WeakMap();
+Applicative.Writer = monoid => buildWriterMonad(monoid).applicative;
+Monad.Writer = monoid => buildWriterMonad(monoid).monad;
 /* State */
 class State {
     constructor(run) {
@@ -2751,7 +2786,8 @@ Wander.Forget = monoid => {
     if (key === null && Wander.Forget._instanceCache.has(m)) return Wander.Forget._instanceCache.get(m);
     const C = Applicative.Const(m);
     // 캐리어가 스스로를 밝힌다 — 벌거벗은 함수로 두면 FunctionWander 와 한 태그가 된다.
-    const tag = key === null ? 'Forget' : `Forget(${key})`;
+    // 키가 없으면 Const 와 같은 고유 번호로 갈린다 — 안 그러면 다른 모노이드 Forget 이 섞인다.
+    const tag = key === null ? `Forget(#${++_anonMonoidId})` : `Forget(${key})`;
     const forgetOf = fn => new Forget(fn, tag);
     // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다.
     const P = new Profunctor((f, _g, p) =>
