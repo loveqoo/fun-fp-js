@@ -827,7 +827,8 @@ Traversable.prototype[Symbols.Traversable] = true;
 // 정적 조회는 lookup 이다. of 는 값 주입 전용 — docs/README.md 「lookup 과 of」
 const withTypeRegistry = TypeClass => {
     TypeClass.types = {};
-    TypeClass.resolver = key => TypeClass.types[key];
+    // 프로토타입 구성원(constructor·toString)이 조회에 걸리면 안 된다 — 등록된 것만 인스턴스다.
+    TypeClass.resolver = key => Object.prototype.hasOwnProperty.call(TypeClass.types, key) ? TypeClass.types[key] : undefined;
     TypeClass.lookup = key => TypeClass.resolver(key)
         || raise(new TypeError(`${TypeClass.name}.lookup: unsupported key ${key}`));
 };
@@ -1395,9 +1396,9 @@ modules.push(DateOrd);
 const showValue = v => {
     if (typeof v === 'string') return JSON.stringify(v);
     if (typeof v === 'function') return '<function>';
-    if (v !== null && typeof v === 'object' && !Array.isArray(v)
-        && typeof v.toString === 'function' && v.toString !== Object.prototype.toString) return String(v);
     try {
+        if (v !== null && typeof v === 'object' && !Array.isArray(v)
+            && typeof v.toString === 'function' && v.toString !== Object.prototype.toString) return String(v);
         const s = JSON.stringify(v);
         return s === undefined ? String(v) : s;
     } catch (e) { return '[unprintable]'; }
@@ -1782,8 +1783,9 @@ Setoid.Struct = fields => {
     // 타입이지만 레코드는 사용자마다 다른 즉석 모양이라 무한히 많다. 전역 명부에
     // 올리면 Algebra.all('object') 가 오염된다. 캐시는 내부에만 둔다(정규화 유지 —
     // 필드 순서가 달라도, 안쪽이 전부 키로 밝혀져 있으면 같은 인스턴스).
+    // 필드 이름에 ':' 나 ',' 가 들어가면 다른 모양이 같은 키가 된다 — JSON 으로 무해화한다.
     const cacheKey = resolved.every(([, r]) => r.key !== null)
-        ? resolved.map(([n, r]) => `${n}:${r.key}`).join(',')
+        ? JSON.stringify(resolved.map(([n, r]) => [n, r.key]))
         : null;
     if (cacheKey !== null && Setoid.Struct._keyCache.has(cacheKey)) return Setoid.Struct._keyCache.get(cacheKey);
     const result = new Setoid((a, b) => {
@@ -1861,7 +1863,8 @@ Task.fromPromise = promiseFn => (...args) => new Task((reject, resolve) => {
     try {
         const result = promiseFn(...args);
         if (result && typeof result.then === 'function') {
-            result.then(resolve).catch(reject);
+            // then 만 가진 thenable 도 규격이다 — Promise.resolve 동화라야 .catch 가정이 없다.
+            Promise.resolve(result).then(resolve, reject);
         } else {
             resolve(result); // non-Promise 값은 그대로 resolve
         }
@@ -1900,7 +1903,14 @@ Task.race = tasks => new Task((reject, resolve) => {
 });
 Task.catchError = (handler, task) => new Task((reject, resolve) => {
     task.fork(
-        e => handler(e).fork(reject, resolve),
+        e => {
+            // 핸들러의 예외·비Task 반환을 삼키면 Task 가 영원히 안 열린다 — reject 로 돌린다.
+            let recovered;
+            try { recovered = handler(e); } catch (err) { reject(err); return; }
+            Task.isTask(recovered)
+                ? recovered.fork(reject, resolve)
+                : reject(new TypeError('Task.catchError: handler must return a Task'));
+        },
         resolve
     );
 });
@@ -2086,11 +2096,9 @@ class ValidationApply extends Apply {
         super(Functor.types.ValidationFunctor,
             (vf, va) => {
                 if (vf.isInvalid() && va.isInvalid()) {
-                    const monoid = vf.monoid;
-                    return Validation.Invalid(
-                        monoid.concat(vf.errors, va.errors),
-                        monoid
-                    );
+                    // 왼쪽을 조용히 채택하면 피연산자 순서에 따라 값이 바뀐다 — 다르면 거부한다.
+                    vf.monoid !== va.monoid && raise(new TypeError('Validation.ap: both Invalid must carry the same Monoid'));
+                    return Validation.Invalid(vf.monoid.concat(vf.errors, va.errors), vf.monoid);
                 }
                 if (vf.isInvalid()) return vf;
                 if (va.isInvalid()) return va;
@@ -2198,7 +2206,9 @@ modules.push(WriterFunctor);
 class WriterApply extends Apply {
     constructor() {
         super(Functor.types.WriterFunctor,
-            (wf, wa) => new Writer(wf.value(wa.value), wf.monoid.concat(wf.output, wa.output), wf.monoid),
+            (wf, wa) => wf.monoid !== wa.monoid
+                ? raise(new TypeError('Writer.ap: both Writer must carry the same Monoid'))
+                : new Writer(wf.value(wa.value), wf.monoid.concat(wf.output, wa.output), wf.monoid),
             'Writer', Apply.types, 'writer');
     }
 }
@@ -2214,6 +2224,7 @@ class WriterChain extends Chain {
         super(Apply.types.WriterApply,
             (f, w) => {
                 const next = f(w.value);
+                w.monoid !== next.monoid && raise(new TypeError('Writer.chain: both Writer must carry the same Monoid'));
                 return new Writer(next.value, w.monoid.concat(w.output, next.output), w.monoid);
             },
             'Writer', Chain.types, 'writer');
@@ -2375,8 +2386,9 @@ const { transducer } = (() => {
         }
         return accumulator;
     };
-    const map = f => reducer => (acc, val) => types.checkFunction(reducer, 'transducer.map:reducer')(acc, types.checkFunction(f, 'transducer.map:f')(val));
-    const filter = p => reducer => (acc, val) => types.checkFunction(p, 'transducer.filter:p')(val) ? types.checkFunction(reducer, 'transducer.filter:reducer')(acc, val) : acc;
+    // f·p 는 생성 시점에 검사한다 — 원소 처리 시로 미루면 빈 입력에서 잘못된 호출이 통과한다.
+    const map = f => (types.checkFunction(f, 'transducer.map:f'), reducer => (acc, val) => types.checkFunction(reducer, 'transducer.map:reducer')(acc, f(val)));
+    const filter = p => (types.checkFunction(p, 'transducer.filter:p'), reducer => (acc, val) => p(val) ? types.checkFunction(reducer, 'transducer.filter:reducer')(acc, val) : acc);
     const take = count => {
         if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
             raise(new TypeError(`transducer.take: expected a positive integer (>= 1), but got ${count}`));
@@ -2472,13 +2484,17 @@ const { Free, trampoline } = (() => {
         }
         static runWithTask(runner) {
             return program => new Promise((resolve, reject) => {
+                // 첫 step 은 Promise executor 가 throw 를 reject 로 바꾸지만, 비동기 Task 가
+                // 부르는 후속 step 은 그 밖이다 — try 로 감싸야 후속 runner 예외가 안 샌다.
                 const step = free => {
-                    if (Free.isPure(free)) return resolve(free.value);
-                    if (Free.isImpure(free)) {
-                        runner(free.functor).fork(reject, step);
-                    } else {
-                        reject(new Error('runWithTask: unknown Free type'));
-                    }
+                    try {
+                        if (Free.isPure(free)) return resolve(free.value);
+                        if (Free.isImpure(free)) {
+                            runner(free.functor).fork(reject, step);
+                        } else {
+                            reject(new Error('runWithTask: unknown Free type'));
+                        }
+                    } catch (e) { reject(e); }
                 };
                 step(program);
             });
@@ -2924,6 +2940,9 @@ const liftCont = f => f._mapChain
 // Functor → Apply → Applicative → Chain → Monad 5단 동적 등록. registry=null 로 키 오염
 // 방지, nominal typing, XT.of 선완성 전제 — docs/internals.md#transformer-register
 const registerTransformerTypeClasses = (XT, typeName, alias) => {
+    // 같은 alias 를 다른 트랜스포머가 덮으면 먼저 만든 쪽 인스턴스가 통째로 죽는다 — 거부한다.
+    Object.prototype.hasOwnProperty.call(Functor.types, alias)
+        && raise(new TypeError(`${typeName}: a transformer with the same .type is already registered`));
     const check = (val, method) => {
         if (!(val instanceof XT)) raise(new TypeError(`${typeName}.${method}: argument must be a ${typeName} instance`));
     };
@@ -2964,8 +2983,8 @@ const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${
 
 /* ── StateT ── */
 const StateT = (M) => {
-    if (StateT._cache.has(M)) return StateT._cache.get(M);
     const nm = normalizeMonad(M);
+    if (StateT._cache.has(nm)) return StateT._cache.get(nm);
     const typeName = `StateT(${resolveMonadType(M, nm)})`;
     const alias = typeName.toLowerCase();
 
@@ -3011,15 +3030,15 @@ const StateT = (M) => {
     };
 
     registerTransformerTypeClasses(ST, typeName, alias);
-    StateT._cache.set(M, ST);
+    StateT._cache.set(nm, ST);
     return ST;
 };
 StateT._cache = new Map();
 
 /* ── EitherT ── */
 const EitherT = (M) => {
-    if (EitherT._cache.has(M)) return EitherT._cache.get(M);
     const nm = normalizeMonad(M);
+    if (EitherT._cache.has(nm)) return EitherT._cache.get(nm);
     const typeName = `EitherT(${resolveMonadType(M, nm)})`;
     const alias = typeName.toLowerCase();
 
@@ -3070,15 +3089,15 @@ const EitherT = (M) => {
     };
 
     registerTransformerTypeClasses(ET, typeName, alias);
-    EitherT._cache.set(M, ET);
+    EitherT._cache.set(nm, ET);
     return ET;
 };
 EitherT._cache = new Map();
 
 /* ── ReaderT ── */
 const ReaderT = (M) => {
-    if (ReaderT._cache.has(M)) return ReaderT._cache.get(M);
     const nm = normalizeMonad(M);
+    if (ReaderT._cache.has(nm)) return ReaderT._cache.get(nm);
     const typeName = `ReaderT(${resolveMonadType(M, nm)})`;
     const alias = typeName.toLowerCase();
 
@@ -3121,7 +3140,7 @@ const ReaderT = (M) => {
     };
 
     registerTransformerTypeClasses(RT, typeName, alias);
-    ReaderT._cache.set(M, RT);
+    ReaderT._cache.set(nm, RT);
     return RT;
 };
 ReaderT._cache = new Map();
@@ -3132,9 +3151,9 @@ const WriterT = (M, writerMonoid) => {
     if (typeof writerMonoid.empty !== 'function' || typeof writerMonoid.concat !== 'function') {
         raise(new TypeError('WriterT: monoid must have empty() and concat(a, b) methods'));
     }
-    if (!WriterT._cache.has(M)) WriterT._cache.set(M, new Map());
-    if (WriterT._cache.get(M).has(writerMonoid)) return WriterT._cache.get(M).get(writerMonoid);
     const nm = normalizeMonad(M);
+    if (!WriterT._cache.has(nm)) WriterT._cache.set(nm, new Map());
+    if (WriterT._cache.get(nm).has(writerMonoid)) return WriterT._cache.get(nm).get(writerMonoid);
     const mType = resolveMonadType(M, nm);
     const monoidId = writerMonoid.type || `monoid${++_transformerAutoId}`;
     const typeName = `WriterT(${mType},${monoidId})`;
@@ -3169,7 +3188,7 @@ const WriterT = (M, writerMonoid) => {
     };
 
     registerTransformerTypeClasses(WT, typeName, alias);
-    WriterT._cache.get(M).set(writerMonoid, WT);
+    WriterT._cache.get(nm).set(writerMonoid, WT);
     return WT;
 };
 WriterT._cache = new Map();
@@ -3192,9 +3211,13 @@ const Actor = ({ init, handle }) => {
         const done = () => { processing = false; if (queue.length > 0) process(); };
         const onSuccess = ([result, newState]) => {
             state = newState;
-            for (let i = 0; i < subscribers.length; i++) subscribers[i](result, state);
+            // 먼저 정착·진행을 확정하고 통지한다 — 통지 예외가 actor 를 멈추면 큐가 영구 대기한다.
             resolve(result);
             done();
+            for (let i = 0; i < subscribers.length; i++) {
+                try { subscribers[i](result, state); }
+                catch (e) { runCatch(config.tapErrorHandler, emptyFunc)(e); }
+            }
         };
         const onError = e => { reject(e); done(); };
         try {
@@ -3319,8 +3342,10 @@ Either.lift = f => runCatch(lift(Applicative.lookup('either'))(f), Either.Left);
 Task.lift = f => runCatch(lift(Applicative.lookup('task'))(f), Task.rejected);
 
 const extra = (() => {
+    // 자기 소유 프로퍼티만 본다 — 상속된 toString·constructor 를 "찾음" 으로 처리하면 안 된다.
+    const own = (obj, key) => (obj != null && Object.prototype.hasOwnProperty.call(obj, key)) ? obj[key] : null;
     const path = keyStr => data => keyStr.split('.').map(k => k.trim()).reduce(
-        (acc, key) => Chain.types.EitherChain.chain(obj => Either.fromNullable(obj[key]), acc),
+        (acc, key) => Chain.types.EitherChain.chain(obj => Either.fromNullable(own(obj, key)), acc),
         Either.fromNullable(data)
     );
     const template = (message, data) => message.replace(/\{\{([^}]+)\}\}/g,
