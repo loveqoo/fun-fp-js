@@ -349,6 +349,24 @@
 - **참고** — `docs/internals.md#chainrec-stack`(예제가 실행되는 회귀 테스트),
   `tests/staticland-laws.test.js` 머리의 「못 잡는 것」.
 
+## 닫힘 — 코덱스 index.js 적대적 리뷰 3차, 7건 처리 (2026-08-16)
+
+- **경위** — 소유자 지시로 영역 특정 없이 파일 전체 재검토. 7건 CONFIRMED(2회 실측). 이번은
+  「모두 수리」가 자명하지 않았다 — 셋으로 갈렸다: 깨끗한 버그 2, 퇴화값 한계 3, 설계 결정 2.
+  주 에이전트가 판정을 세 무리로 갈라 올리고 소유자가 갈래마다 정했다.
+- **A. 깨끗한 버그 2 (수리)** — #6 `Setoid.Struct` 가 상속 필드를 own 으로 인정
+  (`n in a`→`hasOwnProperty`) · #7 `once` 가 재진입 시 두 번 실행(`called=true` 를 앞으로).
+- **B. 퇴화값 한계 3 (문서화, 0에서의 곱셈군과 같은 부류)** — #3 NaN 이 수 Setoid/Ord 반사성
+  위반(Object.is 로 바꾸면 -0/0 이 갈려 부작용) · #4 Infinity 가 덧셈군 역원 위반 · #5 빈 배열
+  Comonad extract=undefined(Array 는 NonEmpty 에서만 Comonad). `docs/internals.md` 에 실행 예제로.
+- **C. 설계 결정 2 (소유자 방향대로 구현)** — C1 `Writer` 를 monoid 팩토리로
+  (`Applicative.Writer`·`Monad.Writer`, of 재설계 — 등록 array 인스턴스는 유지) · C2 `Const`·
+  `Forget` 의 익명 monoid 에 카운터 고유 태그(트랜스포머 방식). **C1 은 내 2차 수리 ③이
+  드러낸 것** — 다른 monoid 거부가 등록 Writer 의 array 고정 of 와 충돌.
+- **검증 (2026-08-16)** — 뮤테이션 5종(A 2·C1 1·C2 2) 전부 잡힘. `npm test` 45/45 + 타입체크 +
+  docs 433개. `baseline` 차이 1건 = Writer 팩토리 추가뿐(없어진 것 0). dist 재빌드.
+- **참고** — [`review/260816-codex-index-audit-3.md`](./review/260816-codex-index-audit-3.md)
+
 ## 닫힘 — 코덱스 index.js 적대적 리뷰 2차, 새 결함 5건 전부 수리 (2026-08-16)
 
 - **경위** — 1차 수리 여섯 직후 그 수리들을 재공격하도록 다시 걸었다(중간에 프로토타입 공격
