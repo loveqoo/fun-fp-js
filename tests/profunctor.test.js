@@ -217,4 +217,13 @@ test('Tagged - Choice 이지만 Strong 도 Wander 도 아니다', () => {
     assertEquals(T.promap(x => x, x => x * 2, 7), 14);
 });
 
+// 키 없는 서로 다른 monoid 의 Forget 은 태그가 갈린다(코덱스 3차 C2, Const 과 같은 병).
+test('Forget - 익명 monoid 는 고유 태그로 갈린다', () => {
+    const mk = (concat, empty) => new fp.Monoid(new fp.Semigroup(concat, 'number'), empty, 'number');
+    const sum = mk((a, b) => a + b, () => 0), product = mk((a, b) => a * b, () => 1);
+    const Fa = Wander.Forget(sum), Fb = Wander.Forget(product);
+    assertEquals(Fa.wrap(x => x)._typeName === Fb.wrap(x => x)._typeName, false, '두 익명 monoid Forget 이 같은 태그다');
+    assertEquals(Wander.Forget(sum) === Fa, true, '같은 monoid 가 캐시로 안 모인다');
+});
+
 console.log('\n✅ Profunctor tests completed\n');

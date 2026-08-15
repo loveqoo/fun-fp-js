@@ -350,3 +350,27 @@ test('Writer - ap/chain 은 다른 모노이드를 거부한다', () => {
     assertThrows(() => new fp.Writer(1, 2, product).chain(() => new fp.Writer(9, 3, sum)), 'chain 이 모노이드를 섞었다');
     assertEquals(JSON.stringify(new fp.Writer(1, 2, sum).chain(x => new fp.Writer(x + 1, 3, sum)).run()), '[2,5]');
 });
+
+// 등록된 writer 는 array monoid 전용이라 custom monoid Writer 에 법칙이 깨졌다(코덱스 3차 C1).
+// Monad.Writer(m)/Applicative.Writer(m) 팩토리가 monoid 를 잇는 of 를 준다.
+test('Monad.Writer(number) - 세 모나드 법칙이 성립한다', () => {
+    const num = fp.Monoid.lookup('number');
+    const W = fp.Monad.Writer(num), A = fp.Applicative.Writer(num);
+    const w = new fp.Writer(7, 3, num);
+    // 우항등: chain(of, w) ≡ w
+    assertEquals(JSON.stringify(W.chain(W.of, w).run()), JSON.stringify([7, 3]));
+    // 교환/항등: ap(of(id), w) ≡ w
+    assertEquals(JSON.stringify(A.ap(A.of(x => x), w).run()), JSON.stringify([7, 3]));
+    // 좌항등: chain(f, of(a)) ≡ f(a)
+    const f = x => new fp.Writer(x + 1, 10, num);
+    assertEquals(JSON.stringify(W.chain(f, W.of(5)).run()), JSON.stringify(f(5).run()));
+    // of 가 그 monoid 의 empty(0)를 잇는다 — 전에는 array []를 박아 chain 에서 던졌다
+    assertEquals(JSON.stringify(W.of(9).run()), JSON.stringify([9, 0]));
+});
+
+test('Monad.Writer - 등록 writer 는 array 전용으로 그대로, 팩토리는 캐시·키 조회된다', () => {
+    const num = fp.Monoid.lookup('number');
+    assertEquals(JSON.stringify(fp.Monad.lookup('writer').of(1).run()), JSON.stringify([1, []]));  // 등록은 array
+    assertEquals(fp.Monad.Writer(num) === fp.Monad.lookup('writer(number)'), true);                 // 키 등록
+    assertEquals(fp.Monad.Writer(num) === fp.Monad.Writer(num), true);                              // 캐시 안정
+});

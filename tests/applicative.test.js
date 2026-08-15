@@ -1,6 +1,6 @@
 // Applicative Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, logSection } from './utils.js';
+import { test, assertEquals, logSection, assertThrows } from './utils.js';
 
 const { Applicative, Maybe, Either, Task } = fp;
 
@@ -132,6 +132,17 @@ test('Const - 모노이드가 다르면 섞이지 않는다', () => {
     let message = '(안 던짐)';
     try { C.ap(C.wrap([1]), fp.Applicative.Const('number').wrap(2)); } catch (e) { message = e.message; }
     assertEquals(message, 'Apply.ap: both arguments must be Const(array)');
+});
+
+// 키 없는(미등록) 서로 다른 monoid 의 Const 는 태그가 갈려 섞이지 않는다(코덱스 3차 C2).
+test('Const - 익명 monoid 는 고유 태그로 갈려 섞이지 않는다', () => {
+    const mk = (concat, empty) => new fp.Monoid(new fp.Semigroup(concat, 'number'), empty, 'number');
+    const sum = mk((a, b) => a + b, () => 0), product = mk((a, b) => a * b, () => 1);
+    const A = fp.Applicative.Const(sum), B = fp.Applicative.Const(product);
+    assertEquals(A.wrap(2)._typeName === B.wrap(3)._typeName, false, '두 익명 monoid Const 가 같은 태그다');
+    assertThrows(() => A.ap(A.wrap(2), B.wrap(3)), '다른 monoid Const 캐리어가 섞였다');
+    assertEquals(fp.Applicative.Const(sum) === A, true, '같은 monoid 가 캐시로 안 모인다(태그 불안정)');
+    assertEquals(A.unwrap(A.ap(A.wrap(2), A.wrap(3))), 5, '자기 캐리어 연산이 깨졌다');
 });
 
 console.log('\n✅ Applicative tests completed');

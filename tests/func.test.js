@@ -575,3 +575,13 @@ test('transducer.map/filter - 잘못된 인자는 생성 시점에 던진다', (
     // 빈 입력에서도 잘못된 호출이 통과하지 않는다
     assertThrows(() => transducer.transduce(transducer.map(42))((a, x) => a + x)(0)([]), '빈 입력에서 map(42)가 통과했다');
 });
+
+// once 는 최대 한 번 실행한다 — f 안에서 자기를 다시 불러도 두 번 실행되면 안 된다(코덱스 3차 #7).
+test('once - 재진입해도 두 번 실행되지 않는다', () => {
+    let calls = 0, w;
+    w = once(() => { calls++; return calls === 1 ? w() : 'inner'; });
+    w();
+    assertEquals(calls, 1, 'once 가 재진입 시 두 번 실행됐다');
+    let c = 0; const g = once(() => ++c); g(); g();
+    assertEquals(c, 1, 'once 의 기본 계약(한 번)이 깨졌다');
+});

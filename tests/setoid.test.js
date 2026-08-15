@@ -276,4 +276,12 @@ test('Struct - 구분자 든 필드 이름이 다른 모양과 캐시 충돌하�
     assertEquals(B === Setoid.Struct({ a: 'number', b: 'string' }), true, '같은 모양은 캐시 히트여야');
 });
 
+// 상속 필드는 own 이 아니다(코덱스 3차 #6) — extra.path·리졸버 수리와 같은 결.
+test('Struct - 상속 필드는 own 으로 인정하지 않는다', () => {
+    const S = Setoid.Struct({ a: 'number' });
+    const inherited = Object.assign(Object.create({ a: 1 }), { x: 9 });
+    assertEquals(S.equals(inherited, { a: 1 }), false, '상속 필드를 own 으로 인정했다');
+    assertEquals(S.equals({ a: 1 }, { a: 1 }), true, 'own 필드 비교가 깨졌다');
+});
+
 console.log('\n✅ Setoid tests completed');
