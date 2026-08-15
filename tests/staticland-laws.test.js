@@ -25,28 +25,31 @@
 // 못 잡는 것 (규칙 31-1):
 //   - 표본이 못 가르는 위반은 못 잡는다. 새 인스턴스를 넣을 때 **그 인스턴스가 유도하는
 //     동치를 가르는 쌍**이 표본에 있는지 확인하라. 없으면 검사는 공허하게 통과한다.
-//   - Functor 는 등록된 12개 전부에 돈다(아래 OBSERVE). 그러나 Apply·Applicative·Alt·
-//     Chain·ChainRec·Extend·Comonad·Traversable 의 법칙은 여전히 각 tests/*.test.js 가
-//     이름을 적어 둔 인스턴스만 본다(레지스트리를 순회하지 않는다) — Ord 를 놓쳤던 것과
-//     같은 모양의 구멍이 그만큼 남아 있다.
+//   - Traversable 의 자연성·합성은 **구체 재료 하나씩**으로만 돈다(Maybe~>Either 변환,
+//     Compose(Maybe,Either)). 명세의 ∀ Applicative·∀ 자연변환은 시험으로 못 덮는다.
+//     traverse 가 원소를 아예 안 보는 위반(항상 of(u))은 세 법칙 모두 양변이 같이 무너져
+//     통과한다 — 그쪽은 Wander 의 wander ≡ map 이 잡는다(실측: 그 뮤테이션은 여기만 걸린다).
+//   - ChainRec 의 "스택 사용은 f 의 상수 배" 는 시험으로 증명이 안 된다. 동기 5만 걸음이
+//     결과까지 옳게 끝나는 것으로 받는다 — 재귀 구현은 천 걸음 언저리에서 죽는다(실측,
+//     docs/internals.md#chainrec-stack).
 //   - 컨테이너는 값이 아니라 **관측**으로 비교한다(OBSERVE). Reader/State 는 표본 환경·
 //     상태에서만, Task 는 fork 결과로만 본다 — 그 표본이 못 가르는 차이는 못 잡는다.
 //   - 'function' 의 동등은 관측 동등이다 — 표본 입력에서만 같음을 본다.
 //   - FACTORY_CASES 는 이름을 적어 두는 명단이다. 팩토리 산물은 레지스트리 순회로 안 닿기
 //     때문인데, 그래서 새 팩토리를 만들고 여기 안 넣으면 감시 밖이다.
-//   - **Foldable 법칙은 reduce 를 reduce 로 정의하는 자기참조라, reduce 전체가 뒤집혀도
-//     양쪽이 같이 뒤집혀 통과한다.** 실측: ArrayFoldable.reduce 를 arr.reverse().reduce 로
-//     바꿔도 이 파일은 초록이다(전체 스위트는 tests/foldable.test.js 의 순서 고정이 잡는다).
-//     비가환 연산을 쓰는 것은 두 경로가 서로 어긋나는 구현을 잡기 위한 것이지 순서를
-//     고정하지는 못한다 — 컨테이너의 순서는 각 타입의 테스트가 져야 한다.
+//   - Foldable 명세 법칙은 reduce 를 reduce 로 정의하는 자기참조다. 그래서 Traversable 이
+//     있는 타입(Array·Maybe·Either)은 **traverse 의 방문 순서**(항등 법칙이 고정)와 reduce 의
+//     방문 순서를 대조해 거울 밖 기준을 얻는다(2026-08-15). Foldable 만 있는 Object·Validation
+//     은 이 대조가 불가능해 순서를 여전히 각 타입의 테스트가 진다.
 //   - KNOWN_DEVIATIONS 에 있는 것은 검사에서 빠진다. 조용히 빠지지 않도록 목록과 이유를
 //     별도 검사가 고정한다.
 //   - **Strong/Choice 는 표준 법칙 넷 중 둘만 돈다.** 쌍대(first ≡ swap∘second∘swap)와
 //     사영(lmap(fst) ≡ rmap(fst)∘first)은 돌지만, 결합(first∘first ≡ dimap assoc unassoc ∘ first)
 //     과 자연성은 튜플·Either 재결합 함수가 더 필요해 넣지 않았다.
-//   - **Wander 는 법칙이 0개다.** wander 는 순회 자연변환과 Applicative 합성을 요구해
-//     등가식만으로 부족하다 — Traversable 을 뺀 것과 같은 이유이고 KNOWN_DEVIATIONS 에 있다.
-//     부모인 Strong/Choice 법칙은 그 인스턴스에도 돈다.
+//   - Wander 는 두 사영으로만 본다 — Identity 로 열면 map(FunctionWander), Const 로 접으면
+//     foldMap(Forget). 이 둘이 Traversal 을 가르는 표준 사영이지만 ∀ Applicative 는 아니다.
+//     Forget 검사는 합 모노이드라 순서 뒤집기는 못 가른다 — 순서는 Traversable 항등 법칙이
+//     traverse 층에서 고정한다(Forget 의 wander 는 그 traverse 에 위임하므로 함께 잠긴다).
 import fp from '../index.js';
 import { test, assertEquals, logSection } from './utils.js';
 
@@ -402,6 +405,57 @@ const BIFUNCTOR = {
     ValidationBifunctor: { xs: [fp.Validation.Valid(1), fp.Validation.Invalid(['e'], fp.Monoid.lookup('array'))], obs: OBSERVE.Validation },
 };
 
+// ─── ChainRec·Traversable·Wander 의 재료 — 등가식 밖에서 필요한 것들 ─────────
+const IdAp = fp.Applicative.lookup('identity');
+const idExtract = fp.Comonad.lookup('identity').extract;
+const MaybeAp = fp.Applicative.lookup('maybe');
+const EitherAp = fp.Applicative.lookup('either');
+// 자연변환 t : Maybe ~> Either. of/ap 보존이 자연변환의 자격인데, 여기서는 실측으로 받는다:
+// t(of(3)) ≡ Right(3), 그리고 Just/Nothing 네 조합 전부에서 t(ap(u,v)) ≡ ap(t(u),t(v)).
+const natT = m => (m.isJust() ? Right(m.value) : Left('nothing'));
+// 합성 법칙의 Compose(Maybe, Either). "만들 수 없어서" Traversable 을 뺐었는데, 테스트가
+// 직접 만들면 된다 — registry 인자를 안 넘기므로 레지스트리는 안 자란다.
+const ComposeME = new fp.Applicative(
+    new fp.Apply(
+        new fp.Functor((f, v) => MaybeAp.map(inner => EitherAp.map(f, inner), v), 'Maybe'),
+        (vf, va) => MaybeAp.ap(MaybeAp.map(inner => ga => EitherAp.ap(inner, ga), vf), va),
+        'Maybe'),
+    x => MaybeAp.of(EitherAp.of(x)), 'Maybe');
+// Traversable 법칙에 쓰는 두 화살표 — f 는 a -> Maybe b (2 에서 Nothing), g 는 b -> Either c.
+const travF = x => (x === 2 ? Nothing() : Just(typeof x === 'number' ? x * 10 : x));
+const travG = x => (typeof x === 'number' && x >= 30 ? Right(x + 1) : Left('small'));
+// 방문 순서 수집기 — Const(array 모노이드)와 같은 것인데, 레지스트리에 안 올리려고 직접 만든다.
+const OrderCollector = new fp.Applicative(
+    new fp.Apply(new fp.Functor((_f, xs) => xs, 'Array'), (fs, xs) => fs.concat(xs), 'Array'),
+    () => [], 'Array');
+// Foldable 의 순서를 어느 Traversable 에 잇는가 — 둘 다 가진 타입만 가능하다(Object·Validation 제외).
+const FOLD_ORDER_ANCHOR = { Array: 'array', Maybe: 'maybe', Either: 'either' };
+
+// Wander 의 두 사영을 어느 Traversable 위에서 볼지 — 등록된 Traversable 셋 전부.
+// traverse 가 원소를 안 보는 위반은 Traversable 법칙에선 양변이 같이 무너지므로 여기가 잡는다.
+const WANDER_TARGETS = [
+    ['array', [[], [1, 2, 3]]],
+    ['maybe', [Nothing(), Just(7)]],
+    ['either', [Left('e'), Right(3)]],
+];
+const WANDER_KIT = {
+    // Identity 사영 — 함수 profunctor 의 wander 는 각 대상에 p 를 적용하는 map 이어야 한다.
+    FunctionWander: {
+        name: 'wander ≡ map',
+        law: (W, T, u, obsT) => same(obsT, W.wander(T.traverse, x => x * 10)(u), T.map(x => x * 10, u)),
+    },
+    // Const 사영 — Forget 의 wander 는 foldMap 이어야 한다. 오른쪽이 reduce(Foldable)라서
+    // traverse 와 reduce 가 서로 어긋나는 구현도 여기서 걸린다.
+    'forget(number)': {
+        name: 'wander ≡ foldMap',
+        law: (W, T, u) => {
+            const m = fp.Monoid.lookup('number');
+            return W.wander(T.traverse, W.wrap(x => x * 2)).run(u)
+                === T.reduce((acc, x) => m.concat(acc, x * 2), m.empty(), u);
+        },
+    },
+};
+
 // ─── Strong / Choice — profunctor 값에는 공통 모양이 없어 라벨별로 도구를 준다 ──────
 // function·Forget 의 값은 함수라 표본 입력에 태워야 관측되고, Tagged 의 값은 그 자체가 관측이다.
 const swapT = ([a, b]) => [b, a];
@@ -428,10 +482,8 @@ const PROFUNCTOR_KIT = {
 
 // 명세를 지키지 못하는 자리. **이유가 곧 판정 근거다** — 이유 없이 여기 추가하지 마라.
 // 소유자 결정이 필요한 것은 .dev/TODO.md 에 항목으로 올린다.
-// 2026-08-13 현재 비어 있다. Either/Task 의 Filterable 은 등록을 뗐다(docs/internals.md#filterable).
-const KNOWN_DEVIATIONS = {
-    'Wander.*': 'wander 의 법칙은 순회 자연변환과 Applicative 합성을 요구해 등가식만으로는 불충분하다 — Traversable 을 이 게이트에서 뺀 것과 같은 이유다. 부모인 Strong/Choice 법칙은 돌고 있다',
-};
+// 2026-08-15 현재 비어 있다. 마지막까지 남아 있던 Wander 는 두 사영 법칙을 넣으며 뺐다.
+const KNOWN_DEVIATIONS = {};
 
 const CLASS_LAWS = {
     Semigroupoid: (S, _obs, key) => {
@@ -525,9 +577,16 @@ const CLASS_LAWS = {
         }
         return bad;
     },
-    // 위 KNOWN_DEVIATIONS 가 전부 건너뛴다. 그래도 목록에 두는 이유는, 빼 버리면 "Wander 는
-    // 왜 법칙이 없나" 가 아무 데도 안 남기 때문이다.
-    Wander: () => [],
+    // 두 사영 — Identity 로 열면 map, Const 로 접으면 foldMap. 재료는 위 WANDER_KIT.
+    Wander: (W, _obs, _key, label) => {
+        const kit = WANDER_KIT[label]; if (!kit) return null;
+        const bad = [];
+        for (const [tKey, us] of WANDER_TARGETS) {
+            const T = fp.Traversable.lookup(tKey);
+            for (const u of us) kit.law(W, T, u, OBSERVE[T.type]) || bad.push(`${kit.name} 깨짐 (${tKey})`);
+        }
+        return bad;
+    },
     Apply: (A, obs, _key, label) => {
         const xs = FUNCTOR_SAMPLES[A.type], of = OF_BY_LABEL[label] || OF[A.type]; if (!xs || !of) return null;
         const fns = [of(fnA), of(fnB), ...(DEGENERATE[A.type] ? [DEGENERATE[A.type]] : [])];
@@ -582,6 +641,29 @@ const CLASS_LAWS = {
             same(obs, M.chain(gg, M.chain(ff, u)), M.chain(x => M.chain(gg, ff(x)), u)) || bad.push('결합 깨짐');
         return bad;
     },
+    // 명세 등가식(chainRec ≡ 재귀 chain)을 정상·퇴화 두 경로로, 스택 제약을 동기 5만 걸음으로.
+    ChainRec: (C, obs) => {
+        const of = OF[C.type]; if (!of) return null;
+        const bad = [];
+        const p = v => v >= 3;
+        const d = v => of('d' + v);
+        // Array 는 걸음이 갈라진다 — 큐 순서(깊이/너비 우선)를 가르는 것은 갈라지는 경로뿐이다.
+        const paths = [
+            v => of(v + 1),
+            ...(C.type === 'Array' ? [v => [v + 1, v + 2]] : []),
+            ...(DEGENERATE[C.type] ? [v => (v === 1 ? DEGENERATE[C.type] : of(v + 1))] : []),
+        ];
+        for (const n of paths) {
+            const step = v => (p(v) ? d(v) : C.chain(step, n(v)));
+            same(obs, C.chainRec((next, done, v) => (p(v) ? C.map(done, d(v)) : C.map(next, n(v))), 0), step(0))
+                || bad.push('등가 깨짐');
+        }
+        try {
+            same(obs, C.chainRec((next, done, v) => (v < 50000 ? C.map(next, of(v + 1)) : C.map(done, of(v))), 0), of(50000))
+                || bad.push('스택 제약 깨짐 — 동기 5만 걸음의 결과가 다르거나 안 열렸다');
+        } catch (e) { bad.push(`스택 제약 깨짐 — ${String(e).slice(0, 60)}`); }
+        return bad;
+    },
     Monad: (M, obs) => {
         const xs = FUNCTOR_SAMPLES[M.type]; if (!xs) return null;
         const ff = x => M.of(fnA(x));
@@ -600,6 +682,30 @@ const CLASS_LAWS = {
             const direct = F.reduce(app, '', u);
             const viaList = F.reduce((acc, y) => acc.concat([y]), [], u).reduce(app, '');
             direct === viaList || bad.push(`reduce 가 목록 경유와 다르다: ${direct} vs ${viaList}`);
+        }
+        // 거울 밖 기준 — 항등 법칙이 고정한 traverse 의 방문 순서와 reduce 의 방문 순서를 대조한다.
+        const anchor = FOLD_ORDER_ANCHOR[F.type];
+        if (anchor) {
+            const T = fp.Traversable.lookup(anchor);
+            for (const u of xs) {
+                JSON.stringify(F.reduce((acc, y) => acc.concat([y]), [], u))
+                    === JSON.stringify(T.traverse(OrderCollector, y => [y], u))
+                    || bad.push('reduce 의 방문 순서가 traverse 와 다르다');
+            }
+        }
+        return bad;
+    },
+    // 항등은 obs 로, 자연성·합성은 양변이 같은 생성자 산물이라 JSON 통째 비교로 본다.
+    Traversable: (T, obs) => {
+        const xs = FUNCTOR_SAMPLES[T.type]; if (!xs) return null;
+        const bad = [];
+        for (const u of xs) {
+            same(obs, idExtract(T.traverse(IdAp, IdAp.of, u)), u) || bad.push('항등 깨짐');
+            JSON.stringify(natT(T.traverse(MaybeAp, travF, u)))
+                === JSON.stringify(T.traverse(EitherAp, x => natT(travF(x)), u)) || bad.push('자연성 깨짐');
+            JSON.stringify(T.traverse(ComposeME, x => MaybeAp.map(travG, travF(x)), u))
+                === JSON.stringify(MaybeAp.map(v => T.traverse(EitherAp, travG, v), T.traverse(MaybeAp, travF, u)))
+                || bad.push('합성 깨짐');
         }
         return bad;
     },
@@ -653,7 +759,17 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 77, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 86, '법칙을 돌린 인스턴스 수가 달라졌다');
+});
+
+test('자연성 법칙의 변환 t 가 자연변환 자격이 있다 (of/ap 보존)', () => {
+    // t 가 of/ap 를 보존하지 않으면 위 자연성 검사는 명세의 법칙이 아니라 아무 등식이 된다.
+    assertEquals(JSON.stringify(natT(MaybeAp.of(3))), JSON.stringify(EitherAp.of(3)), 't 가 of 를 보존');
+    const cases = [[Just(fnA), Just(2)], [Nothing(), Just(2)], [Just(fnA), Nothing()], [Nothing(), Nothing()]];
+    for (const [uf, ux] of cases) {
+        assertEquals(JSON.stringify(natT(MaybeAp.ap(uf, ux))), JSON.stringify(EitherAp.ap(natT(uf), natT(ux))),
+            't 가 ap 를 보존');
+    }
 });
 
 test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {
@@ -662,7 +778,7 @@ test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () =
     for (const [k, why] of Object.entries(KNOWN_DEVIATIONS)) {
         assertEquals(typeof why === 'string' && why.length > 20, true, `${k}: 이유가 없거나 너무 짧다`);
     }
-    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','), 'Wander.*',
+    assertEquals(Object.keys(KNOWN_DEVIATIONS).sort().join(','), '',
         '명세 미준수 목록이 달라졌다 — .dev/TODO.md 에 항목으로 올려라');
 });
 
