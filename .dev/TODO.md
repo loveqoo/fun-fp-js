@@ -184,9 +184,9 @@
 `Either.Semigroup` 은 인자 둘을 받고 `Left ⊕ Left` 를 누적한다.
 `package.json` 은 `0.0.0` 이라 버전 표기는 손대지 않았다.
 
-**다음 회차의 입력** — 아직 안 덮은 것: `ChainRec`(스택 제약이 법칙에 있어 등가식만으론 부족) ·
-`Traversable`(자연변환·Applicative 합성 필요) · `Foldable` 법칙의 자기참조(`reduce` 전체가
-뒤집혀도 통과한다, 실측). 시작할 때 이 세 줄부터 보면 된다.
+**다음 회차의 입력** — ~~`ChainRec` · `Traversable` · `Foldable` 자기참조~~ 전부
+2026-08-15 에 닫았다(위 법칙 게이트 항목들). 남은 구조적 한계 하나: `Object`·`Validation`
+은 `Traversable` 이 없어 reduce 순서를 게이트가 못 보고 각 타입의 테스트가 진다.
 
 ---
 
@@ -308,17 +308,84 @@
 
 ---
 
-## ⬜ 남은 것 — `Wander` 법칙 (2026-08-14)
+## 닫힘 — `Wander`·`Traversable`·`ChainRec` 법칙 게이트 (2026-08-15)
 
-- **사실** — `Strong`/`Choice` 는 표준 법칙 넷 중 **둘**이 돈다(쌍대·사영). `Wander` 는
-  **0개**이고 `KNOWN_DEVIATIONS` 에 이유와 함께 올라가 있다.
-- **왜 못 넣나** — `wander` 의 법칙은 순회 자연변환과 Applicative 합성을 요구해 등가식만으로는
-  불충분하다. **`Traversable` 을 이 게이트에서 뺀 것과 같은 이유**다.
-- **지금 무엇이 지키나** — `Wander` 인스턴스도 부모인 `Strong`/`Choice` 법칙은 받는다.
-  `wander` 자체는 `tests/optics.test.js` 의 Traversal 검사가 간접적으로만 본다.
-- **완료조건** — `wander` 를 뒤집는 뮤테이션이 법칙 게이트에 잡힌다.
-- **함께 볼 것** — `Traversable`·`ChainRec` 도 같은 이유로 빠져 있다. 셋을 한 번에 보는 것이
-  낫다.
+- **원인** — 세 클래스가 "등가식만으로 부족하다"는 이유로 법칙 게이트 밖이었다
+  (`Wander` 는 `KNOWN_DEVIATIONS`, 나머지 둘은 파일 머리의 「못 잡는 것」에만 기록).
+  실제로 부족한 것은 **재료**였다: Identity/Const 사영, 자연변환 하나, Compose Applicative
+  하나면 전부 구체식이 된다. Compose 는 `new fp.Applicative(...)` 로 테스트가 직접 만들 수
+  있었다(registry 인자를 안 넘기면 레지스트리가 안 자란다) — "만들 수 없다"가 착오였다.
+- **해결책** — `staticland-laws.test.js` 의 `CLASS_LAWS` 에 셋을 넣었다.
+  `Traversable`: 항등(Identity)·자연성(Maybe~>Either, 변환의 of/ap 보존을 별도 검사가 실측)·
+  합성(Compose(Maybe,Either)). `Wander`: 두 사영 — `wander ≡ map`(FunctionWander) ·
+  `wander ≡ foldMap`(Forget, 오른쪽이 Foldable.reduce 라 traverse/reduce 어긋남도 걸린다).
+  `ChainRec`: 명세 등가식(정상·퇴화·Array 는 갈라지는 걸음까지) + 동기 5만 걸음 스택 검사.
+  `KNOWN_DEVIATIONS` 는 비었다.
+- **곁가지 — `TaskChainRec` 이 명세의 스택 제약을 어기고 있었다.** 동기 완료를 fork 콜백
+  재귀로 이어 800~2,000걸음에서 스택이 넘쳤고(임계값은 스택 상태 따라 요동), `Task.fork` 의
+  catch 가 settle 뒤 예외를 버려 **reject 도 없이 조용히 영원히 안 열렸다**(실측: f 757회
+  호출 후 무음 정지). 동기 완료는 반복문으로, 비동기 완료만 재귀로 돌게 고쳤다 — 비동기는
+  이벤트 루프가 스택을 이미 비운 뒤라 안 쌓인다. 공개 API 불변.
+- **완료조건** — `wander`·`traverse`·`chainRec` 를 뒤집는 뮤테이션이 법칙 게이트에 잡힌다.
+- **검증 (2026-08-15)** — 법칙 순회 77 → **86**(ChainRec 4 + Traversable 3 + Wander 2).
+  뮤테이션 **9종 전부 잡힘**, 매번 `cmp` 로 복원 확인: ① Task 재귀 복원 → 스택 제약 ②
+  FunctionWander 가 p 무시 → wander≡map ③ Forget wander 가 empty 고정 → wander≡foldMap ④
+  Array traverse 누적 뒤집기 → 항등 ⑤⑥ Maybe/Either traverse 가 f 무시 → **Traversable
+  법칙은 양변이 같이 무너져 못 잡고 Wander 사영이 잡는다**(예측대로) ⑦ MaybeChainRec 이
+  Nothing 무시 → 등가 ⑧ ArrayChainRec 큐를 너비우선으로 → 등가(갈라지는 걸음) ⑨
+  `KNOWN_DEVIATIONS` 부활 → 순회 개수 86 검사와 명단 잠금 **두 겹**에 잡힘.
+  `npm test` 45/45 + 타입체크. `npm run baseline` **차이 없음**(다만 baseline 격자는 깊은
+  동기 걸음을 안 보므로 Task 수리의 영수증은 게이트 쪽이다). `dist/` 재빌드 완료.
+- **못 덮은 것** — ∀ Applicative·∀ 자연변환은 시험으로 못 덮는다(구체 재료 하나씩).
+  스택 "상수 배"는 증명이 아니라 동기 5만 걸음 통과로 갈음. Forget 검사는 합 모노이드라
+  순서를 못 가른다(순서는 Traversable 항등이 traverse 층에서 고정). **Foldable 법칙의
+  자기참조는 그대로 남아 있다** — reduce 순서는 여전히 각 타입의 테스트 몫이다.
+- **참고** — `docs/internals.md#chainrec-stack`(예제가 실행되는 회귀 테스트),
+  `tests/staticland-laws.test.js` 머리의 「못 잡는 것」.
+
+## 닫힘 — `Foldable` 의 순서를 `traverse` 에 잇는다 (2026-08-15)
+
+- **원인** — Foldable 명세 법칙은 reduce 를 reduce 로 정의하는 자기참조라, `reduce` 순회
+  순서가 통째로 뒤집혀도 양변이 같이 뒤집혀 초록이었다(실측으로 확인된 기록이 있었다).
+- **해결책** — Traversable 항등 법칙이 traverse 의 방문 순서를 고정하므로, 그것을 거울 밖
+  기준으로 쓴다: `reduce` 가 원소를 만나는 순서와 `traverse` 가 만나는 순서를 대조한다.
+  수집기는 Const(array) 동형인데 레지스트리에 안 올리려고 테스트가 직접 만든다.
+- **완료조건** — reduce 순서를 뒤집는 뮤테이션이 이 게이트에 잡힌다.
+- **검증 (2026-08-15)** — 뮤테이션 2종 전부 잡힘: ① `ArrayFoldable.reduce` 역순(**전에는
+  이 게이트가 초록으로 통과시키던 그 결함**) → `방문 순서가 traverse 와 다르다` ②
+  `MaybeFoldable.reduce` 가 값 무시 → 같은 검사 + Wander foldMap 이중으로. 매번 `cmp` 복원.
+  `npm test` 45/45 + 타입체크. 소스 무변경(테스트만) — baseline 은 안 돌렸다(볼 것이 없다).
+- **한계** — `Object`·`Validation` 은 Traversable 이 없어 대조 불가. 순서는 여전히
+  각 타입의 테스트 몫이다(파일 머리 「못 잡는 것」에 기록).
+
+## 닫힘 — `TaskChainRec` 수리, 코덱스 리뷰 후 승인 (2026-08-15)
+
+- **경위** — 위 게이트 작업 중 결함을 발견하고 **동의 없이 고쳤다.** 소유자 원칙: *"제 동의
+  없이 고치면 삭제됩니다."* 소유자 지시로 코덱스에게 그 부분만 적대적 리뷰를 받았다.
+- **코덱스 판정 (2026-08-15, 세션 01a003bc-70a5)** — 주장 넷 중 둘 확정, 둘 반박.
+  - **결함은 실재 (CONFIRMED ×2)** — 옛 구현은 스택 크기에 따라 실패 지점이 이동
+    (`--stack_size=128/512/2048` → 137/820/2001걸음, 기본 스택 1659걸음에서 무음 정지).
+    RangeError 가 settle 된 가드 안에서 잡혀 밖으로 안 나오는 것도 계측으로 확인.
+  - **수리의 일곱 공격 지점 전부 안전 (4a~4g CONFIRMED)** — 늦은 콜백·이중 콜백·동기 거부·
+    resolve 가 던짐·동기 done·비동기 재진입(동시 활성 1)·메모리(GC 후 heap 안정).
+  - **"관측 동작 전부 보존" 은 반박 (REFUTED)** — 두 차이가 실재한다.
+    ① **Major**: 걸음의 computation 이 `resolve(...)` **뒤에** 실행하는 코드의 순서.
+    옛: 전체 사슬이 끝난 뒤 거꾸로 실행(f0,before0,f1,…,after1,after0) /
+    새: 다음 걸음 전에 바로 실행(f0,before0,after0,f1,…). 주 에이전트 판단: 그 "나중에
+    실행하려고 프레임을 살려 두는 것"이 곧 스택 누적이라, **어떤 스택 안전 구현도 이 순서는
+    못 지킨다** — 수리의 부작용이 아니라 결함의 다른 얼굴이다.
+    ② **Minor**: 규격 밖 태그(`{tag:'weird'}`) 처리 방향이 반대가 됐다. 옛: next 아니면
+    종료(99 로 resolve) / 새: done 아니면 계속(무한 반복 위험). 옛 방향으로 맞추는 것은
+    한 줄이다(`tag !== 'next'` 면 종료).
+- **선택지** — (가) 유지 + 순서 차이를 문서에 (나) 유지 + ② 한 줄 정렬 + 문서 (다) 전부
+  되돌리고 명세 미준수 명단 + ⏸. 주 에이전트 권고: (나).
+- **결정 (2026-08-15, 소유자)** — **(나) 유지 + 한 줄 정렬.** 수리는 승인됐다.
+- **검증 (2026-08-15)** — 규격 밖 태그를 옛 방향(종료)으로 정렬: 코덱스의 옛 구현 실측
+  (99 / f 1회)과 새 구현이 정확히 일치. 순서 차이 ①과 태그 처리 둘 다
+  `docs/internals.md#chainrec-stack` 에 **틀리면 던지는 예제**로 박았다 — 정렬을 되돌리는
+  뮤테이션 → 문서 게이트가 잡음(`internals.md example 31`), 복원 확인. `npm test` 45/45 +
+  타입체크, `npm run baseline` 차이 없음, `dist/` 재빌드.
+- **완료조건** — 소유자가 셋 중 하나를 고르고, 고른 길의 검증(뮤테이션 포함)이 끝난다. → **닫힘**
 
 ---
 
@@ -371,8 +438,8 @@
 | --- | --- | --- | --- |
 | ✅ | 사용-1 | [`Optics.prop` 신설](#사용-1) | 닫힘 |
 | ✅ | 사용-2 | [배포 메타데이터 + MIT + README](#사용-2) | 닫힘 — 발행만 남았다 |
-| ⬜ | 사용-3 | [`lookup` / `of` 구분이 첫 화면에 없다](#사용-3) | 만드는 쪽도 헷갈려 「Traps」에 적어 뒀다 |
-| ⬜ | 사용-4 | [`Maybe`/`Either` 의 출력이 안 읽힌다](#사용-4) | 디버깅할 때 눈에 안 들어온다 |
+| ✅ | 사용-3 | [`lookup` / `of` 구분이 첫 화면에 없다](#사용-3) | 닫힘 (2026-08-15) |
+| ✅ | 사용-4 | [`Maybe`/`Either` 의 출력이 안 읽힌다](#사용-4) | 닫힘 (2026-08-15) |
 
 <h3 id="사용-1">✅ [사용-1] <code>Optics.prop</code> 신설</h3>
 
@@ -437,7 +504,12 @@
   에이전트는 포장까지만 한다.
 - **참고** — 오늘 낸 파괴적 변경 셋은 위 「현재 위치」에 적혀 있다. 첫 CHANGELOG 의 재료다.
 
-<h3 id="사용-3">⬜ [사용-3] <code>lookup</code> / <code>of</code> 구분이 첫 화면에 없다</h3>
+<h3 id="사용-3">✅ [사용-3] <code>lookup</code> / <code>of</code> 구분이 첫 화면에 없다</h3>
+
+- **검증 (2026-08-15)** — `docs/README.md` 첫 화면(학습 순서 앞)에 「먼저 이것부터 —
+  lookup 과 of」 절과 표를 넣었다. 예제가 실행된다: lookup 으로 꺼낸 도구 / of 로 넣은 값 /
+  꺼낸 인스턴스의 of / **반대로 부르면 TypeError** 까지 네 경우. `npm test` 45/45.
+  소유자 지시 (2026-08-15): "1번 지금 합시다."
 
 - **원인** — `lookup(key)` 는 레지스트리에서 인스턴스를 꺼내고, `of(value)` 는 값을 들어올린다.
   **이 구분이 `CLAUDE.md` 의 「Traps」에 적혀 있다는 것 자체가 신호다** — 만드는 쪽도
@@ -447,7 +519,13 @@
 - **완료조건** — 처음 읽는 사람이 「어느 것을 부를 것인가」를 문서 첫 화면에서 답할 수 있다
   (소유자 판단). 표의 예제가 `docs-examples.test.js` 에서 돈다.
 
-<h3 id="사용-4">⬜ [사용-4] <code>Maybe</code>/<code>Either</code> 의 출력이 안 읽힌다</h3>
+<h3 id="사용-4">✅ [사용-4] <code>Maybe</code>/<code>Either</code> 의 출력이 안 읽힌다</h3>
+
+- **검증 (2026-08-15, 소유자 동의: "2번 동의합니다")** — `Just`/`Nothing`/`Left`/`Right` 에
+  `toString` 만 더했다(생성자 모양 표기: `Just(1)`·`Nothing`·`Left("e")`·중첩은
+  `Right(Just(2))`). JSON·`_typeName` 불변 — **`npm run baseline` 차이 0** 이 그 영수증.
+  `docs/Maybe.md`·`docs/Either.md` 의 `#tostring` 절 예제가 틀리면 던지는 형태로 실행된다
+  (표기 위조 뮤테이션 → 두 문서 다 잡음, 복원 후 426개 초록). `npm test` 45/45 + 타입체크.
 
 - **원인** — 실측: `console.log(JSON.stringify(Maybe.Nothing()))` 이 `{"_typeName":"Maybe"}` 다.
   `Just(1)` 과 `Nothing()` 이 한눈에 안 갈린다.
