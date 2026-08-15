@@ -349,6 +349,43 @@
 - **참고** — `docs/internals.md#chainrec-stack`(예제가 실행되는 회귀 테스트),
   `tests/staticland-laws.test.js` 머리의 「못 잡는 것」.
 
+## 닫힘 — 코덱스 index.js 적대적 리뷰 2차, 새 결함 5건 전부 수리 (2026-08-16)
+
+- **경위** — 1차 수리 여섯 직후 그 수리들을 재공격하도록 다시 걸었다(중간에 프로토타입 공격
+  어휘로 코덱스가 오탐 거부 → 어휘 빼고 재요청해 완주). **1차 수리 여섯은 견뎠고**(별칭 가드
+  의심은 REFUTED), 새 결함 5건: HIGH 2 · MEDIUM 1 · LOW 2, 전부 CONFIRMED(2회 실측).
+  **소유자 결정: 모두 수리.**
+- **결함·수리** — ① Actor 비동기 구독자 예외 → actor 영구 정지(Task 무음정지 계열): 정착·
+  큐진행을 통지 앞으로 ② `Free.runWithTask` 후속 runner 예외 → Promise 영구 pending: step
+  을 try 로 감쌈 ③ `Setoid.Struct` 캐시 키 충돌(구분자 이스케이프 없음): JSON 키 ④ `extra.path`
+  상속 프로퍼티 통과: hasOwnProperty ⑤ `transducer.map`/`filter` 지연 검증: 생성 시 검사.
+- **검증 (2026-08-16)** — 유효 경로 불변: `npm test` 45/45 + 타입체크 + baseline 차이 없음.
+  회귀 검사 5건, **수리 되돌림 뮤테이션 5종 전부 잡힘**, 복원 확인. dist 재빌드.
+- **참고** — [`review/260816-codex-index-audit-2.md`](./review/260816-codex-index-audit-2.md)
+
+## 닫힘 — 코덱스 index.js 적대적 리뷰 6건, 전부 수리 (2026-08-16)
+
+- **경위** — 소유자 지시로 코덱스가 `index.js` 전체를 적대적으로 검토했다. Critical 0 ·
+  **Major 5 · Minor 1, 전부 CONFIRMED** — 코덱스의 재현 여섯을 주 에이전트가 독립으로
+  전부 다시 돌려 확인했다. 번호는 코덱스 것 그대로. **소유자 결정: 여섯 전부 수리.**
+- **수리 내용** — ① `Task.catchError`: 핸들러의 예외는 그 에러로, 비Task 반환은 라벨 있는
+  TypeError 로 reject(전에는 영원히 미정착) ② 트랜스포머: 같은 alias 재등록을 라벨 있는
+  에러로 거부 + 캐시 키를 **정규화된 모나드**로 바꿔 `StateT('maybe')` 와
+  `StateT(Monad.lookup('maybe'))` 가 같은 것을 돌려준다(전에는 두 문이 서로를 덮었다)
+  ③ `Validation.ap`·`Writer.ap/chain`: 모노이드 인스턴스가 다르면 거부(전에는 왼쪽을
+  조용히 채택 — 순서 따라 5/6) ④ `resolver` 를 자기 소유 키로 좁힘 —
+  `lookup('constructor')` 가 `unsupported key` 로, 팩토리 안쪽 해석도 같이 닫힘
+  ⑤ `fromPromise`: `Promise.resolve` 동화로 then 만 가진 thenable 정상 처리
+  ⑥ `showValue`: 사용자 toString 도 보호막 안으로(`[unprintable]`).
+- **검증 (2026-08-16)** — 결함 재현 여섯이 수리 전 전부 재현되고(2회 실측: 코덱스 + 주
+  에이전트) 수리 후 전부 고쳐진 출력. 유효 경로 불변의 영수증: `npm test` **45/45** +
+  타입체크(기존 검사 전부 초록) + `npm run baseline` **차이 없음**. 회귀 고정: 새 검사
+  8건(task 3 · registry 1 · statet 2 · writer 1 · validation 1)과 docs 예제 1줄 —
+  각각이 수리를 되돌리면 빨개지는 자리다. `dist/` 재빌드.
+- **덤** — `WriterT` 캐시 저장부가 낡은 키(M)를 쓰는 것을 수리 중 발견해 같이 맞췄다
+  (안 맞추면 캐시가 어긋난다).
+- **참고** — [`review/260816-codex-index-audit.md`](./review/260816-codex-index-audit.md)
+
 ## 닫힘 — 합성 감사, A 목록 적용 (2026-08-15)
 
 - **경위** — 소유자 요청으로 "합성으로 되는데 개별 구현한 자리" 를 전수 조사했다(3,337줄).
