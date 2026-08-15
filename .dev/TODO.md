@@ -46,6 +46,22 @@
 
 ---
 
+## 닫힘 — Forget 을 Profunctor 명부에 올렸다 (2026-08-15)
+
+- **원인** — `Forget` 이 `Strong`·`Choice`·`Wander` 세 층에만 등록돼 있고 `Profunctor` 만
+  비어 있었다. 인스턴스는 `promap` 을 갖고 실제로 도는데 그 층에서는 못 꺼냈다.
+  **이유가 코드에도 문서에도 없었다** — `tagged` 는 없는 이유가 적혀 있는데 이쪽은 없었다.
+- **소유자 판정** — *"Forget 은 Profunctor 의 하위 개념입니다. Maybe 에서 Just 가
+  하위개념인 것처럼요."*
+- **해결책** — 네 층에 다 등록한다. 법칙 게이트의 `Profunctor` 검사가 `x => x * 10` 이라는
+  벌거벗은 함수를 하드코딩하고 있어 `Forget` 캐리어를 못 받았으므로, `Strong`/`Choice` 와
+  같이 `PROFUNCTOR_KIT` 에서 캐리어와 「여는 법」을 받게 바꿨다.
+- **검증** — 네 층이 같은 인스턴스를 준다. 법칙이 도는 인스턴스 76 → **77**(새로 올린 것에
+  실제로 법칙이 돈다). 뮤테이션 둘(등록 제거 / kit 을 무시하고 벌거벗은 함수로 되돌림)
+  전부 잡음. `npm test` 45/45 + 타입체크. `baseline` 차이 2건 = `Profunctor` 명부에
+  `forget(array)`·`forget(maybe)` 생김, 없어진 것 0.
+- **참고** — `docs/Profunctor.md` 「등록된 인스턴스」 표를 네 층 격자로 바꿨다.
+
 ## 닫힘 — Const · Forget 캐리어도 클래스다 (2026-08-15)
 
 - **원인** — `Identity` 만 클래스가 되고 `Const`·`Forget` 은 객체 리터럴로 남았다. 셋 다

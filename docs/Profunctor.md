@@ -86,14 +86,27 @@ console.log(Wander.lookup('function') instanceof Strong);  // true
 
 ### 등록된 인스턴스
 
-| 키 | 어디에 쓰이나 |
-| --- | --- |
-| `function` | optics 의 `over` / `set` |
-| `forget(<모노이드키>)` | optics 의 `view` / `preview` / `toList` — `Wander.Forget(monoid)` 로 만든다 |
-| `tagged` | optics 의 `review` — **`Choice` 에만 있다** |
+| 키 | Profunctor | Strong | Choice | Wander | 어디에 쓰이나 |
+| --- | :-: | :-: | :-: | :-: | --- |
+| `function` | O | O | O | O | optics 의 `over` / `set` |
+| `forget(<모노이드키>)` | O | O | O | O | optics 의 `view` / `preview` / `toList` — `Wander.Forget(monoid)` 로 만든다 |
+| `tagged` | · | · | O | · | optics 의 `review` |
 
-`tagged` 가 `Strong`·`Wander` 에 **없는 것**이 곧 "Lens 와 Traversal 은 `review` 할 수
-없다" 입니다.
+`tagged` 가 `Choice` 에만 있는 것은 **정말로 `first`·`wander` 가 없기 때문**이고, 그 부재가
+곧 "Lens 와 Traversal 은 `review` 할 수 없다" 입니다.
+
+`forget` 은 반대입니다 — `promap` 을 갖고 있으므로 **`Profunctor` 에도 있어야 합니다.**
+한동안 그 층만 비어 있었는데 이유가 아무 데도 없었습니다. `Forget` 은 `Profunctor` 의
+하위 개념이고(소유자, 2026-08-15) 명부가 그렇게 말해야 합니다.
+
+```javascript
+const { Profunctor, Wander, Monoid } = FunFP;
+
+const F = Wander.Forget(Monoid.lookup('array'));
+console.log(Profunctor.lookup('forget(array)') === F);   // true   네 층이 같은 인스턴스다
+console.log(F.unwrap(F.promap(s => s.length, x => x, F.wrap(n => [n])))('abc'));
+// [ 3 ]   입력만 손질된다 — 출력 쪽 함수는 버려진다
+```
 
 ```javascript
 const { Strong, Choice, Wander, Monoid, Optics } = FunFP;

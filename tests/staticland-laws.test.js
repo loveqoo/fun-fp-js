@@ -412,6 +412,7 @@ const snapOne = v => JSON.stringify(
     v && v._typeName === 'Either' ? [v.isLeft() ? 'L' : 'R', v.value] : v);
 const applyTo = xs => p => JSON.stringify(xs.map(x => { try { return snapOne(p(x)); } catch (e) { return 'THROW'; } }));
 const PROFUNCTOR_KIT = {
+    FunctionProfunctor: { p: x => x * 10, tuples: null, eithers: null, seeds: [1, 5], obs: applyTo },
     FunctionStrong: { p: x => x * 10, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
     // 숫자 합 모노이드라 p 가 숫자를 낸다. left 가 못 모으는 자리는 empty()=0 이 된다.
     FunctionChoice: { p: x => x * 10, tuples: [[1, 'c'], [5, 'd']], eithers: [Left(1), Right(2)], seeds: [1, 5], obs: applyTo },
@@ -482,12 +483,15 @@ const CLASS_LAWS = {
             || bad.push('합성 깨짐');
         return bad;
     },
-    Profunctor: P => {
-        const fn = x => x * 10;
+    // 캐리어가 벌거벗은 함수가 아닌 것이 있다(Forget). 그래서 Strong/Choice 와 같이 kit 에서
+    // 캐리어와 「여는 법」을 받는다 — 전에는 x => x * 10 을 그냥 먹여서 Forget 이 못 들어왔다.
+    Profunctor: (P, _obs, _key, label) => {
+        const kit = PROFUNCTOR_KIT[label]; if (!kit || !kit.seeds) return null;
+        const see = kit.obs(kit.seeds);
         const bad = [];
-        FN_INPUTS_F.every(x => P.promap(y => y, y => y, fn)(x) === fn(x)) || bad.push('항등 깨짐');
-        FN_INPUTS_F.every(x => P.promap(y => fnA(fnB(y)), y => fnA(fnB(y)), fn)(x)
-            === P.promap(fnB, fnA, P.promap(fnA, fnB, fn))(x)) || bad.push('합성 깨짐');
+        see(P.promap(y => y, y => y, kit.p)) === see(kit.p) || bad.push('항등 깨짐');
+        see(P.promap(y => fnA(fnB(y)), y => fnA(fnB(y)), kit.p))
+            === see(P.promap(fnB, fnA, P.promap(fnA, fnB, kit.p))) || bad.push('합성 깨짐');
         return bad;
     },
     // Static Land 밖. 표준 Strong 법칙 넷 중 둘을 넣는다 — 결합(assoc)과 second 자연성은
@@ -649,7 +653,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 76, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 77, '법칙을 돌린 인스턴스 수가 달라졌다');
 });
 
 test('명세를 못 지키는 자리는 이유와 함께 명단에 있다', () => {

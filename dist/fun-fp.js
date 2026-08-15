@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-15T01:24:39.373Z
+ * Built: 2026-08-15T02:06:46.487Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -2720,7 +2720,9 @@ Wander.Forget = monoid => {
     result.wrap = fn => forgetOf(a => C.unwrap(C.wrap(fn(a))));
     result.unwrap = p => p.run;
     if (key !== null) {
-        // Const 와 같이 3단으로 등록한다 — Wander 만 올리면 Strong.lookup('forget(array)') 가 안 된다.
+        // Forget 은 Profunctor 의 하위 개념이다(소유자, 2026-08-15) — Just 가 Maybe 아래인 것과 같다.
+        // 네 층에 다 올린다. Profunctor 만 빼 두면 명부가 사실과 달라진다.
+        registerAs(Profunctor.types, `forget(${key})`, result);
         registerAs(Strong.types, `forget(${key})`, result);
         registerAs(Choice.types, `forget(${key})`, result);
         registerAs(Wander.types, `forget(${key})`, result);
