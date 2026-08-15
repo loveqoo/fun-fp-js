@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-15T06:09:41.765Z
+ * Built: 2026-08-15T07:29:38.206Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -1433,9 +1433,19 @@ Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing(
 Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
 // Kleisli 합성이므로 compose 가 받는 것은 a -> Maybe b 꼴의 **함수**다. 'Maybe' 는 합성
 // 결과가 품는 타입이지 인자의 타입이 아니다 — Either/Task 쪽과 같이 'function' 이다.
+// 셋(Maybe/Either/Task)의 공용 몸. 짝 Chain 이 자기보다 늦게 등록되므로 조회는 호출 시점이다.
+// f·g 검사는 클래스 게이트 몫이라 여기서 안 한다 — 이 헬퍼의 빈틈은 chainOf 뿐이다.
+const kleisliCompose = chainOf => {
+    types.checkFunction(chainOf, 'kleisliCompose');
+    return (f, g) => x => {
+        const chain = chainOf();
+        (chain && chain[Symbols.Chain] === true) || raise(new TypeError('kleisliCompose: chainOf() must return a Chain'));
+        return chain.chain(f, g(x));
+    };
+};
 class MaybeSemigroupoid extends Semigroupoid {
     constructor() {
-        super((f, g) => x => Chain.types.MaybeChain.chain(f, g(x)), 'function', Semigroupoid.types, 'maybe');
+        super(kleisliCompose(() => Chain.types.MaybeChain), 'function', Semigroupoid.types, 'maybe');
     }
 }
 modules.push(MaybeSemigroupoid);
@@ -1558,7 +1568,7 @@ Either.fold = (onLeft, onRight, e) => e.isLeft() ? onLeft(e.value) : onRight(e.v
 Either.catch = runCatch(f => Either.Right(f()), Either.Left);
 class EitherSemigroupoid extends Semigroupoid {
     constructor() {
-        super((f, g) => x => Chain.types.EitherChain.chain(f, g(x)), 'function', Semigroupoid.types, 'either');
+        super(kleisliCompose(() => Chain.types.EitherChain), 'function', Semigroupoid.types, 'either');
     }
 }
 modules.push(EitherSemigroupoid);
@@ -1893,7 +1903,7 @@ Task.catchError = (handler, task) => new Task((reject, resolve) => {
 });
 class TaskSemigroupoid extends Semigroupoid {
     constructor() {
-        super((f, g) => x => Chain.types.TaskChain.chain(f, g(x)), 'function', Semigroupoid.types, 'task');
+        super(kleisliCompose(() => Chain.types.TaskChain), 'function', Semigroupoid.types, 'task');
     }
 }
 modules.push(TaskSemigroupoid);
