@@ -216,4 +216,18 @@ test('subscribe argument must be a function', () => {
     assertThrows(() => actor.subscribe(42), 'should throw');
 });
 
+// 비동기 handler 경로에서 구독자가 던져도 actor 는 멈추지 않는다(코덱스 2차 ①).
+testAsync('subscribe - 비동기 처리 중 구독자 예외가 진행을 막지 않는다', async () => {
+    const seen = [];
+    const actor = fp.Actor({ init: 0, handle: (s, m) => new fp.Task((_, ok) => setTimeout(() => ok([m, s + 1]), 0)) });
+    actor.subscribe(() => seen.push('first'));
+    actor.subscribe(() => { throw new Error('subscriber-boom'); });
+    actor.subscribe(() => seen.push('third'));
+    const r1 = await new Promise((res, rej) => actor.send('one').fork(rej, res));
+    assertEquals(r1, 'one');                       // 던지는 구독자에도 첫 send 는 정착한다
+    assertEquals(seen.includes('third'), true);    // 던지는 구독자 뒤도 통지된다
+    const r2 = await new Promise((res, rej) => actor.send('two').fork(rej, res));
+    assertEquals(r2, 'two');                        // 큐가 고착되지 않아 다음 메시지도 처리된다
+});
+
 console.log('\n✅ Actor tests completed\n');

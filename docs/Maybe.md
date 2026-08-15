@@ -318,4 +318,7 @@ if (String(Maybe.Nothing()) !== 'Nothing') throw new Error('Nothing 표기가 �
 if (String(Maybe.Just(Maybe.Just('a'))) !== 'Just(Just("a"))') throw new Error('중첩 표기가 다르다');
 if (JSON.stringify(Maybe.Just(1)) !== '{"value":1,"_typeName":"Maybe"}') throw new Error('JSON 이 달라졌다');
 console.log(`${Maybe.Just([1, 2])}`);   // Just([1,2])
+
+// 안의 값이 던지는 toString 을 가져도 표기는 안전하다
+if (String(Maybe.Just({ toString() { throw new Error('pb'); } })) !== 'Just([unprintable])') throw new Error('표기 보호막이 뚫렸다');
 ```

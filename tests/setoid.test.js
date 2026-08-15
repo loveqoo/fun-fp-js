@@ -1,6 +1,6 @@
 // Setoid Laws Tests
 import fp from '../index.js';
-import { test, assertEquals, logSection } from './utils.js';
+import { test, assertEquals, assertThrows, logSection } from './utils.js';
 
 const { Setoid } = fp;
 
@@ -265,6 +265,15 @@ test('컨테이너 팩토리 - 안쪽 개수가 틀리면 던진다', () => {
     const polluted = [...Object.keys(Setoid.types), ...Object.keys(fp.Semigroup.types)]
         .filter(k => k.includes('undefined'));
     assertEquals(polluted.join(','), '', '레지스트리에 undefined 키가 들어갔다');
+});
+
+// 필드 이름에 구분자(':' ',')가 들어가도 캐시 키가 충돌하지 않는다(코덱스 2차 ③).
+test('Struct - 구분자 든 필드 이름이 다른 모양과 캐시 충돌하지 않는다', () => {
+    const A = Setoid.Struct({ 'a:number,b': 'string' });
+    const B = Setoid.Struct({ a: 'number', b: 'string' });
+    assertEquals(A === B, false, '다른 모양이 같은 캐시 인스턴스가 됐다');
+    assertEquals(B.equals({ a: 1, b: 'x' }, { a: 1, b: 'x' }), true, 'B 가 자기 모양을 거부한다');
+    assertEquals(B === Setoid.Struct({ a: 'number', b: 'string' }), true, '같은 모양은 캐시 히트여야');
 });
 
 console.log('\n✅ Setoid tests completed');

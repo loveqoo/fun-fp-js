@@ -14,7 +14,7 @@
 // (한 이름이 조회와 주입을 겸하면 `Maybe.of('array')` 가 조회로 읽힌다)는 실패 메시지에
 // 담기지 않는다. 의도는 `CLAUDE.md` 「Traps」에, 부활 차단은 여기에 있다.
 import fp from '../index.js';
-import { test, assertEquals, assert, logSection } from './utils.js';
+import { test, assertEquals, assert, assertThrows, logSection } from './utils.js';
 
 const TYPE_CLASSES = [
     'Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
@@ -232,3 +232,12 @@ test('지연 등록도 같은 문을 지난다', () => {
 });
 
 console.log('\n✅ 레지스트리 API tests completed\n');
+
+// Object.prototype 구성원이 조회에 걸리면 안 된다(코덱스 리뷰 ④) — 등록된 것만 인스턴스다.
+test('lookup - 프로토타입 구성원은 등록 인스턴스가 아니다', () => {
+    for (const key of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+        assertThrows(() => fp.Setoid.lookup(key), 'lookup 이 프로토타입 구성원을 돌려줬다: ' + key);
+        assertThrows(() => fp.Functor.lookup(key), 'lookup 이 프로토타입 구성원을 돌려줬다: ' + key);
+    }
+    assertThrows(() => fp.Setoid.Maybe('__proto__'), '팩토리가 프로토타입 키로 인스턴스를 만들었다');
+});

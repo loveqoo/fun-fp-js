@@ -1,6 +1,6 @@
 // Writer Monad Tests
 import fp from '../index.js';
-import { test, assertEquals, logSection } from './utils.js';
+import { test, assertEquals, logSection, assertThrows } from './utils.js';
 
 const { Writer, Monoid, Functor, Apply, Chain, Monad } = fp;
 
@@ -341,3 +341,12 @@ test('Writer for accumulating costs', () => {
 });
 
 console.log('\n✅ Writer tests completed');
+
+// 다른 모노이드를 조용히 섞으면 순서에 따라 값이 바뀐다(코덱스 리뷰 ③) — 거부한다.
+test('Writer - ap/chain 은 다른 모노이드를 거부한다', () => {
+    const sum = fp.Monoid.lookup('number');
+    const product = fp.Monoid.types.NumberProductMonoid;
+    assertThrows(() => fp.Writer.ap(new fp.Writer(x => x + 1, 2, sum), new fp.Writer(9, 3, product)), 'ap 이 모노이드를 섞었다');
+    assertThrows(() => new fp.Writer(1, 2, product).chain(() => new fp.Writer(9, 3, sum)), 'chain 이 모노이드를 섞었다');
+    assertEquals(JSON.stringify(new fp.Writer(1, 2, sum).chain(x => new fp.Writer(x + 1, 3, sum)).run()), '[2,5]');
+});

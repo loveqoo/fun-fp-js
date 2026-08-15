@@ -1,6 +1,6 @@
 // Validation Tests
 import fp from '../index.js';
-import { test, assertEquals, logSection } from './utils.js';
+import { test, assertEquals, logSection, assertThrows } from './utils.js';
 
 const { Validation, Either } = fp;
 
@@ -262,3 +262,11 @@ test('Validation.reduce - Invalid returns initial', () => {
 });
 
 console.log('\n✅ Validation tests completed');
+
+// Invalid 둘이 다른 모노이드를 들고 있으면 왼쪽을 조용히 채택했다(코덱스 리뷰 ③) — 거부한다.
+test('Validation.ap - 다른 모노이드의 Invalid 둘은 거부된다', () => {
+    const sum = fp.Monoid.lookup('number');
+    const product = fp.Monoid.types.NumberProductMonoid;
+    assertThrows(() => fp.Validation.ap(fp.Validation.Invalid(2, sum), fp.Validation.Invalid(3, product)), '모노이드를 섞었다');
+    assertEquals(fp.Validation.ap(fp.Validation.Invalid(['a']), fp.Validation.Invalid(['b'])).errors.join(','), 'a,b');
+});

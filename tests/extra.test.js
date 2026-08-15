@@ -1,6 +1,6 @@
 // Extra utilities tests (path, template)
 import fp from '../index.js';
-import { test, assertEquals, assert, logSection } from './utils.js';
+import { test, assertEquals, assert, logSection, assertThrows } from './utils.js';
 
 const { extra, Either } = fp;
 const { path, template } = extra;
@@ -142,6 +142,13 @@ test('Either.fromNullable - returns Right for false', () => {
     const result = Either.fromNullable(false);
     assert(Either.isRight(result), 'should be Right for false');
     assertEquals(result.value, false);
+});
+
+// 상속 프로퍼티(toString·constructor)는 "찾음" 이 아니다(코덱스 2차 ④).
+test('path - 상속 프로퍼티는 Left 로 처리한다', () => {
+    assertEquals(fp.Either.isRight(fp.extra.path('x')({ x: 1 })), true);        // own 은 찾음
+    assertEquals(fp.Either.isRight(fp.extra.path('toString')({})), false);      // 상속은 못 찾음
+    assertEquals(fp.Either.fold(() => 'L', v => v, fp.extra.path('a.b')({ a: { b: 7 } })), 7);  // 중첩 own 은 그대로
 });
 
 console.log('\n✅ Extra utilities tests completed\n');

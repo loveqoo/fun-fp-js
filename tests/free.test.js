@@ -236,4 +236,14 @@ test('Free Monad - deeply nested Thunk.suspend', () => {
     assertEquals(result, 5000);
 });
 
+// 비동기 후속 step 에서 runner 가 던져도 Promise 가 pending 이 아니라 reject 된다(코덱스 2차 ②).
+testAsync('runWithTask - 비동기 후속 runner 예외는 reject 로 나온다', async () => {
+    let n = 0;
+    const program = fp.Chain.lookup('free').chain(() => fp.Free.Thunk.suspend(() => 42), fp.Free.Thunk.suspend(() => 1));
+    const runner = fr => { n++; if (n === 2) throw new Error('runner-boom'); return new fp.Task((_, ok) => setTimeout(() => ok(fr.run()), 0)); };
+    let outcome = 'PENDING';
+    await fp.Free.runWithTask(runner)(program).then(v => { outcome = 'resolve:' + v; }, e => { outcome = 'reject:' + e.message; });
+    assertEquals(outcome, 'reject:runner-boom');
+});
+
 console.log('\n✅ Free Monad tests completed\n');

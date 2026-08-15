@@ -463,3 +463,17 @@ test('Registry: generic keys not polluted', () => {
 });
 
 console.log('\n✅ StateT tests completed\n');
+
+// 같은 .type 의 다른 모나드가 레지스트리를 덮으면 먼저 만든 쪽이 죽는다(코덱스 리뷰 ②).
+test('StateT - 같은 .type 의 다른 모나드는 거부되고 먼저 만든 쪽은 멀쩡하다', () => {
+    const mk = tag => ({ type: 'CollisionProbe', of: x => ({ tag, v: x }), map: (f, a) => ({ tag, v: f(a.v) }), chain: (f, a) => f(a.v) });
+    const A = fp.StateT(mk('A'));
+    assertThrows(() => fp.StateT(mk('B')), '같은 .type 재등록이 통과했다');
+    const mapped = A.of(1).map(x => x + 1);
+    assert(mapped instanceof Object, 'A 가 죽었다');
+});
+
+test('StateT - 키 문과 인스턴스 문이 같은 트랜스포머를 돌려준다', () => {
+    assertEquals(fp.StateT('maybe') === fp.StateT(fp.Monad.lookup('maybe')), true,
+        '두 문이 다른 트랜스포머를 만들면 나중 것이 먼저 것을 덮는다');
+});

@@ -397,4 +397,28 @@ test('catchError - fromPromise integration', () => {
         );
 });
 
+// 핸들러가 던지거나 Task 아닌 것을 주면 영원히 미정착이었다(코덱스 리뷰 ①). reject 로 나온다.
+test('catchError - 핸들러가 던지면 그 에러로 reject 된다', () => {
+    let out = '(안 열림)';
+    Task.rejected('x').catchError(() => { throw new Error('handler-boom'); })
+        .fork(e => { out = e.message; }, () => { out = 'RESOLVE'; });
+    assertEquals(out, 'handler-boom');
+});
+
+test('catchError - 핸들러가 Task 아닌 것을 주면 라벨 있는 TypeError 로 reject 된다', () => {
+    let out = '(안 열림)';
+    Task.rejected('x').catchError(() => 42)
+        .fork(e => { out = e.message; }, () => { out = 'RESOLVE'; });
+    assertEquals(out, 'Task.catchError: handler must return a Task');
+});
+
+// then 만 가진 thenable 은 규격이다(코덱스 리뷰 ⑤). .catch 가정으로 TypeError reject 였다.
+testAsync('fromPromise - then 만 가진 thenable 을 정상 동화한다', async () => {
+    const v = await new Promise((res, rej) => {
+        Task.fromPromise(() => ({ then(resolve) { setTimeout(() => resolve(7), 0); } }))()
+            .fork(rej, res);
+    });
+    assertEquals(v, 7);
+});
+
 console.log('\n✅ Task tests completed');

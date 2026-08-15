@@ -567,3 +567,11 @@ test('foldMap - with Maybe array (flatten Just values)', () => {
 });
 
 console.log('\n✅ Function manipulation tests completed\n');
+
+// map/filter 는 생성 시점에 함수를 검사한다 — 빈 입력에서 잘못된 호출이 통과하면 안 된다(코덱스 2차 ⑤).
+test('transducer.map/filter - 잘못된 인자는 생성 시점에 던진다', () => {
+    assertThrows(() => transducer.map(42), 'map 이 비함수를 생성 시 안 막았다');
+    assertThrows(() => transducer.filter(99), 'filter 가 비함수를 생성 시 안 막았다');
+    // 빈 입력에서도 잘못된 호출이 통과하지 않는다
+    assertThrows(() => transducer.transduce(transducer.map(42))((a, x) => a + x)(0)([]), '빈 입력에서 map(42)가 통과했다');
+});
