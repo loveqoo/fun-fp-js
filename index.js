@@ -1956,13 +1956,23 @@ class TaskChainRec extends ChainRec {
     constructor() {
         super(Chain.types.TaskChain,
             (f, initial) => new Task((reject, resolve) => {
-                const loop = current => {
-                    try {
-                        f(ChainRec.next, ChainRec.done, current)
-                            .fork(reject, result => {
-                                result.tag === 'next' ? loop(result.value) : resolve(result.value);
+                // 동기 완료를 재귀로 이으면 스택이 걸음 수만큼 자란다 — docs/internals.md#chainrec-stack
+                const loop = start => {
+                    let current = start;
+                    for (;;) {
+                        let sync = true, bounce = false, next = null;
+                        try {
+                            f(ChainRec.next, ChainRec.done, current).fork(reject, result => {
+                                // 'next' 만 계속한다 — 규격 밖 태그를 계속으로 읽으면 무한 반복이 된다(코덱스 리뷰).
+                                if (result.tag !== 'next') { resolve(result.value); return; }
+                                if (sync) { bounce = true; next = result.value; }
+                                else loop(result.value);
                             });
-                    } catch (e) { reject(e); }
+                        } catch (e) { reject(e); return; }
+                        sync = false;
+                        if (!bounce) return;
+                        current = next;
+                    }
                 };
                 loop(initial);
             }), 'Task', ChainRec.types, 'task');

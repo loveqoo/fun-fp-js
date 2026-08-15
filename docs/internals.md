@@ -786,6 +786,78 @@ fp-ts 와 Haskell 의 `witherable` 은 `Either` 에 거르기를 줍니다(왼�
 
 ---
 
+## `Task.chainRec` 은 동기 완료를 반복으로 돈다 {#chainrec-stack}
+
+Static Land 의 `ChainRec` 은 등가식 하나로 끝나지 않습니다 — **`chainRec` 의 스택 사용이
+`f` 자신의 상수 배여야 한다**는 제약이 규칙에 들어 있습니다. `chain` 재귀로는 안전하게 돌 수
+없는 긴 반복을 안전하게 돌라고 존재하는 연산이기 때문입니다.
+
+처음 구현은 "걸음 하나 = `fork` 콜백 안에서 재귀 호출 하나" 였습니다. 비동기 Task 라면
+이벤트 루프가 걸음마다 스택을 비워 줘서 문제가 없지만, `Task.of` 같은 **동기 Task 는 콜백이
+즉시 불려 재귀가 그대로 쌓입니다.** 실측으로 800~2,000걸음 언저리에서 스택이 넘쳤습니다
+(임계값은 그때그때의 스택 상태에 따라 움직입니다).
+
+더 나쁜 것은 죽는 모양입니다. `Task` 의 `fork` 는 계산을 try/catch 로 감싸는데, 이미 settle
+된 뒤에 나는 예외는 버립니다. 스택 오버플로는 재귀 깊은 곳 — 바깥 겹들이 전부 settle 된 뒤 —
+에서 나므로 **에러가 조용히 사라지고, Task 는 reject 도 resolve 도 없이 영원히 안 열립니다.**
+
+그래서 지금 구현은 동기 완료를 가려냅니다: `fork` 가 반환하기 전에 콜백이 왔으면(동기) 재귀
+대신 **다음 걸음을 반복문으로** 잇고, 반환한 뒤에 왔으면(비동기) 재귀하되 이벤트 루프가 이미
+스택을 비운 뒤라 깊이가 쌓이지 않습니다.
+
+```javascript
+const { ChainRec, Task } = FunFP;
+
+const C = ChainRec.lookup('task');
+let result = '안 열림';
+C.chainRec(
+    (next, done, v) => v < 50000 ? C.map(next, Task.of(v + 1)) : C.map(done, Task.of(v)),
+    0
+).fork(e => { result = 'err: ' + e; }, v => { result = v; });
+if (result !== 50000) throw new Error('동기 5만 걸음이 안 돌았다: ' + result);
+console.log(result);   // 50000
+```
+
+이 예제가 곧 회귀 테스트입니다 — 재귀 구현으로 되돌리면 `result` 가 `'안 열림'` 인 채로
+남아 여기서 던집니다. 같은 검사가 `tests/staticland-laws.test.js` 의 `ChainRec` 법칙에도
+등록된 네 인스턴스 전부에 대해 돕니다.
+
+**옛 구현과 다른 점 하나 — "resolve 이후 코드"의 실행 시점** (코덱스 교차 리뷰, 2026-08-15).
+걸음의 computation 이 `resolve(...)` 를 부른 **뒤에** 더 실행하는 코드가 있다면, 옛 구현은
+그것을 모든 걸음이 끝난 뒤 **역순으로** 실행했습니다 — 스택에 쌓여 있다가 풀리면서인데,
+그 쌓임이 곧 위의 오버플로입니다. 지금 구현은 다음 걸음 전에 바로 실행합니다. 스택을
+고치면서 옛 순서를 지키는 구현은 없습니다 — 그 순서 자체가 스택 누적이기 때문입니다.
+
+```javascript
+const { ChainRec, Task } = FunFP;
+
+const C = ChainRec.lookup('task');
+const log = [];
+C.chainRec((next, done, i) => new Task((_, res) => {
+    log.push('걸음' + i);
+    res(i < 1 ? next(i + 1) : done(i));
+    log.push('정리' + i);   // resolve 뒤의 코드 — 옛 구현이라면 맨 끝에 역순으로 왔다
+}), 0).fork(() => {}, () => {});
+if (log.join(',') !== '걸음0,정리0,걸음1,정리1') throw new Error('순서가 다르다: ' + log.join(','));
+console.log(log.join(','));   // 걸음0,정리0,걸음1,정리1
+```
+
+규격 밖 태그(`next`/`done` 어느 쪽도 아닌 것)는 옛 구현과 같게 **종료**로 읽습니다(소유자
+결정, 2026-08-15) — 계속으로 읽으면 그 태그가 영원히 안 바뀔 때 무한 반복이 됩니다.
+
+```javascript
+const { ChainRec, Task } = FunFP;
+
+const C = ChainRec.lookup('task');
+let out = null;
+C.chainRec((next, done, i) => Task.of(i === 0 ? { tag: 'weird', value: 99 } : done(-1)), 0)
+    .fork(() => {}, v => { out = v; });
+if (out !== 99) throw new Error('규격 밖 태그가 종료로 안 읽혔다: ' + out);
+console.log(out);   // 99
+```
+
+---
+
 ## 레지스트리에 쓰는 문은 하나다 {#registry-writes}
 
 **레지스트리는 잘 알려진 타입의 명부입니다** — 이미 등록된 인스턴스를 이름으로 찾기 위한
