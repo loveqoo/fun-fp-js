@@ -263,6 +263,35 @@ Maybe.pipe(
 // Just('Seoul') 또는 Nothing
 ```
 
+`Maybe.pipe` 는 범용 조합자 `pipeWhile` 위에 서 있습니다 — `pipeWhile(Maybe.isJust)` 가
+그 몸이고, `Either.pipe` 도 같은 뼈대(`pipeWhile(Either.isRight)`)를 씁니다.
+
+### pipeWhile - predicate 가 참인 동안만 잇는 pipe
+
+상자와 무관한 최상위 유틸리티입니다. 각 걸음마다 predicate 를 먼저 묻고, 거짓이면 남은
+함수를 건너뛰고 값을 그대로 내보냅니다. 값이 안 바뀌면 predicate 결과도 안 바뀌므로
+한 번 거짓이 되면 사실상 멈춥니다.
+
+```javascript
+const { pipeWhile } = FunFP;
+
+const capped = pipeWhile(x => x < 100)(
+    2,
+    x => x * 10,   // 2 → 20 (20 < 100, 계속)
+    x => x * 10,   // 20 → 200 (200 은 100 을 넘어 여기서 멈춤)
+    x => x + 1     // 건너뜀
+);
+if (capped !== 200) throw new Error('pipeWhile 이 멈추지 않았다: ' + capped);
+console.log(capped);   // 200
+
+// Maybe.pipe 와의 관계 — 같은 결과
+const halveEven = m => m.chain(x => (x % 2 === 0 ? Maybe.Just(x / 2) : Maybe.Nothing()));
+const viaPipe = Maybe.pipe(Maybe.of(8), halveEven, halveEven, halveEven);
+const viaWhile = pipeWhile(Maybe.isJust)(Maybe.of(8), halveEven, halveEven, halveEven);
+if (String(viaPipe) !== String(viaWhile)) throw new Error('둘이 어긋났다');
+console.log(String(viaPipe));   // Just(1) — 8 → 4 → 2 → 1
+```
+
 ### Maybe.pipeK - Kleisli 합성 (chain용)
 
 ```javascript

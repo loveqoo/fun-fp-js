@@ -1,12 +1,12 @@
 // Function manipulation utilities tests
 import fp from '../index.js';
-import { test, assertEquals, assert, assertThrows, logSection } from './utils.js';
+import { test, assertEquals, assert, assertThrows, assertThrowsWith, logSection } from './utils.js';
 
 const {
     identity, compose, compose2, constant, tuple,
     apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
-    flip, flip2, flipCurried, flipCurried2, pipe, pipe2,
+    flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
     tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer,
     composeK, foldMap, Maybe, Either, Foldable, Monoid, Monad, setTapErrorHandler
 } = fp;
@@ -206,6 +206,27 @@ test('compose - composes right to left with multiple functions', () => {
     const square = x => x * x;
     const composed = compose(square, double, addOne);
     assertEquals(composed(5), 144); // same as pipe(addOne, double, square)
+});
+
+test('pipeWhile - predicate 가 참인 동안만 적용한다', () => {
+    const under100 = x => x < 100;
+    // 2 → 20 → 200 에서 predicate 가 거짓이 되어 남은 함수는 건너뛴다
+    assertEquals(pipeWhile(under100)(2, x => x * 10, x => x * 10, x => x + 1), 200);
+    assertEquals(pipeWhile(under100)(2), 2); // 함수가 없으면 값 그대로
+    assertEquals(pipeWhile(x => x < 0)(5, x => x * 10), 5); // 첫 값부터 거짓이면 그대로
+});
+
+test('pipeWhile - 한 번 거짓이면 값이 안 바뀌므로 남은 함수는 전부 건너뛴다', () => {
+    let applied = 0;
+    const count = x => { applied++; return x; };
+    pipeWhile(x => x < 10)(5, x => x + 10, count, count);
+    assertEquals(applied, 0); // 15 에서 멈춘 뒤 count 는 한 번도 안 불린다
+});
+
+test('pipeWhile - 건너뛴 자리는 함수가 아니어도 통과, 적용될 자리는 라벨 있는 에러', () => {
+    assertEquals(pipeWhile(x => x < 0)(5, '함수 아님'), 5); // 건너뛰므로 검사도 없다
+    assertThrowsWith(() => pipeWhile(x => x < 10)(5, '함수 아님'), 'pipeWhile');
+    assertThrowsWith(() => pipeWhile('함수 아님'), 'pipeWhile'); // predicate 는 만들 때 검사
 });
 
 // === Combinators ===

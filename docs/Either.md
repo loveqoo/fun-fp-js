@@ -293,7 +293,8 @@ Either.toMaybe(Either.Left('error'));  // Nothing
 
 ## Either.pipe / Either.pipeK
 
-Static Land 스타일로 읽기 쉽게 체이닝하기:
+Static Land 스타일로 읽기 쉽게 체이닝하기. `Either.pipe` 는 `pipeWhile(Either.isRight)` 다 —
+뼈대의 설명과 예제는 [Maybe 문서의 pipeWhile 절](./Maybe.md#pipewhile---predicate-가-참인-동안만-잇는-pipe)에 있다.
 
 ### Either.pipe - 함수들을 순차 적용
 

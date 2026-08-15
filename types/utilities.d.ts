@@ -102,6 +102,11 @@ export declare function pipe<A, B, C, D, E, F>(
     j: (e: E) => F
 ): (a: A) => F;
 
+// predicate 가 참인 동안만 잇는 pipe — Maybe.pipe/Either.pipe 의 공용 뼈대.
+export declare function pipeWhile<A>(
+    predicate: (x: A) => boolean
+): (value: A, ...fns: Array<(x: A) => A>) => A;
+
 // ─── 4. Variadic curry / uncurry (0..5 args) ──────────────────────────
 export declare function curry<R>(f: () => R): () => R;
 export declare function curry<A, B>(

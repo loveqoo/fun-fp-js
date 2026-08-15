@@ -130,6 +130,7 @@ import type {
     flipCurried2,
     pipe,
     pipe2,
+    pipeWhile,
     tap,
     also,
     into,
@@ -221,6 +222,7 @@ declare const fp: {
     readonly flipCurried2: typeof flipCurried2;
     readonly pipe: typeof pipe;
     readonly pipe2: typeof pipe2;
+    readonly pipeWhile: typeof pipeWhile;
     readonly tap: typeof tap;
     readonly also: typeof also;
     readonly into: typeof into;
