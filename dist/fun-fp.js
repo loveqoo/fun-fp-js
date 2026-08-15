@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-15T05:04:26.515Z
+ * Built: 2026-08-15T06:09:41.765Z
  * Static Land specification compliant
  */
 // ES2018 상한 *위*의 둘만 검사한다 — 아래의 것은 상한을 지키는 런타임에 반드시 있다. docs/internals.md#es-ceiling
@@ -915,7 +915,7 @@ class FunctionCategory extends Category {
 modules.push(FunctionCategory);
 class PredicateContravariant extends Contravariant {
     constructor() {
-        super((f, pred) => a => pred(f(a)), 'function', Contravariant.types, 'predicate');
+        super((f, pred) => compose2(pred, f), 'function', Contravariant.types, 'predicate');
     }
 }
 modules.push(PredicateContravariant);
@@ -928,7 +928,7 @@ class FunctionFunctor extends Functor {
 modules.push(FunctionFunctor);
 class FunctionProfunctor extends Profunctor {
     constructor() {
-        super((f, g, fn) => x => g(fn(f(x))), 'function', Profunctor.types, 'function');
+        super((f, g, fn) => compose(g, fn, f), 'function', Profunctor.types, 'function');
     }
 }
 modules.push(FunctionProfunctor);
@@ -977,7 +977,7 @@ class BooleanXorMonoid extends Monoid {
 modules.push(BooleanXorMonoid);
 class BooleanXorGroup extends Group {
     constructor() {
-        super(Monoid.types.BooleanXorMonoid, x => x, 'boolean', Group.types);
+        super(Monoid.types.BooleanXorMonoid, identity, 'boolean', Group.types);
     }
 }
 modules.push(BooleanXorGroup);
@@ -1109,7 +1109,7 @@ modules.push(StringMonoid);
 // Monoid 가 아니다(항등원 없음). Maybe 로 감쌀 때 갈리는 두 길: docs/internals.md#any
 class FirstSemigroup extends Semigroup {
     constructor() {
-        super(x => x, 'any', Semigroup.types, 'first');
+        super(identity, 'any', Semigroup.types, 'first');
     }
 }
 modules.push(FirstSemigroup);
@@ -1358,7 +1358,7 @@ class ArrayExtend extends Extend {
 modules.push(ArrayExtend);
 class ArrayComonad extends Comonad {
     constructor() {
-        super(Extend.types.ArrayExtend, arr => arr[0], 'Array', Comonad.types, 'array');
+        super(Extend.types.ArrayExtend, fst, 'Array', Comonad.types, 'array');
     }
 }
 modules.push(ArrayComonad);
@@ -1856,7 +1856,7 @@ Task.fromPromise = promiseFn => (...args) => new Task((reject, resolve) => {
         reject(e); // 즉시 throw 시 reject
     }
 });
-Task.fromEither = e => e.isRight() ? Task.of(e.value) : Task.rejected(e.value);
+Task.fromEither = e => Either.fold(Task.rejected, Task.of, e);
 Task.all = tasks => new Task((reject, resolve) => {
     const list = Array.isArray(tasks) ? tasks : [tasks];
     if (list.length === 0) return resolve([]);
@@ -2032,11 +2032,9 @@ Validation.of = x => new Valid(x);
 Validation.isValidation = x => x != null && x[Symbols.Validation] === true;
 Validation.isValid = x => Validation.isValidation(x) && x.isValid();
 Validation.isInvalid = x => Validation.isValidation(x) && x.isInvalid();
-Validation.fromEither = (e, monoid) => e.isRight()
-    ? Validation.Valid(e.value)
-    : Validation.Invalid(e.value, monoid);
+Validation.fromEither = (e, monoid) => Either.fold(v => Validation.Invalid(v, monoid), Validation.Valid, e);
 Validation.prototype.toEither = function () {
-    return this.isValid() ? Either.Right(this.value) : Either.Left(this.errors);
+    return Validation.fold(Either.Left, Either.Right, this);
 };
 Validation.fold = (onInvalid, onValid, v) =>
     v.isValid() ? onValid(v.value) : onInvalid(v.errors);
@@ -2052,11 +2050,7 @@ Validation.collect = (...validators) => f => (...args) => {
             ? Validation.Valid(result.value)
             : Validation.Invalid([result.value]); // wrap in array for Monoid.lookup('array')
     });
-    const curriedF = curry(f, validators.length);
-    return validations.reduce(
-        (acc, v) => Apply.lookup('validation').ap(acc, v),
-        Validation.Valid(curriedF)
-    );
+    return lift(Applicative.lookup('validation'))(f)(...validations);
 };
 class ValidationFunctor extends Functor {
     constructor() {
@@ -2121,8 +2115,8 @@ class Reader {
 Reader.prototype[Symbols.Reader] = true;
 Reader.of = x => new Reader(_ => x);
 Reader.isReader = x => x != null && x[Symbols.Reader] === true;
-Reader.ask = new Reader(env => env);
-Reader.asks = f => new Reader(env => f(env));
+Reader.ask = new Reader(identity);
+Reader.asks = f => new Reader(f);
 Reader.local = (f, reader) => new Reader(env => reader.run(f(env)));
 class ReaderFunctor extends Functor {
     constructor() {
@@ -2227,8 +2221,8 @@ class State {
         this._typeName = 'State';
     }
     run(s) { return this._run(s); }
-    eval(s) { return this.run(s)[0]; }
-    exec(s) { return this.run(s)[1]; }
+    eval(s) { return fst(this.run(s)); }
+    exec(s) { return snd(this.run(s)); }
     map(f) { return Functor.lookup('state').map(f, this); }
     chain(f) { return Chain.lookup('state').chain(f, this); }
 }
@@ -2334,7 +2328,7 @@ const composeK = (monad, foldable = Foldable.lookup('array')) => {
     }
     return fns => pipeK(monad, foldable)(fns.slice().reverse());
 };
-Maybe.toEither = (defaultLeft, m) => m.isJust() ? Either.Right(m.value) : Either.Left(defaultLeft);
+Maybe.toEither = (defaultLeft, m) => Maybe.fold(() => Either.Left(defaultLeft), Either.Right, m);
 Maybe.pipe = (m, ...fns) => {
     if (!Maybe.isMaybe(m)) raise(new TypeError('Maybe.pipe: first argument must be a Maybe'));
     return fns.reduce((acc, fn) => {
@@ -2342,7 +2336,7 @@ Maybe.pipe = (m, ...fns) => {
         return acc.isJust() ? fn(acc) : acc;
     }, m);
 };
-Either.toMaybe = e => e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing();
+Either.toMaybe = e => Either.fold(Maybe.Nothing, Maybe.Just, e);
 Either.pipe = (e, ...fns) => {
     if (!Either.isEither(e)) raise(new TypeError('Either.pipe: first argument must be an Either'));
     return fns.reduce((acc, fn) => {
@@ -2803,9 +2797,9 @@ const { Optics } = (() => {
             s => {
                 const m = match(s);
                 Maybe.isMaybe(m) || raise(new TypeError('Prism: match must return a Maybe'));
-                return Maybe.fold(() => Either.Right(s), a => Either.Left(a), m);
+                return Maybe.fold(() => Either.Right(s), Either.Left, m);
             },
-            e => (e.isLeft() ? build(e.value) : e.value),
+            e => Either.fold(build, identity, e),
             P.left(pab)
         );
     };
@@ -2975,21 +2969,21 @@ const StateT = (M) => {
         }
         eval(s) {
             if (!(this instanceof ST)) raise(new TypeError(`${typeName}.eval: must be called on a ${typeName} instance`));
-            return nm.map(([a]) => a, this.run(s));
+            return nm.map(fst, this.run(s));
         }
         exec(s) {
             if (!(this instanceof ST)) raise(new TypeError(`${typeName}.exec: must be called on a ${typeName} instance`));
-            return nm.map(([_, s2]) => s2, this.run(s));
+            return nm.map(snd, this.run(s));
         }
         map(f) { return Functor.lookup(alias).map(f, this); }
         chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     ST.of = x => new ST(Free.pure(x));
-    ST.get = new ST(Free.liftF(new GetF(s => s)));
+    ST.get = new ST(Free.liftF(new GetF(identity)));
     ST.put = s => new ST(Free.liftF(new PutF(s, undefined)));
     ST.modify = f => new ST(Free.liftF(new ModifyF(f, undefined)));
     ST.gets = f => new ST(Free.liftF(new GetF(f)));
-    ST.lift = ma => new ST(Free.liftF(new LiftF(ma, a => a)));
+    ST.lift = ma => new ST(Free.liftF(new LiftF(ma, identity)));
 
     ST.runState = (initial, st) => {
         if (!(st instanceof ST)) raise(new TypeError(`${typeName}.runState: second argument must be a ${typeName} instance`));
@@ -3040,8 +3034,8 @@ const EitherT = (M) => {
             return result._program;
         })));
     };
-    ET.lift = ma => new ET(Free.liftF(new LiftF(ma, a => a)));
-    ET.fromEither = either => either.isRight() ? ET.of(either.value) : ET.throwError(either.value);
+    ET.lift = ma => new ET(Free.liftF(new LiftF(ma, identity)));
+    ET.fromEither = either => Either.fold(ET.throwError, ET.of, either);
 
     ET.runEitherT = (et) => {
         if (!(et instanceof ET)) raise(new TypeError(`${typeName}.runEitherT: argument must be a ${typeName} instance`));
@@ -3090,14 +3084,14 @@ const ReaderT = (M) => {
         chain(f) { return Chain.lookup(alias).chain(f, this); }
     }
     RT.of = x => new RT(Free.pure(x));
-    RT.ask = new RT(Free.liftF(new AskF(env => env)));
+    RT.ask = new RT(Free.liftF(new AskF(identity)));
     RT.asks = f => new RT(Free.liftF(new AskF(f)));
     RT.local = (f, rt) => {
         if (typeof f !== 'function') raise(new TypeError(`${typeName}.local: first argument must be a function`));
         if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.local: second argument must be a ${typeName} instance`));
         return new RT(Free.liftF(new LocalF(f, rt._program)));
     };
-    RT.lift = ma => new RT(Free.liftF(new LiftF(ma, a => a)));
+    RT.lift = ma => new RT(Free.liftF(new LiftF(ma, identity)));
 
     RT.runReaderT = (env, rt) => {
         if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.runReaderT: second argument must be a ${typeName} instance`));
@@ -3149,7 +3143,7 @@ const WriterT = (M, writerMonoid) => {
     }
     WT.of = x => new WT(Free.pure(x));
     WT.tell = output => new WT(Free.liftF(new TellF(output, undefined)));
-    WT.lift = ma => new WT(Free.liftF(new LiftF(ma, a => a)));
+    WT.lift = ma => new WT(Free.liftF(new LiftF(ma, identity)));
 
     WT.runWriterT = (wt) => {
         if (!(wt instanceof WT)) raise(new TypeError(`${typeName}.runWriterT: argument must be a ${typeName} instance`));
