@@ -348,7 +348,18 @@
 - **경위** — 소유자 요청으로 "합성으로 되는데 개별 구현한 자리" 를 전수 조사했다(3,337줄).
   결과는 A. 확실한 후보 12건(약 27곳) · B. 스타일 패밀리 3건 · C. 그대로가 맞는 자리.
 - **결정 (2026-08-15, 소유자)** — *"일단 A"*. **B 는 보류** — 튜플 리터럴 ~12곳,
-  Kleisli Semigroupoid 3형제, Maybe/Either.pipe 중복. 필요해지면 다시 올린다.
+  ~~Kleisli Semigroupoid 3형제~~(같은 날 승인·적용, 아래), Maybe/Either.pipe 중복.
+- **B2 적용 (2026-08-15, 소유자: "합쳐볼까요")** — 셋의 같은 몸을 `kleisliCompose` 하나로.
+  짝 Chain 이 자기보다 늦게 등록되므로 **조회는 호출 시점**이어야 한다 — 주석의 이 주장을
+  뮤테이션(즉시 조회로 변경 → `semigroupoid.test.js` 가 잡음)으로 증명했다. 합성 방향
+  뒤집기 뮤테이션도 같은 파일이 잡는다(법칙 게이트는 못 잡는다 — 뒤집힌 합성도 결합법칙은
+  성립하는 반대 범주다. 방향은 각 타입 테스트 몫). 전후 한 프로세스 대조 5건(방향·퇴화·
+  단락·거부·id 법칙) 전부 동일. `npm test` 45/45, baseline 차이 없음, dist 재빌드.
+- **`chainOf` 검사 (2026-08-15, 소유자 지적 후 승인)** — `f`·`g` 는 클래스 게이트가 이미
+  검사하므로(실측) 헬퍼의 빈틈은 `chainOf` 뿐이었다. 둘을 막았다: thunk 가 함수가 아니면
+  **로드 시점**에 `Argument must be a function: kleisliCompose`, thunk 가 빈 것을 돌려주면
+  호출 시점에 `kleisliCompose: chainOf() must return a Chain`(전에는 벌거벗은
+  `Cannot read properties of undefined`). 뮤테이션 둘 다 실측, 정상 경로 5건 동일 유지.
 - **적용** — A 전부(23개 치환): `identity` 7곳 + first/xor 2곳, `fold` 6곳,
   `fst`/`snd` 5곳, `compose2`/`compose` 2곳, 에타 2곳(Prism `Either.Left`·`Reader.asks`),
   `Validation.collect` 의 `lift` 재구현 제거.
