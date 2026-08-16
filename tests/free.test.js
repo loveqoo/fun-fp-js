@@ -246,27 +246,27 @@ testAsync('runWithTask - 비동기 후속 runner 예외는 reject 로 나온다'
     assertEquals(outcome, 'reject:runner-boom');
 });
 
-/* ── Free.dsl — 계획 .dev/plan/260816-free-dsl.md 의 완료조건 ──
-   내부 명령 함자(makeDslCommand)는 레지스트리 밖 산물이라 staticland-laws 의 순회에
+/* ── Free.api — 계획 .dev/plan/260816-free-dsl.md 의 완료조건 ──
+   내부 명령 함자(makeApiCommand)는 레지스트리 밖 산물이라 staticland-laws 의 순회에
    안 잡힌다 — 함자 법칙(항등·합성·스택)은 여기(공개 표면 경유 관측)가 유일한 감시자다. */
 
-testAsync('Free.dsl - 함자 법칙: 항등·합성 (관측 대조)', async () => {
-    const api = fp.Free.dsl('probe');
+testAsync('Free.api - 함자 법칙: 항등·합성 (관측 대조)', async () => {
+    const api = fp.Free.api('probe');
     const run = p => api.interpreter({ probe: x => x }).run(p);
     const f = x => x + 1, g = x => x * 2;
     assertEquals(await run(api.probe(7).map(x => x)), await run(api.probe(7)));                    // 항등
     assertEquals(await run(api.probe(3).map(g).map(f)), await run(api.probe(3).map(x => f(g(x))))); // 합성
 });
 
-testAsync('Free.dsl - 깊은 map 사슬에 스택이 안 자란다 (2만 단계)', async () => {
-    const api = fp.Free.dsl('zero');
+testAsync('Free.api - 깊은 map 사슬에 스택이 안 자란다 (2만 단계)', async () => {
+    const api = fp.Free.api('zero');
     let p = api.zero();
     for (let i = 0; i < 20000; i++) p = p.map(v => v + 1);
     assertEquals(await api.interpreter({ zero: () => 0 }).run(p), 20000);
 });
 
-testAsync('Free.dsl - 계약 시나리오: 두 해석기, thenable 값이 중간에 쓰인다', async () => {
-    const api = fp.Free.dsl('getUser', 'getPosts');
+testAsync('Free.api - 계약 시나리오: 두 해석기, thenable 값이 중간에 쓰인다', async () => {
+    const api = fp.Free.api('getUser', 'getPosts');
     // thenable 승격 검증의 핵심: 중간 명령(getUser)이 Promise 를 주고 그 값을 다음 명령이 쓴다
     const program = api.getUser(1).chain(user => api.getPosts(user.id).map(posts => user.name + ':' + posts.length));
     const real = api.interpreter({
@@ -281,25 +281,25 @@ testAsync('Free.dsl - 계약 시나리오: 두 해석기, thenable 값이 중간
     assertEquals(await real.run(getUser(1).map(u => u.name)), 'anthony');
 });
 
-test('Free.dsl - 선언·해석기 시점 에러 문안 (동기 6종)', () => {
-    assertThrowsWith(() => fp.Free.dsl(''), 'Free.dsl: command name must be a non-empty string');
-    assertThrowsWith(() => fp.Free.dsl('interpreter'), "Free.dsl: command name 'interpreter' is reserved");
-    assertThrowsWith(() => fp.Free.dsl('a', 'a'), "Free.dsl: duplicate command name 'a'");
-    const api = fp.Free.dsl('a');
-    assertThrowsWith(() => api.interpreter(null), 'Free.dsl.interpreter: handlers must be a plain object');
-    assertThrowsWith(() => api.interpreter({ a: x => x, gohst: x => x }), "Free.dsl.interpreter: unknown command 'gohst'");
-    assertThrowsWith(() => api.interpreter({}), "Free.dsl.interpreter: missing handler 'a'");
+test('Free.api - 선언·해석기 시점 에러 문안 (동기 6종)', () => {
+    assertThrowsWith(() => fp.Free.api(''), 'Free.api: command name must be a non-empty string');
+    assertThrowsWith(() => fp.Free.api('interpreter'), "Free.api: command name 'interpreter' is reserved");
+    assertThrowsWith(() => fp.Free.api('a', 'a'), "Free.api: duplicate command name 'a'");
+    const api = fp.Free.api('a');
+    assertThrowsWith(() => api.interpreter(null), 'Free.api.interpreter: handlers must be a plain object');
+    assertThrowsWith(() => api.interpreter({ a: x => x, gohst: x => x }), "Free.api.interpreter: unknown command 'gohst'");
+    assertThrowsWith(() => api.interpreter({}), "Free.api.interpreter: missing handler 'a'");
     // 상속 핸들러는 표현 자체가 불가 — 커스텀 프로토타입은 plain object 관문이 먼저 거른다(포섭).
     assertThrowsWith(() => api.interpreter(Object.assign(Object.create({ a: x => x }), {})),
-        'Free.dsl.interpreter: handlers must be a plain object');
+        'Free.api.interpreter: handlers must be a plain object');
 });
 
-testAsync('Free.dsl - 실행 시점 reject 문안 (비동기 2종) + 예외 경로', async () => {
-    const api = fp.Free.dsl('a');
+testAsync('Free.api - 실행 시점 reject 문안 (비동기 2종) + 예외 경로', async () => {
+    const api = fp.Free.api('a');
     const it = api.interpreter({ a: x => x });
-    assertEquals(await it.run(42).catch(e => e.message), 'Free.dsl.run: program must be a Free value');
-    const B = fp.Free.dsl('b');
-    assertEquals(await it.run(api.a(1).chain(() => B.b())).catch(e => e.message), "Free.dsl.run: no handler for 'b'");
+    assertEquals(await it.run(42).catch(e => e.message), 'Free.api.run: program must be a Free value');
+    const B = fp.Free.api('b');
+    assertEquals(await it.run(api.a(1).chain(() => B.b())).catch(e => e.message), "Free.api.run: no handler for 'b'");
     // 핸들러 throw / thenable 거부 / then getter 예외 → 전부 reject
     const boom = api.interpreter({ a: () => { throw new Error('h-boom'); } });
     assertEquals(await boom.run(api.a()).catch(e => e.message), 'h-boom');
@@ -309,10 +309,10 @@ testAsync('Free.dsl - 실행 시점 reject 문안 (비동기 2종) + 예외 경�
     assertEquals(await evil.run(api.a()).catch(e => e.message), 'g-boom');
 });
 
-testAsync('Free.dsl - 어휘 0개 허용, 프로토타입 이름 명령 안전', async () => {
-    const empty = fp.Free.dsl();
+testAsync('Free.api - 어휘 0개 허용, 프로토타입 이름 명령 안전', async () => {
+    const empty = fp.Free.api();
     assertEquals(await empty.interpreter({}).run(fp.Free.of(7)), 7);   // 순수 프로그램만
-    const api = fp.Free.dsl('toString', 'constructor');
+    const api = fp.Free.api('toString', 'constructor');
     const it = api.interpreter({ toString: () => 'ts', constructor: () => 'ctor' });
     assertEquals(await it.run(api.toString().chain(a => api.constructor().map(b => a + '/' + b))), 'ts/ctor');
     assertEquals(Object.getPrototypeOf({}), Object.prototype);          // 오염 없음 확인용 카나리

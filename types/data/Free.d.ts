@@ -50,8 +50,8 @@ export interface Thunk<A> {
 }
 
 // ── Value namespace ──────────────────────────────────────────────────
-// Free.dsl 의 api — 각 명령 이름이 노드 생성 함수, interpreter 가 해석기 문.
-export type DslApi<N extends string> = { [K in N]: (...args: unknown[]) => Free<TypeLambda, unknown> } & {
+// Free.api 의 api — 각 명령 이름이 노드 생성 함수, interpreter 가 해석기 문.
+export type FreeApi<N extends string> = { [K in N]: (...args: unknown[]) => Free<TypeLambda, unknown> } & {
     interpreter(handlers: { [K in N]: (...args: never[]) => unknown }): {
         run(program: Free<TypeLambda, unknown>): Promise<unknown>;
     };
@@ -96,13 +96,13 @@ export declare const Free: {
     };
     readonly trampoline: <A>(target: Free<TypeLambda, A>) => A;
 
-    // Free.dsl — 어휘만 선언하고 해석기는 별도로 몇 벌이든. 명령 이름은 리터럴로
+    // Free.api — 어휘만 선언하고 해석기는 별도로 몇 벌이든. 명령 이름은 리터럴로
     // 보존되어 핸들러 누락·오타를 TS 가 잡는다. 인자·결과는 unknown 수준이다 —
     // 이름 문자열만으로는 인자 타입을 알 수 없다(더 좁히려면 명령별 스펙이 필요한데
     // 그것은 이 설계가 의도적으로 버린 payload 빌더다).
-    readonly dsl: <Names extends readonly string[]>(
+    readonly api: <Names extends readonly string[]>(
         ...names: Names
-    ) => DslApi<Names[number]>;
+    ) => FreeApi<Names[number]>;
 
     // Static Land surface
     readonly map: <F extends TypeLambda, A, B>(
