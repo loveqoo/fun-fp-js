@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-15T22:08:38.382Z
+ * Built: 2026-08-16T06:17:53.879Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -3385,6 +3385,66 @@ Reader.composeK = (...fns) => composeK(Monad.lookup('reader'))(fns);
 Writer.composeK = (...fns) => composeK(Monad.lookup('writer'))(fns);
 State.composeK = (...fns) => composeK(Monad.lookup('state'))(fns);
 Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
+
+/* Free.dsl — 어휘만 선언하고 해석기는 몇 벌이든 별도로 단다. 사용자는 함자를 모른다. */
+// 연속은 함수 목록이다 — 클로저 중첩이면 깊은 map 사슬에서 스택이 넘친다. docs/Free.md
+const makeDslCommand = (name, args, fns) => {
+    const cmd = { name, args, fns, map(f) { return makeDslCommand(name, args, fns.concat([f])); } };
+    cmd[Symbols.Functor] = true;
+    return cmd;
+};
+// 반복문 적용이라 fns 길이만큼만 돈다 — 스택이 안 자란다.
+const runDslContinuation = (fns, value) => {
+    let v = value;
+    for (let i = 0; i < fns.length; i++) v = fns[i](v);
+    return v;
+};
+// Task 는 그대로, thenable 은 Promise.resolve 동화(fromPromise 와 같은 방식), 값은 Task.of.
+const liftInterpreterResult = r => {
+    if (Task.isTask(r)) return r;
+    if (r !== null && r !== undefined && typeof r.then === 'function') {
+        return new Task((reject, resolve) => Promise.resolve(r).then(resolve, reject));
+    }
+    return Task.of(r);
+};
+Free.dsl = (...names) => {
+    // 어휘·api·핸들러 테이블은 전부 null-프로토타입 + own-property — 명령 이름이
+    // toString/__proto__ 여도 안전하다(레지스트리 리졸버 수리와 같은 규율).
+    const vocabulary = Object.create(null);
+    for (const name of names) {
+        (typeof name !== 'string' || name.length === 0) && raise(new TypeError('Free.dsl: command name must be a non-empty string'));
+        name === 'interpreter' && raise(new TypeError("Free.dsl: command name 'interpreter' is reserved"));
+        vocabulary[name] && raise(new TypeError(`Free.dsl: duplicate command name '${name}'`));
+        vocabulary[name] = true;
+    }
+    const api = Object.create(null);
+    for (const name of names) api[name] = (...args) => Free.liftF(makeDslCommand(name, args, []));
+    api.interpreter = handlers => {
+        types.isPlainObject(handlers) || raise(new TypeError('Free.dsl.interpreter: handlers must be a plain object'));
+        const table = Object.create(null);
+        // own key 만 본다 — 상속된 핸들러를 인정하면 프로토타입이 어휘 대조를 우회한다.
+        for (const key of Object.keys(handlers)) {
+            vocabulary[key] || raise(new TypeError(`Free.dsl.interpreter: unknown command '${key}'`));
+            table[key] = handlers[key];
+        }
+        for (const name of names) {
+            typeof table[name] !== 'function' && raise(new TypeError(`Free.dsl.interpreter: missing handler '${name}'`));
+        }
+        return {
+            run: program => Free.isFree(program)
+                ? new Promise((resolve, reject) => {
+                    Free.runWithTask(cmd => {
+                        // 다른 dsl 의 명령이 섞이면 여기서 걸린다 — 벌거벗은 에러 금지.
+                        const h = table[cmd.name];
+                        if (typeof h !== 'function') return Task.rejected(new TypeError(`Free.dsl.run: no handler for '${cmd.name}'`));
+                        return liftInterpreterResult(h(...cmd.args)).map(v => runDslContinuation(cmd.fns, v));
+                    })(program).then(resolve, reject);
+                })
+                : Promise.reject(new TypeError('Free.dsl.run: program must be a Free value')),
+        };
+    };
+    return api;
+};
 
 // lift (eta reduced)
 Reader.lift = lift(Applicative.lookup('reader'));
