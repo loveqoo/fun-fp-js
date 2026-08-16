@@ -14,9 +14,9 @@ const SOURCE_FILE = path.join(__dirname, 'index.js');
 const OUTPUT_FILE = path.join(__dirname, 'dist', 'fun-fp.cjs');
 const OUTPUT_MIN_FILE = path.join(__dirname, 'dist', 'fun-fp.min.cjs');
 
-// 순수 변환 — 입력은 소스와 빌드 시각뿐이다. tests/dist-sync.test.js 가 이 함수를 그대로
+// 순수 변환 — 입력은 소스와 빌드 시각·버전뿐이다. tests/dist-sync.test.js 가 이 함수를 그대로
 // 불러 dist 가 현재 소스의 빌드 결과인지 본다. 검사가 변환을 베끼면 언젠가 서로 어긋난다.
-export const buildOutputs = (source, builtAt) => {
+export const buildOutputs = (source, builtAt, version) => {
 
 // Extract the export statement
 const exportMatch = source.match(/export default \{[\s\S]*?\};/);
@@ -36,7 +36,9 @@ const coreCode = source.replace(exportStatement, '').trim();
 // Build timestamp
 const buildInfo = `/**
  * Fun-FP-JS - Functional Programming Library
+ * Version: ${version}
  * Built: ${builtAt}
+ * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */`;
 
@@ -101,7 +103,8 @@ return { cjs: umdCode, min: minified, esm: esmContent };
 // 직접 실행할 때만 파일을 쓴다. import 하면 변환 함수만 가져간다.
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     const source = fs.readFileSync(SOURCE_FILE, 'utf-8');
-    const { cjs, min, esm } = buildOutputs(source, new Date().toISOString());
+    const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+    const { cjs, min, esm } = buildOutputs(source, new Date().toISOString(), version);
 
     const distDir = path.join(__dirname, 'dist');
     if (!fs.existsSync(distDir)) {

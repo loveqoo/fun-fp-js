@@ -291,7 +291,7 @@ test('Free.api - 선언·해석기 시점 에러 문안 (동기 6종)', () => {
     assertThrowsWith(() => api.interpreter({}), "Free.api.interpreter: missing handler 'a'");
     // 상속 핸들러는 표현 자체가 불가 — 커스텀 프로토타입은 plain object 관문이 먼저 거른다(포섭).
     assertThrowsWith(() => api.interpreter(Object.assign(Object.create({ a: x => x }), {})),
-        'Free.api.interpreter: handlers must be a plain object');
+        'Free.api.interpreter: handlers must be a plain object (inherited handlers are not accepted)');
 });
 
 testAsync('Free.api - 실행 시점 reject 문안 (비동기 2종) + 예외 경로', async () => {

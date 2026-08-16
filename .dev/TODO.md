@@ -46,6 +46,27 @@
 
 ---
 
+## 닫힘 — 도그푸딩 리포트(media-downloader)의 마찰 3건 수리 (2026-08-16)
+
+- **경위** — 소유자가 yt-dlp CLI 를 `Free.api` 로 이행하고 리포트를 작성했다(아티팩트
+  904e73df). 소득: DSL 정의부 24→8줄, 수동 next 배선 6→0곳, 구방식은 map 4천 회에서
+  무음 정지·신방식은 20만 통과, 실패 처리 6종 문서대로. **"배선이 걷히니 설계 문제가
+  드러났다"** — 진행바가 순수 구역에서 변이되던 것과 커서 버그를 사용자가 스스로 발견.
+  `ReaderT('free')` 가 `Free.api` 와 합성됨도 확인. 리포트의 무음 정지는 이행 직전 dist
+  기준이고, **현재 버전은 같은 상황을 RangeError 거부로 크게 실패시킨다**(실측 — 코덱스
+  감사 2차의 runWithTask try 수리가 손으로 짠 함자도 지킨다).
+- **마찰 3건 → 전부 수리 (소유자: "셋 다 하시죠")** — ① dist 헤더에 `Version:`(package.json
+  semver) ② 같은 헤더에 `Changelog:` GitHub URL — 벤더링 사용자가 파일 안에서 버전과
+  변경 이력 위치를 얻는다. 둘 다 `buildOutputs`/`buildTypeDeclarations` 의 순수 계약을
+  지키려 **버전을 세 번째 입력**으로 넣었고, 그 덕에 dist-sync 게이트가 "버전 올리고 빌드
+  잊음"도 잡게 됐다. ③ `Free.api.interpreter` 의 plain-object 거부 문안에 원인 지목 절
+  추가(`(inherited handlers are not accepted)`).
+- **검증 (2026-08-16)** — 변이 2종: 버전만 올리고 빌드 안 함 → dist-sync exit 1 / 문안 절
+  제거 → free 게이트 FAIL 1, 복원 확인. `npm test` 45/45 + 타입체크. **곁가지 사고** —
+  변이 복원 스니펫이 개수 검사 없이 첫 일치를 바꿔 절이 Setoid.Struct 에 잘못 붙었었다.
+  게이트(setoid·free 동시 빨강)가 즉시 잡았고 교정했다. 교훈: 일회성 치환도 count==1
+  단언을 생략하지 않는다.
+
 ## 닫힘 — Writer.exec 를 State·mtl 과 정렬, eval 신설 (2026-08-16)
 
 - **원인** — `Writer.exec()` 가 값을 돌려줬다 — 같은 라이브러리 `State.exec`(상태 반환),

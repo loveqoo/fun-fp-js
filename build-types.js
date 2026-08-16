@@ -147,12 +147,13 @@ function collapseBlankLines(src) {
     return src.replace(/\n{3,}/g, '\n\n');
 }
 
-// 순수 변환 — 입력은 선언 파일 내용과 빌드 시각뿐이다. readFile 은 상대 경로를 받아 내용을
+// 순수 변환 — 입력은 선언 파일 내용과 빌드 시각·버전뿐이다. readFile 은 상대 경로를 받아 내용을
 // 돌려준다. tests/dist-sync.test.js 가 이 함수를 그대로 불러 dist/fun-fp.d.ts 를 검증한다.
-export const buildTypeDeclarations = (readFile, builtAt) => {
+export const buildTypeDeclarations = (readFile, builtAt, version) => {
     const header = `/**
  * fun-fp-js — TypeScript declarations (bundled single-file build).
  *
+ * Version: ${version}
  * Built: ${builtAt}
  * Source: all .d.ts files under the types/ directory.
  *
@@ -178,7 +179,8 @@ export const buildTypeDeclarations = (readFile, builtAt) => {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     const output = buildTypeDeclarations(
         rel => fs.readFileSync(path.join(TYPES_DIR, rel), 'utf-8'),
-        new Date().toISOString()
+        new Date().toISOString(),
+        JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8')).version
     );
 
     const distDir = path.join(__dirname, 'dist');

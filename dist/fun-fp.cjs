@@ -1,6 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-16T09:45:13.968Z
+ * Version: 0.1.0
+ * Built: 2026-08-16T14:14:03.882Z
+ * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -3421,7 +3423,7 @@ Free.api = (...names) => {
     const api = Object.create(null);
     for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, []));
     api.interpreter = handlers => {
-        types.isPlainObject(handlers) || raise(new TypeError('Free.api.interpreter: handlers must be a plain object'));
+        types.isPlainObject(handlers) || raise(new TypeError('Free.api.interpreter: handlers must be a plain object (inherited handlers are not accepted)'));
         const table = Object.create(null);
         // own key 만 본다 — 상속된 핸들러를 인정하면 프로토타입이 어휘 대조를 우회한다.
         for (const key of Object.keys(handlers)) {
