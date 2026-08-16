@@ -364,6 +364,27 @@
   신설(근거·출처), `docs/Semigroupoid.md` 포인터. 예제 실행이 회귀 잠금.
 - **참고** — [`review/260816-staticland-conformance.md`](./review/260816-staticland-conformance.md)
 
+## 닫힘 — `Free.dsl` 구현 (2026-08-16, 계획 v2 대로)
+
+- **경위** — 에이전트 설계 7회 실패 후 소유자가 설계를 가져왔고, 소유자 질문 셋이 최종형까지
+  깎았다(payload 빌더 제거·어휘/해석기 분리). 계획을 코덱스가 리뷰(Blocker 1·Major 5), 전부
+  반영한 v2 를 소유자가 승인. [`plan/260816-free-dsl.md`](./plan/260816-free-dsl.md)
+- **구현** — `Free.dsl(...이름)` → api + `api.interpreter(핸들러)` → `.run`(Promise).
+  연속은 함수 목록(스택 안전 — 코덱스 Major 5), null-프로토타입 + own-property(프로토타입
+  이름 안전 — Major 2), run 에 own-property 가드(교차 dsl — Blocker), thenable 은
+  Promise.resolve 동화. 약 55줄.
+- **검증 (2026-08-16)** — 계획 완료조건 6항 전부:
+  ① 함자 항등·합성(관측 대조) + map 2만 단계 스택 검사 — `tests/free.test.js`(레지스트리 밖
+  산물이라 법칙 게이트 순회 밖임을 파일 머리에 명시) ② 동작 시나리오 전부(thenable 값이
+  **중간에** 쓰이는 형태 — Major 4 반영), 에러 문안 8종(동기 6 `assertThrowsWith` + 비동기 2
+  reject 대조) ③ **뮤테이션 7종 전부 잡힘**(map 무시/연속 재귀합성 회귀/가드 제거/승격 제거/
+  대조 2종 제거/예약 제거). ⑥(상속 핸들러)은 plain-object 관문에 **포섭**됨을 실측으로 확인해
+  테스트 주석에 기록 ④ 전체 테스트 45 + 타입체크 ⑤ baseline 차이 = Free 표면 `dsl` 추가
+  1건뿐(스크립트로 전/후 목록 대조, 제거 0) ⑥ `docs/Free.md#dsl`(실행 예제·틀리면 던짐),
+  기존 liftF 절은 Advanced 로 재배치, `docs/README.md` Free 행, 타입 선언(`DslApi` — 명령
+  이름 리터럴 보존), dist 재빌드.
+- **커밋·푸시** — 소유자 지시 대기.
+
 ## 닫힘 — 코덱스 index.js 적대적 리뷰 3차, 7건 처리 (2026-08-16)
 
 - **경위** — 소유자 지시로 영역 특정 없이 파일 전체 재검토. 7건 CONFIRMED(2회 실측). 이번은
