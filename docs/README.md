@@ -282,7 +282,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 | Reader | 의존성 주입 | 환경 전파 |
 | Writer | 로깅/출력 추적 | 값 + 출력 (Monoid) |
 | State | 상태 변환 | 상태 스레딩 |
-| Free | DSL, 스택 안전 재귀 | Pure / Impure — [Free.dsl](./Free.md#dsl) 로 Free 를 몰라도 쓴다 |
+| Free | 프로그램/실행 분리, 스택 안전 재귀 | Pure / Impure — [Free.api](./Free.md#api) 로 Free 를 몰라도 쓴다 |
 | [Optics](./Optics.md) | 부분 접근·갱신 | `Optics` 모듈 — Lens/Prism/Traversal, `compose`, `foldMapOf` |
 | [Lens](./Lens.md) | 중첩 불변 갱신 | getter + setter 쌍, 대상 정확히 1개 |
 | [Transducer](./Transducer.md) | 변환 파이프라인 | 중간 배열 없음, 조기 종료 |
