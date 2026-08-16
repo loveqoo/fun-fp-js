@@ -1,6 +1,6 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Built: 2026-08-16T06:59:44.301Z
+ * Built: 2026-08-16T09:45:13.968Z
  * Static Land specification compliant
  */
 (function(root, factory) {
@@ -2209,7 +2209,8 @@ class Writer {
         this._typeName = 'Writer';
     }
     run() { return [this.value, this.output]; }
-    exec() { return this.value; }
+    eval() { return this.value; }
+    exec() { return this.output; }
     map(f) { return Functor.lookup('writer').map(f, this); }
     chain(f) { return Chain.lookup('writer').chain(f, this); }
 }

@@ -17,16 +17,16 @@
 import type { TypeLambda } from "../HKT";
 
 // ── Type ─────────────────────────────────────────────────────────────
-// Note on instance `exec()`: runtime returns `this.value` (the A channel),
-// not the output. This matches the library's convention — use `run()` to
-// get both [a, w], use `exec()` for just the value.
+// run/eval/exec mirror State's trio (and mtl): run() gives [a, w],
+// eval() the value channel, exec() the output channel (execWriter).
 export interface Writer<W, A> {
     readonly _typeName: "Writer";
     readonly value: A;
     readonly output: W;
     readonly monoid: unknown;
     run(): [A, W];
-    exec(): A;
+    eval(): A;
+    exec(): W;
     map<B>(f: (a: A) => B): Writer<W, B>;
     chain<B>(f: (a: A) => Writer<W, B>): Writer<W, B>;
 }

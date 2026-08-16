@@ -155,7 +155,10 @@ ap(wf, wa).run();
 Writer.ap(wf, wa);
 ```
 
-### run / exec - 결과 추출
+### run / eval / exec - 결과 추출
+
+State 의 run/eval/exec 와 같은 문법입니다. `exec` 는 Haskell `execWriter` 관례대로
+부산물(출력)을 돌려줍니다.
 
 ```javascript
 const writer = new Writer(42, ['log1', 'log2']);
@@ -163,8 +166,11 @@ const writer = new Writer(42, ['log1', 'log2']);
 // run - [값, 출력] 튜플
 writer.run();   // [42, ['log1', 'log2']]
 
-// exec - 값만
-writer.exec();  // 42
+// eval - 값만
+writer.eval();  // 42
+
+// exec - 출력만
+writer.exec();  // ['log1', 'log2']
 ```
 
 ## Writer 특수 메서드

@@ -2189,7 +2189,8 @@ class Writer {
         this._typeName = 'Writer';
     }
     run() { return [this.value, this.output]; }
-    exec() { return this.value; }
+    eval() { return this.value; }
+    exec() { return this.output; }
     map(f) { return Functor.lookup('writer').map(f, this); }
     chain(f) { return Chain.lookup('writer').chain(f, this); }
 }

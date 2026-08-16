@@ -36,9 +36,14 @@ test('Writer.run returns [value, output] tuple', () => {
     assertEquals(writer.run(), [42, ['a', 'b']]);
 });
 
-test('Writer.exec returns only the value', () => {
+test('Writer.eval returns only the value', () => {
     const writer = new Writer(42, ['a', 'b']);
-    assertEquals(writer.exec(), 42);
+    assertEquals(writer.eval(), 42);
+});
+
+test('Writer.exec returns only the output (mtl execWriter convention)', () => {
+    const writer = new Writer(42, ['a', 'b']);
+    assertEquals(writer.exec(), ['a', 'b']);
 });
 
 // === Writer.tell ===
@@ -164,7 +169,7 @@ test('Monad Law - Right Identity: m.chain(of) === m (output preserved)', () => {
     const right = m;
 
     // Note: Right identity holds for value, output may differ due to empty concat
-    assertEquals(left.exec(), right.exec());
+    assertEquals(left.eval(), right.eval());
     // Output: ['log'] concat [] = ['log']
     assertEquals(left.run()[1], right.run()[1]);
 });
@@ -223,7 +228,7 @@ test('Functor.lookup("writer") returns WriterFunctor', () => {
     const functor = Functor.lookup('writer');
     const writer = new Writer(21, ['log']);
     const mapped = functor.map(x => x * 2, writer);
-    assertEquals(mapped.exec(), 42);
+    assertEquals(mapped.eval(), 42);
 });
 
 test('Apply.lookup("writer") returns WriterApply', () => {
@@ -231,7 +236,7 @@ test('Apply.lookup("writer") returns WriterApply', () => {
     const wf = new Writer(x => x + 1, ['f']);
     const wa = new Writer(41, ['a']);
     const result = apply.ap(wf, wa);
-    assertEquals(result.exec(), 42);
+    assertEquals(result.eval(), 42);
 });
 
 test('Chain.lookup("writer") returns WriterChain', () => {
@@ -243,7 +248,7 @@ test('Chain.lookup("writer") returns WriterChain', () => {
 
 test('Monad.lookup("writer") returns WriterMonad', () => {
     const monad = Monad.lookup('writer');
-    assertEquals(monad.of(42).exec(), 42);
+    assertEquals(monad.of(42).eval(), 42);
 });
 
 // === Writer.pipeK ===
