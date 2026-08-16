@@ -51,7 +51,59 @@ const fib = n => {
 fib(100);  // 354224848179262000000
 ```
 
+## Free.dsl — 3층의 1층 {#dsl}
+
+**Free 를 몰라도 씁니다.** 어휘를 선언하면 명령 함수들이 나오고, 익숙한 `chain`/`map` 으로
+프로그램을 짜고, 해석기를 몇 벌이든 꽂아 실행합니다 — 프로그램 정의와 실행이 완전히
+분리됩니다. liftF·Functor·심볼은 라이브러리가 대신합니다(아래 Advanced 절이 그 속입니다).
+
+```javascript
+const { Free, Task } = FunFP;
+
+// 1. 어휘 선언 — 이름이 전부. 이종 기능(조회·질문·출력…)이 한 어휘에 섞인다.
+const api = Free.dsl('getUser', 'getPosts', 'saveUser');
+
+// 2. 프로그램 — 평범한 chain/map. 이 시점엔 아무것도 실행되지 않는다.
+const program = api.getUser(1)
+    .chain(user => api.getPosts(user.id)
+        .chain(posts => api.saveUser({ name: user.name, count: posts.length })))
+    .map(saved => '저장: ' + saved.name + '/' + saved.count);
+
+// 3. 해석기 — 몇 벌이든. 핸들러는 인자를 그대로 받고 값 | Promise | Task 를 반환한다.
+const db = { users: { 1: { id: 1, name: 'anthony' } }, posts: { 1: [{}, {}] } };
+const real = api.interpreter({
+    getUser: id => Promise.resolve(db.users[id]),   // Promise 도
+    getPosts: userId => Task.of(db.posts[userId]),  // Task 도
+    saveUser: user => user,                          // 그냥 값도
+});
+const mock = api.interpreter({
+    getUser: () => ({ id: 0, name: 'MOCK' }),
+    getPosts: () => [],
+    saveUser: user => user,
+});
+
+// 4. 실행 — 같은 프로그램, 다른 세계
+real.run(program).then(r => {
+    if (r !== '저장: anthony/2') throw new Error('실전 해석이 틀렸다: ' + r);
+    console.log(r);                                  // 저장: anthony/2
+});
+mock.run(program).then(r => {
+    if (r !== '저장: MOCK/0') throw new Error('mock 해석이 틀렸다: ' + r);
+    console.log(r);                                  // 저장: MOCK/0
+});
+```
+
+- 해석기는 **만들 때** 어휘와 대조됩니다 — 핸들러가 빠지거나(`missing handler`) 어휘에 없는
+  이름이 있으면(`unknown command`) 그 자리에서 던집니다. 실행 중 조용히 터지지 않습니다.
+- 명령 이름은 `toString` 같은 프로토타입 이름이어도 안전합니다(내부가 null-프로토타입).
+- 다른 dsl 의 명령을 섞은 프로그램은 막지 않되, 모르는 해석기의 `run` 에서
+  `no handler for '<이름>'` 으로 거부됩니다.
+- 인자는 위치 그대로 핸들러에 전달됩니다 — 명령의 시그니처는 핸들러 시그니처가 말합니다.
+
 ## API
+
+### Free.dsl(...names)
+어휘 선언 → 명령 함수 묶음 + `interpreter(handlers)` → `{ run(program) }`. 위 절 참조.
 
 ### Free.pure(value)
 값을 Pure로 감쌈.
@@ -73,6 +125,10 @@ Free 구조를 동기적으로 실행.
 
 ### Free.runWithTask(runner, free)
 Task 기반 비동기 실행. runner가 Task를 반환할 때 사용하며, Promise를 반환하여 async/await 호환성을 제공합니다.
+
+**Advanced — `Free.dsl` 이 대신 해 주는 일.** 아래는 dsl 없이 직접 명령 함자를 만드는
+방법입니다. `Free.dsl` 의 속이 바로 이것이므로, 보통은 쓸 일이 없습니다 — 명령이 자체
+로직을 가진 함자여야 하는 특수한 경우의 문입니다.
 
 ```javascript no-run 네트워크 호출 — 실행 대상 아님
 import FunFP from 'fun-fp-js';
