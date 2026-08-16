@@ -109,6 +109,74 @@ plan.run(program).then(() => {
 });
 ```
 
+### Reader·Writer·State 와 함께 쓰기
+
+Free 프로그램에서 진짜 부수 효과는 해석기 안에서만 일어납니다. 그런데 효과와 효과 사이의
+순수한 계산에도 흐름이 세 갈래 있습니다 — 밖에서 주입받는 설정, 단계마다 이어지는 상태,
+쌓이기만 하는 기록. 이 세 갈래를 [Reader](./Reader.md)·[State](./State.md)·
+[Writer](./Writer.md)가 각각 맡습니다.
+
+| 필요한 것 | 도구 | 성격 |
+| --- | --- | --- |
+| 설정 주입 | [Reader](./Reader.md) | 순수 — 읽기만 한다 |
+| 상태 유지 | [State](./State.md) | 순수 — 읽고 쓰며 잇는다 |
+| 기록 누적 | [Writer](./Writer.md) | 순수 — 값으로 쌓기만 한다 |
+| 진짜 부수 효과 | 어휘 명령 + 해석기 | 유일하게 불순한 자리 — 그래서 갈아끼울 수 있다 |
+
+아래 예제는 주문 하나를 처리합니다. 프로그램은 가격 조회와 결제를 서술만 하고, 조회된
+가격이 손에 들어온 순수 구간에서 Reader 가 할인율을 주입받고, State 가 합계를 0부터
+잇고, Writer 가 과정을 기록합니다. 로그가 화면에 찍히는 일도 돈이 나가는 일도 전부
+해석기 안에서만 일어납니다.
+
+```javascript
+const { Free, Reader, Writer, State } = FunFP;
+
+// 어휘 — 바깥세상에 요청할 것: 가격 조회와 결제
+const api = Free.api('fetchPrice', 'charge');
+
+// Reader — 할인가 계산은 설정(discount)에 의존한다
+const discounted = base => Reader.asks(cfg => Math.round(base * (1 - cfg.discount)));
+
+// State — 합계는 0에서 시작해 가격을 하나씩 더해 잇는다
+const totalOf = prices => prices
+    .reduce((st, p) => st.chain(() => State.modify(t => t + p)), State.of(null))
+    .exec(0);
+
+// Writer — 계산 과정을 로그 값으로 쌓는다. 이 시점엔 화면에 아무것도 찍히지 않는다
+const journal = (names, prices, total) => names
+    .reduce((w, name, i) => w.chain(() => Writer.tell([`${name}: ${prices[i]}원`])), Writer.of(null))
+    .chain(() => Writer.tell([`합계: ${total}원`]))
+    .exec();
+
+// 프로그램 — 효과는 서술만 하고, 순수 계산은 세 타입이 나눠 맡는다
+const buy = (names, cfg) =>
+    api.fetchPrice(names[0]).chain(b1 =>
+    api.fetchPrice(names[1]).map(b2 => [b1, b2]))
+        .map(bases => {
+            const prices = bases.map(b => discounted(b).run(cfg));  // Reader 실행: 설정을 넣는 순간
+            const total = totalOf(prices);                          // State 실행: 초기 상태 0
+            return { total, log: journal(names, prices, total) };   // Writer 실행: 로그 회수
+        })
+        .chain(({ total, log }) => api.charge(total).map(receipt => ({ receipt, log })));
+
+// 해석기 — 실제 동작은 여기서만 일어난다
+const priceDb = { 책: 12000, 펜: 3000 };
+const shop = api.interpreter({
+    fetchPrice: name => Promise.resolve(priceDb[name]),
+    charge: amount => ({ paid: amount }),
+});
+
+shop.run(buy(['책', '펜'], { discount: 0.1 })).then(r => {
+    if (r.receipt.paid !== 13500) throw new Error('합계가 틀렸다: ' + r.receipt.paid);
+    if (r.log.join('/') !== '책: 10800원/펜: 2700원/합계: 13500원') throw new Error('기록이 틀렸다: ' + r.log);
+    console.log(r.log);   // ['책: 10800원', '펜: 2700원', '합계: 13500원']
+});
+```
+
+설정을 `{ discount: 0.5 }` 로 바꾸면 같은 프로그램이 6750원을 결제합니다 — 설정이
+프로그램 밖에 있기 때문입니다. `exec` 는 State 와 Writer 에서 같은 의미입니다: 계산의
+부산물(최종 상태, 로그)을 돌려줍니다.
+
 ### 규칙 — 조용히 틀리지 않는다
 
 | 언제 | 무엇 | 결과 |
