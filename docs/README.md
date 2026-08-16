@@ -4,7 +4,8 @@
 
 ## 먼저 이것부터 — `lookup` 과 `of` {#lookup-of}
 
-이 라이브러리의 문은 둘이고, 역할이 다릅니다. 어느 것을 부를지 여기서 갈립니다.
+이 라이브러리의 시작점은 `lookup` 과 `of` 두 함수이고 역할이 다릅니다. 사용자가 어느
+것을 불러야 하는지는 여기서 갈립니다.
 
 | 부르는 것 | 하는 일 | 어디에 있나 | 예 |
 | --- | --- | --- | --- |
@@ -12,7 +13,7 @@
 | `of(값)` | **값을 상자에 넣는다** | 데이터 타입 (`Maybe`, `Task`, …) | `Maybe.of(1)` |
 
 타입 클래스에는 `of` 가 없습니다. 다만 `lookup` 으로 **꺼낸 인스턴스**가 `of` 를 지니는
-경우는 있습니다(`Applicative` 계열) — 그때도 순서는 "먼저 꺼내고, 그 도구로 넣는다" 입니다.
+경우는 있습니다(`Applicative` 계열). 그때도 순서는 "먼저 꺼내고, 그 도구로 넣는다" 입니다.
 
 ```javascript
 const { Monoid, Maybe, Applicative } = FunFP;
@@ -101,7 +102,7 @@ console.log(thrown);   // 'TypeError'
 두 모나드를 합성해 "상태 + 실패", "환경 + 비동기" 같은 조합을 만듭니다.
 [Free](./Free.md) 위에 구현되어 스택 안전합니다.
 
-**[StateT](./StateT.md)를 먼저 읽으십시오** — 4종의 공통 개념(`of`/`lift`, 문자열 M 규칙)이
+**[StateT](./StateT.md)를 먼저 읽으십시오.** 4종의 공통 개념(`of`/`lift`, 문자열 M 규칙)이
 거기 정리되어 있고 나머지 셋이 참조합니다.
 
 - [StateT](./StateT.md) - 상태 전이 + 효과 (공통 개념 포함)
@@ -124,9 +125,10 @@ console.log(thrown);   // 'TypeError'
 
 ## 타입 클래스 의존성 그래프
 
-Static Land 명세의 "support X algebra for the same T" 를 그대로 옮긴 것이다. 화살표 왼쪽을
-갖춰야 오른쪽이 될 수 있고, `+` 는 둘 다 필요하다는 뜻이다. `tests/staticland-spec.test.js`
-가 이 목록과 코드·타입 선언을 대조한다 — 셋이 갈라지면 테스트가 멈춘다.
+Static Land 명세의 "support X algebra for the same T" 를 그대로 옮긴 것입니다. 화살표
+왼쪽을 갖춰야 오른쪽이 될 수 있고 `+` 는 둘 다 필요하다는 뜻입니다.
+`tests/staticland-spec.test.js` 가 이 목록과 코드·타입 선언을 대조합니다. 셋이 갈라지면
+테스트가 멈춥니다.
 
 ```
 Setoid ──────────────> Ord
@@ -150,8 +152,8 @@ Profunctor ──────────> Choice          left  · right
 Strong + Choice ─────> Wander          wander
 ```
 
-마지막 셋은 Static Land 명세에 없다. optics 가 요구해서 명시적으로 구현한 것이고, 각각이
-어떤 optic 을 내는지는 [Optics](./Optics.md) 에 있다. 근거는
+마지막 셋은 Static Land 명세에 없습니다. optics 가 요구해서 명시적으로 구현했고 각각이
+어떤 optic 을 만드는지는 [Optics](./Optics.md) 에 있습니다. 근거는
 [internals.md#optics](./internals.md#optics).
 
 ## 핵심 개념 요약
@@ -202,13 +204,13 @@ Applicative.lookup('maybe').of(1)  // 꺼낸 다음 넣는다
 Maybe.of('array')                  // Just('array') — 조회가 아니다
 ```
 
-**한 이름이 둘을 겸하면 마지막 줄이 조회로 읽힙니다.** 그래서 타입클래스에는 `of` 가
+한 이름이 둘을 겸하면 마지막 줄이 조회로 읽힙니다. 그래서 타입클래스에는 `of` 가
 없습니다 — `Functor.of` 는 `undefined` 입니다.
 
 ### `Algebra.all(타입)` — 한 타입의 인스턴스를 한 번에
 
-`lookup` 은 하나를 꺼냅니다. **같은 타입의 여러 인스턴스가 필요하면 하나씩 부르는 대신
-`Algebra.all` 로 받아 구조분해합니다.** `Algebra` 는 모든 인스턴스의 뿌리 클래스입니다 —
+`lookup` 은 하나를 꺼냅니다. 같은 타입의 여러 인스턴스가 필요하면 하나씩 부르는 대신
+`Algebra.all` 로 받아 구조분해합니다. `Algebra` 는 모든 인스턴스가 상속하는 최상위 클래스입니다.
 타입클래스 하나에서 꺼내면 인스턴스 하나, 뿌리에서 꺼내면 그 타입의 인스턴스 전부입니다.
 
 ```javascript
@@ -220,7 +222,7 @@ console.log(arraySemigroup.concat([1], [2]));            // [1, 2]
 console.log(arrayFoldable.reduce((a, b) => a + b, 0, [1, 2, 3]));  // 6
 ```
 
-이름은 **카멜케이스**입니다. 클래스 이름을 그대로 쓰고(`ArraySemigroup` → `arraySemigroup`),
+이름은 **카멜케이스**입니다. 클래스 이름을 그대로 쓰고(`ArraySemigroup` → `arraySemigroup`)
 조립 키로 만들어진 것은 키 조각을 앞에 붙입니다(`maybe(array)` 의 Semigroup → `maybeArraySemigroup`).
 
 ```javascript
@@ -231,7 +233,7 @@ console.log(maybeMonoid.empty().isNothing());   // true   ← Plus 에서 유도
 console.log(A.all('array').arrayMonoid.empty());  // []   ← Array 는 원래의 ArrayMonoid 를 쓴다
 ```
 
-**세 가지를 기억하십시오.**
+세 가지를 기억하십시오.
 
 | | |
 | --- | --- |
@@ -239,11 +241,11 @@ console.log(A.all('array').arrayMonoid.empty());  // []   ← Array 는 원래�
 | 묶는 기준은 **`.type`**, 레지스트리 키가 아님 | `Semigroupoid` 의 `maybe` 인스턴스는 Kleisli 합성이라 `.type` 이 `'function'` 입니다 — `all('function')` 에 있고 `all('maybe')` 에는 없습니다 |
 | **열거가 아니라 "지금 있는 것"** | 매개변수화 인스턴스는 팩토리를 불러야 생깁니다. `Semigroup.Maybe('number')` 뒤의 `all('maybe')` 에는 `maybeNumberSemigroup` 이 더 있습니다 |
 
-**키 순서는 약속이 아닙니다.** 이름으로 구조분해해서 쓰십시오 — `Object.keys` 의 순서는
+키 순서는 약속이 아닙니다. 이름으로 구조분해해서 쓰십시오. `Object.keys` 의 순서는
 등록 순서를 따라가므로 라이브러리 내부가 바뀌면 함께 바뀝니다.
 
-세 번째가 설계입니다. 안쪽 타입 공간은 닫혀 있지 않아서 — `maybe(maybe(maybe(array)))` 도
-됩니다 — 미리 열거할 수 없습니다. **안쪽 타입은 힌트이고, 정확히 지목하려면 조립 키로
+세 번째 항목은 제약이 아니라 의도된 설계입니다. 안쪽 타입 공간이 닫혀 있지 않아 미리 열거할 수 없습니다.
+`maybe(maybe(maybe(array)))` 도 됩니다. **안쪽 타입은 힌트이고 정확히 지목하려면 조립 키로
 `lookup` 하십시오.**
 
 ```javascript
@@ -255,7 +257,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 
 ### 레지스트리 키 — 매개변수화된 것들
 
-`Functor.lookup('array')` 처럼 **타입 이름**이 기본이지만, 조립된 키도 있습니다.
+`Functor.lookup('array')` 처럼 **타입 이름**이 기본이지만 조립된 키도 있습니다.
 
 | 키 형태 | 뜻 | 예 | 문서 |
 | --- | --- | --- | --- |
@@ -267,7 +269,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 | `writer(<monoid>)` | **그 Monoid 를 쓰는 `Writer` 모나드** — 등록된 `writer` 는 Array 전용 | `writer(number)`, `writer(string)` | [Writer](./Writer.md) |
 | `statet(<M>)` 등 | Transformer | `statet(maybe)`, `eithert(task)` | [StateT](./StateT.md) |
 
-`identity` 도 `Functor`/`Apply`/`Applicative` 세 곳에 등록돼 있습니다 —
+`identity` 도 `Functor`/`Apply`/`Applicative` 세 곳에 등록돼 있습니다.
 `traverse` 에 넘겨 "그냥 매핑" 으로 쓰는 것입니다([Applicative](./Applicative.md)).
 
 ### 데이터 타입
@@ -290,7 +292,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 
 ### Monad Transformer
 
-두 모나드를 합성합니다. **`M`은 문자열로 넘기십시오** (`StateT('maybe')`) — 객체를 넘기면
+두 모나드를 합성합니다. **`M`은 문자열로 넘기십시오** (`StateT('maybe')`). 객체를 넘기면
 타입명이 실행 순서에 따라 달라집니다. 자세한 내용은 [StateT](./StateT.md)를 보십시오.
 
 | 타입 | 합성 | 실행 | 결과 |
@@ -385,7 +387,7 @@ pipe(
 
 [내부 구조](./internals.md) — `.type` 규칙, `'any'`, `Plus`→`Monoid` 유도, Identity/Const,
 검사 겹을 벗기는 자리, optics 의 Profunctor 인코딩, 트랜스포머 등록, 레지스트리 쓰기 경로.
-**소스 주석은 한 줄 힌트만 두고 근거는 그쪽에 모읍니다.**
+소스 주석은 한 줄 힌트만 두고 근거는 그쪽에 모읍니다.
 
 ## 더 알아보기
 
