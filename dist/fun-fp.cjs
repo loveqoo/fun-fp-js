@@ -1,7 +1,7 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Built: 2026-08-17T01:23:17.321Z
+ * Built: 2026-08-17T06:11:24.074Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -2452,7 +2452,7 @@ const { transducer } = (() => {
         if (typeof vessel === 'string') return transduce(transducer, (acc, v) => acc + v, vessel, collection);
         if (vessel instanceof Set) return transduce(transducer, (acc, v) => acc.add(v), new Set(vessel), collection);
         if (vessel instanceof Map) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return acc.set(k, val); }, new Map(vessel), collection);
-        if (types.isPlainObject(vessel)) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); acc[k] = val; return acc; }, Object.assign({}, vessel), collection);
+        if (types.isPlainObject(vessel)) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }); return acc; }, Object.assign({}, vessel), collection);
         return raise(new TypeError('transducer.into: vessel must be an array, string, Set, Map, or plain object'));
     };
     // f·p 는 생성 시점에 검사한다 — 원소 처리 시로 미루면 빈 입력에서 잘못된 호출이 통과한다.
@@ -3216,6 +3216,8 @@ const ReaderT = (M) => {
 ReaderT._cache = new Map();
 
 /* ── WriterT ── */
+// 모노이드 정체성은 등록 키가 가른다 — .type 만 보면 합/곱 Number 가 한 자리를 다툰다.
+const normalizeWriterTMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'WriterT');
 const WriterT = (M, writerMonoid) => {
     if (!writerMonoid) writerMonoid = Monoid.lookup('array');
     if (typeof writerMonoid.empty !== 'function' || typeof writerMonoid.concat !== 'function') {
@@ -3225,7 +3227,12 @@ const WriterT = (M, writerMonoid) => {
     if (!WriterT._cache.has(nm)) WriterT._cache.set(nm, new Map());
     if (WriterT._cache.get(nm).has(writerMonoid)) return WriterT._cache.get(nm).get(writerMonoid);
     const mType = resolveMonadType(M, nm);
-    const monoidId = writerMonoid.type || `monoid${++_transformerAutoId}`;
+    const wtKey = writerMonoid[Symbols.Monoid] === true ? normalizeWriterTMonoid(writerMonoid).key : null;
+    const mt = writerMonoid.type;
+    // 등록 키가 .type 의 소문자와 같으면 기존 표기(.type)를 유지한다 — 문서·별칭 불변.
+    const monoidId = wtKey !== null
+        ? (mt && wtKey === String(mt).toLowerCase() ? mt : wtKey)
+        : (mt ? `${mt}#${++_transformerAutoId}` : `monoid${++_transformerAutoId}`);
     const typeName = `WriterT(${mType},${monoidId})`;
     const alias = typeName.toLowerCase();
 
@@ -3279,13 +3286,17 @@ const Actor = ({ init, handle }) => {
         processing = true;
         const { msg, resolve, reject } = queue.shift();
         const done = () => { processing = false; if (queue.length > 0) process(); };
-        const onSuccess = ([result, newState]) => {
+        const onSuccess = value => {
+            // 비동기 경로에서 모양이 틀리면 던질 곳이 없다 — 거부로 돌려야 큐가 산다.
+            if (!Array.isArray(value) || value.length !== 2) return onError(new TypeError('Actor: handle must produce a [result, newState] pair'));
+            const [result, newState] = value;
             state = newState;
             // 먼저 정착·진행을 확정하고 통지한다 — 통지 예외가 actor 를 멈추면 큐가 영구 대기한다.
             resolve(result);
             done();
+            // state 가 아니라 newState 다 — done() 의 재진입이 state 를 먼저 전진시킬 수 있다.
             for (let i = 0; i < subscribers.length; i++) {
-                try { subscribers[i](result, state); }
+                try { subscribers[i](result, newState); }
                 catch (e) { runCatch(config.tapErrorHandler, emptyFunc)(e); }
             }
         };
@@ -3402,8 +3413,8 @@ Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
 
 /* Free.api — 어휘만 선언하고 해석기는 몇 벌이든 별도로 단다. 사용자는 함자를 모른다. */
 // 연속은 함수 목록이다 — 클로저 중첩이면 깊은 map 사슬에서 스택이 넘친다. docs/Free.md
-const makeApiCommand = (name, args, fns) => {
-    const cmd = { name, args, fns, map(f) { return makeApiCommand(name, args, fns.concat([f])); } };
+const makeApiCommand = (name, args, fns, api) => {
+    const cmd = { name, args, fns, api, map(f) { return makeApiCommand(name, args, fns.concat([f]), api); } };
     cmd[Symbols.Functor] = true;
     return cmd;
 };
@@ -3432,7 +3443,7 @@ Free.api = (...names) => {
         vocabulary[name] = true;
     }
     const api = Object.create(null);
-    for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, []));
+    for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, [], vocabulary));
     api.interpreter = handlers => {
         types.isPlainObject(handlers) || raise(new TypeError('Free.api.interpreter: handlers must be a plain object (inherited handlers are not accepted)'));
         const table = Object.create(null);
@@ -3448,9 +3459,9 @@ Free.api = (...names) => {
             run: program => Free.isFree(program)
                 ? new Promise((resolve, reject) => {
                     Free.runWithTask(cmd => {
-                        // 다른 api 의 명령이 섞이면 여기서 걸린다 — 벌거벗은 에러 금지.
+                        // 다른 api 의 명령은 이름이 같아도 걸린다 — 어휘 객체가 곧 정체성이다.
                         const h = table[cmd.name];
-                        if (typeof h !== 'function') return Task.rejected(new TypeError(`Free.api.run: no handler for '${cmd.name}'`));
+                        if (typeof h !== 'function' || cmd.api !== vocabulary) return Task.rejected(new TypeError(`Free.api.run: no handler for '${cmd.name}'`));
                         return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
                     })(program).then(resolve, reject);
                 })
