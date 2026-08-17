@@ -441,7 +441,7 @@ test('interpreters: 빈 인자·위조 인자는 동기 라벨 거부, 반환 �
     const A = Free.api('a');
     const it = Free.interpreters(A.interpreter({ a: () => 1 }));
     assertEquals(Object.getOwnPropertySymbols(it).length, 0);
-    assertEquals(Object.keys(it), ['run']);
+    assertEquals(Object.keys(it), ['run', 'start']);
 });
 
 test('interpreters: 각 해석기의 생성 시점 검증은 합성과 무관하게 산다', () => {
@@ -484,4 +484,129 @@ testAsync('interpreters: 이름이 겹칠 때만 거부 문안에 원인 절이 
     const Other = Free.api('zap');
     const msg2 = await router.run(Other.zap()).then(() => 'resolve', e => e.message);
     assertEquals(msg2, "Free.api.run: no handler for 'zap'");
+});
+
+/* ── start/cancel — 계획 .dev/plan/260818-free-api-start.md (v2) ── */
+
+testAsync('start①: 진행 중 취소 — 이후 핸들러 미시작, 문안·표식 동시', async () => {
+    const api = Free.api('step');
+    let calls = 0;
+    const it = api.interpreter({ step: n => { calls++; return new Promise(res => setTimeout(() => res(n), 20)); } });
+    let p = api.step(1);
+    for (const n of [2, 3, 4]) p = p.chain(() => api.step(n));
+    const h = it.start(p);
+    setTimeout(h.cancel, 30);   // 2단계 비행 중
+    const e = await h.promise.then(() => null, e => e);
+    assertEquals(e.message, 'Free.api.run: cancelled');
+    assertEquals(e.cancelled, true);
+    assert(calls === 2, '취소 후 핸들러가 더 불렸다: ' + calls);
+});
+
+testAsync('start②: 취소 후에는 사용자 연속(.map)도 실행되지 않는다', async () => {
+    const api = Free.api('go');
+    const it = api.interpreter({ go: () => new Promise(res => setTimeout(() => res(1), 20)) });
+    let mapped = false;
+    const h = it.start(api.go().map(v => { mapped = true; return v; }));
+    setTimeout(h.cancel, 5);    // 비행 중 취소 — 착륙 후 연속 적용 전에 걸려야 한다
+    await h.promise.then(() => null, () => null);
+    assertEquals(mapped, false);
+});
+
+testAsync('start③: 정착 후 취소·이중 취소는 무해하다', async () => {
+    const api = Free.api('go');
+    const it = api.interpreter({ go: () => 7 });
+    const h = it.start(api.go());
+    const v = await h.promise;
+    h.cancel(); h.cancel();
+    assertEquals(v, 7);
+    assertEquals(await h.promise, 7);   // 정착값 불변
+});
+
+testAsync('start④: 라우터(Free.interpreters)에서도 start 가 동작한다', async () => {
+    const a = Free.api('x');
+    const b = Free.api('y');
+    const it = Free.interpreters(
+        a.interpreter({ x: () => new Promise(res => setTimeout(() => res('x'), 20)) }),
+        b.interpreter({ y: () => 'y' })
+    );
+    const h = it.start(a.x().chain(() => b.y()));
+    setTimeout(h.cancel, 5);
+    const e = await h.promise.then(() => null, e => e);
+    assertEquals(e.cancelled, true);
+});
+
+testAsync('start⑤: 핸들러 안에서 cancel 하면 다음 경계에서 발효한다 (타이머 없는 즉시 정착 경로)', async () => {
+    // 완전 동기 프로그램은 start() 반환 전에 완주해 취소할 틈이 없다(계약). 즉시 정착
+    // Promise 는 경계가 마이크로태스크로 갈라져 손잡이가 잡힌다 — 그 경로를 고정한다.
+    const api = Free.api('step');
+    let handle;
+    let calls = 0;
+    const it = api.interpreter({ step: n => { calls++; if (n === 2) handle.cancel(); return Promise.resolve(n); } });
+    let p = api.step(1);
+    for (const n of [2, 3, 4]) p = p.chain(() => api.step(n));
+    handle = it.start(p);
+    const e = await handle.promise.then(() => null, e => e);
+    assertEquals(e.cancelled, true);
+    assertEquals(calls, 2);   // 3·4 는 미시작
+});
+
+testAsync('start⑥⑦: 취소 없는 start 는 run 과 같고, 반환 모양은 정확히 둘이다', async () => {
+    const api = Free.api('go');
+    const it = api.interpreter({ go: () => Promise.resolve('값') });
+    const h = it.start(api.go().map(v => v + '!'));
+    assertEquals(Object.keys(h).sort().join(','), 'cancel,promise');
+    assertEquals(await h.promise, '값!');
+    assertEquals(await it.run(api.go().map(v => v + '!')), '값!');
+});
+
+testAsync('start⑧: 일반 실패 거부에는 cancelled 표식이 없다', async () => {
+    const api = Free.api('boom');
+    const it = api.interpreter({ boom: () => { throw new Error('도메인 실패'); } });
+    const e = await it.start(api.boom()).promise.then(() => null, e => e);
+    assertEquals(e.message, '도메인 실패');
+    assertEquals(e.cancelled, undefined);
+});
+
+testAsync('start⑨: Pure 전용 프로그램은 경계가 없어 취소와 무관하게 완주한다', async () => {
+    const api = Free.api('unused');
+    const it = api.interpreter({ unused: () => 0 });
+    const h = it.start(Free.of(42).map(x => x + 1));
+    h.cancel();   // 경계가 한 번도 없다 — 정상 완주가 계약
+    assertEquals(await h.promise, 43);
+});
+
+testAsync('start⑩: 연속(.map) 안에서 cancel 하면 후속 연속이 실행되지 않는다', async () => {
+    const api = Free.api('go');
+    const it = api.interpreter({ go: () => Promise.resolve(1) });
+    let handle;
+    const calls = [];
+    const p = api.go()
+        .map(v => { calls.push('map1'); handle.cancel(); return v + 1; })
+        .map(v => { calls.push('map2'); return v + 1; });
+    handle = it.start(p);
+    const e = await handle.promise.then(() => null, e => e);
+    assertEquals(calls.join(','), 'map1');
+    assertEquals(e && e.cancelled, true);
+});
+
+testAsync('start⑪: chain 콜백 안에서 cancel 하면 다음 핸들러가 디스패치되지 않는다', async () => {
+    const api = Free.api('step');
+    let handle;
+    const calls = [];
+    const it = api.interpreter({ step: n => { calls.push('handler' + n); return Promise.resolve(n); } });
+    const p = api.step(1).chain(v => { calls.push('cancel-chain'); handle.cancel(); return api.step(2); });
+    handle = it.start(p);
+    const e = await handle.promise.then(() => null, e => e);
+    assertEquals(calls.join(','), 'handler1,cancel-chain');
+    assertEquals(e && e.cancelled, true);
+});
+
+testAsync('start⑫: 취소와 비행 중 실패가 경주하면 실패가 이긴다 (계약)', async () => {
+    const api = Free.api('boom');
+    const it = api.interpreter({ boom: () => new Promise((_, rej) => setTimeout(() => rej(new Error('비행 실패')), 20)) });
+    const h = it.start(api.boom());
+    setTimeout(h.cancel, 5);   // 비행 중 취소 — 그러나 실행은 이미 실패로 끝난다
+    const e = await h.promise.then(() => null, e => e);
+    assertEquals(e.message, '비행 실패');
+    assertEquals(e.cancelled, undefined);
 });

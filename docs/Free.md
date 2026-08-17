@@ -142,6 +142,43 @@ it.run(program).then(r => {
 api 도 쓰고 있다면 문안에 원인 절이 덧붙습니다 — 명령을 소유한 api 의 해석기가
 이 합성에 없다는 뜻입니다.
 
+### 실행 취소 — `start`
+
+`run` 은 결과만 돌려주지만, `start` 는 실행을 도중에 그만둘 손잡이를 함께 돌려줍니다.
+`cancel()` 을 부르면 **다음 명령 경계에서** 실행이 멈춥니다 — 진행 중이던 핸들러는
+마저 완료되지만 그 결과는 버려지고(뒤따르는 순수 단계도 실행되지 않음), 남은 명령들은
+시작되지 않습니다. 취소된 실행은 `'Free.api.run: cancelled'` 문안과
+`cancelled === true` 표식을 지닌 거부로 도착하므로, 호출자는 실패와 취소를 필드
+하나로 가릅니다. 이미 끝난 실행의 `cancel` 은 아무 일도 하지 않고, 동기적으로
+완주하는 프로그램은 취소할 틈이 없습니다. 취소와 비행 중 실패가 겹치면 **실패가
+그대로 도착합니다** — 취소는 앞으로의 일을 막는 것이지, 이미 난 결과를 바꾸지 않습니다.
+
+```javascript
+const { Free } = FunFP;
+
+const api = Free.api('step');
+const calls = [];
+const it = api.interpreter({
+    step: n => { calls.push(n); return new Promise(res => setTimeout(() => res(n), 20)); },
+});
+const program = api.step(1).chain(() => api.step(2)).chain(() => api.step(3));
+
+const h = it.start(program);
+setTimeout(h.cancel, 30);          // 2단계 비행 중에 취소
+h.promise.then(
+    () => { throw new Error('취소됐어야 한다'); },
+    e => {
+        if (e.cancelled !== true) throw new Error('취소 표식이 없다: ' + e.message);
+        if (calls.join(',') !== '1,2') throw new Error('3단계가 실행됐다: ' + calls);
+        console.log('취소됨 — 실행된 단계:', calls);   // [ 1, 2 ]
+    });
+```
+
+주의 둘. 사용자 코드가 `cancelled: true` 를 지닌 에러를 직접 만들면 이 구분이
+무너지므로 만들지 마십시오. 그리고 취소는 **비행 중인 요청 자체를 끊지 않습니다** —
+그것은 핸들러의 몫이라, 필요하면 핸들러의 `AbortController` 를 `cancel` 과 함께
+사용자가 직접 배선합니다(자동으로 이어지지 않습니다).
+
 ### Reader·Writer·State 와 함께 쓰기
 
 Free 프로그램에서 진짜 부수 효과는 해석기 안에서만 일어납니다. 그런데 효과와 효과 사이의
@@ -310,7 +347,8 @@ console.log(Chain.lookup('free').chain(x => Free.pure(x * 2), Free.pure(5)).valu
 
 | 문 | 레벨 | 무엇 |
 | --- | --- | --- |
-| `Free.api(...names)` | 1층 | 어휘 선언 → 명령 함수 묶음 + `interpreter(handlers)` → `{ run }` |
+| `Free.api(...names)` | 1층 | 어휘 선언 → 명령 함수 묶음 + `interpreter(handlers)` → `{ run, start }` |
+| `해석기.start(program)` | 2층 | 취소 손잡이 `{ promise, cancel }` — 다음 명령 경계에서 발효 |
 | `Free.interpreters(...its)` | 2층 | 여러 api 의 해석기를 하나로 — 표식으로 라우팅 |
 | `Free.pipeK(...fns)` / `composeK` | 2층 | Kleisli 단계 합성 |
 | `Free.of` / `Free.pure(value)` | 3층 | `Pure` 생성 |

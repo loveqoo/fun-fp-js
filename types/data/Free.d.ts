@@ -54,9 +54,16 @@ export interface Thunk<A> {
 // 브랜드는 선언 전용(런타임에는 없는 필드) — 런타임 브랜드는 모듈 사설 WeakMap 이다.
 // 구조적 { run } 이 Free.interpreters 인자로 정적 통과하는 것을 막아 정적·런타임 계약을 맞춘다.
 declare const FreeApiInterpreterBrand: unique symbol;
+// start 의 손잡이 — cancel 은 다음 명령 경계에서 발효(협조적). 취소된 실행은
+// message 'Free.api.run: cancelled' + cancelled === true 표식의 거부로 도착한다.
+export interface FreeApiRunHandle {
+    readonly promise: Promise<unknown>;
+    cancel(): void;
+}
 export interface FreeApiInterpreter {
     readonly [FreeApiInterpreterBrand]: true;
     run(program: Free<TypeLambda, unknown>): Promise<unknown>;
+    start(program: Free<TypeLambda, unknown>): FreeApiRunHandle;
 }
 export type FreeApi<N extends string> = { [K in N]: (...args: unknown[]) => Free<TypeLambda, unknown> } & {
     interpreter(handlers: { [K in N]: (...args: never[]) => unknown }): FreeApiInterpreter;
