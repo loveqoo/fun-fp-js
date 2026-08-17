@@ -3257,7 +3257,10 @@ const Actor = ({ init, handle }) => {
         processing = true;
         const { msg, resolve, reject } = queue.shift();
         const done = () => { processing = false; if (queue.length > 0) process(); };
-        const onSuccess = ([result, newState]) => {
+        const onSuccess = value => {
+            // 비동기 경로에서 모양이 틀리면 던질 곳이 없다 — 거부로 돌려야 큐가 산다.
+            if (!Array.isArray(value) || value.length !== 2) return onError(new TypeError('Actor: handle must produce a [result, newState] pair'));
+            const [result, newState] = value;
             state = newState;
             // 먼저 정착·진행을 확정하고 통지한다 — 통지 예외가 actor 를 멈추면 큐가 영구 대기한다.
             resolve(result);

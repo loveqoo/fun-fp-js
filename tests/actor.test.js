@@ -246,3 +246,17 @@ testAsync('4차-5: 구독자가 재진입해도 통지의 result 와 state 는 �
     await new Promise(res => setTimeout(res, 10));
     assertEquals(events.find(e => e[0] === 'B' && e[1] === 'one'), ['B', 'one', 1]);
 });
+
+testAsync('4차-6: 비동기 handle 이 쌍이 아닌 값을 내면 라벨 있는 거부, 큐는 계속 돈다', async () => {
+    const actor = Actor({ init: 0, handle: () => new Task((_, resolve) => setTimeout(() => resolve(123), 0)) });
+    const settle = t => new Promise(res => {
+        t.fork(e => res(['reject', String(e.message || e)]), v => res(['resolve', v]));
+        setTimeout(() => res(['pending', null]), 100);
+    });
+    const first = await settle(actor.send('one'));
+    const second = await settle(actor.send('two'));
+    assertEquals(first[0], 'reject');
+    assert(first[1].indexOf('[result, newState]') >= 0, '라벨 있는 문안이어야 한다: ' + first[1]);
+    assertEquals(second[0], 'reject');
+    assertEquals(actor.getState(), 0);
+});
