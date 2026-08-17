@@ -29,13 +29,16 @@ const read = (...p) => readFileSync(join(rootDir, ...p), 'utf8');
 
 const source = read('index.js');
 const pkgVersion = JSON.parse(read('package.json')).version;
+const pkgCommit = '0'.repeat(40);   // 정규화로 지워지므로 아무 유효 해시 꼴이면 된다
 // 헤더의 빌드 시각은 매 빌드마다 다르다. 민파일은 콜론 뒤 공백까지 지워져 `Built:2026-…`
 // 가 되므로 \s* 가 필요하다 — 이것을 빠뜨려 처음에 대조가 어긋났다.
-const stripBuiltAt = text => text.replace(/Built:\s*[0-9TZ:.\-]+/g, 'Built:X');
+const stripBuiltAt = text => text
+    .replace(/Built:\s*[0-9TZ:.\-]+/g, 'Built:X')
+    .replace(/Commit:\s*[0-9a-f]+/g, 'Commit:X');   // 커밋 해시는 빌드 시점 정보라 대조에서 뺀다
 
 // 양쪽이 같은 정규화를 지나야 한다 — 여기에 'X' 를 바로 넣으면 치환 대상이 아니어서
 // 기대값만 정규화를 안 거치고, 그 비대칭이 거짓 실패를 만든다(겪었다).
-const expected = buildOutputs(source, '1970-01-01T00:00:00.000Z', pkgVersion);
+const expected = buildOutputs(source, '1970-01-01T00:00:00.000Z', pkgVersion, pkgCommit);
 const OUTPUTS = [
     ['dist/fun-fp.js', 'esm'],
     ['dist/fun-fp.cjs', 'cjs'],
@@ -80,7 +83,7 @@ test('dist/fun-fp.js 는 헤더를 떼면 index.js 와 글자까지 같다', () 
 
 const typesDir = join(rootDir, 'types');
 const readType = rel => readFileSync(join(typesDir, rel), 'utf8');
-const expectedDts = buildTypeDeclarations(readType, '1970-01-01T00:00:00.000Z', pkgVersion);
+const expectedDts = buildTypeDeclarations(readType, '1970-01-01T00:00:00.000Z', pkgVersion, pkgCommit);
 
 test('dist/fun-fp.d.ts 가 현재 types/ 의 빌드 결과와 같다', () => {
     const actual = stripBuiltAt(read('dist', 'fun-fp.d.ts'));
@@ -111,7 +114,7 @@ test('types/ 의 선언 파일이 전부 빌드 명단에 있다', () => {
 test('게이트가 실제로 탐지한다 (자기검사)', () => {
     const tampered = source.replace('const polyfills', 'const polyfills /* 심은 결함 */');
     assertEquals(tampered === source, false, '결함을 심을 자리를 못 찾았다 — 자기검사가 공허하다');
-    const rebuilt = buildOutputs(tampered, '1970-01-01T00:00:00.000Z', pkgVersion);
+    const rebuilt = buildOutputs(tampered, '1970-01-01T00:00:00.000Z', pkgVersion, pkgCommit);
     assertEquals(stripBuiltAt(rebuilt.esm) === stripBuiltAt(expected.esm), false,
         '소스를 바꿨는데 빌드 결과가 같다고 나온다 — 이 게이트는 아무것도 안 보고 있다');
     assertEquals(stripBuiltAt(rebuilt.cjs) === stripBuiltAt(expected.cjs), false,
@@ -119,7 +122,7 @@ test('게이트가 실제로 탐지한다 (자기검사)', () => {
 
     const tamperedDts = buildTypeDeclarations(
         rel => readType(rel).replace('export', 'export /* 심은 결함 */'),
-        '1970-01-01T00:00:00.000Z', pkgVersion);
+        '1970-01-01T00:00:00.000Z', pkgVersion, pkgCommit);
     assertEquals(stripBuiltAt(tamperedDts) === stripBuiltAt(expectedDts), false,
         'types/ 를 바꿨는데 빌드 결과가 같다고 나온다 — .d.ts 쪽은 아무것도 안 보고 있다');
 });

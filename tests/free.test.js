@@ -411,7 +411,7 @@ testAsync('interpreters: 명부 밖 api 와 비-Free 입력은 기존 문안으�
     const c = Free.api('go');
     const it = Free.interpreters(a.interpreter({ go: () => 1 }));
     const r1 = await it.run(c.go()).then(() => 'resolve', e => e.message);
-    assertEquals(r1, "Free.api.run: no handler for 'go'");
+    assertEquals(r1, "Free.api.run: no handler for 'go' (the api owning this command has no interpreter here — another api also defines 'go')");
     const r2 = await it.run(42).then(() => 'resolve', e => e.message);
     assertEquals(r2, 'Free.api.run: program must be a Free value');
 });
@@ -472,4 +472,16 @@ testAsync('interpreters: Task 반환 핸들러와 던지는 then 게터도 라�
     }));
     assertEquals(await it.run(A.t()), 3);
     assertEquals(await it.run(A.evil()).then(() => 'resolve', e => e.message), 'then-게터');
+});
+
+testAsync('interpreters: 이름이 겹칠 때만 거부 문안에 원인 절이 붙는다', async () => {
+    const Ui = Free.api('log');
+    const Net = Free.api('log');
+    const router = Free.interpreters(Ui.interpreter({ log: () => 'ui' }));
+    assertEquals(await router.run(Ui.log('x')), 'ui');
+    const msg = await router.run(Net.log('x')).then(() => 'resolve', e => e.message);
+    assertEquals(msg, "Free.api.run: no handler for 'log' (the api owning this command has no interpreter here — another api also defines 'log')");
+    const Other = Free.api('zap');
+    const msg2 = await router.run(Other.zap()).then(() => 'resolve', e => e.message);
+    assertEquals(msg2, "Free.api.run: no handler for 'zap'");
 });

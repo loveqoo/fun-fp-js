@@ -3422,7 +3422,17 @@ const makeApiRun = tables => program => Free.isFree(program)
             const name = cmd.name;
             const table = tables.get(cmd.api);
             const h = table === undefined ? undefined : table[name];
-            if (typeof h !== 'function') return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'`));
+            if (typeof h !== 'function') {
+                // 이름이 다른 명부에 있으면 원인을 지목한다 — 동명 명령은 이 문안 없이는 오진을 부른다.
+                let hint = '';
+                for (const t of tables.values()) {
+                    if (Object.prototype.hasOwnProperty.call(t, name)) {
+                        hint = ` (the api owning this command has no interpreter here — another api also defines '${name}')`;
+                        break;
+                    }
+                }
+                return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'${hint}`));
+            }
             return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
         })(program).then(resolve, reject);
     })
