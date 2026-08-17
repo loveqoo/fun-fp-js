@@ -1,7 +1,7 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Built: 2026-08-17T06:11:24.074Z
+ * Built: 2026-08-17T06:53:26.780Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -3413,15 +3413,18 @@ Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
 
 /* Free.api — 어휘만 선언하고 해석기는 몇 벌이든 별도로 단다. 사용자는 함자를 모른다. */
 // 연속은 함수 목록이다 — 클로저 중첩이면 깊은 map 사슬에서 스택이 넘친다. docs/Free.md
+/* 연속은 cons 리스트({ f, prev }) — map 마다 앞에 한 노드, 복사 없음. 형태는 미문서 내부다. */
 const makeApiCommand = (name, args, fns, api) => {
-    const cmd = { name, args, fns, api, map(f) { return makeApiCommand(name, args, fns.concat([f]), api); } };
+    const cmd = { name, args, fns, api, map(f) { return makeApiCommand(name, args, { f, prev: fns }, api); } };
     cmd[Symbols.Functor] = true;
     return cmd;
 };
 // 반복문 적용이라 fns 길이만큼만 돈다 — 스택이 안 자란다.
 const runApiContinuation = (fns, value) => {
+    const stack = [];
+    for (let node = fns; node !== null; node = node.prev) stack.push(node.f);
     let v = value;
-    for (let i = 0; i < fns.length; i++) v = fns[i](v);
+    for (let i = stack.length - 1; i >= 0; i--) v = stack[i](v);
     return v;
 };
 // Task 는 그대로, thenable 은 Promise.resolve 동화(fromPromise 와 같은 방식), 값은 Task.of.
@@ -3443,7 +3446,7 @@ Free.api = (...names) => {
         vocabulary[name] = true;
     }
     const api = Object.create(null);
-    for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, [], vocabulary));
+    for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, null, vocabulary));
     api.interpreter = handlers => {
         types.isPlainObject(handlers) || raise(new TypeError('Free.api.interpreter: handlers must be a plain object (inherited handlers are not accepted)'));
         const table = Object.create(null);
