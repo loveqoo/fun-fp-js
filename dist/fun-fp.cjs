@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: d205f7bc757c00345a5ead14e492562bd9faf28b
- * Built: 2026-08-17T10:11:33.696Z
+ * Commit: 9a321335e58490b632e89c9cc2395e46c1c377a7
+ * Built: 2026-08-17T15:52:06.423Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -3421,12 +3421,17 @@ const makeApiCommand = (name, args, fns, api) => {
     return cmd;
 };
 // 반복문 적용이라 fns 길이만큼만 돈다 — 스택이 안 자란다.
-const runApiContinuation = (fns, value) => {
+// 연속은 사용자 코드라 그 안에서 cancel 이 동기로 발효될 수 있다 — 걸음마다 경계를 검사한다.
+const CONTINUATION_CANCELLED = Symbol('fun-fp-js/Free.api.cancelled');
+const runApiContinuation = (fns, value, token) => {
     const stack = [];
     for (let node = fns; node !== null; node = node.prev) stack.push(node.f);
     let v = value;
-    for (let i = stack.length - 1; i >= 0; i--) v = stack[i](v);
-    return v;
+    for (let i = stack.length - 1; i >= 0; i--) {
+        if (token.cancelled) return CONTINUATION_CANCELLED;
+        v = stack[i](v);
+    }
+    return token.cancelled ? CONTINUATION_CANCELLED : v;
 };
 // Task 는 그대로, thenable 은 Promise.resolve 동화(fromPromise 와 같은 방식), 값은 Task.of.
 const liftInterpreterResult = r => {
@@ -3438,28 +3443,43 @@ const liftInterpreterResult = r => {
 };
 // 해석기 → 라우팅 명부. 모듈 사설 WeakMap — 밖에서 등록·열람·변조가 불가능하다(위조 차단).
 const interpreterRegistry = new WeakMap();
-const makeApiRun = tables => program => Free.isFree(program)
-    ? new Promise((resolve, reject) => {
-        Free.runWithTask(cmd => {
-            // 옛 가드와 같은 읽기 순서(name 먼저). 표식(cmd.api)이 명부를 고르니 동명 다른 api 도 걸린다.
-            const name = cmd.name;
-            const table = tables.get(cmd.api);
-            const h = table === undefined ? undefined : table[name];
-            if (typeof h !== 'function') {
-                // 이름이 다른 명부에 있으면 원인을 지목한다 — 동명 명령은 이 문안 없이는 오진을 부른다.
-                let hint = '';
-                for (const t of tables.values()) {
-                    if (Object.prototype.hasOwnProperty.call(t, name)) {
-                        hint = ` (the api owning this command has no interpreter here — another api also defines '${name}')`;
-                        break;
+// 취소는 사용 오류가 아니다 — TypeError 대신 Error, 문안+표식 이중 신호. 핸들러가 이 표식을 직접 만들면 자기 발등이다.
+const cancelledError = () => {
+    const e = new Error('Free.api.run: cancelled');
+    e.cancelled = true;
+    return e;
+};
+const makeApiStart = tables => program => {
+    const token = { cancelled: false };
+    const promise = Free.isFree(program)
+        ? new Promise((resolve, reject) => {
+            Free.runWithTask(cmd => {
+                // 옛 가드와 같은 읽기 순서(name 먼저). 표식(cmd.api)이 명부를 고르니 동명 다른 api 도 걸린다.
+                const name = cmd.name;
+                const table = tables.get(cmd.api);
+                const h = table === undefined ? undefined : table[name];
+                if (typeof h !== 'function') {
+                    // 이름이 다른 명부에 있으면 원인을 지목한다 — 동명 명령은 이 문안 없이는 오진을 부른다.
+                    let hint = '';
+                    for (const t of tables.values()) {
+                        if (Object.prototype.hasOwnProperty.call(t, name)) {
+                            hint = ` (the api owning this command has no interpreter here — another api also defines '${name}')`;
+                            break;
+                        }
                     }
+                    return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'${hint}`));
                 }
-                return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'${hint}`));
-            }
-            return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
-        })(program).then(resolve, reject);
-    })
-    : Promise.reject(new TypeError('Free.api.run: program must be a Free value'));
+                // 취소 경계 — 비행 완료 직후부터 연속의 매 걸음 사이까지. 연속 안에서 동기로
+                // cancel 이 발효될 수 있으므로(사용자 코드), 걸음마다 검사한다(구현 리뷰 Blocker).
+                return liftInterpreterResult(h(...cmd.args)).chain(v => {
+                    const out = runApiContinuation(cmd.fns, v, token);
+                    return out === CONTINUATION_CANCELLED ? Task.rejected(cancelledError()) : Task.of(out);
+                });
+            })(program).then(resolve, reject);
+        })
+        : Promise.reject(new TypeError('Free.api.run: program must be a Free value'));
+    return { promise, cancel: () => { token.cancelled = true; } };
+};
 Free.api = (...names) => {
     // 어휘·api·핸들러 테이블은 전부 null-프로토타입 + own-property — 명령 이름이
     // toString/__proto__ 여도 안전하다(레지스트리 리졸버 수리와 같은 규율).
@@ -3484,7 +3504,8 @@ Free.api = (...names) => {
             typeof table[name] !== 'function' && raise(new TypeError(`Free.api.interpreter: missing handler '${name}'`));
         }
         const tables = new Map([[vocabulary, table]]);
-        const it = { run: makeApiRun(tables) };
+        const start = makeApiStart(tables);
+        const it = { run: program => start(program).promise, start };
         interpreterRegistry.set(it, tables);
         return it;
     };
@@ -3502,7 +3523,8 @@ Free.interpreters = (...its) => {
             tables.set(vocab, table);
         }
     }
-    const router = { run: makeApiRun(tables) };
+    const start = makeApiStart(tables);
+    const router = { run: program => start(program).promise, start };
     interpreterRegistry.set(router, tables);
     return router;
 };
