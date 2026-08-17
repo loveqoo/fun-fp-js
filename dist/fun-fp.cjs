@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 9a321335e58490b632e89c9cc2395e46c1c377a7
- * Built: 2026-08-17T15:52:06.423Z
+ * Commit: 03fad0b215bf77da63b59fc536f1a4806a8f78eb
+ * Built: 2026-08-17T16:26:48.230Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -2453,7 +2453,12 @@ const { transducer } = (() => {
         if (typeof vessel === 'string') return transduce(transducer, (acc, v) => acc + v, vessel, collection);
         if (vessel instanceof Set) return transduce(transducer, (acc, v) => acc.add(v), new Set(vessel), collection);
         if (vessel instanceof Map) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return acc.set(k, val); }, new Map(vessel), collection);
-        if (types.isPlainObject(vessel)) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }); return acc; }, Object.assign({}, vessel), collection);
+        // 복제도 defineProperty 로 — Object.assign 은 그릇의 own __proto__ 를 프로토타입으로 둔갑시킨다(5차 감사).
+        const putOwn = (acc, k, val) => (Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }), acc);
+        if (types.isPlainObject(vessel)) {
+            const seed = Object.keys(vessel).reduce((acc, k) => putOwn(acc, k, vessel[k]), {});
+            return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return putOwn(acc, k, val); }, seed, collection);
+        }
         return raise(new TypeError('transducer.into: vessel must be an array, string, Set, Map, or plain object'));
     };
     // f·p 는 생성 시점에 검사한다 — 원소 처리 시로 미루면 빈 입력에서 잘못된 호출이 통과한다.
