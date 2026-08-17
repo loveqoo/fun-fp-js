@@ -421,23 +421,23 @@ logSection('Transducer');
 
 test('transducer.map - transforms values', () => {
     const double = x => x * 2;
-    const result = transducer.transduce(transducer.map(double))((acc, x) => [...acc, x])([])([1, 2, 3]);
+    const result = transducer.transduce(transducer.map(double), (acc, x) => [...acc, x], [], [1, 2, 3]);
     assertEquals(result, [2, 4, 6]);
 });
 
 test('transducer.filter - filters values', () => {
     const isEven = x => x % 2 === 0;
-    const result = transducer.transduce(transducer.filter(isEven))((acc, x) => [...acc, x])([])([1, 2, 3, 4, 5]);
+    const result = transducer.transduce(transducer.filter(isEven), (acc, x) => [...acc, x], [], [1, 2, 3, 4, 5]);
     assertEquals(result, [2, 4]);
 });
 
 test('transducer.take - takes first n values', () => {
-    const result = transducer.transduce(transducer.take(3))((acc, x) => [...acc, x])([])([1, 2, 3, 4, 5]);
+    const result = transducer.transduce(transducer.take(3), (acc, x) => [...acc, x], [], [1, 2, 3, 4, 5]);
     assertEquals(result, [1, 2, 3]);
 });
 
 test('transducer.take - handles less than n values', () => {
-    const result = transducer.transduce(transducer.take(10))((acc, x) => [...acc, x])([])([1, 2, 3]);
+    const result = transducer.transduce(transducer.take(10), (acc, x) => [...acc, x], [], [1, 2, 3]);
     assertEquals(result, [1, 2, 3]);
 });
 
@@ -446,7 +446,7 @@ test('transducer composition - filter then map (right to left)', () => {
     const isEven = x => x % 2 === 0;
     // Transducers compose right-to-left: filter first, then map
     const composed = x => transducer.filter(isEven)(transducer.map(double)(x));
-    const result = transducer.transduce(composed)((acc, x) => [...acc, x])([])([1, 2, 3, 4, 5]);
+    const result = transducer.transduce(composed, (acc, x) => [...acc, x], [], [1, 2, 3, 4, 5]);
     // filter([1,2,3,4,5]) -> [2,4], then map(double) -> [4, 8]
     assertEquals(result, [4, 8]);
 });
@@ -464,9 +464,45 @@ test('transducer.Reduced - early termination', () => {
     assertEquals(reduced.value, 42);
 });
 
+test('transducer.into - array vessel: seed preserved, original untouched', () => {
+    const seed = [0];
+    const result = transducer.into(seed, transducer.map(x => x + 1), [1, 2]);
+    assertEquals(result, [0, 2, 3]);
+    assertEquals(seed, [0]);
+});
+
+test('transducer.into - string vessel concatenates', () => {
+    assertEquals(transducer.into('x', transducer.map(s => s.toUpperCase()), 'ab'), 'xAB');
+});
+
+test('transducer.into - Set vessel: copy + dedupe', () => {
+    const seed = new Set([1]);
+    const r = transducer.into(seed, transducer.map(x => x % 2), [2, 3, 4]);
+    assertEquals([...r], [1, 0]);
+    assertEquals([...seed], [1]);
+});
+
+test('transducer.into - Map/object vessels take [key, value] pairs', () => {
+    const m = transducer.into(new Map([['a', 1]]), transducer.map(x => [x, x * 10]), [1, 2]);
+    assertEquals([...m.entries()], [['a', 1], [1, 10], [2, 20]]);
+    assertEquals(transducer.into({ a: 1 }, transducer.map(x => [x, x * 10]), [1, 2]), { a: 1, 1: 10, 2: 20 });
+});
+
+test('transducer.into - early termination flows through (infinite generator)', () => {
+    function* naturals() { let n = 1; while (true) yield n++; }
+    assertEquals(transducer.into([], transducer.take(2), naturals()), [1, 2]);
+});
+
+test('transducer.into - labeled rejections', () => {
+    assertThrowsWith(() => transducer.into(42, transducer.map(x => x), []),
+        'transducer.into: vessel must be an array, string, Set, Map, or plain object');
+    assertThrowsWith(() => transducer.into({}, transducer.map(x => x), [1]),
+        'transducer.into: Map/object vessels expect [key, value] pairs');
+});
+
 test('transducer.transduce - with sum reducer', () => {
     const double = x => x * 2;
-    const result = transducer.transduce(transducer.map(double))((acc, x) => acc + x)(0)([1, 2, 3]);
+    const result = transducer.transduce(transducer.map(double), (acc, x) => acc + x, 0, [1, 2, 3]);
     assertEquals(result, 12); // (1*2) + (2*2) + (3*2) = 2 + 4 + 6 = 12
 });
 
@@ -573,7 +609,7 @@ test('transducer.map/filter - 잘못된 인자는 생성 시점에 던진다', (
     assertThrows(() => transducer.map(42), 'map 이 비함수를 생성 시 안 막았다');
     assertThrows(() => transducer.filter(99), 'filter 가 비함수를 생성 시 안 막았다');
     // 빈 입력에서도 잘못된 호출이 통과하지 않는다
-    assertThrows(() => transducer.transduce(transducer.map(42))((a, x) => a + x)(0)([]), '빈 입력에서 map(42)가 통과했다');
+    assertThrows(() => transducer.transduce(transducer.map(42), (a, x) => a + x, 0, []), '빈 입력에서 map(42)가 통과했다');
 });
 
 // once 는 최대 한 번 실행한다 — f 안에서 자기를 다시 불러도 두 번 실행되면 안 된다(코덱스 3차 #7).

@@ -2408,7 +2408,7 @@ const { transducer } = (() => {
         static of(value) { return new Reduced(value); }
         static isReduced(value) { return value != null && value[Symbols.Reduced] === true; }
     }
-    const transduce = transducer => reducer => initialValue => collection => {
+    const transduce = (transducer, reducer, initialValue, collection) => {
         if (!types.isIterable(collection)) {
             raise(new TypeError(`transduce: expected an iterable, but got ${typeof collection}`));
         }
@@ -2421,6 +2421,17 @@ const { transducer } = (() => {
             }
         }
         return accumulator;
+    };
+    /* into — 그릇을 보고 리듀서를 유도한다. Clojure 의미: 내용 보존·원본 불변. docs/Transducer.md#into */
+    const intoPair = value => (Array.isArray(value) && value.length === 2) ? value
+        : raise(new TypeError('transducer.into: Map/object vessels expect [key, value] pairs'));
+    const into = (vessel, transducer, collection) => {
+        if (Array.isArray(vessel)) return transduce(transducer, (acc, v) => (acc.push(v), acc), vessel.slice(), collection);
+        if (typeof vessel === 'string') return transduce(transducer, (acc, v) => acc + v, vessel, collection);
+        if (vessel instanceof Set) return transduce(transducer, (acc, v) => acc.add(v), new Set(vessel), collection);
+        if (vessel instanceof Map) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return acc.set(k, val); }, new Map(vessel), collection);
+        if (types.isPlainObject(vessel)) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); acc[k] = val; return acc; }, Object.assign({}, vessel), collection);
+        return raise(new TypeError('transducer.into: vessel must be an array, string, Set, Map, or plain object'));
     };
     // f·p 는 생성 시점에 검사한다 — 원소 처리 시로 미루면 빈 입력에서 잘못된 호출이 통과한다.
     const map = f => (types.checkFunction(f, 'transducer.map:f'), reducer => (acc, val) => types.checkFunction(reducer, 'transducer.map:reducer')(acc, f(val)));
@@ -2443,7 +2454,7 @@ const { transducer } = (() => {
     };
     return {
         transducer: {
-            Reduced, of: Reduced.of, isReduced: Reduced.isReduced, transduce, map, filter, take,
+            Reduced, of: Reduced.of, isReduced: Reduced.isReduced, transduce, into, map, filter, take,
         },
     };
 })();

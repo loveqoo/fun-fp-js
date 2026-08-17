@@ -49,7 +49,7 @@ const xf = compose(
 );
 
 // 이제 한 번 순회한다. 중간 배열 없음, take(3)에서 즉시 중단.
-console.log(transducer.transduce(xf)(push)([])([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+console.log(transducer.transduce(xf, push, [], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
 // [12, 14, 16]
 ```
 
@@ -75,14 +75,15 @@ console.log(typeof double, typeof evens, typeof firstThree);
 
 ### transduce - 실행
 
-커링된 4단계입니다: `transduce(변환기)(리듀서)(초기값)(컬렉션)`
+인자 넷을 한 번에 받습니다: `transduce(변환기, 리듀서, 초기값, 컬렉션)`.
+이 라이브러리의 다른 문(`map(f, fa)` 등)과 같은 비커리드 호출입니다.
 
 ```javascript
 const { transducer } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-transducer.transduce(transducer.map(x => x * 2))(push)([])([1, 2, 3]);
+transducer.transduce(transducer.map(x => x * 2), push, [], [1, 2, 3]);
 // [2, 4, 6]
 ```
 
@@ -94,8 +95,58 @@ const { transducer } = FunFP;
 const sum = (acc, x) => acc + x;
 
 // 두 배한 값들의 합 — 중간 배열을 전혀 만들지 않는다
-console.log(transducer.transduce(transducer.map(x => x * 2))(sum)(0)([1, 2, 3, 4]));
+console.log(transducer.transduce(transducer.map(x => x * 2), sum, 0, [1, 2, 3, 4]));
 // 20
+```
+
+### into - 그릇에 붓기 {#into}
+
+`transduce` 의 리듀서·초기값 자리는 대부분 "배열에 담아라"입니다. `into` 는 그 두 인자를
+**결과를 담을 그릇 하나**로 줄입니다 — 그릇의 타입을 보고 라이브러리가 리듀서를 유도합니다.
+
+```javascript
+const { transducer, compose } = FunFP;
+
+const xf = compose(transducer.map(x => x * 2), transducer.take(2));
+
+// 배열 그릇 — push 리듀서가 유도된다
+console.log(transducer.into([], xf, [1, 2, 3, 4]));   // [2, 4]
+
+// 문자열 그릇 — 이어붙이기
+console.log(transducer.into('', transducer.map(s => s.toUpperCase()), 'abc'));   // 'ABC'
+
+// Set 그릇 — add (중복은 Set 규칙대로 합쳐진다)
+console.log([...transducer.into(new Set(), transducer.map(x => x % 3), [1, 2, 4, 5])]);   // [1, 2]
+
+// Map·객체 그릇 — 원소가 [키, 값] 쌍이어야 한다
+console.log(transducer.into({}, transducer.map(x => [x, x * 10]), [1, 2]));   // { '1': 10, '2': 20 }
+```
+
+그릇의 기존 내용은 보존되고 원본 그릇은 변하지 않습니다. Clojure 의 `into` 의미를
+따른 것입니다 — Ramda 의 `R.into` 는 그릇의 내용을 버리고 타입만 보므로, 여기와 다릅니다.
+
+```javascript
+const { transducer } = FunFP;
+
+const seed = ['씨앗'];
+const result = transducer.into(seed, transducer.map(x => x + 1), [1, 2]);
+console.log(result);   // ['씨앗', 2, 3] — 내용 보존
+console.log(seed);     // ['씨앗'] — 원본 불변
+```
+
+지원하는 그릇은 배열·문자열·Set·Map·평범한 객체이고, 그 밖의 그릇이나 Map·객체 그릇에
+쌍이 아닌 원소가 오면 이름을 지목하며 던집니다.
+
+```javascript
+const { transducer } = FunFP;
+
+[() => transducer.into(42, transducer.map(x => x), []),
+ () => transducer.into({}, transducer.map(x => x), [1])].forEach(bad => {
+    try { bad(); console.log('통과하면 안 됨'); }
+    catch (e) { console.log(e.message.slice(0, 26)); }
+});
+// transducer.into: vessel mu
+// transducer.into: Map/objec
 ```
 
 ### map - 값 변환
@@ -105,7 +156,7 @@ const { transducer } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-transducer.transduce(transducer.map(s => s.toUpperCase()))(push)([])(['a', 'b']);
+transducer.transduce(transducer.map(s => s.toUpperCase()), push, [], ['a', 'b']);
 // ['A', 'B']
 ```
 
@@ -116,7 +167,7 @@ const { transducer } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-transducer.transduce(transducer.filter(x => x % 2 === 0))(push)([])([1, 2, 3, 4, 5]);
+transducer.transduce(transducer.filter(x => x % 2 === 0), push, [], [1, 2, 3, 4, 5]);
 // [2, 4]
 ```
 
@@ -130,7 +181,7 @@ const { transducer } = FunFP;
 const push = (acc, x) => [...acc, x];
 
 // 원소가 n개보다 적으면 있는 만큼만
-console.log(transducer.transduce(transducer.take(10))(push)([])([1, 2, 3]));
+console.log(transducer.transduce(transducer.take(10), push, [], [1, 2, 3]));
 // [1, 2, 3]
 ```
 
@@ -145,7 +196,7 @@ let touched = 0;
 const counted = transducer.map(x => { touched++; return x; });
 const xf = r => counted(transducer.take(2)(r));
 
-transducer.transduce(xf)(push)([])([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+transducer.transduce(xf, push, [], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
 console.log('건드린 원소 수:', touched);  // 10개가 아니라 2개
 ```
@@ -182,7 +233,7 @@ const filterThenMap = compose(
     transducer.filter(x => x % 2 === 0),
     transducer.map(x => x * 2)
 );
-console.log(transducer.transduce(filterThenMap)(push)([])([1, 2, 3, 4, 5]));
+console.log(transducer.transduce(filterThenMap, push, [], [1, 2, 3, 4, 5]));
 // [4, 8]   — [2,4]로 걸러진 뒤 두 배
 
 // 순서를 뒤집으면 결과가 달라진다: map 먼저 → 그다음 filter
@@ -190,7 +241,7 @@ const mapThenFilter = compose(
     transducer.map(x => x * 2),
     transducer.filter(x => x % 2 === 0)
 );
-console.log(transducer.transduce(mapThenFilter)(push)([])([1, 2, 3, 4, 5]));
+console.log(transducer.transduce(mapThenFilter, push, [], [1, 2, 3, 4, 5]));
 // [2, 4, 6, 8, 10]   — 전부 두 배 되어 모두 짝수
 ```
 
@@ -207,13 +258,13 @@ const push = (acc, x) => [...acc, x];
 
 // 안전: 적용되지 않은 transducer는 재사용 가능
 const t = transducer.take(2);
-console.log(transducer.transduce(t)(push)([])([1, 2, 3, 4, 5]));  // [1, 2]
-console.log(transducer.transduce(t)(push)([])([1, 2, 3, 4, 5]));  // [1, 2] — 정상
+console.log(transducer.transduce(t, push, [], [1, 2, 3, 4, 5]));  // [1, 2]
+console.log(transducer.transduce(t, push, [], [1, 2, 3, 4, 5]));  // [1, 2] — 정상
 
 // 위험: 미리 적용해두면 카운터가 공유된다
 const applied = transducer.take(2)(push);
-console.log(transducer.transduce(() => applied)(push)([])([1, 2, 3]));  // [1, 2]
-console.log(transducer.transduce(() => applied)(push)([])([1, 2, 3]));  // [] — 소진됨
+console.log(transducer.transduce(() => applied, push, [], [1, 2, 3]));  // [1, 2]
+console.log(transducer.transduce(() => applied, push, [], [1, 2, 3]));  // [] — 소진됨
 ```
 
 **규칙**: transducer는 적용되지 않은 상태로 보관하고, 적용은 `transduce`에 맡기십시오.
@@ -228,7 +279,7 @@ const { transducer } = FunFP;
 const push = (acc, x) => [...acc, x];
 
 try {
-    transducer.transduce(transducer.map(x => x))(push)([])(42);
+    transducer.transduce(transducer.map(x => x), push, [], 42);
 } catch (e) {
     console.log(e.constructor.name);  // TypeError
 }
@@ -260,7 +311,7 @@ const firstTwoErrors = compose(
     transducer.take(2)
 );
 
-console.log(transducer.transduce(firstTwoErrors)(push)([])(logs));
+console.log(transducer.transduce(firstTwoErrors, push, [], logs));
 // ['disk full', 'timeout'] — 'refused'까지 가지 않고 멈춘다
 ```
 
@@ -284,7 +335,7 @@ const firstSquares = compose(
     transducer.take(4)
 );
 
-console.log(transducer.transduce(firstSquares)(push)([])(naturals()));
+console.log(transducer.transduce(firstSquares, push, [], naturals()));
 // [9, 36, 81, 144]
 ```
 
@@ -298,10 +349,10 @@ const { transducer } = FunFP;
 const push = (acc, x) => [...acc, x];
 const upper = transducer.map(s => s.toUpperCase());
 
-console.log(transducer.transduce(upper)(push)([])(new Set(['a', 'b', 'a'])));
+console.log(transducer.transduce(upper, push, [], new Set(['a', 'b', 'a'])));
 // ['A', 'B'] — Set이라 중복 제거는 이미 되어 있다
 
-console.log(transducer.transduce(upper)((acc, c) => acc + c)('')('hello'));
+console.log(transducer.transduce(upper, (acc, c) => acc + c, '', 'hello'));
 // 'HELLO'
 ```
 
@@ -327,12 +378,12 @@ const users = [
 ];
 
 const activeAdultNames = compose(activeOnly, adultsOnly, toName);
-console.log(transducer.transduce(activeAdultNames)(push)([])(users));
+console.log(transducer.transduce(activeAdultNames, push, [], users));
 // ['A', 'D']
 
 // 같은 조각으로 다른 파이프라인
 const activeNames = compose(activeOnly, toName);
-console.log(transducer.transduce(activeNames)(push)([])(users));
+console.log(transducer.transduce(activeNames, push, [], users));
 // ['A', 'B', 'D']
 ```
 
@@ -356,11 +407,11 @@ const paidWithTax = compose(
 );
 
 // 합계 — 중간 배열 없음
-const total = transducer.transduce(paidWithTax)((acc, x) => acc + x)(0)(orders);
+const total = transducer.transduce(paidWithTax, (acc, x) => acc + x, 0, orders);
 console.log('합계:', total);
 
 // 같은 파이프라인, 다른 리듀서 — 최댓값
-const max = transducer.transduce(paidWithTax)((acc, x) => Math.max(acc, x))(0)(orders);
+const max = transducer.transduce(paidWithTax, (acc, x) => Math.max(acc, x), 0, orders);
 console.log('최댓값:', max);
 ```
 
