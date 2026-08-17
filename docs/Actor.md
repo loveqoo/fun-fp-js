@@ -65,7 +65,10 @@ console.log(account.getState());  // 20 — 항상
 
 ## 생성
 
-`Actor({ init, handle })` — `handle`은 `[결과, 새상태]` 튜플을 돌려줍니다.
+`Actor({ init, handle })` — `handle`은 `[결과, 새상태]` 튜플을 돌려줍니다. 비동기라면
+그 튜플을 담은 **Promise 나 Task** 를 돌려주면 됩니다(`Free.api` 해석기 핸들러와 같은
+관용도라, `it.run(program).then(v => [v, 새상태])` 를 그대로 넘길 수 있습니다). 어느
+경로든 튜플이 아닌 것을 내면 같은 문안으로 거부되고 큐는 계속 돕니다.
 
 ```javascript
 const { Actor } = FunFP;

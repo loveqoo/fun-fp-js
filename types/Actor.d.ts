@@ -16,9 +16,9 @@ export interface ActorRef<S, M, R> {
     readonly getState: () => S;
 }
 
-// `handle` may return either a synchronous `[result, newState]` pair or a
+// `handle` may return a synchronous `[result, newState]` pair, a Promise of one, or a
 // Task thereof.
 export declare function Actor<S, M, R>(config: {
     readonly init: S;
-    readonly handle: (state: S, msg: M) => [R, S] | Task<[R, S]>;
+    readonly handle: (state: S, msg: M) => [R, S] | Promise<[R, S]> | Task<[R, S]>;
 }): ActorRef<S, M, R>;

@@ -27,6 +27,9 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 - **`해석기.start(program)`** — `{ promise, cancel }` 손잡이. `cancel()` 은 다음 명령
   경계에서 발효하는 협조적 취소이고, 취소된 실행은 `cancelled === true` 표식의 거부로
   도착합니다. `run` 은 그대로입니다.
+- **`Actor` 의 `handle` 이 Promise 도 받습니다** — `Free.api` 해석기 핸들러와 같은
+  관용도(값·Promise·Task). `it.run(program).then(v => [v, 새상태])` 를 그대로 넘길 수
+  있습니다.
 - **`transducer.into(그릇, 변환기, 입력)`** — 그릇(배열·문자열·Set·Map·객체) 타입에서
   리듀서를 유도합니다. Clojure 의미: 그릇 내용 보존, 원본 불변.
 - **`fp.pipeWhile(판별자)`** — 판별자가 참인 동안만 잇는 pipe.

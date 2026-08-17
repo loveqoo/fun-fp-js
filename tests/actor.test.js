@@ -2,7 +2,7 @@
 import fp from '../index.js';
 import { test, testAsync, assertEquals, assert, assertThrows, logSection } from './utils.js';
 
-const { Actor, Task } = fp;
+const { Actor, Task, Free } = fp;
 
 /* ═══════════════════════════════════════════════════
    기본 동작
@@ -259,4 +259,37 @@ testAsync('4차-6: 비동기 handle 이 쌍이 아닌 값을 내면 라벨 있�
     assert(first[1].indexOf('[result, newState]') >= 0, '라벨 있는 문안이어야 한다: ' + first[1]);
     assertEquals(second[0], 'reject');
     assertEquals(actor.getState(), 0);
+});
+
+testAsync('5차 후속: handle 이 Promise 를 돌려줘도 된다 (해석기 핸들러와 같은 관용도)', async () => {
+    const actor = Actor({ init: 0, handle: (state, n) => Promise.resolve([n * 2, state + n]) });
+    const first = await new Promise((res, rej) => actor.send(3).fork(rej, res));
+    assertEquals(first, 6);
+    assertEquals(actor.getState(), 3);
+});
+
+testAsync('5차 후속: Promise 거부는 그대로 거부로 도착하고 큐는 계속 돈다', async () => {
+    const actor = Actor({ init: 0, handle: (state, n) => n === 1
+        ? Promise.reject(new Error('첫 메시지 실패'))
+        : Promise.resolve([n, state + n]) });
+    const e = await new Promise(res => actor.send(1).fork(res, () => res(null)));
+    assertEquals(e.message, '첫 메시지 실패');
+    const ok = await new Promise((res, rej) => actor.send(2).fork(rej, res));
+    assertEquals(ok, 2);
+    assertEquals(actor.getState(), 2);
+});
+
+testAsync('5차 후속: Free.api.run 의 Promise 를 그대로 넘길 수 있다 (조합)', async () => {
+    const api = Free.api('inc');
+    const it = api.interpreter({ inc: n => Promise.resolve(n + 1) });
+    const actor = Actor({ init: 0, handle: (state, n) => it.run(api.inc(n)).then(v => [v, state + v]) });
+    const v = await new Promise((res, rej) => actor.send(1).fork(rej, res));
+    assertEquals(v, 2);
+    assertEquals(actor.getState(), 2);
+});
+
+testAsync('5차 후속: Promise 가 쌍이 아닌 값을 내면 라벨 거부 (동기 경로와 같은 문안)', async () => {
+    const actor = Actor({ init: 0, handle: () => Promise.resolve(123) });
+    const e = await new Promise(res => actor.send(1).fork(res, () => res(null)));
+    assertEquals(e.message, 'Actor: handle must produce a [result, newState] pair');
 });

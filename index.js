@@ -3253,6 +3253,16 @@ const WriterT = (M, writerMonoid) => {
 };
 WriterT._cache = new Map();
 
+// 핸들러가 낸 것을 Task 로 들어올린다 — Task 는 그대로, thenable 은 Promise.resolve
+// 동화(fromPromise 와 같은 방식), 값은 Task.of. Actor 와 Free.api 해석기가 같은 몸을 쓴다.
+const liftHandlerResult = r => {
+    if (Task.isTask(r)) return r;
+    if (r !== null && r !== undefined && typeof r.then === 'function') {
+        return new Task((reject, resolve) => Promise.resolve(r).then(resolve, reject));
+    }
+    return Task.of(r);
+};
+
 /* ═══════════════════════════════════════════════════════════════
    Actor — 가벼운 메시지 큐 + 순차 처리
    ═══════════════════════════════════════════════════════════════ */
@@ -3285,12 +3295,8 @@ const Actor = ({ init, handle }) => {
         };
         const onError = e => { reject(e); done(); };
         try {
-            const returned = handle(state, msg);
-            if (returned != null && typeof returned.fork === 'function') {
-                returned.fork(onError, onSuccess);
-            } else {
-                onSuccess(returned);
-            }
+            // 값·Promise·Task 를 다 받는다 — Free.api 해석기 핸들러와 같은 관용도(같은 헬퍼).
+            liftHandlerResult(handle(state, msg)).fork(onError, onSuccess);
         } catch (e) {
             onError(e);
         }
@@ -3415,14 +3421,6 @@ const runApiContinuation = (fns, value, token) => {
     }
     return token.cancelled ? CONTINUATION_CANCELLED : v;
 };
-// Task 는 그대로, thenable 은 Promise.resolve 동화(fromPromise 와 같은 방식), 값은 Task.of.
-const liftInterpreterResult = r => {
-    if (Task.isTask(r)) return r;
-    if (r !== null && r !== undefined && typeof r.then === 'function') {
-        return new Task((reject, resolve) => Promise.resolve(r).then(resolve, reject));
-    }
-    return Task.of(r);
-};
 // 해석기 → 라우팅 명부. 모듈 사설 WeakMap — 밖에서 등록·열람·변조가 불가능하다(위조 차단).
 const interpreterRegistry = new WeakMap();
 // 취소는 사용 오류가 아니다 — TypeError 대신 Error, 문안+표식 이중 신호. 핸들러가 이 표식을 직접 만들면 자기 발등이다.
@@ -3453,7 +3451,7 @@ const makeApiStart = tables => program => {
                 }
                 // 취소 경계 — 비행 완료 직후부터 연속의 매 걸음 사이까지. 연속 안에서 동기로
                 // cancel 이 발효될 수 있으므로(사용자 코드), 걸음마다 검사한다(구현 리뷰 Blocker).
-                return liftInterpreterResult(h(...cmd.args)).chain(v => {
+                return liftHandlerResult(h(...cmd.args)).chain(v => {
                     const out = runApiContinuation(cmd.fns, v, token);
                     return out === CONTINUATION_CANCELLED ? Task.rejected(cancelledError()) : Task.of(out);
                 });
