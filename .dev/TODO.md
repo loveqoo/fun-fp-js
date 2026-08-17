@@ -46,6 +46,23 @@
 
 ---
 
+## 닫힘 — 코덱스 5차 재공격, into 그릇 복제 수리 (2026-08-18)
+
+- **경위** — 4차 이후 쌓인 수리·기능(start/cancel·interpreters·cons 연속·dist 계약)을
+  **조합 경로로 재공격**하도록 지시. 8경로 실행: CONFIRMED-BUG 1 · SAFE 6 · 계약 밖 1.
+  기록: [`review/260818-codex-audit-5.md`](./review/260818-codex-audit-5.md)
+- **견딘 것(코덱스 실행 확인)** — 같은 프로그램 동시 다중 start 토큰 격리 · 핸들러의
+  해석기 재진입(교착 없음) · 취소 대 라우팅실패 경주(실패 승, 오진 없음) · WriterT/StateT
+  ('free')와 라우터 혼용 · 10만 map 중간 취소(50,001번째 연속 차단, 10ms)·20만 실행 8ms ·
+  dist 빌더 결정성/민감도.
+- **버그 1건 수리** — 4차-1 은 **새로 들어오는** `['__proto__', 값]` 만 막았고, **기존
+  그릇 복제**는 여전히 `Object.assign` 이라 그릇의 own `__proto__` 가 결과의 프로토타입
+  으로 둔갑했다(문서의 "내용 보존" 위반). 복제도 `defineProperty` 순회로 교체.
+  테스트 선행(빨강→초록), 뮤테이션(assign 복원 → 빨강) 확인, 45/45 + baseline 차이 없음.
+- **보류** — `Actor.handle` 이 Promise 를 안 받아 `Free.api.run()` 결과를 그대로 못 넘긴다
+  (계약대로라 버그 아님). 해석기처럼 thenable 동화하면 조합성이 오르지만 표면 변경이라
+  필요의 사슬 대기.
+
 ## 닫힘 — start/cancel: Free.api 실행의 협조적 취소 (2026-08-18)
 
 - **경위** — 파이버 논의 → CPS·defunctionalization 학습(연속=데이터, 러너=해석기,

@@ -628,3 +628,15 @@ test('transducer.into - 객체 그릇의 __proto__ 쌍은 데이터로 저장된
     assert(Object.getPrototypeOf(out) === Object.prototype, '프로토타입이 바뀌면 안 된다');
     assertEquals(out.safe, 1);
 });
+
+test('transducer.into - 그릇의 own __proto__ 데이터도 복제에서 보존된다 (5차 감사)', () => {
+    const vessel = {};
+    Object.defineProperty(vessel, '__proto__', { value: { seed: true }, enumerable: true, writable: true, configurable: true });
+    vessel.base = 1;
+    const out = transducer.into(vessel, x => x, [['k', 7]]);
+    assert(Object.prototype.hasOwnProperty.call(out, '__proto__'), '그릇의 __proto__ 가 own 키로 남아야 한다');
+    assert(Object.getPrototypeOf(out) === Object.prototype, '결과 프로토타입이 변조되면 안 된다');
+    assertEquals(out.base, 1);
+    assertEquals(out.k, 7);
+    assertEquals(Object.prototype.hasOwnProperty.call(vessel, '__proto__'), true);   // 원본 불변
+});
