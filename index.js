@@ -3391,8 +3391,8 @@ Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
 
 /* Free.api — 어휘만 선언하고 해석기는 몇 벌이든 별도로 단다. 사용자는 함자를 모른다. */
 // 연속은 함수 목록이다 — 클로저 중첩이면 깊은 map 사슬에서 스택이 넘친다. docs/Free.md
-const makeApiCommand = (name, args, fns) => {
-    const cmd = { name, args, fns, map(f) { return makeApiCommand(name, args, fns.concat([f])); } };
+const makeApiCommand = (name, args, fns, api) => {
+    const cmd = { name, args, fns, api, map(f) { return makeApiCommand(name, args, fns.concat([f]), api); } };
     cmd[Symbols.Functor] = true;
     return cmd;
 };
@@ -3421,7 +3421,7 @@ Free.api = (...names) => {
         vocabulary[name] = true;
     }
     const api = Object.create(null);
-    for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, []));
+    for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, [], vocabulary));
     api.interpreter = handlers => {
         types.isPlainObject(handlers) || raise(new TypeError('Free.api.interpreter: handlers must be a plain object (inherited handlers are not accepted)'));
         const table = Object.create(null);
@@ -3437,9 +3437,9 @@ Free.api = (...names) => {
             run: program => Free.isFree(program)
                 ? new Promise((resolve, reject) => {
                     Free.runWithTask(cmd => {
-                        // 다른 api 의 명령이 섞이면 여기서 걸린다 — 벌거벗은 에러 금지.
+                        // 다른 api 의 명령은 이름이 같아도 걸린다 — 어휘 객체가 곧 정체성이다.
                         const h = table[cmd.name];
-                        if (typeof h !== 'function') return Task.rejected(new TypeError(`Free.api.run: no handler for '${cmd.name}'`));
+                        if (typeof h !== 'function' || cmd.api !== vocabulary) return Task.rejected(new TypeError(`Free.api.run: no handler for '${cmd.name}'`));
                         return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
                     })(program).then(resolve, reject);
                 })

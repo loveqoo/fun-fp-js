@@ -319,3 +319,13 @@ testAsync('Free.api - 어휘 0개 허용, 프로토타입 이름 명령 안전',
 });
 
 console.log('\n✅ Free Monad tests completed\n');
+
+testAsync('4차-2: 동명 명령이라도 다른 api 의 프로그램은 거부된다', async () => {
+    const billing = Free.api('get');
+    const secrets = Free.api('get');
+    const outcome = await secrets.interpreter({ get: k => 'secret:' + k })
+        .run(billing.get('invoice-42'))
+        .then(v => ['resolve', v], e => ['reject', e.message]);
+    assertEquals(outcome[0], 'reject');
+    assert(outcome[1].indexOf("no handler for 'get'") >= 0, '거부 문안: ' + outcome[1]);
+});
