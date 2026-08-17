@@ -621,3 +621,10 @@ test('once - 재진입해도 두 번 실행되지 않는다', () => {
     let c = 0; const g = once(() => ++c); g(); g();
     assertEquals(c, 1, 'once 의 기본 계약(한 번)이 깨졌다');
 });
+
+test('transducer.into - 객체 그릇의 __proto__ 쌍은 데이터로 저장된다 (4차-1)', () => {
+    const out = transducer.into({}, x => x, [['__proto__', { hijacked: true }], ['safe', 1]]);
+    assert(Object.prototype.hasOwnProperty.call(out, '__proto__'), '__proto__ 가 own 키여야 한다');
+    assert(Object.getPrototypeOf(out) === Object.prototype, '프로토타입이 바뀌면 안 된다');
+    assertEquals(out.safe, 1);
+});

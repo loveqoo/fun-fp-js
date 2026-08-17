@@ -2430,7 +2430,7 @@ const { transducer } = (() => {
         if (typeof vessel === 'string') return transduce(transducer, (acc, v) => acc + v, vessel, collection);
         if (vessel instanceof Set) return transduce(transducer, (acc, v) => acc.add(v), new Set(vessel), collection);
         if (vessel instanceof Map) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return acc.set(k, val); }, new Map(vessel), collection);
-        if (types.isPlainObject(vessel)) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); acc[k] = val; return acc; }, Object.assign({}, vessel), collection);
+        if (types.isPlainObject(vessel)) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }); return acc; }, Object.assign({}, vessel), collection);
         return raise(new TypeError('transducer.into: vessel must be an array, string, Set, Map, or plain object'));
     };
     // f·p 는 생성 시점에 검사한다 — 원소 처리 시로 미루면 빈 입력에서 잘못된 호출이 통과한다.
