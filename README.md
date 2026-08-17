@@ -1,7 +1,7 @@
 # fun-fp-js
 
 **즐거운 함수형 프로그래밍.** [Static Land](https://github.com/fantasyland/static-land)
-기반 타입 클래스 라이브러리입니다. 의존성 0개, gzip 21KB.
+기반 타입 클래스 라이브러리입니다. 의존성 0개, gzip 23KB.
 
 즐거움은 합성 결과가 예상을 벗어나지 않는 데서 옵니다. 이 라이브러리가 제공하는 타입과
 연산은 수학 법칙을 지키도록 만들어졌고 그 법칙은 테스트가 검증합니다. 법칙을 지키는
@@ -72,7 +72,7 @@ console.log(user.address.city);                               // 'Seoul'  원본
 
 표에서 보듯 `sanctuary` 는 우리보다 작습니다. 다만 패키지 7개를 함께 끌고 옵니다.
 그리고 우리 0.50MB 에는 ESM·CJS·min·TypeScript 선언 네 벌이 다 들어 있습니다.
-실제로 번들에 들어가는 것은 **gzip 21KB** 입니다.
+실제로 번들에 들어가는 것은 **gzip 23KB** 입니다.
 
 의존성이 0개라는 것은 취약점 통지가 우리 것 하나에서만 온다는 뜻이기도 합니다.
 
@@ -84,6 +84,7 @@ console.log(user.address.city);                               // 'Seoul'  원본
 | 데이터 타입 | `Maybe` `Either` `Task` `Validation` `Reader` `Writer` `State` `Free` `Actor` |
 | optics | `Lens` `Prism` `Iso` `Traversal` — profunctor 인코딩이라 전부 합성된다 |
 | 트랜스포머 | `StateT` `EitherT` `ReaderT` `WriterT` |
+| Free 사용성 | `Free.api` 어휘 선언 · `Free.interpreters` 해석기 합성 · `start` 협조적 취소 |
 | 조합자 | `compose` `pipe` `pipeWhile` `curry` `flip` `converge` `transducer` … |
 
 ESM 과 CommonJS 둘 다, TypeScript 선언 포함. 문법 상한은 **ES2018** 입니다.
@@ -97,7 +98,7 @@ ESM 과 CommonJS 둘 다, TypeScript 선언 포함. 문법 상한은 **ES2018** 
 
 ## 문서가 낡지 않습니다
 
-**문서의 예제 434개를 테스트가 실행합니다.** 설명이 코드와 어긋나면 빌드가 멈춥니다.
+**문서의 예제 444개를 테스트가 실행합니다.** 설명이 코드와 어긋나면 빌드가 멈춥니다.
 이 README 의 예제도 그 안에 있습니다.
 
 - [가이드](./docs/README.md) — 학습 순서와 타입별 문서
@@ -119,7 +120,7 @@ ESM 과 CommonJS 둘 다, TypeScript 선언 포함. 문법 상한은 **ES2018** 
 | --- | --- |
 | 등록된 인스턴스 | 131개 |
 | 법칙이 도는 인스턴스 | 149개 |
-| 실행되는 문서 예제 | 434개 |
+| 실행되는 문서 예제 | 444개 |
 | 테스트 파일 | 45개 |
 
 ## 라이선스
