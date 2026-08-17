@@ -231,3 +231,18 @@ testAsync('subscribe - 비동기 처리 중 구독자 예외가 진행을 막지
 });
 
 console.log('\n✅ Actor tests completed\n');
+
+/* ═══════════════════════════════════════════════════
+   4차 감사 회귀 — .dev/review/260817-codex-index-audit-4.md
+   ═══════════════════════════════════════════════════ */
+logSection('Actor - 4차 감사 회귀');
+
+testAsync('4차-5: 구독자가 재진입해도 통지의 result 와 state 는 같은 메시지를 가리킨다', async () => {
+    const events = [];
+    const actor = Actor({ init: 0, handle: (s, m) => [m, s + 1] });
+    actor.subscribe((r, s) => { events.push(['A', r, s]); if (r === 'one') actor.send('two').fork(() => {}, () => {}); });
+    actor.subscribe((r, s) => events.push(['B', r, s]));
+    await new Promise((resolve, reject) => actor.send('one').fork(reject, resolve));
+    await new Promise(res => setTimeout(res, 10));
+    assertEquals(events.find(e => e[0] === 'B' && e[1] === 'one'), ['B', 'one', 1]);
+});

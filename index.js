@@ -3262,8 +3262,9 @@ const Actor = ({ init, handle }) => {
             // 먼저 정착·진행을 확정하고 통지한다 — 통지 예외가 actor 를 멈추면 큐가 영구 대기한다.
             resolve(result);
             done();
+            // state 가 아니라 newState 다 — done() 의 재진입이 state 를 먼저 전진시킬 수 있다.
             for (let i = 0; i < subscribers.length; i++) {
-                try { subscribers[i](result, state); }
+                try { subscribers[i](result, newState); }
                 catch (e) { runCatch(config.tapErrorHandler, emptyFunc)(e); }
             }
         };
