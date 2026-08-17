@@ -2,7 +2,7 @@
 import fp from '../index.js';
 import { test, testAsync, assertEquals, assert, logSection, assertThrowsWith } from './utils.js';
 
-const { Free, Functor, Chain, Monad, trampoline } = fp;
+const { Free, Functor, Chain, Monad, Task, trampoline } = fp;
 const { Thunk } = Free;
 
 logSection('Free Monad - Basic');
@@ -379,4 +379,97 @@ testAsync('4차-3: 실행 단계도 배열 복사가 없다 (run 중 slice/conca
         Array.prototype.slice = oSlice;
         Array.prototype.concat = oConcat;
     }
+});
+
+/* ── Free.interpreters — 계획 .dev/plan/260817-free-interpreters.md ── */
+
+testAsync('interpreters: 두 api 를 섞은 프로그램이 실행된다', async () => {
+    const db = Free.api('load', 'save');
+    const mail = Free.api('send');
+    const it = Free.interpreters(
+        db.interpreter({ load: k => '유저:' + k, save: x => x }),
+        mail.interpreter({ send: to => Promise.resolve('발송→' + to) })
+    );
+    const program = db.load('u1').chain(u => mail.send(u)).chain(r => db.save('기록:' + r));
+    assertEquals(await it.run(program), '기록:발송→유저:u1');
+});
+
+testAsync('interpreters: 동명 명령이 각자 명부로 라우팅된다', async () => {
+    const a = Free.api('get');
+    const b = Free.api('get');
+    const it = Free.interpreters(
+        a.interpreter({ get: k => 'A:' + k }),
+        b.interpreter({ get: k => 'B:' + k })
+    );
+    assertEquals(await it.run(a.get('x')), 'A:x');
+    assertEquals(await it.run(b.get('x')), 'B:x');
+    assertEquals(await it.run(a.get('1').chain(x => b.get(x))), 'B:A:1');
+});
+
+testAsync('interpreters: 명부 밖 api 와 비-Free 입력은 기존 문안으로 거부', async () => {
+    const a = Free.api('go');
+    const c = Free.api('go');
+    const it = Free.interpreters(a.interpreter({ go: () => 1 }));
+    const r1 = await it.run(c.go()).then(() => 'resolve', e => e.message);
+    assertEquals(r1, "Free.api.run: no handler for 'go'");
+    const r2 = await it.run(42).then(() => 'resolve', e => e.message);
+    assertEquals(r2, 'Free.api.run: program must be a Free value');
+});
+
+testAsync('interpreters: 중첩 합성 — (AB)C 와 A(BC) 둘 다 동작', async () => {
+    const A = Free.api('a'), B = Free.api('b'), C = Free.api('c');
+    const [ia, ib, ic] = [A.interpreter({ a: () => 'a' }), B.interpreter({ b: () => 'b' }), C.interpreter({ c: () => 'c' })];
+    const p = A.a().chain(x => B.b().chain(y => C.c().map(z => x + y + z)));
+    assertEquals(await Free.interpreters(Free.interpreters(ia, ib), ic).run(p), 'abc');
+    assertEquals(await Free.interpreters(ia, Free.interpreters(ib, ic)).run(p), 'abc');
+});
+
+test('interpreters: 같은 api 중복은 위치와 무관하게 동기 거부', () => {
+    const A = Free.api('a'), B = Free.api('b');
+    const ia = A.interpreter({ a: () => 1 });
+    const ia2 = A.interpreter({ a: () => 2 });
+    const ib = B.interpreter({ b: () => 3 });
+    assertThrowsWith(() => Free.interpreters(ia, ia2), 'Free.interpreters: duplicate interpreter for the same api');
+    assertThrowsWith(() => Free.interpreters(Free.interpreters(ia, ib), ia2), 'Free.interpreters: duplicate interpreter for the same api');
+    assertThrowsWith(() => Free.interpreters(Free.interpreters(ia, ib), Free.interpreters(ia2)), 'Free.interpreters: duplicate interpreter for the same api');
+});
+
+test('interpreters: 빈 인자·위조 인자는 동기 라벨 거부, 반환 객체에 심볼 없음', () => {
+    assertThrowsWith(() => Free.interpreters(), 'Free.interpreters: at least one interpreter is required');
+    assertThrowsWith(() => Free.interpreters(null), 'Free.interpreters: arguments must be Free.api interpreters');
+    assertThrowsWith(() => Free.interpreters({ run: () => Promise.resolve(1) }), 'Free.interpreters: arguments must be Free.api interpreters');
+    const A = Free.api('a');
+    const it = Free.interpreters(A.interpreter({ a: () => 1 }));
+    assertEquals(Object.getOwnPropertySymbols(it).length, 0);
+    assertEquals(Object.keys(it), ['run']);
+});
+
+test('interpreters: 각 해석기의 생성 시점 검증은 합성과 무관하게 산다', () => {
+    const A = Free.api('a');
+    assertThrowsWith(() => Free.interpreters(A.interpreter({})), "Free.api.interpreter: missing handler 'a'");
+    assertThrowsWith(() => Free.interpreters(A.interpreter({ a: () => 1, typo: () => 2 })), "Free.api.interpreter: unknown command 'typo'");
+});
+
+testAsync('interpreters: 라우터 경로의 에러·연속 재검증', async () => {
+    const A = Free.api('boom', 'deny', 'val');
+    const it = Free.interpreters(A.interpreter({
+        boom: () => { throw new Error('던짐'); },
+        deny: () => Promise.reject(new Error('거부')),
+        val: () => 1,
+    }));
+    assertEquals(await it.run(A.boom()).then(() => 'resolve', e => e.message), '던짐');
+    assertEquals(await it.run(A.deny()).then(() => 'resolve', e => e.message), '거부');
+    let deep = A.val();
+    for (let i = 0; i < 2000; i++) deep = deep.map(x => x + 1);
+    assertEquals(await it.run(deep), 2001);
+});
+
+testAsync('interpreters: Task 반환 핸들러와 던지는 then 게터도 라우터에서 규약대로', async () => {
+    const A = Free.api('t', 'evil');
+    const it = Free.interpreters(A.interpreter({
+        t: () => Task.of(3),
+        evil: () => ({ get then() { throw new Error('then-게터'); } }),
+    }));
+    assertEquals(await it.run(A.t()), 3);
+    assertEquals(await it.run(A.evil()).then(() => 'resolve', e => e.message), 'then-게터');
 });

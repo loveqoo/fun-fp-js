@@ -109,6 +109,37 @@ plan.run(program).then(() => {
 });
 ```
 
+### 여러 api 를 한 프로그램에서 — `Free.interpreters`
+
+각 모듈이 자기 어휘를 따로 선언해도, 프로그램은 이미 섞을 수 있습니다 — 모든 api
+프로그램이 같은 Free 값이라서 `chain` 이 그냥 잇습니다. 막히는 것은 실행뿐입니다.
+해석기는 자기 어휘만 알기 때문입니다. `Free.interpreters` 는 여러 해석기를 하나로
+합칩니다. 명령마다 자기 api 의 표식을 보고 명부를 고르므로 이름이 같은 명령이 있어도
+섞이지 않고, 같은 api 의 해석기를 두 번 넣으면 만들 때 즉시 던집니다.
+
+```javascript
+const { Free } = FunFP;
+
+const db = Free.api('load');
+const mail = Free.api('send');
+
+// 두 api 를 섞은 프로그램 — 구성은 chain 이 그냥 잇는다
+const program = db.load('u1').chain(user => mail.send(user + '에게 인사'));
+
+// 실행은 여러 명부를 아는 문지기가 맡는다
+const it = Free.interpreters(
+    db.interpreter({ load: k => '유저:' + k }),
+    mail.interpreter({ send: msg => '발송:' + msg })
+);
+it.run(program).then(r => {
+    if (r !== '발송:유저:u1에게 인사') throw new Error('라우팅이 틀렸다: ' + r);
+    console.log(r);   // 발송:유저:u1에게 인사
+});
+```
+
+합성한 결과도 해석기이므로 다시 합칠 수 있고, 어느 명부에도 없는 api 의 명령은
+단일 해석기와 같은 문안(`no handler for '<이름>'`)으로 거부됩니다.
+
 ### Reader·Writer·State 와 함께 쓰기
 
 Free 프로그램에서 진짜 부수 효과는 해석기 안에서만 일어납니다. 그런데 효과와 효과 사이의
@@ -278,6 +309,7 @@ console.log(Chain.lookup('free').chain(x => Free.pure(x * 2), Free.pure(5)).valu
 | 문 | 레벨 | 무엇 |
 | --- | --- | --- |
 | `Free.api(...names)` | 1층 | 어휘 선언 → 명령 함수 묶음 + `interpreter(handlers)` → `{ run }` |
+| `Free.interpreters(...its)` | 2층 | 여러 api 의 해석기를 하나로 — 표식으로 라우팅 |
 | `Free.pipeK(...fns)` / `composeK` | 2층 | Kleisli 단계 합성 |
 | `Free.of` / `Free.pure(value)` | 3층 | `Pure` 생성 |
 | `Free.liftF(functor)` / `Free.impure(functor)` | 3층 | 명령 함자 → `Impure` |
