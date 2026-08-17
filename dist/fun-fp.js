@@ -1,7 +1,7 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Built: 2026-08-17T06:53:26.780Z
+ * Built: 2026-08-17T09:24:49.193Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -3420,6 +3420,20 @@ const liftInterpreterResult = r => {
     }
     return Task.of(r);
 };
+// 해석기 → 라우팅 명부. 모듈 사설 WeakMap — 밖에서 등록·열람·변조가 불가능하다(위조 차단).
+const interpreterRegistry = new WeakMap();
+const makeApiRun = tables => program => Free.isFree(program)
+    ? new Promise((resolve, reject) => {
+        Free.runWithTask(cmd => {
+            // 옛 가드와 같은 읽기 순서(name 먼저). 표식(cmd.api)이 명부를 고르니 동명 다른 api 도 걸린다.
+            const name = cmd.name;
+            const table = tables.get(cmd.api);
+            const h = table === undefined ? undefined : table[name];
+            if (typeof h !== 'function') return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'`));
+            return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
+        })(program).then(resolve, reject);
+    })
+    : Promise.reject(new TypeError('Free.api.run: program must be a Free value'));
 Free.api = (...names) => {
     // 어휘·api·핸들러 테이블은 전부 null-프로토타입 + own-property — 명령 이름이
     // toString/__proto__ 여도 안전하다(레지스트리 리졸버 수리와 같은 규율).
@@ -3443,20 +3457,28 @@ Free.api = (...names) => {
         for (const name of names) {
             typeof table[name] !== 'function' && raise(new TypeError(`Free.api.interpreter: missing handler '${name}'`));
         }
-        return {
-            run: program => Free.isFree(program)
-                ? new Promise((resolve, reject) => {
-                    Free.runWithTask(cmd => {
-                        // 다른 api 의 명령은 이름이 같아도 걸린다 — 어휘 객체가 곧 정체성이다.
-                        const h = table[cmd.name];
-                        if (typeof h !== 'function' || cmd.api !== vocabulary) return Task.rejected(new TypeError(`Free.api.run: no handler for '${cmd.name}'`));
-                        return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
-                    })(program).then(resolve, reject);
-                })
-                : Promise.reject(new TypeError('Free.api.run: program must be a Free value')),
-        };
+        const tables = new Map([[vocabulary, table]]);
+        const it = { run: makeApiRun(tables) };
+        interpreterRegistry.set(it, tables);
+        return it;
     };
     return api;
+};
+/* Free.interpreters — 여러 api 의 명부를 아는 문지기. 명령의 표식이 자기 명부를 고른다. */
+Free.interpreters = (...its) => {
+    its.length > 0 || raise(new TypeError('Free.interpreters: at least one interpreter is required'));
+    const tables = new Map();
+    for (const it of its) {
+        const src = interpreterRegistry.get(it);
+        src || raise(new TypeError('Free.interpreters: arguments must be Free.api interpreters'));
+        for (const [vocab, table] of src) {
+            tables.has(vocab) && raise(new TypeError('Free.interpreters: duplicate interpreter for the same api'));
+            tables.set(vocab, table);
+        }
+    }
+    const router = { run: makeApiRun(tables) };
+    interpreterRegistry.set(router, tables);
+    return router;
 };
 
 // lift (eta reduced)
