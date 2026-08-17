@@ -361,3 +361,22 @@ testAsync('4차-3: 한 프로그램에서 갈라진 두 갈래는 서로 독립�
     assertEquals(await it.run(p1), 22);
     assertEquals(await it.run(base), 11);
 });
+
+testAsync('4차-3: 실행 단계도 배열 복사가 없다 (run 중 slice/concat 0회)', async () => {
+    const api = Free.api('go');
+    const it = api.interpreter({ go: () => 0 });
+    let p = api.go();
+    for (let i = 0; i < 2000; i++) p = p.map(x => x + 1);
+    const oSlice = Array.prototype.slice, oConcat = Array.prototype.concat;
+    let calls = 0;
+    Array.prototype.slice = function (...a) { calls++; return oSlice.apply(this, a); };
+    Array.prototype.concat = function (...a) { calls++; return oConcat.apply(this, a); };
+    try {
+        const v = await it.run(p);
+        assertEquals(v, 2000);
+        assertEquals(calls, 0);
+    } finally {
+        Array.prototype.slice = oSlice;
+        Array.prototype.concat = oConcat;
+    }
+});
