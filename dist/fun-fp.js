@@ -1,7 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Built: 2026-08-17T09:24:49.193Z
+ * Commit: d205f7bc757c00345a5ead14e492562bd9faf28b
+ * Built: 2026-08-17T10:11:33.696Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -3429,7 +3430,17 @@ const makeApiRun = tables => program => Free.isFree(program)
             const name = cmd.name;
             const table = tables.get(cmd.api);
             const h = table === undefined ? undefined : table[name];
-            if (typeof h !== 'function') return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'`));
+            if (typeof h !== 'function') {
+                // 이름이 다른 명부에 있으면 원인을 지목한다 — 동명 명령은 이 문안 없이는 오진을 부른다.
+                let hint = '';
+                for (const t of tables.values()) {
+                    if (Object.prototype.hasOwnProperty.call(t, name)) {
+                        hint = ` (the api owning this command has no interpreter here — another api also defines '${name}')`;
+                        break;
+                    }
+                }
+                return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'${hint}`));
+            }
             return liftInterpreterResult(h(...cmd.args)).map(v => runApiContinuation(cmd.fns, v));
         })(program).then(resolve, reject);
     })
