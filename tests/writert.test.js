@@ -257,3 +257,12 @@ test('Caching: same M + monoid returns same WT', () => {
 });
 
 console.log('\n✅ WriterT tests completed\n');
+
+test('4차-4: 같은 .type 의 다른 모노이드가 각자의 WriterT 를 갖는다', () => {
+    const M = Monad.lookup('maybe');
+    const Wsum = WriterT(M, fp.Monoid.types.NumberSumMonoid);
+    const Wprod = WriterT(M, fp.Monoid.types.NumberProductMonoid);
+    assert(Wsum !== Wprod, '합/곱이 한 자리를 다투면 안 된다');
+    assertEquals(Wsum.tell(3).chain(() => Wsum.tell(4)).chain(() => Wsum.of('ok')).run().value, ['ok', 7]);
+    assertEquals(Wprod.tell(3).chain(() => Wprod.tell(4)).chain(() => Wprod.of('ok')).run().value, ['ok', 12]);
+});

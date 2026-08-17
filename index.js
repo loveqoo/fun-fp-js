@@ -3194,6 +3194,8 @@ const ReaderT = (M) => {
 ReaderT._cache = new Map();
 
 /* ── WriterT ── */
+// 모노이드 정체성은 등록 키가 가른다 — .type 만 보면 합/곱 Number 가 한 자리를 다툰다.
+const normalizeWriterTMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'WriterT');
 const WriterT = (M, writerMonoid) => {
     if (!writerMonoid) writerMonoid = Monoid.lookup('array');
     if (typeof writerMonoid.empty !== 'function' || typeof writerMonoid.concat !== 'function') {
@@ -3203,7 +3205,12 @@ const WriterT = (M, writerMonoid) => {
     if (!WriterT._cache.has(nm)) WriterT._cache.set(nm, new Map());
     if (WriterT._cache.get(nm).has(writerMonoid)) return WriterT._cache.get(nm).get(writerMonoid);
     const mType = resolveMonadType(M, nm);
-    const monoidId = writerMonoid.type || `monoid${++_transformerAutoId}`;
+    const wtKey = writerMonoid[Symbols.Monoid] === true ? normalizeWriterTMonoid(writerMonoid).key : null;
+    const mt = writerMonoid.type;
+    // 등록 키가 .type 의 소문자와 같으면 기존 표기(.type)를 유지한다 — 문서·별칭 불변.
+    const monoidId = wtKey !== null
+        ? (mt && wtKey === String(mt).toLowerCase() ? mt : wtKey)
+        : (mt ? `${mt}#${++_transformerAutoId}` : `monoid${++_transformerAutoId}`);
     const typeName = `WriterT(${mType},${monoidId})`;
     const alias = typeName.toLowerCase();
 
