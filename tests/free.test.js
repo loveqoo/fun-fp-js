@@ -329,3 +329,35 @@ testAsync('4차-2: 동명 명령이라도 다른 api 의 프로그램은 거부�
     assertEquals(outcome[0], 'reject');
     assert(outcome[1].indexOf("no handler for 'get'") >= 0, '거부 문안: ' + outcome[1]);
 });
+
+/* ── 4차-3: 연속 적재 O(n) — 계획 .dev/plan/260817-free-api-continuation.md ── */
+
+test('4차-3: map 은 연속을 복사하지 않고 이전 목록을 참조로 공유한다', () => {
+    const api = Free.api('go');
+    const base = api.go();
+    const mapped = base.map(x => x + 1);
+    assert(mapped.functor.fns.prev === base.functor.fns, '이전 연속이 참조 그대로 공유돼야 한다');
+});
+
+test('4차-3: 구성에 concat 이 쓰이지 않는다 (보조 계측)', () => {
+    const api = Free.api('go');
+    let program = api.go();
+    const orig = Array.prototype.concat;
+    let calls = 0;
+    Array.prototype.concat = function (...a) { calls++; return orig.apply(this, a); };
+    try { for (let i = 0; i < 1000; i++) program = program.map(x => x); }
+    finally { Array.prototype.concat = orig; }
+    assertEquals(calls, 0);
+});
+
+testAsync('4차-3: 한 프로그램에서 갈라진 두 갈래는 서로 독립이다', async () => {
+    const api = Free.api('num');
+    const it = api.interpreter({ num: () => 10 });
+    const base = api.num().map(x => x + 1);
+    const p1 = base.map(x => x * 2);
+    const p2 = base.map(x => x * 3);
+    assertEquals(await it.run(p1), 22);
+    assertEquals(await it.run(p2), 33);
+    assertEquals(await it.run(p1), 22);
+    assertEquals(await it.run(base), 11);
+});
