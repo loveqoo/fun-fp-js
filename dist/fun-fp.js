@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: c8ef0e45b1f3e123f4d7e70ba6164d0d381294be
- * Built: 2026-08-17T16:43:22.485Z
+ * Commit: f20330116dfdd8f643900716c63ec5c53c100550
+ * Built: 2026-08-18T09:39:40.193Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -46,6 +46,7 @@ const Symbols = {
     Chain: Symbol.for('fun-fp-js/Chain'),
     ChainRec: Symbol.for('fun-fp-js/ChainRec'),
     Monad: Symbol.for('fun-fp-js/Monad'),
+    MonadError: Symbol.for('fun-fp-js/MonadError'),
     Foldable: Symbol.for('fun-fp-js/Foldable'),
     Extend: Symbol.for('fun-fp-js/Extend'),
     Comonad: Symbol.for('fun-fp-js/Comonad'),
@@ -469,6 +470,15 @@ const checkAndSet = (config => {
             },
             loose: emptyFunc
         },
+        MonadError: {
+            strict: (instance, raiseError, handleError) => {
+                typeof raiseError !== 'function' && raise(new TypeError('MonadError: raiseError must be a function'));
+                typeof handleError !== 'function' && raise(new TypeError('MonadError: handleError must be a function'));
+                instance.raiseError = e => raiseError(e);
+                instance.handleError = (f, fa) => (types.isFunction(f) && types.check(fa, instance.type)) ? handleError(f, fa) : raise(new TypeError(`MonadError.handleError: arguments must be (function, ${instance.type})`));
+            },
+            loose: (instance, raiseError, handleError) => { instance.raiseError = e => raiseError(e); instance.handleError = (f, fa) => handleError(f, fa); }
+        },
         Foldable: {
             strict: (instance, reduce) => {
                 typeof reduce !== 'function' && raise(new TypeError('Foldable.reduce: reduce must be a function'));
@@ -792,6 +802,17 @@ class Monad extends Applicative {
     }
 }
 Monad.prototype[Symbols.Monad] = true;
+// 명세 밖 — 실패를 일급으로. raiseError 가 실패를 만들고 handleError 가 잡는다. docs/internals.md#monaderror
+class MonadError extends Monad {
+    constructor(applicative, chain, raiseError, handleError, type, registry, ...aliases) {
+        super(applicative, chain, type);
+        checkAndSet('MonadError')(this, raiseError, handleError);
+        registry && register(registry, this, ...aliases);
+    }
+    raiseError() { raise(new Error('MonadError: raiseError is not implemented')); }
+    handleError() { raise(new Error('MonadError: handleError is not implemented')); }
+}
+MonadError.prototype[Symbols.MonadError] = true;
 class Foldable extends Algebra {
     constructor(reduce, type, registry, ...aliases) {
         super(type);
@@ -896,6 +917,7 @@ withTypeRegistry(ChainRec);
 ChainRec.next = value => ({ tag: 'next', value });
 ChainRec.done = value => ({ tag: 'done', value });
 withTypeRegistry(Monad);
+withTypeRegistry(MonadError);
 withTypeRegistry(Foldable);
 withTypeRegistry(Extend);
 withTypeRegistry(Comonad);
@@ -1659,6 +1681,21 @@ class EitherMonad extends Monad {
     }
 }
 modules.push(EitherMonad);
+class EitherMonadError extends MonadError {
+    constructor() {
+        super(Applicative.types.EitherApplicative, Chain.types.EitherChain,
+            e => Either.Left(e),
+            (f, fa) => {
+                if (fa.isLeft()) {
+                    const out = f(fa.value);
+                    return Either.isEither(out) ? out : raise(new TypeError('MonadError.handleError: handler must return an Either'));
+                }
+                return fa;
+            },
+            'Either', MonadError.types, 'either');
+    }
+}
+modules.push(EitherMonadError);
 class EitherFoldable extends Foldable {
     constructor() {
         super((f, init, e) => e.isRight() ? f(init, e.value) : init, 'Either', Foldable.types, 'either');
@@ -2043,6 +2080,15 @@ class TaskMonad extends Monad {
     }
 }
 modules.push(TaskMonad);
+class TaskMonadError extends MonadError {
+    constructor() {
+        super(Applicative.types.TaskApplicative, Chain.types.TaskChain,
+            e => Task.rejected(e),
+            (f, fa) => fa.catchError(f),
+            'Task', MonadError.types, 'task');
+    }
+}
+modules.push(TaskMonadError);
 /* Validation */
 class Validation {
     isValid() { return false; }
@@ -3543,7 +3589,7 @@ const extra = (() => {
 export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
-    Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, Foldable,
+    Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable,
     Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
