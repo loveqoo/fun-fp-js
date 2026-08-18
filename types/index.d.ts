@@ -82,6 +82,7 @@ import type {
     Chain,
     ChainRec,
     Monad,
+    MonadError,
     Foldable,
     Extend,
     Comonad,
@@ -171,6 +172,7 @@ declare const fp: {
     readonly Chain: typeof Chain;
     readonly ChainRec: typeof ChainRec;
     readonly Monad: typeof Monad;
+    readonly MonadError: typeof MonadError;
     readonly Foldable: typeof Foldable;
     readonly Extend: typeof Extend;
     readonly Comonad: typeof Comonad;

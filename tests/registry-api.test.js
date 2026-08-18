@@ -2,7 +2,7 @@
 //
 // 두 이름이 하는 일이 다르다:
 //
-//   lookup(키)   레지스트리에서 인스턴스를 꺼낸다   — 타입클래스 24개
+//   lookup(키)   레지스트리에서 인스턴스를 꺼낸다   — 타입클래스 25개
 //   of(값)       값을 컨테이너에 넣는다            — 데이터 타입 8개, Applicative 인스턴스
 //
 // **왜 테스트가 필요한가**: 이 구분은 어겨도 조용하다. `Functor.of = Functor.lookup` 을
@@ -19,7 +19,7 @@ import { test, assertEquals, assert, assertThrows, logSection } from './utils.js
 const TYPE_CLASSES = [
     'Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
     'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
-    'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad',
+    'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'MonadError',
     'Foldable', 'Extend', 'Comonad', 'Traversable'
 ];
 
@@ -27,13 +27,13 @@ const DATA_TYPES = ['Maybe', 'Either', 'Task', 'Validation', 'Reader', 'Writer',
 
 logSection('레지스트리 API — lookup / of 분리');
 
-test('타입클래스 24개에는 of 가 없다 — 되살아나면 여기서 걸린다', () => {
+test('타입클래스 25개에는 of 가 없다 — 되살아나면 여기서 걸린다', () => {
     const revived = TYPE_CLASSES.filter(name => fp[name].of !== undefined);
     assertEquals(revived.join(','), '',
         '타입클래스에 of 가 되살아났다 — 조회는 lookup 이고 of 는 값 주입 전용이다');
 });
 
-test('타입클래스 24개 전부 lookup 을 가진다', () => {
+test('타입클래스 25개 전부 lookup 을 가진다', () => {
     const missing = TYPE_CLASSES.filter(name => typeof fp[name].lookup !== 'function');
     assertEquals(missing.join(','), '', 'lookup 이 없는 타입클래스');
 });

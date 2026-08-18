@@ -27,6 +27,11 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 - **`해석기.start(program)`** — `{ promise, cancel }` 손잡이. `cancel()` 은 다음 명령
   경계에서 발효하는 협조적 취소이고, 취소된 실행은 `cancelled === true` 표식의 거부로
   도착합니다. `run` 은 그대로입니다.
+- **`MonadError`** — 실패를 일급으로 다루는 타입 클래스(명세 밖). `raiseError` 로
+  만들고 `handleError` 로 잡습니다. Task·Either 등록, 법칙 4개가 게이트에서 돕니다 —
+  실패를 만들고 잡는 연산 자체를 전용 법칙으로 고정한 첫 클래스입니다.
+- **Task 비동기 법칙 게이트** — 기존 법칙 게이트가 비동기 Task 를 관측하지 못하던
+  사각을 새 게이트(등식+생존성+일회 정착)가 덮습니다.
 - **`Actor` 의 `handle` 이 Promise 도 받습니다** — `Free.api` 해석기 핸들러와 같은
   관용도(값·Promise·Task). `it.run(program).then(v => [v, 새상태])` 를 그대로 넘길 수
   있습니다.

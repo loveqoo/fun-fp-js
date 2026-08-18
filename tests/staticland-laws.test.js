@@ -34,6 +34,8 @@
 //     docs/internals.md#chainrec-stack).
 //   - 컨테이너는 값이 아니라 **관측**으로 비교한다(OBSERVE). Reader/State 는 표본 환경·
 //     상태에서만, Task 는 fork 결과로만 본다 — 그 표본이 못 가르는 차이는 못 잡는다.
+//     특히 **비동기 Task 는 이 관측이 전부 '(안 열림)' 로 뭉개진다** — 비동기 정착의
+//     등식·생존성·일회 정착은 tests/task-async-laws.test.js 가 본다(2026-08-18).
 //   - 'function' 의 동등은 관측 동등이다 — 표본 입력에서만 같음을 본다.
 //   - FACTORY_CASES 는 이름을 적어 두는 명단이다. 팩토리 산물은 레지스트리 순회로 안 닿기
 //     때문인데, 그래서 새 팩토리를 만들고 여기 안 넣으면 감시 밖이다.
@@ -664,6 +666,19 @@ const CLASS_LAWS = {
         } catch (e) { bad.push(`스택 제약 깨짐 — ${String(e).slice(0, 60)}`); }
         return bad;
     },
+    MonadError: (ME, obs) => {
+        const xs = FUNCTOR_SAMPLES[ME.type]; if (!xs) return null;
+        const bad = [];
+        const e0 = new Error('법칙용 실패');
+        const f = err => ME.of(['복구', String(err && err.message || err)]);
+        const g = err => ME.of(['바깥복구', String(err && err.message || err)]);
+        const refail = err => ME.raiseError(new Error('재실패:' + String(err && err.message || err)));
+        same(obs, ME.handleError(f, ME.raiseError(e0)), f(e0)) || bad.push('법칙① 잡으면 핸들러가 이긴다 깨짐');
+        same(obs, ME.handleError(f, ME.of(1)), ME.of(1)) || bad.push('법칙② 성공 불변 깨짐');
+        same(obs, ME.handleError(g, ME.handleError(refail, ME.raiseError(e0))), ME.handleError(g, refail(e0))) || bad.push('법칙③ 중첩/재실패 깨짐');
+        same(obs, ME.chain(x => ME.of(x + 1), ME.raiseError(e0)), ME.raiseError(e0)) || bad.push('법칙④ 실패 단락 깨짐');
+        return bad;
+    },
     Monad: (M, obs) => {
         const xs = FUNCTOR_SAMPLES[M.type]; if (!xs) return null;
         const ff = x => M.of(fnA(x));
@@ -759,7 +774,9 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 86, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 88, '법칙을 돌린 인스턴스 수가 달라졌다');
+    // MonadError 는 클래스별로도 잠근다 — 합계 하나로는 인스턴스 교체가 숨는다(5차 리뷰 Minor 8).
+    assertEquals(instancesOf('MonadError').length, 2, 'MonadError 인스턴스 수가 달라졌다');
 });
 
 test('자연성 법칙의 변환 t 가 자연변환 자격이 있다 (of/ap 보존)', () => {

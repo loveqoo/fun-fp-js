@@ -1166,11 +1166,20 @@ console.log(F.filter(v => v > 1, { a: 1, b: 2, c: 3 }));   // { b: 2, c: 3 }
 됩니다.
 
 `dist/fun-fp.d.ts` 도 같은 방식으로 묶습니다. 다만 짝이 다릅니다 — 그것의 진실 소스는
-`index.js` 가 아니라 `types/` 폴더이고, `build-types.js` 가 선언 파일 24개를 이어 붙여
-만듭니다. 그래서 검사는 `types/` 를 읽어 다시 만든 결과와 `dist/fun-fp.d.ts` 를 대조합니다.
+`index.js` 가 아니라 `types/` 폴더이고, `build-types.js` 가 그 안의 선언 파일들을 이어
+붙여 만듭니다. 그래서 검사는 `types/` 를 읽어 다시 만든 결과와 `dist/fun-fp.d.ts` 를 대조합니다.
 
 **여기에는 함정이 하나 더 있습니다.** `build-types.js` 의 파일 명단은 손으로 적습니다.
 새 선언 파일을 만들고 명단에 안 넣으면 배포되는 `.d.ts` 에서 **조용히 빠집니다** — 타입만
 사라지고 런타임 동작은 멀쩡하므로 다른 어떤 검사에도 안 걸립니다. 그래서 `types/` 아래
 실재하는 `.d.ts` 와 명단을 양방향으로 대조합니다. 명단에 없는 파일도, 명단에만 있고
 실재하지 않는 파일도 잡습니다. (`types/__tests__/*.test-d.ts` 는 배포물이 아니라 뺍니다.)
+
+## MonadError — 명세 밖 클래스의 근거 {#monaderror}
+
+Static Land 에 없는 클래스다(Strong/Choice/Wander 와 같은 지위). 세운 이유는 둘 —
+실패를 만들고 잡는 문이 타입마다 흩어져 있었고(Task 만 catchError, Either 는 없음),
+법칙 게이트가 성공 경로만 보고 있었다. 등록은 Task·Either 뿐이다: Maybe 는 Nothing 이
+에러 값을 지니지 않아 법칙이 공허해지고(그 자리는 Alt/Plus 가 맡는다), Validation 은
+Monad 가 아니다. 핸들러 반환 검증의 시점은 타입을 따른다 — Either 는 즉시, Task 는
+게을러서 fork 시점(기존 Task.catchError 문안 유지). 2026-08-18.

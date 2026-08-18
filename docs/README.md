@@ -80,6 +80,7 @@ console.log(thrown);   // 'TypeError'
 - [Functor](./Functor.md) - 값 변환 (map)
 - [Applicative](./Applicative.md) - 여러 값에 함수 적용 (ap)
 - [Monad](./Monad.md) - 순차 실행 (chain)
+- [MonadError](./MonadError.md) - 실패를 일급으로 (raiseError/handleError, **명세 밖**)
 
 ### 4단계: 고급 패턴
 
@@ -192,6 +193,7 @@ Strong + Choice ─────> Wander          wander
 | Chain         | chain           | 순차 실행              |
 | ChainRec      | chainRec        | 스택 안전 재귀           |
 | Monad         | of + chain      | 완전한 순차 패턴          |
+| MonadError    | raiseError + handleError | 실패를 만들고 잡기 (명세 밖) |
 | Alt           | alt             | 대안 선택              |
 | Plus          | zero            | 빈 대안               |
 | Alternative   | ap + alt + zero | Applicative + Plus |
@@ -209,7 +211,7 @@ Strong + Choice ─────> Wander          wander
 
 |             | 무엇을 하나                | 어디에 있나                                               |
 | ----------- | --------------------- | ---------------------------------------------------- |
-| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 24개 (`Functor`, `Monoid`, …)                   |
+| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 25개 (`Functor`, `Monoid`, …)                   |
 | `of(값)`     | **값을 컨테이너에 넣는다**      | 데이터 타입 8개 (`Maybe`, `Either`, …)와 `Applicative` 인스턴스 |
 
 

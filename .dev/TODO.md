@@ -46,6 +46,56 @@
 
 ---
 
+## 닫힘 — MonadError: 실패를 일급으로 (2026-08-18)
+
+- **경위** — cats 대조에서 소유자가 지목("구조가 없어서 불편한 상태"). 계획 → 코덱스
+  계획 리뷰(Blocker 2: 생성자 관례 위반·checkAndSet 규칙 누락 — 그대로면 첫 인스턴스
+  에서 터짐, Major 5: 비동기 관측 사각 등) → v2 반영. 비동기 관측은 독립 회차로 선행.
+  [`plan/260818-monaderror.md`](./plan/260818-monaderror.md)
+- **구현** — `MonadError extends Monad`(raiseError/handleError, checkAndSet 규칙 신설,
+  Symbols·레지스트리·export), 인스턴스 둘: Task(rejected/catchError 재사용 — 반환 검증은
+  기존 문이 fork 시점에), Either(Left/fold 유도 + 즉시 `handler must return an Either`).
+  법칙 4개(잡으면 핸들러·성공 불변·중첩/재실패·실패 단락)를 **동기·비동기 두 게이트에**
+  편입 — 실패의 생성·복구를 전용 법칙으로 고정한 첫 클래스. 순회 86→88 + 클래스별 잠금(2).
+- **검증** — 뮤테이션 6종 전부 잡힘(성공도 잡음/성공 생성/핸들러 미호출/에러 바꿔치기/
+  재실패 삼킴/반환 검증 제거), 전용 테스트 7블록(동치 대조·문안·상속), 문서
+  (MonadError.md 실행 예제 3 + README 편입 + internals 근거), 타입 선언(HKT lookup),
+  47/47 + 타입체크, baseline 차이 3행 전부 추가(제거 0 — v2 기대 그대로), dist 재빌드.
+- **코덱스 구현 리뷰 반영(전건)** — ① handleError 가 캐리어를 검증 안 함(Chain 관례
+  위반) → `arguments must be (function, 타입)` 으로 통일, 위조 캐리어 거부 테스트 추가,
+  뮤테이션 ㉴ ② 관측기 "일회 정착" 겹이 실제로는 무력(첫 정착이 Promise 를 이미
+  닫음) → 위반 목록 + 파일 끝 단언으로 재구현, 가짜 fork 자기검사 + 뮤테이션 ㉵
+  ③ baseline·registry-api 감시 명단에 MonadError 편입(HEAD 부재는 '(없음)' 표기,
+  25개로 갱신) — baseline 차이 7행 전부 추가·제거 0 ④ "실패 경로가 들어온 첫 클래스"
+  문구 과장 → "전용 법칙으로 고정한 첫 클래스"로 정정(docs·CHANGELOG) + internals 의
+  선언 파일 수(24, 실측 20) 는 수 자체를 제거. 남긴 것: 200ms 타임아웃의 느린 CI
+  오탐 가능성(리뷰도 SPECULATION — 실측 여유 40배), handleError 는 핸들러가 미정착
+  Task 를 돌려주는 것까지 막지 않음(게이트 주장은 정상 표본으로 한정, 파일 머리에 명시).
+- **사고 1건** — 뮤테이션 복원에 git checkout 을 써 미커밋 구현이 지워졌다가 dist 에서
+  재이식으로 복구. [`retrospect/260818-checkout-wipes-uncommitted.md`](./retrospect/260818-checkout-wipes-uncommitted.md)
+- **완료조건 충족** — 리뷰 전건 반영, 47/47 + 타입체크 + baseline + dist 재빌드. 커밋 시
+  미추적 4파일(tests 2·docs 1·plan 1) 포함할 것(리뷰 Blocker 1).
+
+## 닫힘 — Task 비동기 법칙 게이트 신설 (2026-08-18)
+
+- **경위** — MonadError 계획의 코덱스 리뷰가 부수 발견: 법칙 게이트의 Task 관측기
+  (forkSync)가 동기 정착만 봐서 **비동기 Task 는 성공·실패·영구 미정착이 전부
+  '(안 열림)' 한 덩어리** — 비동기면 무엇이든 "같다"(실측). 무음 정지 4건이 전부 법칙
+  게이트 밖에서 잡힌 구조적 이유. 소유자 결정: MonadError 와 분리해 독립 회차로 먼저.
+- **설계 통찰** — 등식만으로는 균일 미정착을 못 잡는다(양변이 같이 미정착이면 "같다").
+  그래서 새 게이트(tests/task-async-laws.test.js)는 **세 겹**: 등식 + 생존성(정상
+  표본은 반드시 정착) + 일회 정착. 관측기는 정착 대기 + 타임아웃 미정착 구분 + 이중
+  정착 탐지.
+- **판정** — 비동기 표본으로 Functor·Apply·Applicative·Chain·Monad·Alt 법칙 전부
+  초록: **눈을 뜨고 봐도 기존 Task 인스턴스는 옳았다** — 지금까지의 초록이 우연이
+  아니었음의 실증.
+- **비대칭 영수증** — "동기는 옳고 비동기 도착이면 undefined 정착" 변이를 심으니
+  **새 게이트 빨강 · 옛 게이트 초록** — 새 게이트가 옛 사각을 정확히 덮는다. 관측기
+  무력화 변이는 자기검사 5건 빨강. 각각 복원 확인.
+- **곁가지** — Alt 인자 관례 실측 확정(첫째 우선, 둘째 대안). staticland-laws 머리의
+  "못 잡는 것"에 이 파일 포인터 추가.
+- **다음** — 이 게이트 위에 MonadError 회차(계획 v2 승인 대기 중이던 것)를 얹는다.
+
 ## 닫힘 — 코덱스 5차 재공격, into 그릇 복제 수리 (2026-08-18)
 
 - **경위** — 4차 이후 쌓인 수리·기능(start/cancel·interpreters·cons 연속·dist 계약)을

@@ -167,4 +167,5 @@ declare module "../TypeClasses" {
     interface ChainInstances       { readonly task: TaskTypeLambda }
     interface ChainRecInstances    { readonly task: TaskTypeLambda }
     interface MonadInstances       { readonly task: TaskTypeLambda }
+    interface MonadErrorInstances  { readonly task: TaskTypeLambda }
 }

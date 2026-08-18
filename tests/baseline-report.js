@@ -36,14 +36,15 @@ const TYPE_CLASSES = ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigrou
     'Traversable',
     // Static Land 밖이지만 레지스트리를 가진다. 빠져 있어서 Forget 인스턴스가 이 격자에
     // 아예 안 보였다 — .type 이 'function' 이던 동안 function 묶음에 얹혀 보였을 뿐이다.
-    'Strong', 'Choice', 'Wander'];
-const allRegistryKeys = f => TYPE_CLASSES.map(c => `${c}: ${Object.keys(f[c].types).sort().join(',')}`);
+    'Strong', 'Choice', 'Wander', 'MonadError'];
+// HEAD 에 아직 없는 클래스는 '(없음)' — 행 전체가 THROW 로 뭉개지면 다른 차이가 가려진다.
+const allRegistryKeys = f => TYPE_CLASSES.map(c => `${c}: ${f[c] ? Object.keys(f[c].types).sort().join(',') : '(없음)'}`);
 // **정렬해서 본다.** 묶음의 키 순서는 계약이 아니다 — 쓰는 쪽은 이름으로 구조분해하므로
 // 순서에 의존하는 곳이 0건이다. 정렬 안 한 줄을 두면 등록 순서를 건드릴 때마다 의미 없는
 // 차이를 보고하고, 누군가 그것을 초록으로 만들려다 우연한 순서를 계약으로 굳힌다.
 const allBundles = f => {
     const types = new Set();
-    for (const c of TYPE_CLASSES) for (const v of Object.values(f[c].types)) if (v && v.type) types.add(v.type.toLowerCase());
+    for (const c of TYPE_CLASSES) if (f[c]) for (const v of Object.values(f[c].types)) if (v && v.type) types.add(v.type.toLowerCase());
     return [...types].sort().map(t => `${t}: ${Object.keys(f.Algebra.all(t)).sort().join(',')}`);
 };
 
@@ -167,9 +168,9 @@ const cases = [
     // 「차이 없음」이 나온다(실측) — 규칙 31-1.
     ['타입클래스 정적 표면', f => ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid',
         'Category', 'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
-        'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'Foldable',
-        'Extend', 'Comonad', 'Traversable', 'Strong', 'Choice', 'Wander']
-        .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
+        'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'MonadError',
+        'Foldable', 'Extend', 'Comonad', 'Traversable', 'Strong', 'Choice', 'Wander']
+        .map(name => `${name}: ${f[name] ? Object.keys(f[name]).sort().join(',') : '(없음)'}`)],
 
     // 데이터 타입의 정적 표면. 위 행은 타입클래스만 보므로 **이름이 데이터 타입에서
     // 빠져나간 것**을 못 잡는다 — 팩토리 6개를 타입클래스로 옮길 때(2026-08-14) 이 행이
@@ -184,9 +185,9 @@ const cases = [
     // 타입클래스별로 나눈다 — 한 줄에 몰면 바뀐 자리를 눈으로 못 찾는다(규칙 14).
     ...['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
         'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
-        'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad',
+        'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'MonadError',
         'Foldable', 'Extend', 'Comonad', 'Traversable'
-    ].map(name => [`${name} .type`, f => Object.entries(f[name].types)
+    ].map(name => [`${name} .type`, f => Object.entries(f[name] ? f[name].types : {})
         .filter(([k]) => k[0] === k[0].toUpperCase())
         .map(([k, v]) => `${k}=${v.type}`)
         .sort()]),

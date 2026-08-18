@@ -73,6 +73,15 @@ export interface Chain<F extends TypeLambda> extends Apply<F> {
 // ─── Monad ──────────────────────────────────────────────────────────
 export interface Monad<F extends TypeLambda> extends Applicative<F>, Chain<F> {}
 
+// ─── MonadError (명세 밖 — 실패를 일급으로) ─────────────────────────
+export interface MonadError<F extends TypeLambda> extends Monad<F> {
+    raiseError<A = never>(e: unknown): Kind<F, never, never, never, A>;
+    handleError<A>(
+        f: (e: unknown) => Kind<F, never, never, never, A>,
+        fa: Kind<F, never, never, never, A>
+    ): Kind<F, never, never, never, A>;
+}
+
 // ─── Alt / Plus / Alternative ───────────────────────────────────────
 export interface Alt<F extends TypeLambda> extends Functor<F> {
     readonly alt: <In, Out2, Out1, A>(
@@ -287,6 +296,7 @@ export interface ApplyInstances {}
 export interface ApplicativeInstances {}
 export interface ChainInstances {}
 export interface MonadInstances {}
+export interface MonadErrorInstances {}
 export interface AltInstances {}
 export interface PlusInstances {}
 export interface AlternativeInstances {}
@@ -364,6 +374,12 @@ export declare const Monad: {
         <K extends keyof MonoidInstances>(monoid: K): Monad<WriterTypeLambda>;
         <R>(monoid: Monoid<R>): Monad<WriterTypeLambda>;
     };
+};
+
+export declare const MonadError: {
+    readonly lookup: <K extends keyof MonadErrorInstances>(
+        name: K
+    ) => MonadError<MonadErrorInstances[K]>;
 };
 
 export declare const Alt: {
