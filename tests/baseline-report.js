@@ -175,9 +175,9 @@ const cases = [
     // 데이터 타입의 정적 표면. 위 행은 타입클래스만 보므로 **이름이 데이터 타입에서
     // 빠져나간 것**을 못 잡는다 — 팩토리 6개를 타입클래스로 옮길 때(2026-08-14) 이 행이
     // 없어서 없어진 쪽이 baseline 에 안 보였다.
-    ['데이터타입 정적 표면', f => ['Maybe', 'Either', 'Task', 'Validation', 'Reader', 'Writer',
-        'State', 'Free']
-        .map(name => `${name}: ${Object.keys(f[name]).sort().join(',')}`)],
+    ['데이터타입 정적 표면', f => ['Maybe', 'Either', 'Task', 'Validation', 'NonEmptyList', 'Reader',
+        'Writer', 'State', 'Free']
+        .map(name => `${name}: ${f[name] ? Object.keys(f[name]).sort().join(',') : '(없음)'}`)],
 
     // ── 인스턴스의 .type — 값으로는 관측되지 않는 자리다 ──────────────────
     // 검사에 쓰이지 않는 타입클래스(Semigroupoid/Category 등)에서는 .type 이 틀려도

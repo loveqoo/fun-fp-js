@@ -34,6 +34,7 @@ export const TYPE_FILES = [
     'data/Either.d.ts',
     'data/Task.d.ts',
     'data/Validation.d.ts',
+    'data/NonEmptyList.d.ts',
     'data/Reader.d.ts',
     'data/Writer.d.ts',
     'data/State.d.ts',

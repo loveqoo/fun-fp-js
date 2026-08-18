@@ -27,6 +27,12 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 - **`해석기.start(program)`** — `{ promise, cancel }` 손잡이. `cancel()` 은 다음 명령
   경계에서 발효하는 협조적 취소이고, 취소된 실행은 `cancelled === true` 표식의 거부로
   도착합니다. `run` 은 그대로입니다.
+- **`NonEmptyList`** — 비어 있을 수 없는 목록. 비지 않음을 구조(head 자리)가 보증해,
+  `extract` 가 항상 값을 주고(배열 Comonad 의 빈 배열 구멍이 없는 자리) `reduceLeft`/
+  `reduceMap` 이 Monoid 없이 Semigroup 만으로 접습니다 — `first`/`last` 가 처음으로
+  접기에 들어옵니다. 인스턴스 11개 등록, Monoid·Plus·Alternative·Filterable 은 의도된
+  부재(항등원·zero·거르기가 전부 "빈 목록"을 뜻하므로). 빈 배열의 입구는 `fromArray`
+  → `Maybe` 하나뿐입니다.
 - **`MonadError`** — 실패를 일급으로 다루는 타입 클래스(명세 밖). `raiseError` 로
   만들고 `handleError` 로 잡습니다. Task·Either 등록, 법칙 4개가 게이트에서 돕니다 —
   실패를 만들고 잡는 연산 자체를 전용 법칙으로 고정한 첫 클래스입니다.

@@ -46,6 +46,52 @@
 
 ---
 
+## 닫힘 — index.js 주석 소극 정리 (2026-08-18)
+
+- 소유자 지시(A안). 실측: 주석 블록 140개 중 한 줄 규칙 위반 56개(141줄), docs 앵커
+  보유 18개. 처분: docs 앵커 보유 블록 17곳을 "한 줄 제약 + 링크"로 압축(앵커 실재
+  9종 전수 확인 후), 경위·역사 서술 2곳의 서사 제거. **삭제가 아니라 docs 위임** —
+  상세는 이미 문서에 있다. 29줄 감소, 48/48 + 타입체크 + dist 재빌드.
+- 남긴 것(B안 대상): 앵커 없는 다줄 블록 ~38개 — 압축하려면 내용을 docs 로 옮기는
+  회차가 따로 필요. 소유자 결정 대기.
+
+## 닫힘 — NonEmptyList: 비어 있을 수 없는 목록 (2026-08-18)
+
+- **경위** — 소유자 질문("필요한가?")에 실측 셋으로 답함: ① 배열 Comonad 의
+  `extract([]) === undefined` 를 게이트가 표본 필터로 가림(staticland-laws:737)
+  ② `first`/`last` Semigroup 이 Monoid 짝이 없어 foldMap 에 못 들어감(12:10)
+  ③ 빈 실패 `Invalid([])` 가 타입을 통과. 소유자: 범위 좁게(데이터 타입 +
+  인스턴스 + reduce1/foldMap1, Validation 교체 없음) 승인 후 "계획해주세요".
+- **계획** — [`plan/260818-nonemptylist.md`](./plan/260818-nonemptylist.md):
+  head+tail 표현(구조가 비지 않음을 보증), 인스턴스 11(Comonad 는 필터 없는 온전한
+  extract), 의도된 부재 4(Monoid·Plus·Alternative·Filterable — 이 부재가 존재 이유),
+  reduce1/foldMap1 은 데이터 타입 정적 문(Foldable1 클래스는 계단 값 없음).
+- **계획 리뷰 반영(v2)** — Blocker 2(게이트 표 이름 실물화·Extend/Comonad 검사 함수의
+  NEL 사각 — 올바른 구현과 뮤테이션이 둘 다 초록임을 코덱스가 실행 증명) + Major 6
+  (concat 방향 테스트로 뮤테이션 교체, 잠금 97/13/14, WANDER_TARGETS·FOLD_ORDER_ANCHOR
+  편입, baseline 직접 관측 +8 구분, 생성자 초안 실물 서명화). 소유자 결정(v3):
+  reduceLeft/reduceMap/Reducible(숫자 접미사 폐기), Reducible 클래스 유예(승격 조건:
+  두 번째 비공 컨테이너), ChainRec 유예(닫는 조건: 소유자 결정 기록).
+- **구현** — head+tail 데이터 타입 + 인스턴스 11 + reduceLeft/reduceMap(정적 문) +
+  게이트 편입(잠금 97·13·14 실측 = 계획 리뷰 추정 그대로) + algebra-type 정규 태그
+  (131→142) + registry-api 9개 + baseline 데이터타입 행 + d.ts/HKT/build-types 명단 +
+  docs/NonEmptyList.md(실행 예제) + README·CHANGELOG.
+- **검증** — 뮤테이션 6종 전부 빨강(빈검사 제거/extract=last/전체 반복/concat 뒤집기/
+  Semigroup 검사 제거/traverse 뒤집기 — 복원 표적 치환), 48/48 + 타입체크, baseline
+  차이 21행 전부 추가(제거 0, Monoid 행 없음 = 의도된 부재), dist 재빌드.
+- **사고 재발 주의** — 뮤테이션 실행기의 zsh 변수 확장으로 테스트가 실행되지 않은 채
+  FAIL 0 으로 위장(명령 미발견이 grep 에 안 잡힘). python subprocess 실행기로 재작성해
+  전건 재검증. 교훈: FAIL 0 영수증은 "빨강을 봤다"가 아니라 "실행됐다"부터 의심.
+- **구현 리뷰 반영** — Blocker·Minor 0, Major 1: tail 이 호출자 배열의 별칭이라 외부
+  변이가 가능(d.ts 의 ReadonlyArray 계약 위반, 코덱스 실행 증명). 생성자에서 복사 후
+  동결(Object.freeze(tail.slice()))로 수리 — 별칭·직접 push 둘 다 차단. 전용 테스트 +
+  뮤테이션 ㉴(복사·동결 제거 → 빨강 1) + 48/48 재확인. 나머지 체크리스트는 전건
+  CONFIRMED(경계 판정 포함: 희소 배열·undefined 원소는 "자리 존재" 보장이라 결함 아님).
+- **닫힘** — 커밋·푸시는 소유자 지시 대기.
+
+- **유예 기록(닫는 조건 있는 것)** — ① Reducible 클래스: 두 번째 비공 컨테이너 등록
+  시 승격 ② NonEmptyList ChainRec: 편입 여부 소유자 결정 기록으로 닫힘.
+
 ## 닫힘 — MonadError: 실패를 일급으로 (2026-08-18)
 
 - **경위** — cats 대조에서 소유자가 지목("구조가 없어서 불편한 상태"). 계획 → 코덱스

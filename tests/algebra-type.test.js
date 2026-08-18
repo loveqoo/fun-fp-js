@@ -41,7 +41,7 @@ const BY_PREFIX = {
     Function: 'function', Boolean: 'boolean', Number: 'number', String: 'string',
     Date: 'Date', Array: 'Array', Maybe: 'Maybe', Either: 'Either', Task: 'Task',
     Validation: 'Validation', Reader: 'Reader', Writer: 'Writer', State: 'State',
-    Free: 'Free', Object: 'Object', Identity: 'Identity',
+    Free: 'Free', Object: 'Object', Identity: 'Identity', NonEmptyList: 'NonEmptyList',
 };
 
 // 접두사 규칙을 벗어나는 것. **이유 없이 여기 추가하지 마라** — 이유가 곧 판정 근거다.
@@ -74,6 +74,7 @@ const SAMPLE = {
     Free: fp.Free.of(1), number: 1, string: 'a', boolean: true, function: x => x,
     // Identity·Const 는 자기 타입이다 — { value } 만으로는 평범한 객체와 안 갈린다.
     Identity: fp.Applicative.lookup('identity').of(1),
+    NonEmptyList: fp.NonEmptyList.of(1),
 };
 
 // 'any' 는 "값 타입을 보지 않는다" 는 뜻이라 대표값이 없고 엄격 비교를 통과하지 못한다.
@@ -128,7 +129,7 @@ test('레지스트리 순회가 인스턴스를 빠뜨리지도 늘리지도 않
     // 개수를 못 박는다. 인스턴스를 더하거나 지우면 여기서 멈춰 "이 게이트를 갱신하라" 고
     // 말한다 — `>= N` 으로 두면 **느는 쪽**을 통째로 못 본다.
     const all = REGISTERED;
-    assertEquals(all.length, 131, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
+    assertEquals(all.length, 142, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
     const unnamed = all.filter(r => !r.isNamed).map(r => r.label).sort();
     assertEquals(unnamed.join(','),
         'Monoid(maybe),Semigroup(maybe)',

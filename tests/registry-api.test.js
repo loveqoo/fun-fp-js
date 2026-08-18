@@ -3,7 +3,7 @@
 // 두 이름이 하는 일이 다르다:
 //
 //   lookup(키)   레지스트리에서 인스턴스를 꺼낸다   — 타입클래스 25개
-//   of(값)       값을 컨테이너에 넣는다            — 데이터 타입 8개, Applicative 인스턴스
+//   of(값)       값을 컨테이너에 넣는다            — 데이터 타입 9개, Applicative 인스턴스
 //
 // **왜 테스트가 필요한가**: 이 구분은 어겨도 조용하다. `Functor.of = Functor.lookup` 을
 // 되살리면 아무것도 안 깨진다 — 실측으로 `npm test` 39/39 초록이었고, `npm run baseline` 도
@@ -23,7 +23,7 @@ const TYPE_CLASSES = [
     'Foldable', 'Extend', 'Comonad', 'Traversable'
 ];
 
-const DATA_TYPES = ['Maybe', 'Either', 'Task', 'Validation', 'Reader', 'Writer', 'State', 'Free'];
+const DATA_TYPES = ['Maybe', 'Either', 'Task', 'Validation', 'NonEmptyList', 'Reader', 'Writer', 'State', 'Free'];
 
 logSection('레지스트리 API — lookup / of 분리');
 
@@ -38,7 +38,7 @@ test('타입클래스 25개 전부 lookup 을 가진다', () => {
     assertEquals(missing.join(','), '', 'lookup 이 없는 타입클래스');
 });
 
-test('데이터 타입 8개의 of 는 살아 있다 — 값 주입이다', () => {
+test('데이터 타입 9개의 of 는 살아 있다 — 값 주입이다', () => {
     const missing = DATA_TYPES.filter(name => typeof fp[name].of !== 'function');
     assertEquals(missing.join(','), '', 'of 가 사라진 데이터 타입');
 });

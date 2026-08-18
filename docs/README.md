@@ -53,6 +53,7 @@ console.log(thrown);   // 'TypeError'
 - [Maybe](./Maybe.md) - null 안전 처리
 - [Either](./Either.md) - 에러 처리 (fail-fast)
 - [Validation](./Validation.md) - 에러 누적 (병렬 검증)
+- [NonEmptyList](./NonEmptyList.md) - 비어 있을 수 없는 목록 (Monoid 없이 접기)
 
 #### 비동기
 
@@ -212,7 +213,7 @@ Strong + Choice ─────> Wander          wander
 |             | 무엇을 하나                | 어디에 있나                                               |
 | ----------- | --------------------- | ---------------------------------------------------- |
 | `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 25개 (`Functor`, `Monoid`, …)                   |
-| `of(값)`     | **값을 컨테이너에 넣는다**      | 데이터 타입 8개 (`Maybe`, `Either`, …)와 `Applicative` 인스턴스 |
+| `of(값)`     | **값을 컨테이너에 넣는다**      | 데이터 타입 9개 (`Maybe`, `Either`, …)와 `Applicative` 인스턴스 |
 
 
 ```javascript

@@ -104,6 +104,7 @@ const SAMPLES = {
     any: [1, 2, 3],
     Array: [[], [], [1], [1], [2, 3], [1, 2]],
     Maybe: [Nothing(), Nothing(), Just(1), Just(1), Just(2)],
+    NonEmptyList: [fp.NonEmptyList.of(1), fp.NonEmptyList.of(1), fp.NonEmptyList.make(2, 3), fp.NonEmptyList.make(1, 2)],
     function: [x => x + 1, x => x * 2, x => x - 3],
 };
 
@@ -128,6 +129,7 @@ const EQ = {
     Date: (a, b) => fp.Setoid.lookup('date').equals(a, b),
     Array: (a, b) => fp.Setoid.Array('number').equals(a, b),
     Maybe: (a, b) => fp.Setoid.Maybe('number').equals(a, b),
+    NonEmptyList: (a, b) => fp.Setoid.Array('number').equals(a.toArray(), b.toArray()),
     // 관측 동등 — 함수의 동등은 결정 불가라 표본 입력에서만 본다.
     function: (f, g) => FN_INPUTS.every(x => Object.is(f(x), g(x))),
 };
@@ -185,6 +187,7 @@ const OBSERVE = {
     Object: v => v.value,
     Array: v => v,
     Maybe: v => (v.isNothing() ? ['Nothing'] : ['Just', v.value]),
+    NonEmptyList: v => v.toArray(),
     Either: v => (v.isLeft() ? ['Left', v.value] : ['Right', v.value]),
     Task: forkSync,
     Validation: v => (v.isValid() ? ['Valid', v.value] : ['Invalid', v.errors]),
@@ -202,6 +205,7 @@ const FUNCTOR_SAMPLES = {
     Object: [{ value: 1 }, { value: 7 }],
     Array: [[], [1], [2, 3]],
     Maybe: [Nothing(), Just(1)],
+    NonEmptyList: [fp.NonEmptyList.of(1), fp.NonEmptyList.make(2, 3, 4)],
     Either: [Left('e'), Right(1)],
     Task: [fp.Task.of(1), fp.Task.rejected('boom')],
     Validation: [fp.Validation.Valid(1), fp.Validation.Invalid(['e'], fp.Monoid.lookup('array'))],
@@ -300,7 +304,7 @@ const report = broken => broken.length <= CAP
 
 logSection('Static Land 법칙 — 등록된 전 인스턴스');
 
-for (const [name, count] of [['Setoid', 7], ['Ord', 6], ['Semigroup', 13], ['Monoid', 11], ['Group', 3]]) {
+for (const [name, count] of [['Setoid', 7], ['Ord', 6], ['Semigroup', 14], ['Monoid', 11], ['Group', 3]]) {
     test(`${name} — 등록된 ${count}개 전부`, () => {
         const { broken, checked } = runAll(name);
         assertEquals(report(broken), '', `${name} 법칙`);
@@ -321,7 +325,7 @@ test('팩토리로만 생기는 인스턴스도 법칙을 지킨다', () => {
     assertEquals(FACTORY_CASES.length, 11, '팩토리 명단이 달라졌다 — 새 팩토리를 넣었으면 표본도 넣어라');
 });
 
-test('Functor — 등록된 12개 전부에 항등·합성이 돈다', () => {
+test('Functor — 등록된 13개 전부에 항등·합성이 돈다', () => {
     // 명세: map(id, a) ≡ a · map(compose(f,g), a) ≡ map(f, map(g, a))
     const idf = x => x;
     const f = x => (typeof x === 'number' ? x + 1 : x);
@@ -344,7 +348,7 @@ test('Functor — 등록된 12개 전부에 항등·합성이 돈다', () => {
         }
     }
     assertEquals(report(broken), '', 'Functor 법칙');
-    assertEquals(checked, 12, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
+    assertEquals(checked, 13, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
 });
 
 test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 잡힌다)', () => {
@@ -383,6 +387,7 @@ const OF_BY_LABEL = {
 const OF = {
     Identity: x => fp.Applicative.lookup('identity').of(x),
     Object: x => ({ value: x }), Array: x => [x], Maybe: x => Just(x), Either: x => Right(x),
+    NonEmptyList: x => fp.NonEmptyList.of(x),
     Task: x => fp.Task.of(x), Validation: x => fp.Validation.Valid(x), Reader: x => fp.Reader.of(x),
     Writer: x => fp.Writer.of(x), State: x => fp.State.of(x), Free: x => fp.Free.of(x),
 };
@@ -431,7 +436,7 @@ const OrderCollector = new fp.Applicative(
     new fp.Apply(new fp.Functor((_f, xs) => xs, 'Array'), (fs, xs) => fs.concat(xs), 'Array'),
     () => [], 'Array');
 // Foldable 의 순서를 어느 Traversable 에 잇는가 — 둘 다 가진 타입만 가능하다(Object·Validation 제외).
-const FOLD_ORDER_ANCHOR = { Array: 'array', Maybe: 'maybe', Either: 'either' };
+const FOLD_ORDER_ANCHOR = { Array: 'array', Maybe: 'maybe', Either: 'either', NonEmptyList: 'nonemptylist' };
 
 // Wander 의 두 사영을 어느 Traversable 위에서 볼지 — 등록된 Traversable 셋 전부.
 // traverse 가 원소를 안 보는 위반은 Traversable 법칙에선 양변이 같이 무너지므로 여기가 잡는다.
@@ -439,6 +444,7 @@ const WANDER_TARGETS = [
     ['array', [[], [1, 2, 3]]],
     ['maybe', [Nothing(), Just(7)]],
     ['either', [Left('e'), Right(3)]],
+    ['nonemptylist', [fp.NonEmptyList.of(7), fp.NonEmptyList.make(1, 2, 3)]],
 ];
 const WANDER_KIT = {
     // Identity 사영 — 함수 profunctor 의 wander 는 각 대상에 p 를 적용하는 map 이어야 한다.
@@ -726,19 +732,21 @@ const CLASS_LAWS = {
     },
     Extend: (E, obs) => {
         const xs = FUNCTOR_SAMPLES[E.type]; if (!xs) return null;
-        const ff = w => (Array.isArray(w) ? w.length : 0);
-        const gg = w => (Array.isArray(w) ? (w[0] === undefined || w[0] === null ? 0 : w[0]) : 0);
+        // 내용을 읽는 캐리어별 열기 — Array 그대로, NEL 은 toArray. 안 열면 상수 함수가 되어 검사가 공허하다.
+        const open = w => (Array.isArray(w) ? w : fp.NonEmptyList.isNonEmptyList(w) ? w.toArray() : null);
+        const ff = w => { const a = open(w); return a === null ? 0 : a.length; };
+        const gg = w => { const a = open(w); return a === null || a[0] === undefined || a[0] === null ? 0 : a[0]; };
         const bad = [];
         for (const w of xs)
             same(obs, E.extend(ff, E.extend(gg, w)), E.extend(_w => ff(E.extend(gg, _w)), w)) || bad.push('결합 깨짐');
         return bad;
     },
     Comonad: (C, obs) => {
-        // extract 는 빈 상자에서 꺼낼 것이 없다 — 비어 있지 않은 표본만 쓴다.
+        // extract 는 빈 상자에서 꺼낼 것이 없다 — 비어 있지 않은 표본만 쓴다. 온전한 자리는 NonEmptyList 다.
         const raw = FUNCTOR_SAMPLES[C.type];
         const xs = (raw === undefined || raw === null ? [] : raw).filter(v => !Array.isArray(v) || v.length > 0);
         if (!xs.length) return null;
-        const ff = w => (Array.isArray(w) ? w.length : 0);
+        const ff = w => (Array.isArray(w) ? w.length : fp.NonEmptyList.isNonEmptyList(w) ? w.toArray().length : 0);
         const bad = [];
         for (const w of xs) {
             same(obs, C.extend(C.extract, w), w) || bad.push('좌항등 깨짐');
@@ -774,7 +782,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 88, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 97, '법칙을 돌린 인스턴스 수가 달라졌다');
     // MonadError 는 클래스별로도 잠근다 — 합계 하나로는 인스턴스 교체가 숨는다(5차 리뷰 Minor 8).
     assertEquals(instancesOf('MonadError').length, 2, 'MonadError 인스턴스 수가 달라졌다');
 });
