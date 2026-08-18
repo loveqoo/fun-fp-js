@@ -39,7 +39,7 @@ test('isIdentity 는 심볼을 본다 — 문자열은 못 속인다', () => {
     assert(!Identity.isIdentity(5), '원시값');
 });
 
-test('레지스트리의 다섯 인스턴스가 이 클래스의 값을 낸다', () => {
+test('레지스트리의 일곱 인스턴스가 이 클래스의 값을 낸다', () => {
     const of = fp.Applicative.lookup('identity').of;
     assertEquals(of(1).constructor.name, 'Identity', 'Applicative.of');
     assertEquals(fp.Functor.lookup('identity').map(x => x, of(1)).constructor.name, 'Identity');

@@ -673,6 +673,22 @@ const CLASS_LAWS = {
         } catch (e) { bad.push(`스택 제약 깨짐 — ${String(e).slice(0, 60)}`); }
         return bad;
     },
+    Reducible: (R, obs) => {
+        // 결과가 컨테이너가 아니라 배열·원소라 obs 로 열지 않는다 — 종류별로 직접 비교한다(계획 리뷰 B1).
+        // 단일 원소 표본(Identity)은 원소 보존만 가르고, 방향·Semigroup 사용은 다원소 NEL 표본 몫이다.
+        const xs = FUNCTOR_SAMPLES[R.type]; if (!xs) return null;
+        const arrSg = fp.Semigroup.lookup('array');
+        const bad = [];
+        for (const u of xs) {
+            const elems = R.reduce((acc, x) => acc.concat([x]), [], u);   // Foldable 이 기준값이다
+            JSON.stringify(R.reduceMap(arrSg, x => [x], u)) === JSON.stringify(elems) || bad.push('원소 보존 깨짐');
+            const f = (a, b) => a * 10 + b;   // 비가환 — 방향이 틀리면 값이 갈린다
+            Object.is(R.reduceLeft(f, u), elems.slice(1).reduce(f, elems[0])) || bad.push('reduceLeft 정합 깨짐');
+            Object.is(R.reduceMap(fp.Semigroup.lookup('first'), x => x, u), elems[0]) || bad.push('first 뽑기 깨짐');
+            Object.is(R.reduceMap(fp.Semigroup.lookup('last'), x => x, u), elems[elems.length - 1]) || bad.push('last 뽑기 깨짐');
+        }
+        return bad;
+    },
     MonadError: (ME, obs) => {
         const xs = FUNCTOR_SAMPLES[ME.type]; if (!xs) return null;
         const bad = [];
@@ -783,7 +799,8 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 98, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 101, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(instancesOf('Reducible').length, 2, 'Reducible 인스턴스 수가 달라졌다');
     // MonadError 는 클래스별로도 잠근다 — 합계 하나로는 인스턴스 교체가 숨는다(5차 리뷰 Minor 8).
     assertEquals(instancesOf('MonadError').length, 2, 'MonadError 인스턴스 수가 달라졌다');
 });

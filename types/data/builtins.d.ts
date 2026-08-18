@@ -110,5 +110,7 @@ declare module "../TypeClasses" {
 declare module "../TypeClasses" {
     interface FunctorInstances      { readonly identity: IdentityTypeLambda }
     interface ApplyInstances        { readonly identity: IdentityTypeLambda }
+    interface FoldableInstances     { readonly identity: IdentityTypeLambda }
+    interface ReducibleInstances    { readonly identity: IdentityTypeLambda }
     interface ApplicativeInstances  { readonly identity: IdentityTypeLambda }
 }

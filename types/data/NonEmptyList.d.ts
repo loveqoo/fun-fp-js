@@ -57,6 +57,7 @@ declare module "../TypeClasses" {
     interface MonadInstances       { readonly nonemptylist: NonEmptyListTypeLambda }
     interface AltInstances         { readonly nonemptylist: NonEmptyListTypeLambda }
     interface FoldableInstances    { readonly nonemptylist: NonEmptyListTypeLambda }
+    interface ReducibleInstances   { readonly nonemptylist: NonEmptyListTypeLambda }
     interface TraversableInstances { readonly nonemptylist: NonEmptyListTypeLambda }
     interface ExtendInstances      { readonly nonemptylist: NonEmptyListTypeLambda }
     interface ComonadInstances     { readonly nonemptylist: NonEmptyListTypeLambda }

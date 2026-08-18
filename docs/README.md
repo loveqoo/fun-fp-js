@@ -199,6 +199,7 @@ Strong + Choice ─────> Wander          wander
 | Plus          | zero            | 빈 대안               |
 | Alternative   | ap + alt + zero | Applicative + Plus |
 | Foldable      | reduce          | 축소                 |
+| Reducible     | reduceLeft + reduceMap | 빈 경우 없는 접기 (명세 밖) |
 | Traversable   | traverse        | 효과 순회              |
 | Filterable    | filter          | 걸러내기               |
 | Semigroupoid  | compose         | 함수 합성              |
@@ -212,7 +213,7 @@ Strong + Choice ─────> Wander          wander
 
 |             | 무엇을 하나                | 어디에 있나                                               |
 | ----------- | --------------------- | ---------------------------------------------------- |
-| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 25개 (`Functor`, `Monoid`, …)                   |
+| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 26개 (`Functor`, `Monoid`, …)                   |
 | `of(값)`     | **값을 컨테이너에 넣는다**      | 데이터 타입 9개 (`Maybe`, `Either`, …)와 `Applicative` 인스턴스 |
 
 
@@ -295,8 +296,9 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
 | `statet(<M>)` 등    | Transformer                                              | `statet(maybe)`, `eithert(task)`         | [StateT](./StateT.md)           |
 
 
-`identity` 도 `Functor`/`Apply`/`Applicative` 세 곳에 등록돼 있습니다.
-`traverse` 에 넘겨 "그냥 매핑" 으로 쓰는 것입니다([Applicative](./Applicative.md)).
+`identity` 도 일곱 곳(`Functor`/`Apply`/`Applicative`/`Extend`/`Comonad`/`Foldable`/
+`Reducible`)에 등록돼 있습니다. `traverse` 에 넘겨 "그냥 매핑" 으로 쓰는 것이 기본
+용도입니다([Applicative](./Applicative.md)).
 
 ### 데이터 타입
 

@@ -36,7 +36,7 @@ const TYPE_CLASSES = ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigrou
     'Traversable',
     // Static Land 밖이지만 레지스트리를 가진다. 빠져 있어서 Forget 인스턴스가 이 격자에
     // 아예 안 보였다 — .type 이 'function' 이던 동안 function 묶음에 얹혀 보였을 뿐이다.
-    'Strong', 'Choice', 'Wander', 'MonadError'];
+    'Strong', 'Choice', 'Wander', 'MonadError', 'Reducible'];
 // HEAD 에 아직 없는 클래스는 '(없음)' — 행 전체가 THROW 로 뭉개지면 다른 차이가 가려진다.
 const allRegistryKeys = f => TYPE_CLASSES.map(c => `${c}: ${f[c] ? Object.keys(f[c].types).sort().join(',') : '(없음)'}`);
 // **정렬해서 본다.** 묶음의 키 순서는 계약이 아니다 — 쓰는 쪽은 이름으로 구조분해하므로
@@ -169,7 +169,7 @@ const cases = [
     ['타입클래스 정적 표면', f => ['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid',
         'Category', 'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
         'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'MonadError',
-        'Foldable', 'Extend', 'Comonad', 'Traversable', 'Strong', 'Choice', 'Wander']
+        'Foldable', 'Reducible', 'Extend', 'Comonad', 'Traversable', 'Strong', 'Choice', 'Wander']
         .map(name => `${name}: ${f[name] ? Object.keys(f[name]).sort().join(',') : '(없음)'}`)],
 
     // 데이터 타입의 정적 표면. 위 행은 타입클래스만 보므로 **이름이 데이터 타입에서
@@ -186,7 +186,7 @@ const cases = [
     ...['Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
         'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
         'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad', 'MonadError',
-        'Foldable', 'Extend', 'Comonad', 'Traversable'
+        'Foldable', 'Reducible', 'Extend', 'Comonad', 'Traversable'
     ].map(name => [`${name} .type`, f => Object.entries(f[name] ? f[name].types : {})
         .filter(([k]) => k[0] === k[0].toUpperCase())
         .map(([k, v]) => `${k}=${v.type}`)

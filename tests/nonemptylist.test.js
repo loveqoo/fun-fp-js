@@ -44,17 +44,17 @@ test('reduceMap — first·last Semigroup 이 처음으로 접기에 들어온�
         'foldMap: second argument must be a Monoid');
 });
 
-test('거부 문안 — reduceLeft·reduceMap 인자 검증 전건', () => {
+test('거부 문안 — 검증의 소유자는 Reducible 인스턴스다 (정적 문은 위임)', () => {
     assertThrowsWith(() => NEL.reduceLeft(42, NEL.of(1)),
-        'NonEmptyList.reduceLeft: first argument must be a function');
+        'Reducible.reduceLeft: arguments must be (function, NonEmptyList)');
     assertThrowsWith(() => NEL.reduceLeft((a, b) => a, [1, 2]),
-        'NonEmptyList.reduceLeft: second argument must be a NonEmptyList');
+        'Reducible.reduceLeft: arguments must be (function, NonEmptyList)');
     assertThrowsWith(() => NEL.reduceMap({}, x => x, NEL.of(1)),
-        'NonEmptyList.reduceMap: first argument must be a Semigroup');
+        'Reducible.reduceMap: first argument must be a Semigroup');
     assertThrowsWith(() => NEL.reduceMap(Semigroup.lookup('first'), 42, NEL.of(1)),
-        'NonEmptyList.reduceMap: second argument must be a function');
+        'Reducible.reduceMap: arguments must be (Semigroup, function, NonEmptyList)');
     assertThrowsWith(() => NEL.reduceMap(Semigroup.lookup('first'), x => x, [1]),
-        'NonEmptyList.reduceMap: third argument must be a NonEmptyList');
+        'Reducible.reduceMap: arguments must be (Semigroup, function, NonEmptyList)');
 });
 
 test('concat·alt — 방향이 a 뒤에 b 다 (결합법칙만으로는 못 가르는 자리)', () => {
@@ -89,11 +89,11 @@ test('extract — 빈 경우가 없어 항상 값을 준다 (배열 Comonad 의 
     assertEquals(fp.Comonad.lookup('array').extract([]), undefined);
 });
 
-test('레지스트리 — Algebra.all 에 12개 클래스가 선다', () => {
+test('레지스트리 — Algebra.all 에 13개 클래스가 선다', () => {
     const keys = Object.keys(fp.Algebra.all('nonemptylist')).sort();
-    assertEquals(keys.length, 12, '인스턴스 수');
+    assertEquals(keys.length, 13, '인스턴스 수');
     assertEquals(keys, ['nonEmptyListAlt', 'nonEmptyListApplicative', 'nonEmptyListApply',
         'nonEmptyListChain', 'nonEmptyListChainRec', 'nonEmptyListComonad', 'nonEmptyListExtend',
-        'nonEmptyListFoldable', 'nonEmptyListFunctor', 'nonEmptyListMonad', 'nonEmptyListSemigroup',
-        'nonEmptyListTraversable']);
+        'nonEmptyListFoldable', 'nonEmptyListFunctor', 'nonEmptyListMonad', 'nonEmptyListReducible',
+        'nonEmptyListSemigroup', 'nonEmptyListTraversable']);
 });

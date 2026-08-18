@@ -108,6 +108,20 @@ export interface Foldable<F extends TypeLambda> extends TypeClass<F> {
     ) => B;
 }
 
+// Out of spec — folding for containers that cannot be empty: a Semigroup
+// suffices because there is no empty case to answer for.
+export interface Reducible<F extends TypeLambda> extends Foldable<F> {
+    readonly reduceLeft: <In, Out2, Out1, A>(
+        f: (acc: A, a: A) => A,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => A;
+    readonly reduceMap: <In, Out2, Out1, A, B>(
+        semigroup: Semigroup<B>,
+        f: (a: A) => B,
+        fa: Kind<F, In, Out2, Out1, A>
+    ) => B;
+}
+
 // ─── Traversable ────────────────────────────────────────────────────
 // `G` is the Applicative being distributed through; `F` is the outer
 // Traversable structure. Slot threading is preserved on both.
@@ -301,6 +315,7 @@ export interface AltInstances {}
 export interface PlusInstances {}
 export interface AlternativeInstances {}
 export interface FoldableInstances {}
+export interface ReducibleInstances {}
 export interface TraversableInstances {}
 export interface BifunctorInstances {}
 export interface ContravariantInstances {}
@@ -404,6 +419,12 @@ export declare const Foldable: {
     readonly lookup: <K extends keyof FoldableInstances>(
         name: K
     ) => Foldable<FoldableInstances[K]>;
+};
+
+export declare const Reducible: {
+    readonly lookup: <K extends keyof ReducibleInstances>(
+        name: K
+    ) => Reducible<ReducibleInstances[K]>;
 };
 
 export declare const Traversable: {

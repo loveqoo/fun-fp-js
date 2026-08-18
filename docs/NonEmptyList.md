@@ -32,7 +32,9 @@ console.log(NonEmptyList.fromArray([]).isNothing());    // true
 항등원이 있을 수 없는 `first`(앞의 것 남기기)·`last`(뒤의 것 남기기) Semigroup 은
 `foldMap` 에 들어가지 못합니다. NonEmptyList 는 head 가 씨앗이 되므로 **Semigroup
 만으로** 접습니다 — 그 문이 `reduceMap`(변환하고 결합)과 `reduceLeft`(초기값 없이
-왼쪽부터)입니다.
+왼쪽부터)입니다. 이 접기의 소유자는 **Reducible** 타입 클래스입니다
+(`Reducible.lookup('nonemptylist')` — Identity 와 같은 계약을 나눠 갖습니다).
+아래의 `NonEmptyList.reduceLeft/reduceMap` 정적 문은 그 인스턴스로 가는 위임입니다.
 
 ```javascript
 const { NonEmptyList, Semigroup, Foldable, foldMap } = FunFP;
@@ -52,10 +54,10 @@ console.log(thrown);   // foldMap: second argument must be a Monoid
 console.log(NonEmptyList.reduceLeft((a, b) => a + b, nel));   // 16
 ```
 
-## 인스턴스 12개, 그리고 의도된 부재 4개
+## 인스턴스 13개, 그리고 의도된 부재 4개
 
-Functor·Apply·Applicative·Chain·ChainRec·Monad·Semigroup·Alt·Foldable·Traversable·
-Extend·Comonad 가 등록되어 있습니다(`lookup('nonemptylist')`). 특히 `extract`(Comonad) 는
+Functor·Apply·Applicative·Chain·ChainRec·Monad·Semigroup·Alt·Foldable·**Reducible**·
+Traversable·Extend·Comonad 가 등록되어 있습니다(`lookup('nonemptylist')`). 특히 `extract`(Comonad) 는
 빈 경우가 없어 **항상 값을 주는 온전한 함수**입니다 — 배열 Comonad 의
 `extract([]) === undefined` 구멍이 이 타입에는 없습니다.
 

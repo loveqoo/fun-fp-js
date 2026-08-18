@@ -85,6 +85,7 @@ import type {
     Monad,
     MonadError,
     Foldable,
+    Reducible,
     Extend,
     Comonad,
     Traversable,
@@ -176,6 +177,7 @@ declare const fp: {
     readonly Monad: typeof Monad;
     readonly MonadError: typeof MonadError;
     readonly Foldable: typeof Foldable;
+    readonly Reducible: typeof Reducible;
     readonly Extend: typeof Extend;
     readonly Comonad: typeof Comonad;
     readonly Traversable: typeof Traversable;

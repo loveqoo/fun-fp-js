@@ -32,8 +32,9 @@ const TYPE_CLASSES = [
     'Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
     'Filterable', 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', 'Apply',
     'Applicative', 'Alt', 'Plus', 'Alternative', 'Chain', 'ChainRec', 'Monad',
-    'Foldable', 'Extend', 'Comonad', 'Traversable',
-    'Strong', 'Choice', 'Wander'
+    'Foldable', 'Reducible', 'Extend', 'Comonad', 'Traversable',
+    // MonadError 는 이 명단에 빠져 있었다(그 회차의 누락) — Reducible 편입 때 함께 수리.
+    'Strong', 'Choice', 'Wander', 'MonadError'
 ];
 
 // 이름 접두사가 곧 "다루는 타입" 이다.
@@ -129,7 +130,7 @@ test('레지스트리 순회가 인스턴스를 빠뜨리지도 늘리지도 않
     // 개수를 못 박는다. 인스턴스를 더하거나 지우면 여기서 멈춰 "이 게이트를 갱신하라" 고
     // 말한다 — `>= N` 으로 두면 **느는 쪽**을 통째로 못 본다.
     const all = REGISTERED;
-    assertEquals(all.length, 143, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
+    assertEquals(all.length, 148, '인스턴스 수가 달라졌다 — 새 인스턴스의 .type 을 이 게이트에 넣어라');
     const unnamed = all.filter(r => !r.isNamed).map(r => r.label).sort();
     assertEquals(unnamed.join(','),
         'Monoid(maybe),Semigroup(maybe)',

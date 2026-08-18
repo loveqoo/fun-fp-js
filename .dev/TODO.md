@@ -46,6 +46,31 @@
 
 ---
 
+## 닫힘 — Reducible 승격 (2026-08-19)
+
+- **경위** — 소유자 "승격 해봅시다" → 유예 조건("두 번째 비공 컨테이너")의 두 번째가
+  **Identity 로 이미 있었음을 발견**(유예 당시 후보 누락 — 시간 논거는 v2 에서 정정).
+  소유자 "Identity 포함으로 진행" 확정. [`plan/260819-reducible.md`](./plan/260819-reducible.md)
+- **계획 리뷰(코덱스)** — Blocker 2(법칙 비교가 obs 재사용으로 공허해짐·spec 게이트
+  누락) + Major 7(잠금 101, identity 낡은 명부, foldMap 합법화 영향 등) → v2 반영.
+  spec 게이트는 MonadError 선례(SPEC 표·README 그래프 불포함)로 무변경 정합.
+- **구현** — `Reducible extends Foldable`(reduceLeft/reduceMap, checkAndSet 2규칙,
+  ChainRec·Comonad 상속 관례), 인스턴스 2(NonEmptyList 몸 이동·Identity) + 전제
+  IdentityFoldable 신설(foldMap 에 Identity 합법화), NEL 정적 문은 위임으로 존속
+  (문안 주인은 Reducible), export/d.ts/HKT. **동반 수리**: algebra-type TYPE_CLASSES
+  의 MonadError 누락(그 회차의 구멍), identity.test 다섯→일곱, README 의 낡은
+  "identity 세 곳" 문구.
+- **검증** — 법칙 3(원소 보존·reduceLeft 정합·first/last — 종류별 EQ, 분업: 단일
+  원소는 보존만·방향은 NEL 몫), 뮤테이션 5종 전부 빨강(누락/Semigroup 무시/f 미호출/
+  캐리어 검사 제거/init 무시), 잠금 101·148·26·13·7, 49/49 + 타입체크, baseline 8행
+  전부 추가(제거 0), dist 재빌드.
+- **구현 리뷰 반영** — Blocker 0. Major 1: 계획 v2 의 B2(SPEC 편입 지시)가 실제
+  구현(MonadError 선례로 무변경 정합)과 모순 → 계획에 v3 로 결정 변경을 기록.
+  Minor 2: README "타입클래스 25개"→26, CHANGELOG NEL 12→13. 구현 본체는 전건
+  실행 검증 통과(비공허성 실증: 옛 obs 비교는 [999]≠[7] 을 통과시켰고 새 비교는
+  잡음 · 이중 래핑 없음 · 비가환 방향 · strict/loose 시점 · 잠금 6종 실측 일치).
+- **닫힘** — 유예 항목(Reducible 승격) 종결. 커밋·푸시는 소유자 지시 대기.
+
 ## 닫힘 — 도그푸딩 3회차: start/cancel 실기 (2026-08-19)
 
 - **준비물** — [`experiment/260819-start-cancel-demo.mjs`](./experiment/260819-start-cancel-demo.mjs):

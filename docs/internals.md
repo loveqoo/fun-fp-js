@@ -1183,3 +1183,13 @@ Static Land 에 없는 클래스다(Strong/Choice/Wander 와 같은 지위). 세
 에러 값을 지니지 않아 법칙이 공허해지고(그 자리는 Alt/Plus 가 맡는다), Validation 은
 Monad 가 아니다. 핸들러 반환 검증의 시점은 타입을 따른다 — Either 는 즉시, Task 는
 게을러서 fork 시점(기존 Task.catchError 문안 유지). 2026-08-18.
+
+## Reducible — 빈 경우가 없는 접기의 클래스 {#reducible}
+
+`foldMap` 이 Monoid 를 요구하는 이유는 하나다 — 빈 컨테이너가 들어왔을 때의 답
+(항등원). 비어 있을 수 없는 컨테이너에는 그 질문 자체가 없으므로, Semigroup 만
+받는 접기(`reduceLeft`/`reduceMap`)가 성립한다. 그것을 계약으로 만든 것이
+`Reducible extends Foldable` 이다(cats 의 Reducible 과 같은 자리, 명세 밖 —
+MonadError 처럼 SPEC 표·의존성 그래프에는 넣지 않는다). 인스턴스는 NonEmptyList 와
+Identity 둘 — 값 하나를 반드시 담는 Identity 가 "비어 있을 수 없음"의 극한이다.
+Array·Maybe 는 비어질 수 있어 구조적으로 자격이 없고, 그 부재가 이 클래스의 뜻이다.

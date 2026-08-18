@@ -40,6 +40,7 @@ const Symbols = {
     Monad: Symbol.for('fun-fp-js/Monad'),
     MonadError: Symbol.for('fun-fp-js/MonadError'),
     Foldable: Symbol.for('fun-fp-js/Foldable'),
+    Reducible: Symbol.for('fun-fp-js/Reducible'),
     Extend: Symbol.for('fun-fp-js/Extend'),
     Comonad: Symbol.for('fun-fp-js/Comonad'),
     Traversable: Symbol.for('fun-fp-js/Traversable'),
@@ -477,6 +478,22 @@ const checkAndSet = (config => {
             },
             loose: (instance, reduce) => { instance.reduce = (f, init, a) => reduce(f, init, a); }
         },
+        'Reducible.super': {
+            strict: (foldable) => { !(foldable && foldable[Symbols.Foldable]) && raise(new TypeError('Reducible: argument must be a Foldable')); },
+            loose: emptyFunc
+        },
+        Reducible: {
+            strict: (instance, reduceLeft, reduceMap) => {
+                typeof reduceLeft !== 'function' && raise(new TypeError('Reducible: reduceLeft must be a function'));
+                typeof reduceMap !== 'function' && raise(new TypeError('Reducible: reduceMap must be a function'));
+                instance.reduceLeft = (f, fa) => (types.isFunction(f) && types.check(fa, instance.type)) ? reduceLeft(f, fa) : raise(new TypeError(`Reducible.reduceLeft: arguments must be (function, ${instance.type})`));
+                instance.reduceMap = (semigroup, f, fa) => {
+                    (semigroup && semigroup[Symbols.Semigroup] === true) || raise(new TypeError('Reducible.reduceMap: first argument must be a Semigroup'));
+                    return (types.isFunction(f) && types.check(fa, instance.type)) ? reduceMap(semigroup, f, fa) : raise(new TypeError(`Reducible.reduceMap: arguments must be (Semigroup, function, ${instance.type})`));
+                };
+            },
+            loose: (instance, reduceLeft, reduceMap) => { instance.reduceLeft = (f, fa) => reduceLeft(f, fa); instance.reduceMap = (sg, f, fa) => reduceMap(sg, f, fa); }
+        },
         'Extend.super': {
             strict: (functor) => { !(functor && functor[Symbols.Functor]) && raise(new TypeError('Extend: argument must be a Functor')); },
             loose: emptyFunc
@@ -809,6 +826,19 @@ class Foldable extends Algebra {
     reduce() { raise(new Error('Foldable: reduce is not implemented')); }
 }
 Foldable.prototype[Symbols.Foldable] = true;
+// 명세 밖 — 비어 있을 수 없는 것의 접기. Monoid(빈 경우의 답) 없이 Semigroup 만 받는다. docs/internals.md#reducible
+class Reducible extends Foldable {
+    constructor(foldable, reduceLeft, reduceMap, type, registry, ...aliases) {
+        checkAndSet('Reducible.super')(foldable);
+        super(foldable.reduce, type);
+        unwrapIfSameType(this, foldable, 'reduce');
+        checkAndSet('Reducible')(this, reduceLeft, reduceMap);
+        registry && register(registry, this, ...aliases);
+    }
+    reduceLeft() { raise(new Error('Reducible: reduceLeft is not implemented')); }
+    reduceMap() { raise(new Error('Reducible: reduceMap is not implemented')); }
+}
+Reducible.prototype[Symbols.Reducible] = true;
 class Extend extends Functor {
     constructor(functor, extend, type, registry, ...aliases) {
         checkAndSet('Extend.super')(functor);
@@ -905,6 +935,7 @@ ChainRec.done = value => ({ tag: 'done', value });
 withTypeRegistry(Monad);
 withTypeRegistry(MonadError);
 withTypeRegistry(Foldable);
+withTypeRegistry(Reducible);
 withTypeRegistry(Extend);
 withTypeRegistry(Comonad);
 withTypeRegistry(Traversable);
@@ -1229,6 +1260,19 @@ class IdentityComonad extends Comonad {
     }
 }
 modules.push(IdentityComonad);
+class IdentityFoldable extends Foldable {
+    constructor() {
+        super((f, init, id) => f(init, id.value), 'Identity', Foldable.types, 'identity');
+    }
+}
+modules.push(IdentityFoldable);
+class IdentityReducible extends Reducible {
+    constructor() {
+        super(Foldable.types.IdentityFoldable, (f, id) => id.value, (sg, f, id) => f(id.value),
+            'Identity', Reducible.types, 'identity');
+    }
+}
+modules.push(IdentityReducible);
 // Const 는 monoid 마다 다르므로 매개변수화한다 — Monoid.Maybe(innerSG) 와 같은 모양이다.
 // 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
 // 담는 모양이 정해져 있으면 클래스로 선언한다 — 객체 리터럴은 모양을 말하지 않는다.
@@ -2173,18 +2217,9 @@ NonEmptyList.fromArray = xs => (Array.isArray(xs) && xs.length > 0)
     ? Maybe.Just(new NonEmptyList(xs[0], xs.slice(1)))
     : Maybe.Nothing();
 NonEmptyList.isNonEmptyList = x => x != null && x[Symbols.NonEmptyList] === true;
-// 초기값 없는 접기 — head 가 씨앗이다. Monoid 가 아니라 Semigroup 만으로 접는 문. docs/NonEmptyList.md
-NonEmptyList.reduceLeft = (f, nel) => {
-    types.isFunction(f) || raise(new TypeError('NonEmptyList.reduceLeft: first argument must be a function'));
-    NonEmptyList.isNonEmptyList(nel) || raise(new TypeError('NonEmptyList.reduceLeft: second argument must be a NonEmptyList'));
-    return nel.tail.reduce(f, nel.head);
-};
-NonEmptyList.reduceMap = (semigroup, f, nel) => {
-    (semigroup && semigroup[Symbols.Semigroup] === true) || raise(new TypeError('NonEmptyList.reduceMap: first argument must be a Semigroup'));
-    types.isFunction(f) || raise(new TypeError('NonEmptyList.reduceMap: second argument must be a function'));
-    NonEmptyList.isNonEmptyList(nel) || raise(new TypeError('NonEmptyList.reduceMap: third argument must be a NonEmptyList'));
-    return nel.tail.reduce((acc, x) => semigroup.concat(acc, f(x)), f(nel.head));
-};
+// 위임 — 접기의 소유자는 Reducible 인스턴스다(검증·문안 포함). docs/NonEmptyList.md
+NonEmptyList.reduceLeft = (f, nel) => Reducible.types.NonEmptyListReducible.reduceLeft(f, nel);
+NonEmptyList.reduceMap = (semigroup, f, nel) => Reducible.types.NonEmptyListReducible.reduceMap(semigroup, f, nel);
 class NonEmptyListFunctor extends Functor {
     constructor() {
         super((f, w) => new NonEmptyList(f(w.head), w.tail.map(f)),
@@ -2263,6 +2298,15 @@ class NonEmptyListFoldable extends Foldable {
     }
 }
 modules.push(NonEmptyListFoldable);
+class NonEmptyListReducible extends Reducible {
+    constructor() {
+        super(Foldable.types.NonEmptyListFoldable,
+            (f, w) => w.tail.reduce(f, w.head),
+            (sg, f, w) => w.tail.reduce((acc, x) => sg.concat(acc, f(x)), f(w.head)),
+            'NonEmptyList', Reducible.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListReducible);
 class NonEmptyListTraversable extends Traversable {
     constructor() {
         super(Functor.types.NonEmptyListFunctor, Foldable.types.NonEmptyListFoldable,
@@ -3688,7 +3732,7 @@ const extra = (() => {
 export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
-    Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable,
+    Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable, Reducible,
     Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
