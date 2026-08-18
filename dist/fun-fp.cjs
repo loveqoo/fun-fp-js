@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: f20330116dfdd8f643900716c63ec5c53c100550
- * Built: 2026-08-18T09:39:40.193Z
+ * Commit: d16ad2d254a8e0027a05213601e5622c03b868e3
+ * Built: 2026-08-18T14:41:04.968Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -79,6 +79,7 @@ const Symbols = {
     Impure: Symbol.for('fun-fp-js/Impure'),
     Reduced: Symbol.for('fun-fp-js/Reduced'),
     Validation: Symbol.for('fun-fp-js/Validation'),
+    NonEmptyList: Symbol.for('fun-fp-js/NonEmptyList'),
     Reader: Symbol.for('fun-fp-js/Reader'),
     Writer: Symbol.for('fun-fp-js/Writer'),
     State: Symbol.for('fun-fp-js/State')
@@ -187,9 +188,7 @@ const range = n => {
     return Array.from({ length: n }, (_, i) => i);
 };
 const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
-// 레지스트리에 쓰는 **유일한 문**. 직접 대입하지 마라 — docs/internals.md#registry-writes
-// 역인덱스(.type -> 인스턴스들)를 여기서 함께 갱신하므로, 우회하면 Algebra.all 에서
-// 조용히 사라진다. tests/registry-api.test.js 가 인덱스와 레지스트리의 일치를 강제한다.
+// 레지스트리에 쓰는 **유일한 문** — 우회하면 역인덱스가 어긋나 Algebra.all 에서 조용히 사라진다. docs/internals.md#registry-writes
 const registryIndex = new Map();
 const registerAs = (types, key, instance) => {
     types[key] = instance;
@@ -339,7 +338,7 @@ const checkAndSet = (config => {
             strict: (instance, promap) => {
                 typeof promap !== 'function' && raise(new TypeError('Profunctor.promap: promap must be a function'));
                 // 세 번째 인자는 profunctor 값이지 반드시 함수는 아니다 — Tagged a b = b 다.
-                // isFunction 으로 못 박으면 Tagged 를 등록할 수 없다(2026-08-11 기록이 남긴 숙제).
+                // isFunction 으로 못 박으면 Tagged 를 등록할 수 없다.
                 // instance.type 으로 보면 'function' 은 전과 같고 'any' 는 통과한다.
                 instance.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.check(fn, instance.type)) ? promap(f, g, fn) : raise(new TypeError(`Profunctor.promap: f and g must be functions and the third argument must match ${instance.type}`));
             },
@@ -677,8 +676,7 @@ class Profunctor extends Algebra {
     promap() { raise(new Error('Profunctor: promap is not implemented')); }
 }
 Profunctor.prototype[Symbols.Profunctor] = true;
-// ── Static Land 밖의 셋 — optics 가 요구한다. 근거는 docs/internals.md#optics ──
-// first/left/wander 가 각각 Lens/Prism/Traversal 을 낸다. 표준 이름을 쓰므로 짝(second/right)도 진다.
+// ── Static Land 밖의 셋 — first/left/wander 가 각각 Lens/Prism/Traversal 을 낸다. docs/internals.md#optics ──
 class Strong extends Profunctor {
     constructor(profunctor, first, second, type, registry, ...aliases) {
         checkAndSet('Strong.super')(profunctor);
@@ -747,10 +745,7 @@ class Alt extends Functor {
     alt() { raise(new Error('Alt: alt is not implemented')); }
 }
 Alt.prototype[Symbols.Alt] = true;
-// Plus 는 alt + zero 를 다 가져 구조적으로 Monoid 다 — docs/internals.md#plus-monoid
-// 키는 **그 타입의 이름 그대로**다. 한때 `plus(<별칭>)` 이었는데 그것은 버그였다 —
-// `f(x)` 는 `F<X>` 를 뜻하는 문법인데 `plus(maybe)` 는 Plus 가 아니라 Monoid 를 돌려줬고,
-// 괄호 안이 원소가 아니라 **출신**이었다. 출신 기록은 타입이 아니다. docs/internals.md#plus-monoid
+// Plus 는 alt+zero 를 다 가져 구조적으로 Monoid 다. 키는 그 타입 이름 그대로 — docs/internals.md#plus-monoid
 const deriveFromPlus = (plus, type, aliases) => {
     const semigroup = new Semigroup(plus.alt, type);
     const monoid = new Monoid(semigroup, plus.zero, type);
@@ -881,8 +876,7 @@ const addResolver = (TypeClass, resolver) => {
     const prev = TypeClass.resolver;
     TypeClass.resolver = key => prev(key) || resolver(key);
 };
-// Algebra.all(<타입키>) — 그 타입의 인스턴스를 한 객체로. 쓰는 법 docs/README.md,
-// 묶는 기준(.type)·이름 규칙·캐시 없는 비용은 docs/internals.md#algebra-all
+// Algebra.all(<타입키>) — 그 타입의 인스턴스를 한 객체로. docs/internals.md#algebra-all
 const capHead = s => s.charAt(0).toUpperCase() + s.slice(1);
 const camelHead = s => s.charAt(0).toLowerCase() + s.slice(1);
 const composedName = (key, className) =>
@@ -1117,8 +1111,7 @@ class StringOrd extends Ord {
     }
 }
 modules.push(StringOrd);
-// 길이 순서·로케일 순서는 글자 동등과 다른 동치를 낳는다('ab' 와 'cd' 는 길이로 같은 자리다).
-// 그 동치가 곧 짝 Setoid 이고, Ord 가 그것을 싣는다 — docs/internals.md#ord-setoid
+// 길이·로케일 순서는 글자 동등과 다른 동치를 낳고, 그 동치가 곧 짝 Setoid 다 — docs/internals.md#ord-setoid
 class StringLengthSetoid extends Setoid {
     constructor() {
         super((x, y) => x.length === y.length, 'string', Setoid.types);
@@ -1215,9 +1208,7 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
     return { key: best, instance };
 };
 /* Identity / Const — traverse 에 넘기는 Applicative 두 개 */
-// 캐리어가 스스로를 밝힌다 — { value } 만 두면 Identity·Const·평범한 객체가 한 태그를
-// 공유해 서로 섞여 들어간다(실측). 모양이 객체인 것과 타입이 Object 인 것은 다른 말이다.
-// docs/internals.md#identity-const
+// 캐리어가 스스로를 밝힌다 — { value } 만으로는 Identity·Const·평범한 객체가 섞인다. docs/internals.md#identity-const
 class Identity {
     constructor(value) { this.value = value; this._typeName = 'Identity'; }
     map(f) { return Functor.lookup('identity').map(f, this); }
@@ -1285,13 +1276,11 @@ Applicative.Const = monoid => {
         new Apply(new Functor((_f, x) => x, tag),
                   (a, b) => constOf(m.concat(a.value, b.value)), tag),
         () => constOf(m.empty()), tag);
-    // of 는 값을 버린다 — 법칙이 그것을 요구한다(아무 값이나 들어오는데 상자는 모노이드 값만
-    // 담는다). 값을 담는 수단이 따로 있어야 한다 — docs/internals.md#identity-const
+    // of 는 값을 버린다(법칙 요구) — 값을 담는 수단은 wrap 이 따로 진다. docs/internals.md#identity-const
     result.wrap = v => constOf(m.concat(m.empty(), v));
     result.unwrap = c => c.value;
     if (key !== null) {
-        // identity 와 같이 3단으로 등록한다 — Applicative 만 올리면 Functor.lookup('const(array)')
-        // 가 안 된다(회차 1 리뷰 #2 를 identity 에서 고치고 여기서 재발시켰다).
+        // identity 와 같이 3단 등록 — Applicative 만 올리면 Functor.lookup('const(array)') 가 안 된다.
         registerAs(Functor.types, `const(${key})`, result);
         registerAs(Apply.types, `const(${key})`, result);
         registerAs(Applicative.types, `const(${key})`, result);
@@ -1632,9 +1621,7 @@ class EitherCategory extends Category {
     }
 }
 modules.push(EitherCategory);
-// Filterable 로 등록하지 않는다 — 명세의 소멸·항등 법칙을 동시에 만족할 수 없다.
-// Left 에는 술어를 부를 값이 없어 보존하거나 뭉개거나 하나로 고정해야 하는데, 보존하면
-// 소멸이, 뭉개면 항등이 깨진다. 왼쪽 Monoid 를 받아도 같다 — docs/internals.md#filterable
+// Filterable 로 등록하지 않는다 — 소멸·항등 법칙을 동시에 만족할 수 없다. docs/internals.md#filterable
 const eitherFilter = (pred, e, onFalse = identity) =>
     types.checkFunction(pred, 'Either.filter') && Either.isEither(e)
         ? (e.isLeft() ? e : (pred(e.value) ? e : Either.Left(onFalse(e.value))))
@@ -1803,8 +1790,7 @@ addResolver(Applicative, key => {
     return m ? Applicative.Const(m[1]) : null;
 });
 /* Container Setoid / Ord — 안쪽 비교법을 받아 상자 비교법을 만든다 */
-// 안쪽을 항상 밝힌다: Setoid.lookup('maybe(number)'). 매개변수 없는 'maybe' 는 없다.
-// Either 는 자리가 둘이라 비교법도 둘을 받는다 — docs/internals.md#container-setoid
+// 안쪽을 항상 밝힌다('maybe(number)'). Either 는 자리가 둘이라 비교법도 둘 — docs/internals.md#container-setoid
 const normalizeSetoidKey = normalizeTypeClassKey(Setoid, Symbols.Setoid, 'normalizeSetoidKey');
 const normalizeOrdKey = normalizeTypeClassKey(Ord, Symbols.Ord, 'normalizeOrdKey');
 const resolveInnerSetoid = innerResolver(normalizeSetoidKey, 'Setoid');
@@ -1832,13 +1818,8 @@ Setoid.Either = cachedInnerFactory('Setoid.Either', resolveInnerSetoid, Setoid.t
     (l, r) => new Setoid((a, b) => a.isLeft()
         ? b.isLeft() && l.equals(a.value, b.value)
         : b.isRight() && r.equals(a.value, b.value), 'Either', null));
-// Either 의 Ord 는 만들지 않는다 — Left/Right 중 무엇이 먼저인지에 정답이 없다.
-// fp-ts 도 코어에서 뺐다. 근거: docs/internals.md#container-setoid
-// 레코드는 필드마다 타입이 달라 안쪽 비교법이 하나로 안 정해진다 — 필드별로 받는다.
-// fp-ts 의 Eq.struct 에 해당. 내부 캐시 키만 필드 이름 정렬로 정규화한다(조회 키는 없다).
-// 선언한 필드 집합과 실제 키 집합이 정확히 같아야 한다(엄격) — 초과 필드를 무시하면
-// 검사가 아니라 표본 대조가 된다. Ord.Struct 는 없다 — 레코드의 순서에 정답이 없다.
-// 위 뼈대를 안 쓴다 — 안쪽이 위치 인자가 아니라 이름 붙은 필드고, 레지스트리에도 안 올린다.
+// Either 의 Ord 는 만들지 않는다 — Left/Right 의 순서에 정답이 없다. docs/internals.md#container-setoid
+// 레코드는 필드별 비교법을 받고(Eq.struct 격) 필드 집합은 엄격 일치, Ord.Struct 는 없다 — 같은 앵커.
 Setoid.Struct = fields => {
     types.isPlainObject(fields) || raise(new TypeError('Setoid.Struct: fields must be a plain object'));
     const names = Object.keys(fields).sort();
@@ -1993,8 +1974,7 @@ class TaskCategory extends Category {
     }
 }
 modules.push(TaskCategory);
-// Either 와 같은 이유로 Filterable 이 아니다 — 거부된 Task 는 오류를 지고 있어 정규 빈
-// 상자가 없다. docs/internals.md#filterable
+// Either 와 같은 이유로 Filterable 이 아니다 — 정규 빈 상자가 없다. docs/internals.md#filterable
 const taskFilter = (pred, t) =>
     types.checkFunction(pred, 'Task.filter') && Task.isTask(t)
         ? new Task((reject, resolve) => t.fork(reject, x => pred(x) ? resolve(x) : reject(x)))
@@ -2198,6 +2178,127 @@ class ValidationFoldable extends Foldable {
     }
 }
 modules.push(ValidationFoldable);
+/* NonEmptyList */
+// 비어 있을 수 없는 목록 — 비지 않음을 검사가 아니라 구조(head 자리)가 보증한다. docs/NonEmptyList.md
+class NonEmptyList {
+    constructor(head, tail) {
+        Array.isArray(tail) || raise(new TypeError('NonEmptyList: tail must be an array'));
+        // 복사 후 동결 — 호출자 배열 별칭도, 직접 push 도 이 값을 못 바꾼다(d.ts 의 ReadonlyArray 계약).
+        this.head = head; this.tail = Object.freeze(tail.slice()); this._typeName = 'NonEmptyList';
+    }
+    toArray() { return [this.head, ...this.tail]; }
+    last() { return this.tail.length ? this.tail[this.tail.length - 1] : this.head; }
+}
+NonEmptyList.prototype[Symbols.NonEmptyList] = true;
+NonEmptyList.of = x => new NonEmptyList(x, []);
+NonEmptyList.make = (head, ...rest) => new NonEmptyList(head, rest);
+NonEmptyList.fromArray = xs => (Array.isArray(xs) && xs.length > 0)
+    ? Maybe.Just(new NonEmptyList(xs[0], xs.slice(1)))
+    : Maybe.Nothing();
+NonEmptyList.isNonEmptyList = x => x != null && x[Symbols.NonEmptyList] === true;
+// 초기값 없는 접기 — head 가 씨앗이다. Monoid 가 아니라 Semigroup 만으로 접는 문. docs/NonEmptyList.md
+NonEmptyList.reduceLeft = (f, nel) => {
+    types.isFunction(f) || raise(new TypeError('NonEmptyList.reduceLeft: first argument must be a function'));
+    NonEmptyList.isNonEmptyList(nel) || raise(new TypeError('NonEmptyList.reduceLeft: second argument must be a NonEmptyList'));
+    return nel.tail.reduce(f, nel.head);
+};
+NonEmptyList.reduceMap = (semigroup, f, nel) => {
+    (semigroup && semigroup[Symbols.Semigroup] === true) || raise(new TypeError('NonEmptyList.reduceMap: first argument must be a Semigroup'));
+    types.isFunction(f) || raise(new TypeError('NonEmptyList.reduceMap: second argument must be a function'));
+    NonEmptyList.isNonEmptyList(nel) || raise(new TypeError('NonEmptyList.reduceMap: third argument must be a NonEmptyList'));
+    return nel.tail.reduce((acc, x) => semigroup.concat(acc, f(x)), f(nel.head));
+};
+class NonEmptyListFunctor extends Functor {
+    constructor() {
+        super((f, w) => new NonEmptyList(f(w.head), w.tail.map(f)),
+            'NonEmptyList', Functor.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListFunctor);
+class NonEmptyListApply extends Apply {
+    constructor() {
+        super(Functor.types.NonEmptyListFunctor, (ff, fa) => {
+            const out = [];
+            for (const f of ff.toArray()) for (const x of fa.toArray()) out.push(f(x));
+            return new NonEmptyList(out[0], out.slice(1));
+        }, 'NonEmptyList', Apply.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListApply);
+class NonEmptyListApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.NonEmptyListApply, x => NonEmptyList.of(x),
+            'NonEmptyList', Applicative.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListApplicative);
+class NonEmptyListChain extends Chain {
+    constructor() {
+        super(Apply.types.NonEmptyListApply, (f, fa) => {
+            const out = [];
+            for (const x of fa.toArray()) { const r = f(x); out.push(r.head, ...r.tail); }
+            return new NonEmptyList(out[0], out.slice(1));
+        }, 'NonEmptyList', Chain.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListChain);
+class NonEmptyListMonad extends Monad {
+    constructor() {
+        super(Applicative.types.NonEmptyListApplicative, Chain.types.NonEmptyListChain,
+            'NonEmptyList', Monad.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListMonad);
+class NonEmptyListSemigroup extends Semigroup {
+    constructor() {
+        super((a, b) => new NonEmptyList(a.head, [...a.tail, b.head, ...b.tail]),
+            'NonEmptyList', Semigroup.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListSemigroup);
+class NonEmptyListAlt extends Alt {
+    constructor() {
+        // alt ≡ concat — 실패 개념이 없는 타입의 대안은 결합이다. Plus(zero=빈 목록)는 구조상 불가.
+        super(Functor.types.NonEmptyListFunctor,
+            (a, b) => Semigroup.types.NonEmptyListSemigroup.concat(a, b),
+            'NonEmptyList', Alt.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListAlt);
+class NonEmptyListFoldable extends Foldable {
+    constructor() {
+        super((f, init, w) => w.toArray().reduce(f, init),
+            'NonEmptyList', Foldable.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListFoldable);
+class NonEmptyListTraversable extends Traversable {
+    constructor() {
+        super(Functor.types.NonEmptyListFunctor, Foldable.types.NonEmptyListFoldable,
+            (A, f, w) => A.map(arr => new NonEmptyList(arr[0], arr.slice(1)),
+                w.toArray().reduce((acc, x) => A.ap(A.map(xs => y => xs.concat([y]), acc), f(x)), A.of([]))),
+            'NonEmptyList', Traversable.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListTraversable);
+class NonEmptyListExtend extends Extend {
+    constructor() {
+        super(Functor.types.NonEmptyListFunctor, (f, w) => {
+            const arr = w.toArray();
+            const out = arr.map((_, i) => f(new NonEmptyList(arr[i], arr.slice(i + 1))));
+            return new NonEmptyList(out[0], out.slice(1));
+        }, 'NonEmptyList', Extend.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListExtend);
+class NonEmptyListComonad extends Comonad {
+    constructor() {
+        // extract = head — 빈 경우가 없어 전체 정의된다. 배열 Comonad 의 빈 배열 구멍을 채우는 자리.
+        super(Extend.types.NonEmptyListExtend, w => w.head,
+            'NonEmptyList', Comonad.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListComonad);
 /* Reader */
 class Reader {
     constructor(run) {
@@ -2879,9 +2980,7 @@ Wander.Forget = monoid => {
         p => forgetOf(e => Either.fold(() => m.empty(), p.run, e)), tag);
     const result = new Wander(S, Ch,
         (traverse, p) => forgetOf(s => C.unwrap(traverse(C, compose2(C.wrap, p.run), s))), tag);
-    // Const 와 같은 문이다 — 벌거벗은 함수를 Forget 으로 만들고, 다시 꺼낸다.
-    // 들어올 때 C.wrap 을 지나므로 fn 이 모노이드 값을 안 내놓으면 거기서 걸린다.
-    // Lens 경로는 traverse 를 안 지나 검사가 없었다 — docs/internals.md#optics
+    // Const 와 같은 문 — 들어올 때 C.wrap 이 모노이드 값 검사를 진다(Lens 경로는 traverse 를 안 지난다). docs/internals.md#optics
     result.wrap = fn => forgetOf(a => C.unwrap(C.wrap(fn(a))));
     result.unwrap = p => p.run;
     if (key !== null) {
@@ -2905,9 +3004,7 @@ load(...modules);
 /* Optics */
 // transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
 const { Optics } = (() => {
-    // Profunctor 인코딩: Optic s a = P => P a a -> P s s
-    // 주입하는 P 가 연산을 정한다(함수=over, Forget=view, Tagged=review).
-    // first=Lens · left=Prism · wander=Traversal — docs/internals.md#optics
+    // Optic s a = P => P a a -> P s s — 주입하는 P 가 연산을 정한다(함수=over·Forget=view·Tagged=review). docs/internals.md#optics
 
     // ── 주입하는 P 셋 — 전부 레지스트리에서 온다 ──────────────────────
     // 사설 딕셔너리가 아니다. Strong/Choice/Wander 인스턴스라 법칙·명세·.type 게이트가 본다.
@@ -2973,8 +3070,7 @@ const { Optics } = (() => {
         return optic(P)(pab);
     };
     const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
-    // 읽기 셋은 전부 이것의 특수 경우다. monoid 를 항상 요구하는 이유는 Lens/Iso
-    // 경로에서 안 쓰여 검사가 optic 종류에 따라 갈리기 때문 — docs/internals.md#optics
+    // 읽기 셋의 공통 몸 — monoid 상시 요구는 optic 종류별 검사 갈림을 막는다. docs/internals.md#optics
     const foldMapOf = (monoid, optic, f, s) => {
         // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그러므로
         // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
@@ -2995,8 +3091,7 @@ const { Optics } = (() => {
         typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
         return foldMapOf(Monoid.lookup('maybe'), optic, Maybe.Just, s);
     };
-    // Lens/Iso 전용. Forget 에는 wander 가 있어 구조가 못 막으므로 대상 수를 센다
-    // — docs/internals.md#optics
+    // Lens/Iso 전용 — Forget 은 wander 가 있어 구조가 못 막으므로 대상 수를 센다. docs/internals.md#optics
     const view = (lens, s) => {
         typeof lens !== 'function' && raise(new TypeError('view: optic must be a function'));
         const targets = toList(lens, s);
@@ -3059,8 +3154,7 @@ const liftCont = f => f._mapChain
     ? a => applyMapChain(f._mapChain, f.cont(a))
     : f.cont;
 
-// Functor → Apply → Applicative → Chain → Monad 5단 동적 등록. registry=null 로 키 오염
-// 방지, nominal typing, XT.of 선완성 전제 — docs/internals.md#transformer-register
+// 5단 동적 등록 — registry=null 키 오염 방지·nominal typing·XT.of 선완성 전제. docs/internals.md#transformer-register
 const registerTransformerTypeClasses = (XT, typeName, alias) => {
     // 같은 alias 를 다른 트랜스포머가 덮으면 먼저 만든 쪽 인스턴스가 통째로 죽는다 — 거부한다.
     Object.prototype.hasOwnProperty.call(Functor.types, alias)
@@ -3098,8 +3192,7 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
     XT.composeK = (...fns) => composeK(tMonad)(fns);
 };
 
-// 자동 alias 는 실행 순서에 따라 달라진다 — M 은 문자열로 넘겨라.
-// docs/internals.md#transformer-register
+// 자동 alias 는 실행 순서에 따라 달라진다 — M 은 문자열로. docs/internals.md#transformer-register
 let _transformerAutoId = 0;
 const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
 
@@ -3605,7 +3698,7 @@ return {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable,
-    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, Reader, Writer, State,
+    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State,
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
