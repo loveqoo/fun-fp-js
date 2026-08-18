@@ -89,10 +89,11 @@ test('extract — 빈 경우가 없어 항상 값을 준다 (배열 Comonad 의 
     assertEquals(fp.Comonad.lookup('array').extract([]), undefined);
 });
 
-test('레지스트리 — Algebra.all 에 11개 클래스가 선다', () => {
+test('레지스트리 — Algebra.all 에 12개 클래스가 선다', () => {
     const keys = Object.keys(fp.Algebra.all('nonemptylist')).sort();
-    assertEquals(keys.length, 11, '인스턴스 수');
+    assertEquals(keys.length, 12, '인스턴스 수');
     assertEquals(keys, ['nonEmptyListAlt', 'nonEmptyListApplicative', 'nonEmptyListApply',
-        'nonEmptyListChain', 'nonEmptyListComonad', 'nonEmptyListExtend', 'nonEmptyListFoldable',
-        'nonEmptyListFunctor', 'nonEmptyListMonad', 'nonEmptyListSemigroup', 'nonEmptyListTraversable']);
+        'nonEmptyListChain', 'nonEmptyListChainRec', 'nonEmptyListComonad', 'nonEmptyListExtend',
+        'nonEmptyListFoldable', 'nonEmptyListFunctor', 'nonEmptyListMonad', 'nonEmptyListSemigroup',
+        'nonEmptyListTraversable']);
 });

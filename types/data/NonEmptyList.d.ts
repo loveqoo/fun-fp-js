@@ -4,8 +4,8 @@
  *
  * Owns: the `NonEmptyList<A>` interface, `NonEmptyListTypeLambda`, the
  * runtime `const NonEmptyList` namespace, and the key `'nonemptylist'`
- * on Functor / Apply / Applicative / Chain / Monad / Semigroup / Alt /
- * Foldable / Traversable / Extend / Comonad registries.
+ * on Functor / Apply / Applicative / Chain / ChainRec / Monad / Semigroup /
+ * Alt / Foldable / Traversable / Extend / Comonad registries.
  *
  * Deliberately absent: Monoid / Plus / Alternative (their identity is
  * the empty list) and Filterable (filtering can empty the container).
@@ -46,13 +46,14 @@ export declare const NonEmptyList: {
 };
 
 // ── Register 'nonemptylist' on type-class registries ─────────────────
-// Runtime: Functor, Apply, Applicative, Chain, Monad, Semigroup, Alt,
-// Foldable, Traversable, Extend, Comonad.
+// Runtime: Functor, Apply, Applicative, Chain, ChainRec, Monad, Semigroup,
+// Alt, Foldable, Traversable, Extend, Comonad.
 declare module "../TypeClasses" {
     interface FunctorInstances     { readonly nonemptylist: NonEmptyListTypeLambda }
     interface ApplyInstances       { readonly nonemptylist: NonEmptyListTypeLambda }
     interface ApplicativeInstances { readonly nonemptylist: NonEmptyListTypeLambda }
     interface ChainInstances       { readonly nonemptylist: NonEmptyListTypeLambda }
+    interface ChainRecInstances    { readonly nonemptylist: NonEmptyListTypeLambda }
     interface MonadInstances       { readonly nonemptylist: NonEmptyListTypeLambda }
     interface AltInstances         { readonly nonemptylist: NonEmptyListTypeLambda }
     interface FoldableInstances    { readonly nonemptylist: NonEmptyListTypeLambda }

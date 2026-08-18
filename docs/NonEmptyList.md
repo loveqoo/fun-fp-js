@@ -52,10 +52,10 @@ console.log(thrown);   // foldMap: second argument must be a Monoid
 console.log(NonEmptyList.reduceLeft((a, b) => a + b, nel));   // 16
 ```
 
-## 인스턴스 11개, 그리고 의도된 부재 4개
+## 인스턴스 12개, 그리고 의도된 부재 4개
 
-Functor·Apply·Applicative·Chain·Monad·Semigroup·Alt·Foldable·Traversable·Extend·
-Comonad 가 등록되어 있습니다(`lookup('nonemptylist')`). 특히 `extract`(Comonad) 는
+Functor·Apply·Applicative·Chain·ChainRec·Monad·Semigroup·Alt·Foldable·Traversable·
+Extend·Comonad 가 등록되어 있습니다(`lookup('nonemptylist')`). 특히 `extract`(Comonad) 는
 빈 경우가 없어 **항상 값을 주는 온전한 함수**입니다 — 배열 Comonad 의
 `extract([]) === undefined` 구멍이 이 타입에는 없습니다.
 
@@ -72,6 +72,33 @@ console.log(Functor.lookup('nonemptylist').map(x => x * 2, NonEmptyList.make(1, 
 이유입니다: "Semigroup 이지만 Monoid 아님"이 `first`/`last` 라는 추상 인스턴스 둘이
 아니라 만질 수 있는 데이터 타입으로 명부에 섭니다. 거르고 싶으면 `toArray` 로 나가는
 것이 정직한 경로입니다.
+
+## 언제 쓰고, 언제 안 쓰나
+
+- **배열 + if 가 맞는 자리** — 한 함수 안에서 한 번 확인하고 끝나는 경우입니다.
+  `if (arr.length === 0) return;` 이 가장 단순하고, NonEmptyList 로 바꿔서 좋아지는
+  것이 없습니다.
+- **NonEmptyList 가 맞는 자리** — "최소 하나는 있다"는 조건이 **함수 여럿을 건너
+  다녀야 할 때**입니다. 배열을 주고받으면 받는 함수마다 빈 배열 걱정을 반복하지만,
+  NonEmptyList 를 주고받으면 걱정은 목록이 처음 만들어지는 곳(`fromArray`) 한 번으로
+  끝납니다. 검사를 없애는 도구가 아니라, **여러 번 하던 검사를 한 번으로 줄이는**
+  도구입니다.
+
+```javascript
+const { NonEmptyList, Maybe } = FunFP;
+
+// 서명이 곧 계약 — NonEmptyList 를 받는 함수는 빈 경우를 고려하지 않는다.
+// (JS 는 타입을 강제하지 않는다 — 계약을 지키는 쪽은 fromArray 로 만들어 넘기는 호출자다)
+const pickLeader = candidates => candidates.head;   // 검사 없음 — 계약이 대신한다
+const report = candidates =>
+    '대표: ' + pickLeader(candidates) + ' / 총 ' + candidates.toArray().length + '명';
+
+// 걱정은 경계 한 곳에서만 — 안쪽 함수들은 전부 검사 없이 이어진다
+console.log(Maybe.fold(() => '후보가 없다', report, NonEmptyList.fromArray(['갑', '을'])));
+// 대표: 갑 / 총 2명
+console.log(Maybe.fold(() => '후보가 없다', report, NonEmptyList.fromArray([])));
+// 후보가 없다
+```
 
 ## 관련
 

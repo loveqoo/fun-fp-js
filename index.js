@@ -2219,6 +2219,20 @@ class NonEmptyListChain extends Chain {
     }
 }
 modules.push(NonEmptyListChain);
+class NonEmptyListChainRec extends ChainRec {
+    constructor() {
+        super(Chain.types.NonEmptyListChain, (f, i) => {
+            const res = [];
+            const queue = f(ChainRec.next, ChainRec.done, i).toArray();
+            while (queue.length > 0) {
+                const step = queue.shift();
+                step.tag === 'next' ? queue.unshift(...f(ChainRec.next, ChainRec.done, step.value).toArray()) : res.push(step.value);
+            }
+            return new NonEmptyList(res[0], res.slice(1));
+        }, 'NonEmptyList', ChainRec.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListChainRec);
 class NonEmptyListMonad extends Monad {
     constructor() {
         super(Applicative.types.NonEmptyListApplicative, Chain.types.NonEmptyListChain,
