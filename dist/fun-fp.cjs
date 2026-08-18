@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 8a333ecee2c90694bd2f01c8336d260032347e22
- * Built: 2026-08-18T14:50:57.723Z
+ * Commit: 40d3bf5886b3e508433bad8e1b19179e9a5b7cfa
+ * Built: 2026-08-18T15:05:03.686Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -2242,6 +2242,20 @@ class NonEmptyListChain extends Chain {
     }
 }
 modules.push(NonEmptyListChain);
+class NonEmptyListChainRec extends ChainRec {
+    constructor() {
+        super(Chain.types.NonEmptyListChain, (f, i) => {
+            const res = [];
+            const queue = f(ChainRec.next, ChainRec.done, i).toArray();
+            while (queue.length > 0) {
+                const step = queue.shift();
+                step.tag === 'next' ? queue.unshift(...f(ChainRec.next, ChainRec.done, step.value).toArray()) : res.push(step.value);
+            }
+            return new NonEmptyList(res[0], res.slice(1));
+        }, 'NonEmptyList', ChainRec.types, 'nonEmptyList');
+    }
+}
+modules.push(NonEmptyListChainRec);
 class NonEmptyListMonad extends Monad {
     constructor() {
         super(Applicative.types.NonEmptyListApplicative, Chain.types.NonEmptyListChain,
