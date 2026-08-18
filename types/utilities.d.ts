@@ -7,7 +7,7 @@
  *   3. Variadic compose / pipe (overloads 1..5)
  *   4. Variadic curry (overloads 1..5)
  *   5. Predicates
- *   6. Effects (tap, also, into, partial, once, converge, useOrLift)
+ *   6. Effects (tap, also, pipeFrom, partial, once, converge, useOrLift)
  *   7. Error (runCatch)
  *   8. Array helpers (range, rangeBy)
  *   9. Global type-class combinators (sequence, foldMap, lift, pipeK,
@@ -155,9 +155,9 @@ export declare function tap<A>(
 export declare function also<A>(
     a: A
 ): (...fs: ReadonlyArray<(a: A) => void>) => A;
-// into: `pipe` with value first — loose-typed because fs chain is
+// pipeFrom: `pipe` with value first — loose-typed because fs chain is
 // unknown at call site.
-export declare function into<A, R = unknown>(
+export declare function pipeFrom<A, R = unknown>(
     a: A
 ): (...fs: ReadonlyArray<(x: any) => any>) => R;
 

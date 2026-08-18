@@ -46,6 +46,17 @@
 
 ---
 
+## 닫힘 — 동명 `into` 정리: 최상위를 `pipeFrom` 으로 (2026-08-18)
+
+- **경위** — `fp.into`(뒤집힌 pipe, 문서 0건)와 `fp.transducer.into`(Clojure 정전
+  이름)가 동명. 소유자 결정: A안, 이름은 `pipeFrom`(pipe 가족 합류). transducer 쪽·
+  `also` 는 불변, 삭제는 안 함(YAGNI 복원 이력). [`plan/260818-pipefrom.md`](./plan/260818-pipefrom.md)
+- **실행** — index.js 2곳 + tests/func.test.js 2곳(+import) + types 4곳 개명(전부
+  count==1 단언), CHANGELOG 파괴적 변경 절. 48/48 + 타입체크, baseline 차이 정확히
+  1행(최상위 export: into 제거·pipeFrom 추가 — 계획된 이 세션 첫 의도적 제거), dist 재빌드.
+- **판단 기록** — 기계적 개명이라 코덱스 리뷰·뮤테이션은 생략(동작 무변경은 기존
+  단위 테스트가, 이름 정합은 타입체크·baseline·dist-sync 가 잡는다).
+
 ## 닫힘 — index.js 주석 소극 정리 (2026-08-18)
 
 - 소유자 지시(A안). 실측: 주석 블록 140개 중 한 줄 규칙 위반 56개(141줄), docs 앵커

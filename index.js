@@ -143,7 +143,7 @@ const snd = apply(flip(identity));
 const swap = apply(flip(tuple));
 const tap = (...fs) => x => (fs.forEach(f => runCatch(f, config.tapErrorHandler)(x)), x);
 const also = flipCurried(tap);
-const into = flipCurried(pipe);
+const pipeFrom = flipCurried(pipe);
 const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
 const useOrLift = check => lift => x => predicate(check)(x) ? x : types.checkFunction(lift, 'useOrLift')(x);
 const once = f => {
@@ -3682,6 +3682,6 @@ export default {
     constant, tuple, fst, snd, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
-    tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
+    tap, also, pipeFrom, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
     extra, setStrictMode, setTapErrorHandler
 };

@@ -7,7 +7,7 @@ const {
     apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
-    tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer,
+    tap, also, pipeFrom, useOrLift, partial, once, converge, range, rangeBy, transducer,
     composeK, foldMap, Maybe, Either, Foldable, Monoid, Monad, setTapErrorHandler
 } = fp;
 
@@ -273,10 +273,10 @@ test('also - flipped tap (value first, then functions)', () => {
     assertEquals(captured, 5);
 });
 
-test('into - flipped pipe (value first, then functions)', () => {
+test('pipeFrom - flipped pipe (value first, then functions)', () => {
     const addOne = x => x + 1;
     const double = x => x * 2;
-    const result = into(5)(addOne, double);
+    const result = pipeFrom(5)(addOne, double);
     assertEquals(result, 12); // double(addOne(5)) = 12
 });
 

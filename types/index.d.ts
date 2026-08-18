@@ -136,7 +136,7 @@ import type {
     pipeWhile,
     tap,
     also,
-    into,
+    pipeFrom,
     useOrLift,
     partial,
     once,
@@ -230,7 +230,7 @@ declare const fp: {
     readonly pipeWhile: typeof pipeWhile;
     readonly tap: typeof tap;
     readonly also: typeof also;
-    readonly into: typeof into;
+    readonly pipeFrom: typeof pipeFrom;
     readonly useOrLift: typeof useOrLift;
     readonly partial: typeof partial;
     readonly once: typeof once;
