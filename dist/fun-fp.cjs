@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: d16ad2d254a8e0027a05213601e5622c03b868e3
- * Built: 2026-08-18T14:41:04.968Z
+ * Commit: 8a333ecee2c90694bd2f01c8336d260032347e22
+ * Built: 2026-08-18T14:50:57.723Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -166,7 +166,7 @@ const snd = apply(flip(identity));
 const swap = apply(flip(tuple));
 const tap = (...fs) => x => (fs.forEach(f => runCatch(f, config.tapErrorHandler)(x)), x);
 const also = flipCurried(tap);
-const into = flipCurried(pipe);
+const pipeFrom = flipCurried(pipe);
 const partial = (f, ...args) => (...next) => types.checkFunction(f, 'partial')(...args, ...next);
 const useOrLift = check => lift => x => predicate(check)(x) ? x : types.checkFunction(lift, 'useOrLift')(x);
 const once = f => {
@@ -3705,7 +3705,7 @@ return {
     constant, tuple, fst, snd, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
     predicate, predicateN, negate, negateN,
     flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
-    tap, also, into, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
+    tap, also, pipeFrom, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
     extra, setStrictMode, setTapErrorHandler
 };
 }));
