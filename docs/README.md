@@ -1,5 +1,7 @@
 # Fun-FP-JS 가이드
 
+> English: [./en/README.md](./en/README.md)
+
 함수형 프로그래밍 타입 클래스 문서 모음
 
 ## 먼저 이것부터 — `lookup` 과 `of` {#lookup-of}

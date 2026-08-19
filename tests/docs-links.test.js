@@ -10,6 +10,7 @@ import { test, logSection, allMatches } from './utils.js';
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const docsDir = join(rootDir, 'docs');
+const enDir = join(docsDir, 'en');
 
 // `[텍스트](./경로.md#앵커)` — 상대 경로만 본다. http(s) 는 이 게이트의 몫이 아니다(네트워크).
 const LINK = /\[[^\]]*\]\((\.{1,2}\/[^)\s#]+\.md)(#[^)\s]+)?\)/g;
@@ -39,6 +40,12 @@ const files = [
     { label: 'CLAUDE.md', path: join(rootDir, 'CLAUDE.md') },
     ...readdirSync(docsDir).filter(n => n.endsWith('.md')).sort()
         .map(n => ({ label: `docs/${n}`, path: join(docsDir, n) })),
+    // 번역본도 본다 — 영어판의 링크가 깨지면 영어 독자만 404 를 맞는다.
+    ...(existsSync(enDir)
+        ? readdirSync(enDir).filter(n => n.endsWith('.md')).sort()
+            .map(n => ({ label: `docs/en/${n}`, path: join(enDir, n) }))
+        : []),
+    { label: 'README.en.md', path: join(rootDir, 'README.en.md') },
 ];
 
 logSection('Docs links');

@@ -1,21 +1,21 @@
 # Validation
 
-> English: [./en/Validation.md](./en/Validation.md)
+> 한국어: [../Validation.md](../Validation.md)
 
-**Monoid 기반 에러 누적 타입**
+**A Monoid-based error-accumulating type**
 
-## 개념
+## Concept
 
-Validation은 **여러 검증 실패를 모두 수집**하는 타입입니다.
+Validation is a type that **collects all validation failures**.
 
-- `Valid(value)`: 검증 성공
-- `Invalid(errors, monoid)`: 검증 실패 (에러들을 Monoid로 누적)
+- `Valid(value)`: validation succeeded
+- `Invalid(errors, monoid)`: validation failed (errors accumulated via a Monoid)
 
-Either와 달리 `ap` 연산에서 모든 에러를 수집하여 병렬 검증에 최적화되어 있습니다.
+Unlike Either, its `ap` operation collects every error, which makes it well suited to parallel validation.
 
-## 왜 Validation인가?
+## Why Validation?
 
-### 문제: Either는 첫 에러에서 중단
+### The problem: Either stops at the first error
 
 ```javascript
 // Either는 fail-fast: 첫 번째 Left에서 멈춤
@@ -35,9 +35,9 @@ ap(Either.Right(x => y => [x, y]), e1);
 // Left('Invalid email') - e2의 에러는 보지 못함!
 ```
 
-폼 검증 시 사용자는 **모든 에러를 한번에** 보고 싶지만, Either는 첫 에러만 보여줍니다.
+When validating a form, users want to see **all the errors at once**, but Either only ever shows the first one.
 
-### 해결: Validation으로 모든 에러 수집
+### The fix: collect every error with Validation
 
 ```javascript
 const { Validation, Apply } = FunFP;
@@ -51,9 +51,9 @@ ap(ap(Validation.Valid(x => y => [x, y]), v1), v2);
 // Invalid(['Invalid email', 'Must be 18+']) - 모든 에러 수집!
 ```
 
-Validation은 Applicative의 `ap`가 에러를 **누적**하므로 병렬 검증에 적합합니다.
+Validation's `ap` (Applicative) **accumulates** errors instead of short-circuiting, which is exactly what parallel validation needs.
 
-## 생성
+## Construction
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -79,9 +79,9 @@ Validation.fromEither(Either.Right(5));     // Valid(5)
 Validation.fromEither(Either.Left(['err'])); // Invalid(['err'])
 ```
 
-## 주요 연산 (Static Land 우선)
+## Main operations (Static Land first)
 
-### map - 값 변환 (Functor)
+### map - transforming the value (Functor)
 
 ```javascript
 const { Functor } = FunFP;
@@ -94,9 +94,9 @@ map(x => x * 2, Validation.Invalid(['error'])); // Invalid(['error']) - 함수 �
 Validation.map(x => x * 2, Validation.Valid(5)); // Valid(10)
 ```
 
-### ap - 에러 누적 (Apply)
+### ap - accumulating errors (Apply)
 
-**Validation의 핵심**: `ap`가 Invalid들을 Monoid로 병합합니다.
+**The heart of Validation**: `ap` merges Invalid values with a Monoid.
 
 ```javascript
 const { Apply } = FunFP;
@@ -124,7 +124,7 @@ ap(vf2, va2);
 Validation.ap(vf, va); // Valid(10)
 ```
 
-### bimap - 양쪽 변환 (Bifunctor)
+### bimap - transforming both sides (Bifunctor)
 
 ```javascript
 const { Bifunctor } = FunFP;
@@ -155,7 +155,7 @@ Validation.bimap(
 // Invalid(['[ERROR] oops'])
 ```
 
-### fold - 패턴 매칭
+### fold - pattern matching
 
 ```javascript
 Validation.fold(
@@ -173,9 +173,9 @@ Validation.fold(
 // 'Errors: oops, fail'
 ```
 
-### Validation.collect - 여러 검증자 조합
+### Validation.collect - combining several validators
 
-**가장 실용적인 메서드**: Either를 반환하는 검증 함수들을 조합하여 모든 에러를 수집합니다.
+**The most practical method**: it combines validator functions that return Either into a single function that collects all their errors.
 
 ```javascript
 const { Either } = FunFP;
@@ -206,11 +206,11 @@ validateUser('K', 15);
 // Invalid(['Name too short', 'Must be 18+'])
 ```
 
-`collect`는 내부적으로 `ap`를 사용하여 에러를 누적합니다.
+`collect` uses `ap` internally to accumulate errors.
 
-## 인스턴스 메서드 (편의 기능)
+## Instance methods (convenience helpers)
 
-Static Land 및 Static 메서드 이후에 추가된 편의 메서드입니다.
+Convenience methods added after the Static Land and Static methods.
 
 ```javascript
 // map
@@ -221,7 +221,7 @@ Validation.Valid(42).toEither();           // Right(42)
 Validation.Invalid(['err']).toEither();    // Left(['err'])
 ```
 
-## 타입 체크
+## Type checks
 
 ```javascript
 Validation.isValidation(Validation.Valid(5));    // true
@@ -235,9 +235,9 @@ Validation.isInvalid(Validation.Invalid([]));    // true
 Validation.isInvalid(Validation.Valid(5));       // false
 ```
 
-## 실용적 예시
+## Practical examples
 
-### 1. 사용자 등록 폼 검증 (모든 에러 표시)
+### 1. Registration form validation (showing every error)
 
 ```javascript
 const { Either, Validation } = FunFP;
@@ -298,7 +298,7 @@ Validation.fold(
 // - Must be 18 or older
 ```
 
-### 2. API 파라미터 검증
+### 2. API parameter validation
 
 ```javascript
 const fetchUsers = () => Task.of([{ id: 1, name: 'Alice' }]);
@@ -356,7 +356,7 @@ listUsers('999', '-5', 'invalid');
 // ]}}
 ```
 
-### 3. 설정 파일 검증
+### 3. Config file validation
 
 ```javascript
 const { Either, Validation } = FunFP;
@@ -420,7 +420,7 @@ try {
 // timeout must be positive
 ```
 
-### 4. 커스텀 Monoid로 에러 메시지 연결
+### 4. Joining error messages with a custom Monoid
 
 ```javascript
 const { Monoid, Validation, Apply } = FunFP;
@@ -453,7 +453,7 @@ Validation.fold(
 // Errors: Invalid email. Password too short. Age out of range.
 ```
 
-### 5. 중첩된 객체 검증
+### 5. Validating a nested object
 
 ```javascript
 const { Either, Validation } = FunFP;
@@ -519,17 +519,17 @@ validateUserWithAddress('', 'bad', '', '', '123');
 
 | | Either | Validation |
 |---|---|---|
-| 에러 처리 | Fail-fast (첫 에러에서 중단) | 에러 누적 (모든 에러 수집) |
-| 사용 목적 | 순차 파이프라인 | 병렬 검증 |
-| Applicative `ap` | 첫 Left 반환 | Left들을 Monoid.concat |
-| Chain/Monad | 지원 (pipeK, chain) | 지원 안 함 (에러 누적과 충돌) |
-| 적합한 사례 | 데이터 변환 파이프라인 | 폼 검증, API 파라미터 검증 |
+| Error handling | Fail-fast (stops at the first error) | Accumulates errors (collects all of them) |
+| Purpose | Sequential pipelines | Parallel validation |
+| Applicative `ap` | Returns the first Left | Merges the Lefts with Monoid.concat |
+| Chain/Monad | Supported (pipeK, chain) | Not supported (conflicts with error accumulation) |
+| Good fit for | Data transformation pipelines | Form validation, API parameter validation |
 
-**선택 기준:**
-- **Either**: 단계별 변환에서 실패 시 즉시 중단하고 싶을 때
-- **Validation**: 여러 검증을 동시에 수행하고 모든 에러를 수집하고 싶을 때
+**How to choose:**
+- **Either**: when a step-by-step transformation should stop immediately on failure
+- **Validation**: when several validations should run at once and every error should be collected
 
-## Either와의 변환
+## Converting to and from Either
 
 ```javascript
 const { Either, Validation } = FunFP;
@@ -549,27 +549,27 @@ invalid.toEither();
 // Left(['error1', 'error2'])
 ```
 
-**변환 시나리오:**
-1. **Either → Validation**: 기존 Either 기반 검증 함수를 `Validation.collect`에서 사용
-2. **Validation → Either**: 검증 후 파이프라인에서 Either.chain 사용
+**When to convert:**
+1. **Either → Validation**: to use an existing Either-based validation function inside `Validation.collect`
+2. **Validation → Either**: to use `Either.chain` in a pipeline after validation
 
-## 관련 타입 클래스
+## Related type classes
 
-Validation이 구현하는 타입 클래스:
+Type classes Validation implements:
 
-- **Functor**: `map` - Valid 값 변환
-- **Apply**: `ap` - 에러 누적의 핵심
-- **Applicative**: `of` - Valid 생성
-- **Bifunctor**: `bimap` - Valid/Invalid 양쪽 변환
-- **Foldable**: `reduce` - Valid 값 축소
+- **Functor**: `map` - transforms the Valid value
+- **Apply**: `ap` - the core of error accumulation
+- **Applicative**: `of` - creates a Valid
+- **Bifunctor**: `bimap` - transforms both the Valid and Invalid sides
+- **Foldable**: `reduce` - reduces the Valid value
 
-**주의**: Validation은 **Monad가 아닙니다**. `chain`이 에러 누적과 의미적으로 맞지 않기 때문입니다.
-- Monad의 `chain`은 이전 결과에 따라 다음 연산을 결정 (순차적)
-- Validation의 `ap`는 모든 검증을 독립적으로 수행 (병렬적)
+**Note**: Validation is **not a Monad**. `chain` doesn't fit semantically with error accumulation.
+- A Monad's `chain` decides the next operation based on the previous result (sequential)
+- Validation's `ap` runs every validation independently (parallel)
 
-## Validation.collect 내부 동작
+## How Validation.collect works internally
 
-`collect`가 어떻게 에러를 누적하는지 이해하기:
+Understanding how `collect` accumulates errors:
 
 ```javascript
 // collect의 간소화된 구현
@@ -609,16 +609,16 @@ Validation.collect = (...validators) => f => (...args) => {
 //   = Invalid(['Invalid email', 'Must be 18+']) <- Monoid.concat!
 ```
 
-## 관련 문서
+## Related documents
 
-**비슷한 타입:**
-- [Either](./Either.md) - Validation은 Either의 에러 누적 버전
+**Similar types:**
+- [Either](./Either.md) - Validation is the error-accumulating counterpart of Either
 
-**사용하는 타입 클래스:**
-- [Functor](./Functor.md)
-- [Apply](./Applicative.md) - `ap` 는 Applicative 문서에 있습니다
-- [Applicative](./Applicative.md)
-- [Bifunctor](./Bifunctor.md)
+**Type classes it uses:**
+- [Functor](../Functor.md)
+- [Apply](../Applicative.md) - `ap` is documented alongside Applicative
+- [Applicative](../Applicative.md)
+- [Bifunctor](../Bifunctor.md)
 
-**함께 사용:**
-- [Monoid](./Monoid.md) - 에러 누적에 사용 (Array Monoid, String Monoid 등)
+**Used together with:**
+- [Monoid](./Monoid.md) - used for error accumulation (Array Monoid, String Monoid, etc.)

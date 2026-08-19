@@ -1,24 +1,24 @@
 # Ord
 
-> English: [./en/Ord.md](./en/Ord.md)
+> 한국어: [../Ord.md](../Ord.md)
 
-**순서(Order)를 비교할 수 있는 타입**
+**A type whose values can be compared by order**
 
-## 개념
+## Concept
 
-Ord는 Setoid를 확장하여 두 값의 **순서**를 비교할 수 있게 합니다. "작거나 같다(less than or equal)"를 정의하면 "<", ">", "==" 모든 비교가 가능합니다.
+Ord extends Setoid so that two values can also be compared by **order**. Once you define "less than or equal," every comparison — "<", ">", "==" — follows from it.
 
-## 법칙
+## Laws
 
-Ord는 Setoid의 법칙에 더해 다음을 만족해야 합니다:
+In addition to Setoid's laws, Ord must satisfy the following:
 
-### 1. 반사성 (Reflexivity)
+### 1. Reflexivity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const { lte } = Ord.lookup('number');
 lte(a, a) === true
 ```
 
-### 2. 반대칭성 (Antisymmetry)
+### 2. Antisymmetry
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const { lte } = Ord.lookup('number');
 if (lte(a, b) && lte(b, a)) {
@@ -26,7 +26,7 @@ if (lte(a, b) && lte(b, a)) {
 }
 ```
 
-### 3. 추이성 (Transitivity)
+### 3. Transitivity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const { lte } = Ord.lookup('number');
 if (lte(a, b) && lte(b, c)) {
@@ -34,22 +34,22 @@ if (lte(a, b) && lte(b, c)) {
 }
 ```
 
-### 4. 전체성 (Totality)
+### 4. Totality
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const { lte } = Ord.lookup('number');
 lte(a, b) === true || lte(b, a) === true
 ```
-모든 두 값은 비교 가능합니다.
+Any two values are comparable.
 
-## 인터페이스
+## Interface
 
 ```javascript no-run 시그니처·의사코드 표기
 Ord.lte(a, b): boolean  // a ≤ b
 ```
 
-## 사용 예시
+## Usage examples
 
-### 기본 비교
+### Basic comparison
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -73,7 +73,7 @@ const d2 = new Date('2023-12-31');
 date.lte(d1, d2);   // true
 ```
 
-### 파생 비교 연산자
+### Deriving other comparison operators
 
 ```javascript
 const { lte } = Ord.lookup('number');
@@ -92,9 +92,9 @@ gt(3, 2);   // true
 gte(2, 2);  // true
 ```
 
-## 실용적 활용
+## Practical applications
 
-### 정렬
+### Sorting
 
 ```javascript
 const ord = Ord.lookup('number');
@@ -106,7 +106,7 @@ const sortBy = arr => [...arr].sort((a, b) =>
 sortBy([3, 1, 4, 1, 5]);  // [1, 1, 3, 4, 5]
 ```
 
-### 최소/최대값
+### Min / max
 
 ```javascript
 const ord = Ord.lookup('number');
@@ -121,7 +121,7 @@ const minBy = arr => arr.reduce((acc, x) => min(acc, x));
 minBy([3, 1, 4, 1, 5]);  // 1
 ```
 
-### 범위 체크
+### Range check
 
 ```javascript
 const ord = Ord.lookup('number');
@@ -132,6 +132,6 @@ between(1, 10, 5);   // true
 between(1, 10, 15);  // false
 ```
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Setoid**: Ord의 기반 (equals 제공)
+- **Setoid**: the base Ord builds on (provides equals)

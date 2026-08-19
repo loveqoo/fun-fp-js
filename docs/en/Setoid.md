@@ -1,46 +1,46 @@
 # Setoid
 
-> English: [./en/Setoid.md](./en/Setoid.md)
+> 한국어: [../Setoid.md](../Setoid.md)
 
-**동등성(Equality)을 비교할 수 있는 타입**
+**A type whose values can be compared for equality**
 
-## 개념
+## Concept
 
-Setoid는 두 값이 "같은지" 비교할 수 있는 타입을 정의합니다. JavaScript의 `===`와 비슷하지만, 커스텀 동등성 로직을 정의할 수 있습니다.
+Setoid defines a type whose two values can be compared to see whether they are "equal." It resembles JavaScript's `===`, but lets you define custom equality logic.
 
-## 법칙
+## Laws
 
-Setoid는 다음 법칙을 만족해야 합니다:
+A Setoid must satisfy the following laws:
 
-### 1. 반사성 (Reflexivity)
+### 1. Reflexivity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 equals(a, a) === true
 ```
-자기 자신과는 항상 같습니다.
+A value is always equal to itself.
 
-### 2. 대칭성 (Symmetry)
+### 2. Symmetry
 ```javascript no-run 대수 법칙 — 자유변수 표기
 equals(a, b) === equals(b, a)
 ```
-비교 순서를 바꿔도 결과가 같습니다.
+Swapping the comparison order does not change the result.
 
-### 3. 추이성 (Transitivity)
+### 3. Transitivity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 if (equals(a, b) && equals(b, c)) {
     equals(a, c) === true
 }
 ```
-a가 b와 같고, b가 c와 같으면, a와 c도 같습니다.
+If a equals b, and b equals c, then a equals c.
 
-## 인터페이스
+## Interface
 
 ```javascript no-run 시그니처·의사코드 표기
 Setoid.equals(a, b): boolean
 ```
 
-## 사용 예시
+## Usage examples
 
-### 기본 타입 비교
+### Comparing primitive types
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -62,7 +62,7 @@ arraySetoid.equals([1, 2], [1, 2]);  // true
 arraySetoid.equals([1, 2], [1, 3]);  // false
 ```
 
-### 자동 타입 추론
+### Automatic type inference
 
 ```javascript
 // Setoid.lookup로 타입에 맞는 인스턴스 자동 선택
@@ -70,9 +70,9 @@ const numSetoid = Setoid.lookup('number');
 numSetoid.equals(1, 1);  // true
 ```
 
-## 실용적 활용
+## Practical applications
 
-### 중복 제거
+### Removing duplicates
 ```javascript
 const setoid = Setoid.lookup('number');
 
@@ -84,7 +84,7 @@ const uniqueBy = arr => arr.reduce((acc, item) =>
 uniqueBy([1, 2, 1, 3, 2]);  // [1, 2, 3]
 ```
 
-### 배열에서 요소 찾기
+### Finding an element in an array
 ```javascript
 // 객체 Setoid 는 기본 제공되지 않으므로 직접 만든다
 const setoid = new Setoid((a, b) => a.id === b.id, 'Object');
@@ -95,6 +95,6 @@ findBy({id: 1}, [{id: 1, name: 'a'}, {id: 2, name: 'b'}]);
 // {id: 1, name: 'a'}
 ```
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Ord**: Setoid를 확장하여 순서 비교(`lte`) 추가
+- **Ord**: extends Setoid with order comparison (`lte`)

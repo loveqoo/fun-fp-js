@@ -1,19 +1,19 @@
 # Maybe
 
-> English: [./en/Maybe.md](./en/Maybe.md)
+> 한국어: [../Maybe.md](../Maybe.md)
 
-**null을 안전하게 다루는 타입**
+**A type for handling null safely**
 
-## 개념
+## Concept
 
-Maybe는 **값이 있을 수도, 없을 수도 있는 상황**을 표현합니다.
+Maybe represents **a situation where a value may or may not be present**.
 
-- `Just(value)`: 값이 있음
-- `Nothing`: 값이 없음 (null, undefined 대체)
+- `Just(value)`: a value is present
+- `Nothing`: no value (a replacement for null, undefined)
 
-## 왜 Maybe인가?
+## Why Maybe?
 
-### 문제: null 체크 지옥
+### The problem: null-check hell
 
 ```javascript
 const getCity = user => {
@@ -24,7 +24,7 @@ const getCity = user => {
 };
 ```
 
-### 해결: Maybe로 깔끔하게
+### The fix: clean it up with Maybe
 
 ```javascript
 const user = { name: 'Alice', address: { city: 'Seoul' } };
@@ -51,7 +51,7 @@ const getCityPipeK = Maybe.pipeK(
 extra.path('address.city')(user);  // Either 반환
 ```
 
-## 생성
+## Construction
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -71,9 +71,9 @@ safe(null);      // Nothing
 safe(undefined); // Nothing
 ```
 
-## 주요 연산
+## Key operations
 
-### map - 값 변환 (Functor)
+### map — transform the value (Functor)
 
 ```javascript
 const { Functor } = FunFP;
@@ -83,7 +83,7 @@ map(x => x * 2, Maybe.of(5));       // Just(10)
 map(x => x * 2, Maybe.Nothing());   // Nothing (함수 실행 안 됨)
 ```
 
-### chain - 중첩 방지 (Monad)
+### chain — avoid nesting (Monad)
 
 ```javascript
 const { Chain } = FunFP;
@@ -96,7 +96,7 @@ chain(double, Maybe.of(-5));     // Nothing
 chain(double, Maybe.Nothing());  // Nothing
 ```
 
-### fold - 값 추출
+### fold — extract the value
 
 ```javascript
 Maybe.fold(
@@ -114,7 +114,7 @@ Maybe.fold(
 // 'default'
 ```
 
-### getOrElse 패턴 (fold 활용)
+### The getOrElse pattern (built on fold)
 
 ```javascript
 // getOrElse는 fold로 구현
@@ -125,7 +125,7 @@ getOrElse(0, Maybe.of(5));       // 5
 getOrElse(0, Maybe.Nothing());   // 0
 ```
 
-## 타입 체크
+## Type checks
 
 ```javascript
 Maybe.isJust(Maybe.of(5));      // true
@@ -134,9 +134,9 @@ Maybe.isMaybe(Maybe.of(5));     // true
 Maybe.isMaybe({});              // false
 ```
 
-## 실용적 예시
+## Practical examples
 
-### 안전한 배열 접근
+### Safe array access
 
 ```javascript
 const head = arr => arr.length > 0 ? Maybe.of(arr[0]) : Maybe.Nothing();
@@ -152,7 +152,7 @@ head([1, 2, 3])
 // Just(22)
 ```
 
-### 안전한 객체 속성 접근
+### Safe property access
 
 ```javascript
 const prop = key => obj => 
@@ -171,7 +171,7 @@ getOrElse('Unknown', prop('address')(noAddress).chain(prop('city')));
 // 'Unknown'
 ```
 
-### 안전한 JSON 파싱
+### Safe JSON parsing
 
 ```javascript
 const prop = key => obj => 
@@ -198,7 +198,7 @@ getOrElse('UNKNOWN',
 // 'UNKNOWN'
 ```
 
-### 폼 값 검증 (pipeK 활용)
+### Form value validation (using pipeK)
 
 ```javascript
 const validateLength = min => str =>
@@ -222,12 +222,12 @@ validateEmail('');                   // Nothing
 
 | | null | Maybe |
 |---|---|---|
-| 에러 발생 | `null.prop` → TypeError | Nothing.map() → Nothing |
-| 체이닝 | 매번 null 체크 | 자동 단락 |
-| 명시성 | 암묵적 | 타입으로 명시 |
-| 합성 | 어려움 | 자연스러움 |
+| On error | `null.prop` → TypeError | Nothing.map() → Nothing |
+| Chaining | a null check every time | short-circuits automatically |
+| Explicitness | implicit | explicit in the type |
+| Composition | hard | natural |
 
-## Maybe를 Either로 변환
+## Converting Maybe to Either
 
 ```javascript
 const maybeValue = Maybe.of(42);
@@ -238,20 +238,20 @@ Maybe.toEither('Not found', Maybe.of(5));    // Right(5)
 Maybe.toEither('Not found', Maybe.Nothing()); // Left('Not found')
 ```
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Functor**: map 제공
-- **Apply**: ap 제공
-- **Applicative**: of 제공
-- **Chain**: chain 제공
+- **Functor**: provides map
+- **Apply**: provides ap
+- **Applicative**: provides of
+- **Chain**: provides chain
 - **Monad**: Applicative + Chain
-- **Alt**: 대안 값 선택
+- **Alt**: choose between alternatives
 
 ## Maybe.pipe / Maybe.pipeK
 
-Static Land 스타일로 읽기 쉽게 체이닝하기:
+Static Land–style chaining that reads cleanly:
 
-### Maybe.pipe - 함수들을 순차 적용
+### Maybe.pipe — apply functions in sequence
 
 ```javascript
 const user = { name: 'Alice', address: { city: 'Seoul' } };
@@ -265,14 +265,14 @@ Maybe.pipe(
 // Just('Seoul') 또는 Nothing
 ```
 
-`Maybe.pipe` 는 범용 조합자 `pipeWhile` 위에 서 있습니다 — `pipeWhile(Maybe.isJust)` 가
-그 몸이고, `Either.pipe` 도 같은 뼈대(`pipeWhile(Either.isRight)`)를 씁니다.
+`Maybe.pipe` sits on top of the general-purpose combinator `pipeWhile` — `pipeWhile(Maybe.isJust)`
+is its body, and `Either.pipe` uses the same skeleton (`pipeWhile(Either.isRight)`).
 
-### pipeWhile - predicate 가 참인 동안만 잇는 pipe {#pipewhile}
+### pipeWhile — a pipe that only continues while a predicate holds {#pipewhile}
 
-상자와 무관한 최상위 유틸리티입니다. 각 걸음마다 predicate 를 먼저 묻고, 거짓이면 남은
-함수를 건너뛰고 값을 그대로 내보냅니다. 값이 안 바뀌면 predicate 결과도 안 바뀌므로
-한 번 거짓이 되면 사실상 멈춥니다.
+A top-level utility independent of any container. At each step it asks the predicate first; if
+false, it skips the remaining functions and passes the value straight through. Since an unchanged
+value keeps producing the same predicate result, once it goes false the pipe effectively stops.
 
 ```javascript
 const { pipeWhile } = FunFP;
@@ -294,7 +294,7 @@ if (String(viaPipe) !== String(viaWhile)) throw new Error('둘이 어긋났다')
 console.log(String(viaPipe));   // Just(1) — 8 → 4 → 2 → 1
 ```
 
-### Maybe.pipeK - Kleisli 합성 (chain용)
+### Maybe.pipeK — Kleisli composition (for chain)
 
 ```javascript
 // a -> Maybe b 형태의 함수들을 연결
@@ -307,10 +307,11 @@ getCityFromUser({ name: 'Alice', address: { city: 'Seoul' } });  // Just('Seoul'
 getCityFromUser({ name: 'Bob' });  // Nothing
 ```
 
-## 출력에서 읽기 — `toString` {#tostring}
+## Reading it in output — `toString` {#tostring}
 
-`Just(1)` 과 `Nothing()` 은 속만 보면 거의 같은 객체라, 문자열이 될 때 갈리게 해 두었습니다.
-JSON 표현은 그대로입니다 — `_typeName` 은 타입 판정이 읽는 값이라 건드리지 않습니다.
+`Just(1)` and `Nothing()` are nearly the same object underneath, so their string forms are made to
+diverge. The JSON representation is unchanged — `_typeName` is what type checks read, so it is left
+alone.
 
 ```javascript
 const { Maybe } = FunFP;

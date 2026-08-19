@@ -1,20 +1,20 @@
 # Task
 
-> English: [./en/Task.md](./en/Task.md)
+> 한국어: [../Task.md](../Task.md)
 
-**비동기 연산을 순수하게 다루는 타입**
+**A type for handling asynchronous computation purely**
 
-## 개념
+## Concept
 
-Task는 **지연된 비동기 연산**을 표현합니다. Promise와 비슷하지만:
+Task represents a **deferred asynchronous computation**. It resembles a Promise, but:
 
-- **지연 실행**: 생성 시 실행되지 않음 (fork 호출 시 실행)
-- **순수성**: 같은 Task를 여러 번 fork해도 매번 새로 실행
-- **취소 가능성**: 참조만 제거하면 됨 (실행 전)
+- **Deferred execution**: it does not run when created — only when `fork` is called
+- **Purity**: forking the same Task multiple times runs it fresh every time
+- **Cancellability**: dropping the reference is enough (before it has started running)
 
-## 왜 Task인가?
+## Why Task?
 
-### 문제: Promise의 즉시 실행
+### The problem: Promise runs immediately
 
 ```javascript
 // Promise는 생성 즉시 실행!
@@ -25,7 +25,7 @@ const promise = new Promise((resolve) => {
 // 아무것도 안 해도 '실행됨!' 출력
 ```
 
-### 해결: Task는 지연 실행
+### The fix: Task defers execution
 
 ```javascript
 const task = new Task((reject, resolve) => {
@@ -37,7 +37,7 @@ const task = new Task((reject, resolve) => {
 task.fork(console.error, console.log);  // 42   이때서야 위 줄이 찍히고 값이 온다
 ```
 
-## 생성
+## Construction
 
 ```javascript no-run 시그니처·의사코드 표기
 import FunFP from 'fun-fp-js';
@@ -64,7 +64,7 @@ const task = fetchTask('/api/data');
 const fromEither = Task.fromEither(Either.Right(42));  // Task.of(42)
 ```
 
-## 실행 (fork)
+## Running it (fork)
 
 ```javascript
 const task = Task.of(42);
@@ -76,9 +76,9 @@ task.fork(
 // 'Success: 42'
 ```
 
-## 주요 연산
+## Main operations
 
-### map - 값 변환 (Functor)
+### map - transforming the value (Functor)
 
 ```javascript
 Task.of(5)
@@ -87,7 +87,7 @@ Task.of(5)
 // 10
 ```
 
-### chain - 순차 실행 (Monad)
+### chain - sequential execution (Monad)
 
 ```javascript
 const fetchUser = id => Task.fromPromise(() => 
@@ -107,7 +107,7 @@ fetchUser(1)
     );
 ```
 
-### Task.all - 병렬 실행
+### Task.all - running in parallel
 
 ```javascript
 const tasks = [
@@ -134,7 +134,7 @@ Task.all(tasksWithError).fork(
 );
 ```
 
-### Task.race - 경쟁 실행
+### Task.race - running as a race
 
 ```javascript
 const fast = new Task((_, resolve) => 
@@ -150,9 +150,9 @@ Task.race([fast, slow]).fork(
 );
 ```
 
-## 실용적 예시
+## Practical examples
 
-### API 호출 래핑
+### Wrapping an API call
 
 ```javascript
 const api = {
@@ -173,7 +173,7 @@ api.get('/api/users/1')
     );
 ```
 
-### 재시도 로직
+### Retry logic
 
 ```javascript
 const fetchUser = id => Task.fromPromise(() => 
@@ -203,7 +203,7 @@ const retry = (task, times) =>
 retry(fetchUser(1), 3).fork(console.error, console.log);
 ```
 
-### 타임아웃
+### Timeout
 
 ```javascript
 const fetchUser = id => Task.fromPromise(() => 
@@ -222,7 +222,7 @@ timeout(5000, fetchUser(1)).fork(
 );
 ```
 
-### 순차 실행 (시리즈)
+### Sequential execution (series)
 
 ```javascript
 const sequence = tasks => tasks.reduce(
@@ -244,7 +244,7 @@ sequence(tasks).fork(
 );
 ```
 
-### 조건부 실행
+### Conditional execution
 
 ```javascript
 const fetchUser = id => Task.fromPromise(() => 
@@ -260,11 +260,11 @@ fetchIfNeeded({}, 1).fork(console.error, console.log);
 fetchIfNeeded({1: 'cached'}, 1).fork(console.error, console.log);  // cached
 ```
 
-## Task.lift - 예외 안전 함수 리프트
+## Task.lift - exception-safe function lifting
 
-`Task.lift`는 다중 인자 함수를 Task 컨텍스트로 리프트하며, **예외를 자동으로 `Task.rejected`로 변환**합니다.
+`Task.lift` lifts a multi-argument function into the Task context, and **automatically turns thrown exceptions into `Task.rejected`**.
 
-### 기본 사용법
+### Basic usage
 
 ```javascript
 const { Task } = FunFP;
@@ -292,9 +292,9 @@ taskSum3(Task.of(10), Task.of(20), Task.of(12)).fork(
 // 42
 ```
 
-### 예외 안전성 - 핵심 기능
+### Exception safety - the key feature
 
-`Task.lift`의 가장 중요한 기능은 **함수 내부의 예외를 자동으로 캐치하여 `Task.rejected`로 변환**하는 것입니다.
+The most important thing `Task.lift` does is **catch exceptions thrown inside the function and turn them into `Task.rejected` automatically**.
 
 ```javascript
 const { Task } = FunFP;
@@ -332,7 +332,7 @@ safeDivide(Task.rejected('Invalid input'), Task.of(2)).fork(
 // 'Error: Invalid input'
 ```
 
-### 실용적 예시: JSON 파싱
+### Practical example: parsing JSON
 
 ```javascript
 const { Task } = FunFP;
@@ -358,7 +358,7 @@ safeParseJSON(Task.of('invalid json')).fork(
 // Parse error: Unexpected token i in JSON at position 0
 ```
 
-### 실용적 예시: API 응답 변환
+### Practical example: transforming an API response
 
 ```javascript
 const { Task } = FunFP;
@@ -392,17 +392,17 @@ fetchUser(1)
 // 검증 실패 시: Error: Missing user ID
 ```
 
-### 언제 Task.lift를 사용하는가?
+### When should you use Task.lift?
 
-**사용하면 좋은 경우:**
-1. 예외를 던질 수 있는 함수를 Task로 래핑할 때
-2. `JSON.parse`, `parseInt` 등 내장 함수를 안전하게 만들 때
-3. 여러 Task를 조합하여 순수 함수 적용할 때
-4. 검증 로직이 포함된 변환 함수
+**Good cases to use it:**
+1. Wrapping a function that can throw into a Task
+2. Making built-ins like `JSON.parse` or `parseInt` safe
+3. Combining several Tasks and applying a pure function to them
+4. A transformation function that includes validation logic
 
 **lift vs fromPromise:**
-- `Task.lift`: 동기 함수의 예외를 캐치 (`try/catch`)
-- `Task.fromPromise`: Promise rejection을 캐치
+- `Task.lift`: catches exceptions from a synchronous function (`try/catch`)
+- `Task.fromPromise`: catches a Promise rejection
 
 ```javascript
 // 동기 함수 -> Task.lift
@@ -418,18 +418,18 @@ const fetchData = Task.fromPromise(url =>
 
 | | Promise | Task |
 |---|---|---|
-| 실행 시점 | 즉시 | fork 호출 시 |
-| 재실행 | 불가 (이미 완료) | 가능 (매번 새로) |
-| 순수성 | 부수 효과 있음 | 순수 함수 |
-| 취소 | 복잡 | 간단 (참조 제거) |
-| 합성 | then 체이닝 | map/chain |
-| 에러 처리 | catch | fork 첫 번째 인자 |
+| When it runs | Immediately | When `fork` is called |
+| Re-running | Not possible (already completed) | Possible (runs fresh every time) |
+| Purity | Has side effects | A pure function |
+| Cancellation | Complicated | Simple (drop the reference) |
+| Composition | `then` chaining | `map`/`chain` |
+| Error handling | `catch` | The first argument to `fork` |
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Functor**: map 제공
-- **Apply**: ap 제공
-- **Applicative**: of 제공
-- **Chain**: chain 제공
+- **Functor**: provides `map`
+- **Apply**: provides `ap`
+- **Applicative**: provides `of`
+- **Chain**: provides `chain`
 - **Monad**: Applicative + Chain
-- **Alt**: 대안 값 선택
+- **Alt**: choosing an alternative value

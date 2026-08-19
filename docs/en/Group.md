@@ -1,10 +1,10 @@
 # Group
 
-> English: [./en/Group.md](./en/Group.md)
+> 한국어: [../Group.md](../Group.md)
 
-Monoid에 역원(invert)을 추가한 타입 클래스.
+A type class that adds an inverse (`invert`) to Monoid.
 
-## 정의
+## Definition
 
 ```javascript no-run 시그니처·의사코드 표기
 class Group extends Monoid {
@@ -12,15 +12,15 @@ class Group extends Monoid {
 }
 ```
 
-## 핵심 연산
+## Core operations
 
-| 연산 | 시그니처 | 설명 |
+| Operation | Signature | Description |
 |-----|---------|-----|
-| `invert` | `a → a` | 역원 반환 |
-| `concat` | (Monoid) | 결합 연산 |
-| `empty` | (Monoid) | 항등원 |
+| `invert` | `a → a` | returns the inverse |
+| `concat` | (Monoid) | combining operation |
+| `empty` | (Monoid) | identity element |
 
-## 법칙
+## Laws
 
 ```javascript no-run 시그니처·의사코드 표기
 // right inverse
@@ -30,7 +30,7 @@ concat(a, invert(a)) ≡ empty()
 concat(invert(a), a) ≡ empty()
 ```
 
-## 예시: 정수 덧셈 그룹
+## Example: the integer-addition group
 
 ```javascript
 const { Group, Semigroup, Monoid, Symbols } = FunFP;
@@ -49,7 +49,7 @@ addGroup.invert(5);         // -5
 addGroup.concat(5, addGroup.invert(5));  // 0 (empty)
 ```
 
-## 예시: 불리언 XOR 그룹
+## Example: the boolean-XOR group
 
 ```javascript
 // XOR은 자기 자신이 역원
@@ -60,7 +60,7 @@ const xorGroup = new Group(xorMonoid, a => a, 'boolean');  // 자기 자신이 �
 xorGroup.concat(true, xorGroup.invert(true));  // false (empty)
 ```
 
-## 관계
+## Relationships
 
 ```
 Semigroup ──> Monoid ──> Group
@@ -68,7 +68,7 @@ Semigroup ──> Monoid ──> Group
               empty      invert
 ```
 
-## 참고
+## See also
 
-- [Semigroup](./Semigroup.md) - 결합 연산
-- [Monoid](./Monoid.md) - 결합 + 항등원
+- [Semigroup](./Semigroup.md) - combining operation
+- [Monoid](./Monoid.md) - combining + identity element

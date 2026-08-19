@@ -1,5 +1,7 @@
 # fun-fp-js
 
+> English: [./README.en.md](./README.en.md)
+
 **즐거운 함수형 프로그래밍.** [Static Land](https://github.com/fantasyland/static-land)
 기반 타입 클래스 라이브러리입니다. 의존성 0개, min+gzip 26KB.
 

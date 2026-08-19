@@ -1,23 +1,23 @@
 # Monoid
 
-> English: [./en/Monoid.md](./en/Monoid.md)
+> 한국어: [../Monoid.md](../Monoid.md)
 
-**항등원을 가진 Semigroup**
+**A Semigroup with an identity element**
 
-## 개념
+## Concept
 
-Monoid는 Semigroup에 **항등원(empty)**을 추가한 것입니다. 항등원은 다른 값과 결합해도 그 값을 변경하지 않는 "중립" 값입니다.
+Monoid adds an **identity element** (`empty`) to Semigroup. The identity element is a "neutral" value that leaves any other value unchanged when combined with it.
 
-- 덧셈의 항등원: `0` (a + 0 = a)
-- 곱셈의 항등원: `1` (a * 1 = a)
-- 문자열의 항등원: `''` (s + '' = s)
-- 배열의 항등원: `[]` ([...arr, ...[]] = arr)
+- Identity of addition: `0` (a + 0 = a)
+- Identity of multiplication: `1` (a * 1 = a)
+- Identity of string concatenation: `''` (s + '' = s)
+- Identity of array concatenation: `[]` ([...arr, ...[]] = arr)
 
-## 법칙
+## Laws
 
-Semigroup의 법칙(결합법칙)에 더해:
+In addition to Semigroup's law (associativity):
 
-### 1. 우항등원 (Right Identity)
+### 1. Right Identity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const objectMonoid = new Monoid(
     new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
@@ -28,7 +28,7 @@ const { concat, empty } = objectMonoid;
 concat(a, empty) === a
 ```
 
-### 2. 좌항등원 (Left Identity)
+### 2. Left Identity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const objectMonoid = new Monoid(
     new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
@@ -39,16 +39,16 @@ const { concat, empty } = objectMonoid;
 concat(empty, a) === a
 ```
 
-## 인터페이스
+## Interface
 
 ```javascript no-run 시그니처·의사코드 표기
 Monoid.empty(): a         // 항등원 반환
 Monoid.concat(a, b): a    // Semigroup에서 상속
 ```
 
-## 사용 예시
+## Usage examples
 
-### 기본 사용
+### Basic usage
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -70,14 +70,11 @@ num.empty();  // 0
 num.concat(5, num.empty());  // 5
 ```
 
-## `Plus` 에서 유도된 Monoid
+## Monoid derived from `Plus`
 
-`Plus` 는 `alt`(결합 연산)와 `zero`(항등원)를 **둘 다** 가집니다. 즉 구조적으로 Monoid 인데
-태그만 없습니다. 그래서 등록된 `Plus` 는 짝 `Semigroup`/`Monoid` 를 **그 타입의 이름 그대로**
-얻습니다.
+`Plus` has **both** `alt` (a combining operation) and `zero` (an identity element). That is, it is structurally a Monoid, just without the tag. So a registered `Plus` also gets a paired `Semigroup`/`Monoid` **under that same type name**.
 
-**단, 그 타입에 이미 `Monoid` 가 있으면 유도하지 않습니다.** `Array` 가 그렇습니다 — `alt` 가
-곧 `concat` 이라 유도본과 `ArrayMonoid` 의 동작이 같아 중복입니다.
+**Except when that type already has a `Monoid`.** `Array` is one such case — its `alt` is exactly `concat`, so the derived instance would behave identically to `ArrayMonoid`, making it redundant.
 
 ```javascript
 const { Monoid, Semigroup, Maybe } = FunFP;
@@ -93,13 +90,14 @@ console.log(Semigroup.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value
 console.log(Monoid.lookup('array') === Monoid.types.ArrayMonoid);   // true
 ```
 
-> **한때 이 키가 `plus(array)`·`plus(maybe)` 였습니다. 그것은 버그였습니다.** 이 라이브러리에서
-> `f(x)` 는 `F<X>` 를 뜻하는데 `plus(maybe)` 는 `Plus` 가 아니라 `Monoid` 를 돌려줬습니다.
-> 괄호 안이 원소가 아니라 **출신**이었고, 출신 기록은 타입이 아닙니다.
+> **This key used to be `plus(array)`/`plus(maybe)`. That was a bug.** In this library
+> `f(x)` means `F<X>`, but `plus(maybe)` returned a `Monoid`, not a `Plus`. What sat
+> inside the parentheses was not the element but the **origin**, and an origin note is
+> not a type.
 
-### `Monoid.lookup('maybe')` 와 `maybe(first)` — 안을 여느냐
+### `Monoid.lookup('maybe')` vs `maybe(first)` — whether the inside gets opened
 
-이름이 비슷하지만 **다른 모노이드**입니다. 갈리는 지점은 **payload 타입이 섞였을 때**입니다.
+The names look similar, but these are **different monoids**. They diverge exactly where **payload types are mixed**.
 
 ```javascript
 const { Monoid, Maybe } = FunFP;
@@ -120,17 +118,15 @@ try {
 }
 ```
 
-**"합치기" 면 `maybe(first)`, "고르기" 면 `maybe`** 입니다. 괄호의 유무가 그 차이를 말합니다 —
-괄호가 있으면 안쪽 비교법을 받았다는 뜻이고, 그래야 안을 열 수 있습니다.
-`Optics.preview` 가 후자를 씁니다 — 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 하니까요.
+**Use `maybe(first)` for "merge," and `maybe` for "pick."** The presence of the parentheses marks the difference — parentheses mean an inner comparator was supplied, and that is what lets the inside be opened. `Optics.preview` uses the latter, because it must be able to answer "the first one" regardless of what the array holds.
 
-항등원은 양쪽 다 `Nothing` 입니다.
+Either way, the identity element is `Nothing`.
 
-## 실용적 활용
+## Practical applications
 
-### 안전한 fold (빈 배열 처리)
+### Safe folding (handling empty arrays)
 
-Semigroup만으로는 빈 배열을 처리할 수 없지만, Monoid는 가능합니다:
+Semigroup alone cannot handle an empty array, but Monoid can:
 
 ```javascript
 // Semigroup - 빈 배열에서 에러!
@@ -148,7 +144,7 @@ foldMonoid([1, 2, 3]);  // 6
 foldMonoid([]);         // 0 (안전!)
 ```
 
-### 조건부 결합
+### Conditional combination
 
 ```javascript
 const errors = ['이름은 필수입니다'];
@@ -167,7 +163,7 @@ const result = arr.concat(
 // 조건에 맞는 것만 결합, 없으면 빈 배열
 ```
 
-### 객체 기본값 패턴
+### Object defaults pattern
 
 ```javascript
 // 객체 병합 Monoid 는 기본 제공되지 않으므로 직접 만든다
@@ -185,7 +181,7 @@ const config = withDefaults(defaults, { lang: 'ko' });
 // { theme: 'light', lang: 'ko' }
 ```
 
-### 로그 수집
+### Collecting logs
 
 ```javascript
 const log = (msgs) => ({
@@ -210,10 +206,10 @@ const combineResults = (results) => results.reduce(
 |---|---|---|
 | concat | ✅ | ✅ |
 | empty | ❌ | ✅ |
-| 빈 리스트 fold | 불가능 | 가능 |
-| 기본값 패턴 | 수동 | 자동 |
+| Folding an empty list | not possible | possible |
+| Default-value pattern | manual | automatic |
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Semigroup**: Monoid의 기반 (concat만 제공)
-- **Group**: Monoid + 역원(invert)
+- **Semigroup**: the base Monoid builds on (provides concat only)
+- **Group**: Monoid + inverse (invert)

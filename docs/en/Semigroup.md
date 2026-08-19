@@ -1,24 +1,24 @@
 # Semigroup
 
-> English: [./en/Semigroup.md](./en/Semigroup.md)
+> 한국어: [../Semigroup.md](../Semigroup.md)
 
-**결합 가능한(Combinable) 타입**
+**A type whose values can be combined**
 
-## 개념
+## Concept
 
-Semigroup은 두 값을 **결합(combine)**하여 같은 타입의 새 값을 만들 수 있는 타입입니다. 문자열 연결, 배열 병합, 숫자 덧셈 등이 대표적인 예입니다.
+Semigroup is a type whose two values can be **combined** (`concat`) into a new value of the same type. String concatenation, array merging, and number addition are typical examples.
 
-핵심은 **결합법칙(Associativity)**입니다: 결합 순서를 바꿔도 결과가 같습니다.
+The core property is **associativity**: changing the grouping of the combination does not change the result.
 
-## 법칙
+## Laws
 
-### 결합법칙 (Associativity)
+### Associativity
 ```javascript no-run 대수 법칙 — 자유변수 표기
 const { concat } = Semigroup.lookup('array');
 concat(concat(a, b), c) === concat(a, concat(b, c))
 ```
 
-예:
+Examples:
 ```javascript no-run 시그니처·의사코드 표기
 // 문자열
 ("a" + "b") + "c" === "a" + ("b" + "c")  // "abc" === "abc"
@@ -30,15 +30,15 @@ concat(concat(a, b), c) === concat(a, concat(b, c))
 [...[...a, ...b], ...c] === [...a, ...[...b, ...c]]
 ```
 
-## 인터페이스
+## Interface
 
 ```javascript no-run 시그니처·의사코드 표기
 Semigroup.concat(a, b): a  // a와 b를 결합
 ```
 
-## 사용 예시
+## Usage examples
 
-### 기본 결합
+### Basic combination
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -60,9 +60,9 @@ const composed = Semigroup.lookup('function').concat(add1, mul2);
 composed(5);  // add1(mul2(5)) = add1(10) = 11
 ```
 
-## 실용적 활용
+## Practical applications
 
-### 여러 값 결합 (reduce 패턴)
+### Combining many values (reduce pattern)
 
 ```javascript
 const { concat } = Semigroup.lookup('array');
@@ -71,7 +71,7 @@ const concatAll = arr => arr.reduce(concat);
 concatAll([[1], [2], [3]]);  // [1, 2, 3]
 ```
 
-### 검증 결과 수집
+### Collecting validation results
 
 ```javascript
 const name = 'Alice';
@@ -88,13 +88,13 @@ const emailErrors = validate(email.includes('@'), 'Invalid email');
 const allErrors = concat(nameErrors, emailErrors);
 ```
 
-## 왜 Semigroup인가?
+## Why Semigroup?
 
-일반 연산자 대신 Semigroup을 사용하면:
+Using Semigroup instead of plain operators gives you:
 
-1. **추상화**: 같은 코드로 다양한 타입 처리
-2. **안전성**: 타입 보장
-3. **합성 가능**: 다른 FP 패턴과 결합
+1. **Abstraction**: the same code handles many different types
+2. **Safety**: types are guaranteed to line up
+3. **Composability**: combines with other FP patterns
 
 ```javascript
 // 추상화된 합계 함수
@@ -104,6 +104,6 @@ sum('number', [1, 2, 3]);     // 6
 sum('string', ['a', 'b', 'c']);  // 'abc'
 ```
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Monoid**: Semigroup + 항등원(empty)
+- **Monoid**: Semigroup + identity element (empty)

@@ -1,21 +1,21 @@
 # Either
 
-> English: [./en/Either.md](./en/Either.md)
+> 한국어: [../Either.md](../Either.md)
 
-**성공 또는 실패를 표현하는 타입**
+**A type for expressing success or failure**
 
-## 개념
+## Concept
 
-Either는 **두 가지 가능한 값 중 하나**를 표현합니다:
+Either represents **one of two possible values**:
 
-- `Right(value)`: 성공, 정상 값
-- `Left(error)`: 실패, 에러 정보
+- `Right(value)`: success, the normal value
+- `Left(error)`: failure, error information
 
-Maybe와 달리 **실패의 이유**를 담을 수 있습니다.
+Unlike Maybe, it can also carry **the reason for the failure**.
 
-## 왜 Either인가?
+## Why Either?
 
-### 문제: try-catch 지옥
+### The problem: try-catch hell
 
 ```javascript
 const handleParseError = e => `파싱 실패: ${e}`;
@@ -37,7 +37,7 @@ try {
 }
 ```
 
-### 해결: Either로 우아하게
+### The fix: handle it gracefully with Either
 
 ```javascript no-run 시그니처·의사코드 표기
 const { Either, Chain } = FunFP;
@@ -58,7 +58,7 @@ const process = Either.pipeK(parseJson, validate, transform);
 const result = Either.fold(handleError, value => value, process(data));
 ```
 
-## 생성
+## Construction
 
 ```javascript
 import FunFP from 'fun-fp-js';
@@ -80,9 +80,9 @@ Either.catch(() => JSON.parse('{"a": 1}'));  // Right({a: 1})
 Either.catch(() => JSON.parse('invalid'));    // Left(SyntaxError)
 ```
 
-## 주요 연산
+## Key operations
 
-### map - 성공 값 변환 (Functor)
+### map — transform the success value (Functor)
 
 ```javascript
 const { Functor } = FunFP;
@@ -92,7 +92,7 @@ map(x => x * 2, Either.Right(5));       // Right(10)
 map(x => x * 2, Either.Left('error'));  // Left('error') - 변환 안 됨
 ```
 
-### chain - 중첩 방지 (Monad)
+### chain — avoid nesting (Monad)
 
 ```javascript
 const { Chain } = FunFP;
@@ -106,7 +106,7 @@ chain(validatePositive, Either.Right(-5));   // Left('Must be positive')
 chain(validatePositive, Either.Left('error')); // Left('error')
 ```
 
-### fold - 양쪽 처리
+### fold — handle both sides
 
 ```javascript
 const result = Either.fold(
@@ -124,7 +124,7 @@ Either.fold(
 // 'Error: oops'
 ```
 
-### bimap - 양쪽 모두 변환 (Bifunctor)
+### bimap — transform both sides (Bifunctor)
 
 ```javascript
 const { bimap } = Bifunctor.lookup('either');
@@ -144,7 +144,7 @@ bimap(
 // Left('ERROR')
 ```
 
-## 타입 체크
+## Type checks
 
 ```javascript
 Either.isRight(Either.Right(5)); // true
@@ -153,9 +153,9 @@ Either.isEither(Either.Right(5)); // true
 Either.isEither({});             // false
 ```
 
-## 실용적 예시
+## Practical examples
 
-### 입력 검증 파이프라인 (pipeK 활용)
+### Input validation pipeline (using pipeK)
 
 ```javascript
 const validateEmail = email => {
@@ -183,7 +183,7 @@ validateAndTransformEmail('invalid');          // Left('Invalid email format')
 validateAndTransformEmail('');                  // Left('Email is required')
 ```
 
-### API 응답 처리
+### Handling an API response
 
 ```javascript
 const parseResponse = response => {
@@ -212,7 +212,7 @@ const processApiCall = response =>
     );
 ```
 
-### 설정 파일 로딩
+### Loading a config file
 
 ```javascript
 const readFile = path => {
@@ -247,7 +247,7 @@ Either.fold(
 );
 ```
 
-### 에러 메시지 집계
+### Aggregating error messages
 
 ```javascript
 const validate = value => ({
@@ -271,34 +271,34 @@ validate('a').check(s => s.length > 5, 'Too short');
 
 | | Maybe | Either |
 |---|---|---|
-| 실패 정보 | 없음 (Nothing) | 있음 (Left) |
-| 용도 | 선택적 값 | 에러 처리 |
-| null 처리 | 완벽 | 가능 |
-| 에러 메시지 | 불가 | 가능 |
+| Failure information | none (Nothing) | present (Left) |
+| Use case | optional values | error handling |
+| null handling | complete | possible |
+| Error messages | not possible | possible |
 
-## Either를 Maybe로 변환
+## Converting Either to Maybe
 
 ```javascript
 Either.toMaybe(Either.Right(5));       // Just(5)
 Either.toMaybe(Either.Left('error'));  // Nothing
 ```
 
-## 관련 타입 클래스
+## Related type classes
 
-- **Functor**: map 제공
-- **Bifunctor**: bimap 제공 (양쪽 변환)
-- **Apply**: ap 제공
-- **Applicative**: of 제공
-- **Chain**: chain 제공
+- **Functor**: provides map
+- **Bifunctor**: provides bimap (transforming both sides)
+- **Apply**: provides ap
+- **Applicative**: provides of
+- **Chain**: provides chain
 - **Monad**: Applicative + Chain
-- **Alt**: 대안 값 선택
+- **Alt**: choose between alternatives
 
 ## Either.pipe / Either.pipeK
 
-Static Land 스타일로 읽기 쉽게 체이닝하기. `Either.pipe` 는 `pipeWhile(Either.isRight)` 다 —
-뼈대의 설명과 예제는 [Maybe 문서의 pipeWhile 절](./Maybe.md#pipewhile)에 있다.
+Static Land–style chaining that reads cleanly. `Either.pipe` is `pipeWhile(Either.isRight)` —
+for an explanation of the skeleton and examples, see [the pipeWhile section of the Maybe docs](./Maybe.md#pipewhile).
 
-### Either.pipe - 함수들을 순차 적용
+### Either.pipe — apply functions in sequence
 
 ```javascript
 const { map } = Functor.lookup('either');
@@ -311,7 +311,7 @@ Either.pipe(
 // Right(11)
 ```
 
-### Either.pipeK - Kleisli 합성 (chain용)
+### Either.pipeK — Kleisli composition (for chain)
 
 ```javascript
 // a -> Either e b 형태의 함수들을 연결
@@ -339,10 +339,10 @@ validateNumber('-5');   // Left('Must be positive')
 validateNumber('200');  // Left('Must be <= 100')
 ```
 
-## 출력에서 읽기 — `toString` {#tostring}
+## Reading it in output — `toString` {#tostring}
 
-`Left` 와 `Right` 도 문자열이 될 때 갈립니다. JSON 표현은 그대로입니다 — `_typeName` 은
-타입 판정이 읽는 값이라 건드리지 않습니다.
+`Left` and `Right` also diverge in their string form. The JSON representation is unchanged —
+`_typeName` is what type checks read, so it is left alone.
 
 ```javascript
 const { Either, Maybe } = FunFP;
