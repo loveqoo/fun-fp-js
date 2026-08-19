@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: f83fe7d1f07525f45bd80831558b4b823e54ae38
- * Built: 2026-08-19T10:57:03.823Z
+ * Commit: d31688ada777ba198f3fbac5dba0f282d15de5e2
+ * Built: 2026-08-19T13:46:31.121Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -168,6 +168,10 @@ const once = f => {
 };
 const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
 // 정수·유한을 입구에서 본다 — 안 보면 NaN 은 [], 1.5 는 [0], '3' 은 [0,1,2], Infinity 는 RangeError 로 갈린다(6차 감사 12).
+// 객체 복제의 유일한 문 — 서술자를 통째로 옮긴다. Object.keys 는 열거 가능한 문자열 키만 보고,
+// Object.assign 은 own __proto__ 를 프로토타입으로 둔갑시킨다. 둘 다 실제로 결함이 됐다(6차 1·9차 2).
+const copyOwn = source => Object.defineProperties({}, Object.getOwnPropertyDescriptors(source));
+const putOwn = (acc, k, val) => (Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }), acc);
 const range = n => {
     if (!Number.isInteger(n) || n < 0) raise(new RangeError(`range: n must be a non-negative integer, got ${String(n)}`));
     return Array.from({ length: n }, (_, i) => i);
@@ -2014,7 +2018,13 @@ modules.push(TaskCategory);
 // Either 와 같은 이유로 Filterable 이 아니다 — 정규 빈 상자가 없다. docs/internals.md#filterable
 const taskFilter = (pred, t) =>
     types.checkFunction(pred, 'Task.filter') && Task.isTask(t)
-        ? new Task((reject, resolve) => t.fork(reject, x => pred(x) ? resolve(x) : reject(x)))
+        // 술어는 원본이 비동기면 Task 생성자의 try 밖에서 돈다 — 감싸지 않으면 예외가
+        // uncaughtException 으로 새고 이 Task 는 영영 안 열린다(9차 감사 1). TaskFunctor 와 같은 규율.
+        ? new Task((reject, resolve) => t.fork(reject, x => {
+            let keep;
+            try { keep = pred(x); } catch (e) { reject(e); return; }
+            keep ? resolve(x) : reject(x);
+        }))
         : raise(new TypeError('Task.filter: arguments must be (function, Task)'));
 class TaskFunctor extends Functor {
     constructor() {
@@ -2670,10 +2680,10 @@ const { transducer } = (() => {
         if (typeof vessel === 'string') return transduce(transducer, (acc, v) => acc + v, vessel, collection);
         if (vessel instanceof Set) return transduce(transducer, (acc, v) => acc.add(v), new Set(vessel), collection);
         if (vessel instanceof Map) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return acc.set(k, val); }, new Map(vessel), collection);
-        // 복제도 defineProperty 로 — Object.assign 은 그릇의 own __proto__ 를 프로토타입으로 둔갑시킨다(5차 감사).
-        const putOwn = (acc, k, val) => (Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }), acc);
+        // 그릇 복제는 copyOwn 하나로 — 서술자를 통째로 옮겨야 심볼·숨은 속성이 안 사라지고(9차 감사 4),
+        // own __proto__ 가 프로토타입으로 둔갑하지도 않는다(5차 감사).
         if (types.isPlainObject(vessel)) {
-            const seed = Object.keys(vessel).reduce((acc, k) => putOwn(acc, k, vessel[k]), {});
+            const seed = copyOwn(vessel);
             return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return putOwn(acc, k, val); }, seed, collection);
         }
         return raise(new TypeError('transducer.into: vessel must be an array, string, Set, Map, or plain object'));
@@ -3118,10 +3128,11 @@ const { Optics } = (() => {
     const prop = key => {
         (typeof key === 'string' || typeof key === 'number')
             || raise(new TypeError('Optics.prop: key must be a string or number'));
-        // 복제도 대입도 defineProperty 로 — `=` 와 Object.assign 은 __proto__ 를 프로토타입으로 둔갑시킨다(6차 감사 1).
-        const putOwn = (acc, k, val) => (Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }), acc);
+        // 복제도 대입도 defineProperty 로 — `=` 와 Object.assign 은 __proto__ 를 프로토타입으로
+        // 둔갑시킨다(6차 감사 1). 복제는 **서술자 전부**를 옮긴다 — Object.keys 로 하면 심볼과
+        // 숨은 속성을 잃어 읽은 값을 그대로 넣어도 원본이 안 나온다(9차 감사 2).
         return Lens(o => o[key], (v, o) => putOwn(
-            Array.isArray(o) ? o.slice() : Object.keys(o).reduce((acc, k) => putOwn(acc, k, o[k]), {}),
+            Array.isArray(o) ? o.slice() : copyOwn(o),
             key, v
         ));
     };
