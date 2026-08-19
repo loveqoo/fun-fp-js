@@ -556,4 +556,23 @@ test('prop - 키가 문자열도 숫자도 아니면 던진다', () => {
     assertThrowsWith(() => prop(), 'Optics.prop: key must be a string or number');
 });
 
+// 6차 감사 [1] — set 이 데이터가 아니라 프로토타입을 바꾸던 자리. 4차-1(그릇 into)과 같은 병이다.
+test('prop - __proto__ 키는 데이터로 넣지 프로토타입을 바꾸지 않는다', () => {
+    const out = set(prop('__proto__'), { hacked: 1 }, { a: 1 });
+    assert(Object.getPrototypeOf(out) === Object.prototype, '결과의 프로토타입이 바뀌었다');
+    assert(Object.prototype.hasOwnProperty.call(out, '__proto__'), '__proto__ 가 own 필드로 안 들어갔다');
+    assert(out.hacked === undefined, 'hacked 가 프로토타입을 타고 보인다');
+    assertEquals(view(prop('__proto__'), out), { hacked: 1 });
+    assertEquals(out.a, 1);
+});
+
+test('prop - 원본의 own __proto__ 도 복제에서 프로토타입으로 둔갑하지 않는다', () => {
+    const source = {};
+    Object.defineProperty(source, '__proto__', { value: { hacked: 1 }, enumerable: true, writable: true, configurable: true });
+    const out = set(prop('a'), 2, source);
+    assert(Object.getPrototypeOf(out) === Object.prototype, '복제가 프로토타입을 옮겼다');
+    assert(out.hacked === undefined, 'hacked 가 프로토타입을 타고 보인다');
+    assertEquals(out.a, 2);
+});
+
 console.log('\n✅ Optics tests completed');

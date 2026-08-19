@@ -194,7 +194,7 @@ console.log(merge.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 안쪽
 console.log(pick.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1  — 같다
 
 try { merge.concat(Maybe.Just(1), Maybe.Just('a')); }
-catch (e) { console.log('merge: throws'); }                     // 이종이면 던진다
+catch (e) { console.log('merge: throws'); }                     // merge: throws   이종이면 던진다
 console.log(pick.concat(Maybe.Just(1), Maybe.Just('a')).value); // 1  — 안 열어서 통과
 ```
 
@@ -483,6 +483,19 @@ catch (e) { console.log(e.message); }
 종류에 따라 통과 여부가 갈립니다 — 기존 `foldMap(foldable, monoid)` 과 같은 규칙으로
 요구합니다. 등록은 필요 없고 `new Monoid(...)` 로 만든 것이면 됩니다.
 
+**`preview` 가 쓰는 monoid 는 `Monoid.lookup('maybe')` 입니다.** `preview` 는 대상을 "합치는"
+것이 아니라 "고르는" 것이라, 컨테이너를 열지 않는 쪽을 골라야 합니다. `maybe(first)` 를 쓰면
+안쪽 값끼리 합치려 들어 **타입이 섞인 대상에서 던집니다** — 배열에 무엇이 들었든 "첫 번째" 는
+답할 수 있어야 합니다.
+
+```javascript
+const { Optics } = FunFP;
+const { preview, traversed } = Optics;
+
+console.log(preview(traversed('array'), [1, 'a']).value);   // 1   섞여 있어도 첫 번째는 답한다
+console.log(preview(traversed('array'), []).isNothing());   // true
+```
+
 ---
 
 ### 세 P 는 사설 딕셔너리가 아니라 등록된 인스턴스다
@@ -725,6 +738,42 @@ console.log(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] })); /
 
 ---
 
+## 수 덧셈은 결합법칙을 정확히 지키지 않는다 {#number-sum}
+
+`Semigroup` 은 결합법칙을 약속합니다 — `(a ⊕ b) ⊕ c` 와 `a ⊕ (b ⊕ c)` 가 같아야 합니다.
+**부동소수점 덧셈은 이것을 깹니다.** 자바스크립트의 문제가 아니라 IEEE 754 의 성질입니다:
+더할 때마다 반올림이 일어나고, 반올림 시점이 다르면 결과가 갈립니다.
+
+```javascript
+const { Semigroup } = FunFP;
+
+const S = Semigroup.lookup('number');
+console.log(S.concat(S.concat(0.1, 0.2), 0.3));   // 0.6000000000000001
+console.log(S.concat(0.1, S.concat(0.2, 0.3)));   // 0.6
+```
+
+**[곱셈 쪽](#product-group)과 깨지는 자리가 다릅니다.** 곱셈은 *역원*이 평범한 값에서 깨지는데,
+덧셈은 역원이 **유한한 수에서 정확합니다** — `0.1 + (-0.1)` 은 정확히 `0` 입니다. 덧셈에서
+깨지는 것은 결합법칙 쪽이고, 역원이 깨지는 것은 무한대뿐입니다(`Infinity + (-Infinity)` 는 `NaN`).
+
+```javascript
+const { Semigroup, Group } = FunFP;
+
+const S = Semigroup.lookup('number'), G = Group.lookup('number');
+console.log(S.concat(0.1, G.invert(0.1)));            // 0   유한한 수의 역원은 정확하다
+console.log(S.concat(Infinity, G.invert(Infinity)));  // NaN   무한대는 아니다
+```
+
+**법칙 게이트가 이것을 못 잡습니다 — 표본이 안전하기 때문입니다.** 수 표본은
+`[0, 1, 2, -3, 0.5]` 인데, 전부 이진수로 **정확히** 표현되는 값이라 반올림이 아예 안 일어납니다.
+125가지 조합을 전수로 돌려도 깨지는 것이 0건입니다(실측). 그래서 이 초록은 "법칙이 성립한다"가
+아니라 "이 표본에서는 성립한다"는 뜻입니다. `SAMPLE_OVERRIDES` 에 그 사정을 적어 두었습니다.
+
+**고칠 수 있는 결함이 아니라 알려야 할 사실입니다.** 정확한 덧셈이 필요하면 정수(센트 단위)나
+십진 라이브러리를 쓰십시오 — 이 라이브러리의 `number` 인스턴스는 부동소수점 그대로입니다.
+
+---
+
 ## `NumberProductGroup` 의 역원은 모든 수에 있지 않다 {#product-group}
 
 `Group` 은 "모든 값에 역원이 있다" 는 약속입니다. 곱셈에서 2의 역원은 0.5이고
@@ -742,7 +791,7 @@ const { Group } = FunFP;
 const G = Group.lookup('NumberProductGroup');
 console.log(G.concat(2, G.invert(2)));    // 1     — 성립
 console.log(G.concat(-3, G.invert(-3)));  // 1     — 성립
-console.log(G.concat(49, G.invert(49)));  // 1.0000000000000002  — 어긋난다
+console.log(G.concat(49, G.invert(49)));  // 0.9999999999999999   어긋난다
 console.log(G.concat(0, G.invert(0)));    // NaN   — 0 은 역원이 없다
 ```
 
@@ -1019,6 +1068,18 @@ console.log(Monoid.lookup('maybe') === Monoid.types['maybe']);   // true
 | `Algebra.all('array')` | 15.9μs | **1.5μs** |
 | `Algebra.all('number')` | 13.5μs | **0.6μs** |
 | `Functor.lookup('array')` | 0.009μs | 0.009μs |
+
+**키는 소문자만 받습니다.** 역인덱스가 `.type` 을 소문자로 눕혀 쌓으므로 입구도 소문자 하나로
+고정합니다. 대문자를 함께 받으면 같은 묶음을 두 이름으로 부르게 되고, `.type` 자체가 대문자
+(`'Maybe'`)와 소문자(`'number'`)로 섞여 있어 어느 쪽으로 불러야 하는지가 더 흐려집니다.
+
+```javascript
+const { Algebra } = FunFP;
+
+console.log(Object.keys(Algebra.all('maybe')).length > 0);   // true
+try { console.log(Object.keys(Algebra.all('Maybe')).length); }
+catch (e) { console.log(e.message); }   // 'Algebra.all: key must be lowercase, got Maybe'
+```
 
 **키 순서는 계약이 아닙니다.** 등록 순서를 따라가므로 등록 순서가 바뀌면 함께 바뀝니다 —
 실제로 훑기에서 인덱스로 옮길 때 바뀌었습니다. 쓰는 쪽은 이름으로 구조분해하므로 순서에

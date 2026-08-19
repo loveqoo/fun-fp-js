@@ -167,3 +167,11 @@ test('Left -> Nothing -> Left uses default', () => {
 });
 
 console.log('\n✅ Either tests completed');
+
+// 6차 감사 [5] — Maybe 와 같은 자리. 심볼을 Left/Right 로 내렸다.
+test('6차-5: 기반 클래스를 직접 만든 값은 Either 가 아니다', () => {
+    const impossible = new fp.Either();
+    assertEquals(fp.Either.isEither(impossible), false);
+    assertEquals(fp.Either.isEither(fp.Either.Right(1)), true);
+    assertEquals(fp.Either.isEither(fp.Either.Left('e')), true);
+});

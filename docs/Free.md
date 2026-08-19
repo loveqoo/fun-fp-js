@@ -170,7 +170,7 @@ h.promise.then(
     e => {
         if (e.cancelled !== true) throw new Error('취소 표식이 없다: ' + e.message);
         if (calls.join(',') !== '1,2') throw new Error('3단계가 실행됐다: ' + calls);
-        console.log('취소됨 — 실행된 단계:', calls);   // [ 1, 2 ]
+        console.log('취소됨, 실행된 단계:', calls);   // 취소됨, 실행된 단계: [ 1, 2 ]
     });
 ```
 
@@ -255,7 +255,39 @@ shop.run(buy(['책', '펜'], { discount: 0.1 })).then(r => {
 | `run` 실행 중 | 다른 `Free.api` 의 명령이 섞임 | `no handler for '<이름>'` 으로 거부 |
 | `run` 실행 중 | 핸들러가 던짐 / Promise 거부 | 그대로 거부(reject) — 삼켜지지 않음 |
 
-명령 이름은 `toString` 같은 프로토타입 이름이어도 안전합니다. 핸들러가 받는 인자는
+**거부는 비동기 뒤의 걸음에서도 샙니다.** 첫 걸음은 `Promise` 생성자가 던진 것을 거부로
+바꿔 주지만, 비동기 명령이 끝난 뒤에 이어지는 걸음은 그 밖에서 돕니다 — 그래서 러너가
+걸음마다 따로 감쌉니다. 감싸지 않으면 그 예외는 아무도 못 받는 곳으로 사라집니다.
+
+```javascript
+const { Free } = FunFP;
+
+const api = Free.api('step');
+const it = api.interpreter({
+    step: n => n === 2
+        ? Promise.reject(new Error('두 번째 걸음에서 터짐'))
+        : Promise.resolve('ok')
+});
+
+it.run(api.step(1).chain(() => api.step(2)))
+    .then(() => console.log('삼켜졌다'))
+    .catch(e => console.log(e.message));   // '두 번째 걸음에서 터짐'
+```
+
+명령 이름은 `toString` 같은 프로토타입 이름이어도 안전합니다 — 어휘·명령·핸들러 테이블이
+전부 프로토타입 없는 객체이고 자기 소유 필드만 봅니다.
+
+```javascript
+const { Free } = FunFP;
+
+const api = Free.api('toString', 'hasOwnProperty');
+const it = api.interpreter({ toString: () => 'T', hasOwnProperty: () => 'H' });
+
+it.run(api.toString()).then(v => console.log(v));         // 'T'
+it.run(api.hasOwnProperty()).then(v => console.log(v));   // 'H'
+```
+
+핸들러가 받는 인자는
 호출한 그대로입니다(위치 인자). 반환값의 타입 검증이 필요하면 프로그램의 순수 단계
 (`.map(v => …검사…)`)나 핸들러 안에서 사용자가 직접 합니다. 어떤 값이 옳은지는
 라이브러리가 아니라 각 도메인이 알기 때문입니다.
@@ -359,6 +391,6 @@ console.log(Chain.lookup('free').chain(x => Free.pure(x * 2), Free.pure(5)).valu
 
 ## 관련 타입 클래스
 
-- **[Functor](./Functor.md)** — `map` · **[Chain](./Chain.md)** — `chain` ·
+- **[Functor](./Functor.md)** — `map` · **[Chain](./Monad.md)** — `chain` ·
   **[Monad](./Monad.md)** — 완전한 순차 패턴
 - 트랜스포머 4종은 Free 위에 구현되어 있습니다. [StateT](./StateT.md) 문서부터 읽으면 됩니다.

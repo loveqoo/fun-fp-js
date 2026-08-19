@@ -60,6 +60,25 @@ bimap(
 // Left('ERROR')
 ```
 
+### 튜플 — 길이가 정확히 둘이어야 합니다
+
+튜플은 JavaScript 의 타입이 아니라 **길이가 2인 배열**입니다. 그래서 `.type` 은 사실 그대로
+`'Array'` 로 두고, "둘인가" 는 인스턴스가 직접 봅니다.
+
+```javascript
+const { Bifunctor } = FunFP;
+
+const { bimap } = Bifunctor.lookup('tuple');
+
+console.log(bimap(n => n * 2, s => s + '!', [1, 'a']));   // [ 2, 'a!' ]
+
+try { console.log(bimap(n => n * 2, s => s + '!', [1, 2, 3])); }
+catch (e) { console.log(e.message); }   // 'Bifunctor.bimap: tuple must have exactly 2 elements, got 3'
+```
+
+**이 검사는 느슨한 모드에서도 살아 있습니다**(실측). 느슨한 모드가 놓아주는 것은 타입 검사인데,
+빈 배열에서 `[NaN, NaN]` 이 나오는 것은 타입 문제가 아니라 **결함**이기 때문입니다.
+
 ## 실용적 예시
 
 ### 에러 정규화

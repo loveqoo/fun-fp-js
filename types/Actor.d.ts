@@ -21,4 +21,13 @@ export interface ActorRef<S, M, R> {
 export declare function Actor<S, M, R>(config: {
     readonly init: S;
     readonly handle: (state: S, msg: M) => [R, S] | Promise<[R, S]> | Task<[R, S]>;
+    // Subscribers see results in message order. Set false for the pre-2026-08-19
+    // behaviour, where the queue advanced before notifying and notifications could
+    // arrive out of order. Defaults to true.
+    readonly notifyInOrder?: boolean;
+    // Milliseconds a single handler may take before its message is rejected with a
+    // `timedOut: true` error and the queue moves on. Defaults to 1000; pass Infinity
+    // to wait forever. Where timers are unavailable (Google Apps Script has no
+    // setTimeout) the deadline is checked at the next queue boundary instead.
+    readonly timeout?: number;
 }): ActorRef<S, M, R>;

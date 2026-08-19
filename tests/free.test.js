@@ -610,3 +610,57 @@ testAsync('start⑫: 취소와 비행 중 실패가 경주하면 실패가 이�
     assertEquals(e.message, '비행 실패');
     assertEquals(e.cancelled, undefined);
 });
+
+// 6차 감사 [10] — runSync/runAsync 는 Free 가 아닌 입력을 성공값으로 돌려주고 runWithTask 만 거부했다.
+// 러너가 마지막에 평범한 값을 내는 것은 문서화된 정상 계약이므로, 검사는 **입구의 프로그램 인자**에만 둔다.
+test('6차-10: runSync 가 Free 아닌 프로그램을 거부한다', () => {
+    assertThrowsWith(() => Free.runSync(() => 1)(123), 'Free.runSync: program must be a Free value');
+});
+
+testAsync('6차-10: runAsync 가 Free 아닌 프로그램을 거부한다', async () => {
+    const e = await Free.runAsync(() => 1)(123).then(() => null, err => err);
+    assert(e !== null, 'runAsync 가 거부하지 않았다');
+    assertEquals(e.message, 'Free.runAsync: program must be a Free value');
+});
+
+testAsync('6차-10: runWithTask 도 같은 입구 문안을 쓴다', async () => {
+    const e = await Free.runWithTask(() => Task.of(1))(123).then(() => null, err => err);
+    assert(e !== null, 'runWithTask 가 거부하지 않았다');
+    assertEquals(e.message, 'Free.runWithTask: program must be a Free value');
+});
+
+test('6차-10: 러너가 마지막에 평범한 값을 내는 정상 계약은 그대로다', () => {
+    const FunctorSymbol = Symbol.for('fun-fp-js/Functor');
+    class Ask {
+        constructor(next) { this.next = next; }
+        map(f) { return new Ask(x => f(this.next(x))); }
+    }
+    Ask.prototype[FunctorSymbol] = true;
+    assertEquals(Free.runSync(cmd => cmd.next(7))(Free.liftF(new Ask(x => x))), 7);
+    assertEquals(trampoline((function go(n, acc) {
+        return n <= 0 ? Thunk.done(acc) : Thunk.suspend(() => go(n - 1, acc + n));
+    })(10, 0)), 55);
+});
+
+// 8차 감사 [4] — thenable 을 `typeof result.then === 'function'` 으로 **넓게 인정해 놓고**
+// 곧바로 선택 메서드인 `finally` 를 불렀다. 최소 thenable 이 TypeError 로 죽었다.
+test('8차-4: 최소 thenable(then 만 있는 것)도 재진입 가드를 지난다', () => {
+    const thenable = { then(resolve) { resolve(1); } };
+    let calls = 0;
+    const guarded = Free.runSync(x => x)(() => { calls++; return thenable; });
+    const out = guarded();
+    assertEquals(calls, 1);
+    assert(out !== null && typeof out.then === 'function', 'thenable 이 그대로 안 돌아왔다');
+});
+
+testAsync('8차-4: 그 thenable 이 정착하면 가드가 풀려 다시 부를 수 있다', async () => {
+    let settle;
+    const thenable = { then(resolve) { settle = () => resolve('끝'); } };
+    let calls = 0;
+    const guarded = Free.runSync(x => x)(() => { calls++; return thenable; });
+    guarded();
+    settle();
+    await null; await null; await null;
+    guarded();
+    assertEquals(calls, 2, '가드가 안 풀려 두 번째 호출이 재진입으로 샜다');
+});

@@ -1,6 +1,9 @@
 // Actor tests
 import fp from '../index.js';
 import { test, testAsync, assertEquals, assert, assertThrows, logSection } from './utils.js';
+import { spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const { Actor, Task, Free } = fp;
 
@@ -292,4 +295,176 @@ testAsync('5차 후속: Promise 가 쌍이 아닌 값을 내면 라벨 거부 (�
     const actor = Actor({ init: 0, handle: () => Promise.resolve(123) });
     const e = await new Promise(res => actor.send(1).fork(res, () => res(null)));
     assertEquals(e.message, 'Actor: handle must produce a [result, newState] pair');
+});
+
+// 6차 감사 [11] — 구독자 배열을 순회하면서 직접 줄여, 해지 뒤의 구독자가 통째로 건너뛰어졌다.
+testAsync('6차-11: 구독자가 통지 중 자기를 해지해도 다음 구독자가 받는다', async () => {
+    const seen = [];
+    const actor = Actor({ init: 0, handle: (s, m) => [m, s + 1] });
+    let off;
+    off = actor.subscribe(r => { seen.push('A:' + r); off(); });
+    actor.subscribe(r => seen.push('B:' + r));
+    await new Promise((res, rej) => actor.send('x').fork(rej, res));
+    assertEquals(seen, ['A:x', 'B:x']);
+    await new Promise((res, rej) => actor.send('y').fork(rej, res));
+    assertEquals(seen, ['A:x', 'B:x', 'B:y']);   // A 는 해지됐으니 다음 통지엔 없다
+});
+
+testAsync('6차-11: 남을 해지하면 그 통지부터 즉시 빠진다', async () => {
+    const seen = [];
+    const actor = Actor({ init: 0, handle: (s, m) => [m, s + 1] });
+    let offB;
+    actor.subscribe(r => { seen.push('A:' + r); offB(); });
+    offB = actor.subscribe(r => seen.push('B:' + r));
+    await new Promise((res, rej) => actor.send('x').fork(rej, res));
+    assertEquals(seen, ['A:x']);   // B 는 이번 통지에서 이미 빠졌다
+});
+
+// 6차 감사 [2] — 알림이 메시지 순서를 안 따랐다. 첫 메시지를 미정착으로 붙잡고 둘째를 동기로
+// 처리하면 구독자가 `둘째 → 첫째` 로 받았다(상태는 FIFO 였다). 소유자 결정(2026-08-19):
+// 순서 보장을 기본으로 하고, 옛 동작은 notifyInOrder: false 로 고를 수 있게 한다.
+testAsync('6차-2: 알림이 메시지 순서를 따른다 (기본값)', async () => {
+    const events = [];
+    let release;
+    const actor = Actor({
+        init: 0,
+        handle: (s, m) => m === 'one' ? new Promise(r => { release = () => r([m, s + 1]); }) : [m, s + 1],
+    });
+    actor.subscribe((r, st) => events.push([r, st]));
+    const p1 = new Promise((res, rej) => actor.send('one').fork(rej, res));
+    const p2 = new Promise((res, rej) => actor.send('two').fork(rej, res));
+    release();
+    await Promise.all([p1, p2]);
+    assertEquals(events, [['one', 1], ['two', 2]]);
+    assertEquals(actor.getState(), 2);
+});
+
+testAsync('6차-2: notifyInOrder:false 는 옛 동작(진행 먼저, 알림 나중)이다', async () => {
+    const events = [];
+    let release;
+    const actor = Actor({
+        init: 0,
+        notifyInOrder: false,
+        handle: (s, m) => m === 'one' ? new Promise(r => { release = () => r([m, s + 1]); }) : [m, s + 1],
+    });
+    actor.subscribe(r => events.push(r));
+    const p1 = new Promise((res, rej) => actor.send('one').fork(rej, res));
+    const p2 = new Promise((res, rej) => actor.send('two').fork(rej, res));
+    release();
+    await Promise.all([p1, p2]);
+    assertEquals(events, ['two', 'one']);
+});
+
+testAsync('6차-2: 순서 보장이 통지 예외로 큐를 멈추지 않는다', async () => {
+    const actor = Actor({ init: 0, handle: (s, m) => [m, s + 1] });
+    actor.subscribe(() => { throw new Error('구독자 터짐'); });
+    await new Promise((res, rej) => actor.send('m1').fork(rej, res));
+    const second = await new Promise((res, rej) => actor.send('m2').fork(rej, res));
+    assertEquals(second, 'm2');           // 큐가 살아 있다
+    assertEquals(actor.getState(), 2);
+});
+
+// 6차 감사 곁가지 — 핸들러가 영영 정착 안 하면 큐가 영구히 막히고 뒤 메시지의 Task 도 안 온다
+// (실측). 소유자 결정: 밀리초 타임아웃을 옵션으로. 기본은 없음(지금처럼 영영 기다림).
+testAsync('타임아웃: 정착 안 하는 핸들러를 끝내고 큐를 진행시킨다', async () => {
+    const actor = Actor({
+        init: 0,
+        timeout: 20,
+        handle: (s, m) => m === 'stuck' ? new Promise(() => {}) : [m, s + 1],
+    });
+    const e = await new Promise(res => actor.send('stuck').fork(res, () => res(null)));
+    assert(e !== null, '타임아웃이 거부로 안 왔다');
+    assertEquals(e.message, 'Actor: handle timed out after 20ms');
+    assertEquals(e.timedOut, true);
+    const after = await new Promise((res, rej) => actor.send('go').fork(rej, res));
+    assertEquals(after, 'go');            // 큐가 살아났다
+    assertEquals(actor.getState(), 1);    // 막힌 메시지는 상태를 안 옮긴다
+});
+
+testAsync('타임아웃: 늦게 도착한 결과는 무시된다 (일회 정착)', async () => {
+    const seen = [];
+    const actor = Actor({
+        init: 0,
+        timeout: 20,
+        handle: (s, m) => m === 'late' ? new Promise(r => setTimeout(() => r(['늦음', 99]), 60)) : [m, s + 1],
+    });
+    actor.subscribe(r => seen.push(r));
+    await new Promise(res => actor.send('late').fork(res, () => res(null)));
+    await new Promise((res, rej) => actor.send('next').fork(rej, res));
+    await new Promise(r => setTimeout(r, 80));
+    assertEquals(seen, ['next']);          // 늦게 온 '늦음' 이 통지되지 않았다
+    assertEquals(actor.getState(), 1);     // 99 로 덮이지 않았다
+});
+
+// 소유자 결정(2026-08-19): 순차 진행의 기본 타임아웃은 1초다.
+testAsync('타임아웃: 기본값은 1초다', async () => {
+    const actor = Actor({ init: 0, handle: () => new Promise(() => {}) });
+    const e = await new Promise(res => actor.send('stuck').fork(res, () => res(null)));
+    assert(e !== null, '기본 타임아웃이 안 걸렸다');
+    assertEquals(e.message, 'Actor: handle timed out after 1000ms');
+    assertEquals(e.timedOut, true);
+});
+
+testAsync('타임아웃: 1초 안에 끝나는 핸들러는 그대로 통과한다', async () => {
+    const actor = Actor({ init: 0, handle: (s, m) => new Promise(r => setTimeout(() => r([m, s + 1]), 40)) });
+    assertEquals(await new Promise((res, rej) => actor.send('slow').fork(rej, res)), 'slow');
+});
+
+testAsync('타임아웃: Infinity 면 끄고 영영 기다린다 (옛 동작)', async () => {
+    const actor = Actor({ init: 0, timeout: Infinity, handle: (s, m) => new Promise(r => setTimeout(() => r([m, s + 1]), 1200)) });
+    assertEquals(await new Promise((res, rej) => actor.send('slow').fork(rej, res)), 'slow');
+});
+
+test('타임아웃: 숫자가 아니거나 양수가 아니면 만들 때 던진다', () => {
+    assertThrows(() => Actor({ init: 0, handle: () => [1, 1], timeout: -1 }));
+    assertThrows(() => Actor({ init: 0, handle: () => [1, 1], timeout: '20' }));
+});
+
+// GAS 에는 setTimeout 이 없다(1차 자료 확인, 2026-08-19). 그 환경에서는 마감 Task 를 만들 수
+// 없으므로 **다음 경계에서** 만료시킨다 — Free.api 의 협조적 취소와 같은 의미론이다.
+// hasTimer 는 모듈을 읽을 때 정해지므로, 자식 프로세스에서 지운 뒤 import 해야 그 경로가 돈다.
+test('타임아웃: 타이머가 없는 환경(GAS)에서는 다음 경계에서 만료된다', () => {
+    const indexUrl = pathToFileURL(join(dirname(dirname(fileURLToPath(import.meta.url))), 'index.js')).href;
+    const source = `
+        delete globalThis.setTimeout;
+        const fp = (await import(${JSON.stringify(indexUrl)})).default;
+        if (typeof setTimeout === 'function') throw new Error('setTimeout 이 안 지워졌다');
+        const a = fp.Actor({ init: 0, timeout: 30, handle: (s, m) => m === 'stuck' ? new Promise(() => {}) : [m, s + 1] });
+        let stuck = null;
+        a.send('stuck').fork(e => { stuck = e.timedOut === true ? 'timedOut' : 'other'; }, () => { stuck = 'resolved'; });
+        const start = Date.now();
+        while (Date.now() - start < 50) {}          // 타이머가 없으니 바쁜 대기로 마감을 넘긴다
+        const after = await new Promise(res => a.send('after').fork(() => res('rejected'), v => res(v)));
+        console.log(JSON.stringify({ stuck, after, state: a.getState() }));
+    `;
+    const r = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8' });
+    assertEquals(r.status, 0, `자식 프로세스가 죽었다: ${r.stderr}`);
+    assertEquals(JSON.parse(r.stdout.trim()), { stuck: 'timedOut', after: 'after', state: 1 });
+});
+
+// 타이머가 없으면 Task.race 가 없으므로 **일회 정착을 once 가 혼자 진다** — 경계에서 만료된 뒤
+// 늦게 도착한 결과가 상태를 덮거나 구독자에게 통지되면 안 된다. 타이머 경로만 보면 race 가
+// 가려 주기 때문에 이 표본이 없으면 once 를 걷어내도 게이트가 초록이다(실측으로 확인했다).
+test('타임아웃: 타이머가 없을 때 늦게 도착한 결과는 버려진다', () => {
+    const indexUrl = pathToFileURL(join(dirname(dirname(fileURLToPath(import.meta.url))), 'index.js')).href;
+    const source = `
+        delete globalThis.setTimeout;
+        const fp = (await import(${JSON.stringify(indexUrl)})).default;
+        let late;
+        const seen = [];
+        const a = fp.Actor({ init: 0, timeout: 30, handle: (s, m) => m === 'late'
+            ? new Promise(r => { late = () => r(['늦음', 99]); })
+            : [m, s + 1] });
+        a.subscribe(r => seen.push(r));
+        a.send('late').fork(() => seen.push('rejected'), () => seen.push('resolved'));
+        const start = Date.now();
+        while (Date.now() - start < 50) {}
+        await new Promise(res => a.send('after').fork(() => res(), res));   // 경계 — 여기서 만료된다
+        late();                                                            // 그 뒤에 도착
+        await null; await null; await null;
+        console.log(JSON.stringify({ seen, state: a.getState() }));
+    `;
+    const r = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8' });
+    assertEquals(r.status, 0, `자식 프로세스가 죽었다: ${r.stderr}`);
+    assertEquals(JSON.parse(r.stdout.trim()), { seen: ['rejected', 'after'], state: 1 });
 });

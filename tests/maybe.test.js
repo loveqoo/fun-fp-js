@@ -142,3 +142,15 @@ test('Maybe.Just with null value', () => {
 });
 
 console.log('\n✅ Maybe tests completed');
+
+// 6차 감사 [5] — 심볼이 기반 클래스 prototype 에 있어 `new Maybe()` 가 타입 가드를 통과했다.
+// 그 값은 Just 도 Nothing 도 아니라 fold 가 없는 분기를 고른다. 심볼을 변형 쪽으로 내려 막는다.
+// 소유자 결정(2026-08-19): 생성자를 막는 대신 심볼로 — 공개 표면이 안 바뀐다.
+test('6차-5: 기반 클래스를 직접 만든 값은 Maybe 가 아니다', () => {
+    const impossible = new fp.Maybe();
+    assertEquals(fp.Maybe.isMaybe(impossible), false);
+    assertEquals(fp.Maybe.isJust(impossible), false);
+    assertEquals(fp.Maybe.isNothing(impossible), false);
+    assertEquals(fp.Maybe.isMaybe(fp.Maybe.of(1)), true);
+    assertEquals(fp.Maybe.isMaybe(fp.Maybe.Nothing()), true);
+});

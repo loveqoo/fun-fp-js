@@ -270,3 +270,11 @@ test('Validation.ap - 다른 모노이드의 Invalid 둘은 거부된다', () =>
     assertThrows(() => fp.Validation.ap(fp.Validation.Invalid(2, sum), fp.Validation.Invalid(3, product)), '모노이드를 섞었다');
     assertEquals(fp.Validation.ap(fp.Validation.Invalid(['a']), fp.Validation.Invalid(['b'])).errors.join(','), 'a,b');
 });
+
+// 6차 감사 [5] — Maybe 와 같은 자리. 심볼을 Valid/Invalid 로 내렸다.
+test('6차-5: 기반 클래스를 직접 만든 값은 Validation 이 아니다', () => {
+    const impossible = new fp.Validation();
+    assertEquals(fp.Validation.isValidation(impossible), false);
+    assertEquals(fp.Validation.isValidation(fp.Validation.Valid(1)), true);
+    assertEquals(fp.Validation.isValidation(fp.Validation.Invalid(['e'])), true);
+});

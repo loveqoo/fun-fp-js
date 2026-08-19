@@ -79,6 +79,39 @@ test('Default Ord - Uses <= operator', () => {
     assertEquals(defaultOrd.lte(5, 5), true);
 });
 
+// 6차 감사 [4] — 객체끼리 `<=` 는 둘 다 "[object Object]" 로 강제 변환돼 서로 다른 값이
+// 양방향으로 "작거나 같다" 가 됐다. 짝 Setoid(===)는 다르다고 하므로 Ord/Setoid 가 어긋난다.
+// 소유자 결정(2026-08-19): "확실한 계산만 제공한다" — 원시값만 받는다.
+test('6차-4: default Ord 는 확실히 비교되는 원시값만 받는다', () => {
+    const msg = t => `Ord.lte: default Ord compares number, string, boolean, and bigint only, got ${t}`;
+    let m = '(안 던짐)';
+    try { defaultOrd.lte({ p: 1 }, { p: 1 }); } catch (e) { m = e.message; }
+    assertEquals(m, msg('object'));
+    m = '(안 던짐)';
+    try { defaultOrd.lte([1], [1]); } catch (e) { m = e.message; }
+    assertEquals(m, msg('object'));
+    m = '(안 던짐)';
+    try { defaultOrd.lte(undefined, undefined); } catch (e) { m = e.message; }
+    assertEquals(m, msg('undefined'));
+    m = '(안 던짐)';
+    try { defaultOrd.lte(null, null); } catch (e) { m = e.message; }
+    assertEquals(m, msg('object'));
+    // 원시값 넷은 그대로 답한다
+    assertEquals(defaultOrd.lte(1, 2), true);
+    assertEquals(defaultOrd.lte('a', 'b'), true);
+    assertEquals(defaultOrd.lte(false, true), true);
+    if (typeof BigInt === 'function') {
+        assertEquals(defaultOrd.lte(BigInt(1), BigInt(2)), true);   // 리터럴 1n 은 ES2020 문법이라 못 쓴다
+    }
+});
+
+test('6차-4: 짝 Setoid 는 그대로다 — === 는 참조 동등이라 흔들리지 않는다', () => {
+    const s = Setoid.lookup('default');
+    const a = { p: 1 };
+    assertEquals(s.equals(a, a), true);
+    assertEquals(s.equals({ p: 1 }, { p: 1 }), false);
+});
+
 // Setoid 쪽과 같은 이유 — docs/internals.md#any
 test('Default Ord - 이종 인자는 던진다', () => {
     let m = '(안 던짐)';

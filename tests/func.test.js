@@ -405,6 +405,23 @@ test('range - throws for negative', () => {
     assertThrows(() => range(-5));
 });
 
+// 6차 감사 [12] — 같은 계열의 잘못된 입력이 빈 배열·절삭·강제 변환·RangeError 넷으로 갈렸다.
+test('6차-12: range 가 정수·유한이 아닌 입력을 한 문안으로 거부한다', () => {
+    for (const bad of [NaN, 1.5, '3', Infinity, -Infinity, null, undefined, {}]) {
+        assertThrowsWith(() => range(bad), `range: n must be a non-negative integer, got ${String(bad)}`);
+    }
+    assertEquals(range(3), [0, 1, 2]);   // 정상 경로는 그대로
+    assertEquals(range(0), []);
+});
+
+test('6차-12: rangeBy 도 두 끝을 검사한다', () => {
+    assertThrowsWith(() => rangeBy(1.5, 4), 'rangeBy: start and end must be integers, got 1.5 and 4');
+    assertThrowsWith(() => rangeBy(1, '4'), 'rangeBy: start and end must be integers, got 1 and 4');
+    assertThrowsWith(() => rangeBy(NaN, 4), 'rangeBy: start and end must be integers, got NaN and 4');
+    assertEquals(rangeBy(2, 6), [2, 3, 4, 5]);   // 정상 경로는 그대로
+    assertEquals(rangeBy(5, 5), []);
+});
+
 test('rangeBy - creates array from start to end-1', () => {
     assertEquals(rangeBy(2, 6), [2, 3, 4, 5]);
     assertEquals(rangeBy(0, 3), [0, 1, 2]);

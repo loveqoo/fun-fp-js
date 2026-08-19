@@ -65,10 +65,42 @@ console.log(account.getState());  // 20 — 항상
 
 ## 생성
 
-`Actor({ init, handle })` — `handle`은 `[결과, 새상태]` 튜플을 돌려줍니다. 비동기라면
+`Actor({ init, handle, notifyInOrder, timeout })` — `handle`은 `[결과, 새상태]` 튜플을 돌려줍니다. 비동기라면
 그 튜플을 담은 **Promise 나 Task** 를 돌려주면 됩니다(`Free.api` 해석기 핸들러와 같은
 관용도라, `it.run(program).then(v => [v, 새상태])` 를 그대로 넘길 수 있습니다). 어느
 경로든 튜플이 아닌 것을 내면 같은 문안으로 거부되고 큐는 계속 돕니다.
+
+### 선택 옵션 둘
+
+| 옵션 | 기본 | 하는 일 |
+| --- | --- | --- |
+| `notifyInOrder` | `true` | 구독자가 **메시지 순서대로** 알림을 받습니다 |
+| `timeout` | `1000` | 핸들러 하나가 이 밀리초를 넘기면 그 메시지를 거부하고 큐를 진행시킵니다 |
+
+**`timeout` 은 무음 정지를 막습니다.** 핸들러가 영영 정착하지 않으면 큐가 영구히 막히고
+뒤이은 메시지의 Task 도 오지 않습니다. 시간이 지나면 그 메시지는 `timedOut === true` 표식을
+지닌 거부로 도착하고, **상태는 옮겨지지 않으며**, 늦게 도착한 결과는 버려집니다. 오래 걸리는
+핸들러가 정상인 경우에는 `timeout: Infinity` 로 끕니다.
+
+```javascript
+const { Actor } = FunFP;
+
+const slow = Actor({
+    init: 0,
+    timeout: 30,
+    handle: () => new Promise(() => {}),   // 영영 정착하지 않는다
+});
+
+slow.send('멈춤').fork(
+    e => console.log(e.message, '/ 표식:', e.timedOut),   // Actor: handle timed out after 30ms / 표식: true
+    () => console.log('성공해버림')
+);
+```
+
+**타이머가 없는 환경에서는 경계에서 발효합니다.** Google Apps Script 에는 `setTimeout` 이
+없습니다. 그런 환경에서는 마감을 정확한 시각에 깨울 수단이 없으므로, **다음 큐 경계**(새
+메시지가 들어오거나 큐가 다음으로 넘어갈 때)에 마감을 확인해 만료시킵니다 — `Free.api` 의
+[협조적 취소](./Free.md#api)와 같은 의미론입니다. 아무 일도 일어나지 않으면 만료도 늦어집니다.
 
 ```javascript
 const { Actor } = FunFP;
@@ -173,7 +205,7 @@ await run(counter.send(2));
 unsubscribe();
 await run(counter.send(3));   // 더 이상 기록되지 않는다
 
-console.log(log);                 // 두 건만
+console.log(log);                 // [ '결과 1, 상태 1', '결과 3, 상태 3' ]   두 건만
 console.log(counter.getState());  // 6 — 상태는 그대로 갱신됨
 ```
 
@@ -247,7 +279,7 @@ console.log(await run(strict.send(10)));   // 10
 try {
     await run(strict.send(-1));
 } catch (e) {
-    console.log('실패:', e.message);       // '음수는 안 됨: -1'
+    console.log('실패:', e.message);       // 실패: 음수는 안 됨: -1
 }
 
 // 실패 뒤에도 큐는 정상 동작한다

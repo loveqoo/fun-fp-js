@@ -81,3 +81,54 @@ test('EitherChainRec.chainRec - stack safe with 100000 iterations', () => {
 });
 
 console.log('\n✅ ChainRec tests completed\n');
+
+// 6차 감사 [8] — 큐를 shift/unshift 로 돌려서, 갈래가 쌓이면 큐 길이만큼 원소를 옮겼다(제곱).
+// 시간은 기계마다 흔들리므로 **무엇을 부르는지**를 잠근다 — 4차-3 의 slice/concat 게이트와 같은 수법.
+// 7차 감사 [1] — 이 게이트가 Array 만 봐서, 같은 병이 남은 NonEmptyList 를 놓쳤다.
+// **등록된 인스턴스를 전부 돈다** — 세 번째 인스턴스가 생겨도 같은 누락이 안 생기게.
+const CHAINREC_CASES = {
+    array: {
+        wrap: steps => steps,
+        size: out => out.length,
+    },
+    nonemptylist: {
+        wrap: steps => new fp.NonEmptyList(steps[0], steps.slice(1)),
+        size: out => out.toArray().length,
+    },
+};
+
+test('6차-8/7차-1: chainRec 이 shift/unshift 를 안 쓴다 (등록된 컨테이너 전부)', () => {
+    const container = Object.keys(CHAINREC_CASES);
+    // 명단이 비면 아무것도 안 보고 초록이 된다 — 레지스트리에 있는 것을 다 덮는지 먼저 본다.
+    for (const key of ['array', 'nonemptylist']) {
+        assert(container.indexOf(key) !== -1, `${key} 가 명단에 없다`);
+        assert(ChainRec.lookup(key) !== undefined, `${key} ChainRec 이 등록돼 있지 않다`);
+    }
+    const oShift = Array.prototype.shift, oUnshift = Array.prototype.unshift;
+    for (const key of container) {
+        const { wrap, size } = CHAINREC_CASES[key];
+        let moves = 0;
+        Array.prototype.shift = function (...a) { moves++; return oShift.apply(this, a); };
+        Array.prototype.unshift = function (...a) { moves++; return oUnshift.apply(this, a); };
+        try {
+            const out = ChainRec.lookup(key).chainRec(
+                (next, done, i) => wrap(i >= 500 ? [done(i)] : [next(i + 1), done(i)]), 0);
+            assertEquals(size(out), 501, `${key} 결과 개수`);
+            assertEquals(moves, 0, `${key} 가 큐를 옮겼다`);
+        } finally {
+            Array.prototype.shift = oShift;
+            Array.prototype.unshift = oUnshift;
+        }
+    }
+});
+
+// 순서는 결과에 그대로 드러난다 — 깊이 우선이 아니면 값이 갈린다. 스택으로 바꾸며 이 순서를 지켰다.
+test('6차-8: 깊이 우선 순서가 그대로다', () => {
+    const out = ChainRec.lookup('array').chainRec(
+        (next, done, i) => i >= 3 ? [done('d' + i)] : [next(i + 1), done('d' + i)], 0);
+    assertEquals(out, ['d3', 'd2', 'd1', 'd0']);
+    const wide = ChainRec.lookup('array').chainRec(
+        (next, done, i) => i >= 2 ? [done(i)] : [next(i + 1), next(i + 1)], 0);
+    assertEquals(wide, [2, 2, 2, 2]);
+});
+
