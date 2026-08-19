@@ -1008,18 +1008,47 @@ if (log.join(',') !== '걸음0,정리0,걸음1,정리1') throw new Error('순서
 console.log(log.join(','));   // 걸음0,정리0,걸음1,정리1
 ```
 
-규격 밖 태그(`next`/`done` 어느 쪽도 아닌 것)는 옛 구현과 같게 **종료**로 읽습니다(소유자
-결정, 2026-08-15) — 계속으로 읽으면 그 태그가 영원히 안 바뀔 때 무한 반복이 됩니다.
+### 규격 밖 걸음은 거부합니다 (소유자 결정, 2026-08-19)
+
+걸음은 주어진 `next`/`done` 으로 만들어야 합니다. 그 밖의 값은 **라벨 붙여 거부**합니다.
+
+한때는 **종료**로 읽었습니다(2026-08-15). 그때 비교 대상은 「`done` 이 아니면 계속」이었고,
+그쪽은 태그가 영원히 안 바뀌면 무한 반복이 되므로 배제한 것입니다 — **거부는 그때 선택지에
+없었습니다.** 거부해도 무한 반복은 생기지 않습니다(즉시 멈추므로). 그리고 종료로 읽으면
+콜백의 오타가 조용히 성공이 됩니다.
+
+| 콜백이 낸 것 | 그때(종료로 읽음) | 지금(거부) |
+| --- | --- | --- |
+| `done` 을 깜빡한 맨 값 `42` | 결과가 **`null`** | `got a value with no tag` |
+| `next` 오타 `{ tag: 'nxt' }` | 계속해야 할 것이 **끝남** | `got tag 'nxt'` |
+| `tag` 오타 `{ tag: 'don', value: 7 }` | `7` — **그럴듯해서 안 보임** | `got tag 'don'` |
+
+이 라이브러리는 같은 상황(콜백이 규격 밖 값을 냄)을 다른 여섯 곳에서 전부 거부합니다 —
+`kleisliCompose` 의 `chainOf()`·`MonadError.handleError`·`Task.catchError`·`Prism.match`·
+`EitherT.catchError`·`Actor.handle`. `ChainRec` 만 예외였습니다.
+
+```javascript
+const { ChainRec } = FunFP;
+
+const C = ChainRec.lookup('array');
+
+try { console.log(C.chainRec(() => [{ tag: 'weird', value: 99 }], 0)); }
+catch (e) { console.log(e.message); }   // ChainRec.chainRec: step must be next(...) or done(...), got tag 'weird'
+
+try { console.log(C.chainRec(() => [42], 0)); }
+catch (e) { console.log(e.message); }   // ChainRec.chainRec: step must be next(...) or done(...), got a value with no tag
+```
+
+**Task 는 던지지 않고 거부로 도착합니다** — 비동기로 도착한 걸음에서 던지면 아무도 받을 수
+없기 때문입니다(무음 정지).
 
 ```javascript
 const { ChainRec, Task } = FunFP;
 
-const C = ChainRec.lookup('task');
-let out = null;
-C.chainRec((next, done, i) => Task.of(i === 0 ? { tag: 'weird', value: 99 } : done(-1)), 0)
-    .fork(() => {}, v => { out = v; });
-if (out !== 99) throw new Error('규격 밖 태그가 종료로 안 읽혔다: ' + out);
-console.log(out);   // 99
+ChainRec.lookup('task')
+    .chainRec(() => Task.of({ tag: 'weird', value: 99 }), 0)
+    .fork(e => console.log(e.message), v => console.log('성공해버림', v));
+// ChainRec.chainRec: step must be next(...) or done(...), got tag 'weird'
 ```
 
 ---
