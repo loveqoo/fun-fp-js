@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 28a93ef2be2e91733143625298bf3df1399a4a30
- * Built: 2026-08-19T10:31:34.732Z
+ * Commit: f83fe7d1f07525f45bd80831558b4b823e54ae38
+ * Built: 2026-08-19T10:57:03.823Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -950,6 +950,17 @@ withTypeRegistry(Chain);
 withTypeRegistry(ChainRec);
 ChainRec.next = value => ({ tag: 'next', value });
 ChainRec.done = value => ({ tag: 'done', value });
+// 걸음은 next 나 done 이어야 한다 — 그 밖의 값을 종료로 읽으면 콜백의 오타가 조용히 성공이
+// 된다(맨 값 42 는 결과가 null 이 되고, 'nxt' 오타는 계속해야 할 것이 끝난다). 이 라이브러리는
+// 같은 상황(콜백이 규격 밖 값을 냄)을 다른 여섯 곳에서 전부 거부한다. docs/internals.md#chainrec-stack
+// 모듈 사설이다 — ChainRec 의 정적 표면을 늘리지 않는다(baseline 격자가 그것을 본다).
+const describeStep = step => step === null ? 'got null'
+    : step === undefined ? 'got undefined'
+    : (typeof step.tag === 'string' ? `got tag '${step.tag}'` : 'got a value with no tag');
+const isNextStep = step => step != null && step.tag === 'next';
+const checkStep = step => (step != null && (step.tag === 'next' || step.tag === 'done'))
+    ? step
+    : raise(new TypeError(`ChainRec.chainRec: step must be next(...) or done(...), ${describeStep(step)}`));
 withTypeRegistry(Monad);
 withTypeRegistry(MonadError);
 withTypeRegistry(Foldable);
@@ -1410,7 +1421,7 @@ class ArrayChainRec extends ChainRec {
             const stack = f(ChainRec.next, ChainRec.done, i).slice().reverse();
             while (stack.length > 0) {
                 const step = stack.pop();
-                if (step.tag !== 'next') { res.push(step.value); continue; }
+                if (!isNextStep(checkStep(step))) { res.push(step.value); continue; }
                 const children = f(ChainRec.next, ChainRec.done, step.value);
                 for (let k = children.length - 1; k >= 0; k--) stack.push(children[k]);
             }
@@ -1599,7 +1610,7 @@ class MaybeChainRec extends ChainRec {
     constructor() {
         super(Chain.types.MaybeChain, (f, i) => {
             let result = f(ChainRec.next, ChainRec.done, i);
-            while (result.isJust() && result.value.tag === 'next') {
+            while (result.isJust() && isNextStep(checkStep(result.value))) {
                 result = f(ChainRec.next, ChainRec.done, result.value.value);
             }
             return result.isNothing() ? result : Maybe.Just(result.value.value);
@@ -1717,7 +1728,7 @@ class EitherChainRec extends ChainRec {
     constructor() {
         super(Chain.types.EitherChain, (f, i) => {
             let result = f(ChainRec.next, ChainRec.done, i);
-            while (result.isRight() && result.value.tag === 'next') {
+            while (result.isRight() && isNextStep(checkStep(result.value))) {
                 result = f(ChainRec.next, ChainRec.done, result.value.value);
             }
             return result.isLeft() ? result : Either.Right(result.value.value);
@@ -2095,7 +2106,10 @@ class TaskChainRec extends ChainRec {
                         try {
                             f(ChainRec.next, ChainRec.done, current).fork(reject, result => {
                                 // 'next' 만 계속한다 — 규격 밖 태그를 계속으로 읽으면 무한 반복이 된다(코덱스 리뷰).
-                                if (result.tag !== 'next') { resolve(result.value); return; }
+                                // 비동기 도착이면 이 콜백은 바깥 try 밖에서 돈다 — 던지면 아무도 못 받는다.
+                                let step;
+                                try { step = checkStep(result); } catch (e) { reject(e); return; }
+                                if (!isNextStep(step)) { resolve(step.value); return; }
                                 if (sync) { bounce = true; next = result.value; }
                                 else loop(result.value);
                             });
@@ -2285,7 +2299,7 @@ class NonEmptyListChainRec extends ChainRec {
             const stack = f(ChainRec.next, ChainRec.done, i).toArray().reverse();
             while (stack.length > 0) {
                 const step = stack.pop();
-                if (step.tag !== 'next') { res.push(step.value); continue; }
+                if (!isNextStep(checkStep(step))) { res.push(step.value); continue; }
                 const children = f(ChainRec.next, ChainRec.done, step.value).toArray();
                 for (let k = children.length - 1; k >= 0; k--) stack.push(children[k]);
             }
