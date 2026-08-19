@@ -28,7 +28,7 @@ asynchronous and can fail, which describes most API calls.
 
 ### The problem: an Either inside a Task has to be unwrapped twice
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run the problem — deliberately bad code
 // Task<Either<Error, User>> — every step deals with both layers
 fetchUser(id)
     .chain(eitherUser =>

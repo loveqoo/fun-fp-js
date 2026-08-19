@@ -33,7 +33,7 @@ chain is **stack-safe** no matter how long it gets.
 
 ### The problem: wiring state and failure together by hand buries the code in plumbing
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run the problem — deliberately bad code
 // have to thread state through while also handling failure
 function step1(state) {
     const value = state.count;

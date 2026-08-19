@@ -31,7 +31,7 @@ Since it isn't a side effect, tests can inspect it directly.
 
 ### The problem: recording what happened means either a side effect or more plumbing
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run the problem — deliberately bad code
 // Method 1: console.log — hard to catch in tests, and not pure
 function calculate(x) {
     console.log(`input ${x}`);

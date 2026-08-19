@@ -29,7 +29,7 @@ like this.
 
 ### The problem: passing a dependency to every function by hand
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run the problem — deliberately bad code
 // every function takes config and passes it down
 function getUser(config, id) {
     return query(config.db, `SELECT * FROM users WHERE id=${id}`);

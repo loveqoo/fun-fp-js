@@ -17,7 +17,7 @@ along.**
 
 ### Problem: parameter drilling or global variables
 
-```javascript no-run 문제 상황 — 네트워크 호출
+```javascript no-run the problem — a network call
 // config must be passed through every function
 const fetchUser = (id, config) => {
     return fetch(`${config.apiUrl}/users/${id}`, {
@@ -43,7 +43,7 @@ getProfile(123, config);
 
 ### Fix: propagate the environment with Reader
 
-```javascript no-run 네트워크 호출 — 실행 대상 아님
+```javascript no-run a network call — not executed here
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.lookup('reader');
 

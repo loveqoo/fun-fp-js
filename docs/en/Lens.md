@@ -53,7 +53,7 @@ new structure.** So every update done through a Lens is immutable.
 The deeper the nesting, the more the spreads nest inside each other, and you
 have to check by eye whether you missed a layer.
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run the problem — deliberately bad code
 // to change one city name, you rebuild all three layers
 const updated = {
     ...user,

@@ -86,7 +86,7 @@ here is a variation on these four.
 
 ### Problem: Lens alone can't handle "may not exist" or "may be many"
 
-```javascript no-run 문제 상황 — Lens 로는 표현할 수 없다
+```javascript no-run the problem — a Lens cannot express this
 // A Lens's target must be exactly 1.
 // Either's Right may not exist → what should the getter return?
 const rightLens = Lens(

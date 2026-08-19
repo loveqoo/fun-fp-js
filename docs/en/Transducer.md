@@ -26,7 +26,7 @@ Maps, strings, and generators are all included.
 
 ### Problem: chaining array methods allocates an array at every step
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run the problem — deliberately bad code
 // every stage allocates a new array — a million elements means a million-sized intermediate array at each step
 const result = hugeArray
     .map(x => x * 2)        // new array 1
