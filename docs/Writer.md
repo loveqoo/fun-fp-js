@@ -602,9 +602,9 @@ const [value, logs] = liftedAdd(w1, w2).run();
 
 **사용하는 타입 클래스:**
 - [Functor](./Functor.md)
-- [Apply](./Apply.md)
+- [Apply](./Applicative.md) - `ap` 는 Applicative 문서에 있습니다
 - [Applicative](./Applicative.md)
-- [Chain](./Chain.md)
+- [Chain](./Monad.md) - `chain` 은 Monad 문서에 있습니다
 - [Monad](./Monad.md)
 
 **함께 사용:**

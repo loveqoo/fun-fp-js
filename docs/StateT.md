@@ -295,7 +295,7 @@ const program = fetchAndCount('/a')
     .chain(len1 => fetchAndCount('/b').chain(len2 => ST.of(len1 + len2)));
 
 const [total, calls] = await run(program.run(0));
-console.log('총 길이', total, '/ 호출 횟수', calls);   // 호출 횟수 2
+console.log('총 길이', total, '/ 호출 횟수', calls);   // 총 길이 20 / 호출 횟수 2
 ```
 
 ### 3. 파서 상태 (남은 입력을 상태로)

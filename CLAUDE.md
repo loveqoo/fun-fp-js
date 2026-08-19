@@ -5,7 +5,11 @@ migration in progress — do not split it. Navigate by section comments
 (`/* Optics */`, `/* Array */`, …); line numbers drift.
 
 Concepts and usage live in [`docs/`](./docs/README.md); its examples are executed
-by the test suite. Rationale for how `index.js` is built lives in
+by the test suite **and their `// expected` comments are compared against real output**
+— write the printed line first, then two spaces (or ` — `) before any prose:
+`console.log(x);  // 42   설명은 여기부터`. Quotes and bracket spacing are normalized,
+so the gate cannot tell `'1'` from `1`; claims needing that go in a dedicated test.
+Rationale for how `index.js` is built lives in
 [`docs/internals.md`](./docs/internals.md).
 
 **Keep source comments to one line.** If you need more, write it in `docs/` and

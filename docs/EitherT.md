@@ -240,14 +240,14 @@ const ET = EitherT('maybe');
 try {
     ET.runEitherT(42);
 } catch (e) {
-    console.log('runEitherT:', e.constructor.name);   // TypeError
+    console.log('runEitherT:', e.constructor.name);   // runEitherT: TypeError
 }
 
 try {
     ET.catchError(ET.of(1), () => 42);   // 핸들러가 EitherT를 안 돌려줌
     ET.runEitherT(ET.catchError(ET.throwError('x'), () => 42));
 } catch (e) {
-    console.log('catchError handler:', e.constructor.name);   // TypeError
+    console.log('catchError handler:', e.constructor.name);   // catchError handler: TypeError
 }
 ```
 

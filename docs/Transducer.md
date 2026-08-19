@@ -198,7 +198,7 @@ const xf = r => counted(transducer.take(2)(r));
 
 transducer.transduce(xf, push, [], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-console.log('건드린 원소 수:', touched);  // 10개가 아니라 2개
+console.log('건드린 원소 수:', touched);  // 건드린 원소 수: 2   10개가 아니다
 ```
 
 `take`는 양의 정수만 받습니다.

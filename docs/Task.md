@@ -17,7 +17,7 @@ Task는 **지연된 비동기 연산**을 표현합니다. Promise와 비슷하�
 ```javascript
 // Promise는 생성 즉시 실행!
 const promise = new Promise((resolve) => {
-    console.log('실행됨!');  // 무조건 출력
+    console.log('실행됨!');  // 실행됨!   만들자마자 돈다
     resolve(42);
 });
 // 아무것도 안 해도 '실행됨!' 출력
@@ -27,12 +27,12 @@ const promise = new Promise((resolve) => {
 
 ```javascript
 const task = new Task((reject, resolve) => {
-    console.log('실행됨!');  // fork 전까지 출력 안 됨
+    console.log('실행됨!');  // 실행됨!   단, fork 한 뒤에야 찍힌다
     resolve(42);
 });
 // 아무것도 출력되지 않음
 
-task.fork(console.error, console.log);  // 이때 '실행됨!' 출력
+task.fork(console.error, console.log);  // 42   이때서야 위 줄이 찍히고 값이 온다
 ```
 
 ## 생성
@@ -69,7 +69,7 @@ const task = Task.of(42);
 
 task.fork(
     error => console.error('Error:', error),  // 실패 콜백
-    value => console.log('Success:', value)   // 성공 콜백
+    value => console.log('Success:', value)   // Success: 42
 );
 // 'Success: 42'
 ```
@@ -238,7 +238,7 @@ const tasks = [
 
 sequence(tasks).fork(
     console.error,
-    results => console.log(results)  // [1, 2, 3] (순차 실행됨)
+    results => console.log(results)  // [ 1, 2, 3 ]   순차 실행됐다
 );
 ```
 
@@ -253,8 +253,9 @@ const fetchIfNeeded = (cache, id) =>
         ? Task.of(cache[id])  // 캐시 있으면 즉시 반환
         : fetchUser(id);       // 없으면 API 호출
 
-fetchIfNeeded({}, 1).fork(console.error, console.log);  // API 호출
-fetchIfNeeded({1: 'cached'}, 1).fork(console.error, console.log);  // 'cached'
+// 캐시에 없으면 진짜 fetch 로 간다 — 이 문서를 실행하는 환경에는 서버가 없어 실패 콜백으로 떨어진다
+fetchIfNeeded({}, 1).fork(console.error, console.log);
+fetchIfNeeded({1: 'cached'}, 1).fork(console.error, console.log);  // cached
 ```
 
 ## Task.lift - 예외 안전 함수 리프트

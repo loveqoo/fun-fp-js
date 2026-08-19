@@ -614,7 +614,7 @@ Validation.collect = (...validators) => f => (...args) => {
 
 **사용하는 타입 클래스:**
 - [Functor](./Functor.md)
-- [Apply](./Apply.md)
+- [Apply](./Applicative.md) - `ap` 는 Applicative 문서에 있습니다
 - [Applicative](./Applicative.md)
 - [Bifunctor](./Bifunctor.md)
 

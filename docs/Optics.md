@@ -276,7 +276,7 @@ const { traversed, foldMapOf } = FunFP.Optics;
 const each = traversed('array');
 
 console.log(foldMapOf(Monoid.lookup('number'), each, x => x, [1, 2, 3]));            // 6  합계
-console.log(foldMapOf(Monoid.lookup('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24 곱
+console.log(foldMapOf(Monoid.lookup('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24   곱으로 모은다
 console.log(foldMapOf(Monoid.lookup('NumberMaxMonoid'), each, x => x, [2, 9, 4]));   // 9  최대
 console.log(foldMapOf(Monoid.lookup('string'), each, String, [1, 2, 3]));            // '123'
 ```
@@ -299,7 +299,7 @@ const { traversed, foldMapOf, toList } = FunFP.Optics;
 
 const each = traversed('array');
 console.log(JSON.stringify(foldMapOf(Monoid.lookup('array'), each, a => [a], [1, 2, 3])));
-console.log(JSON.stringify(toList(each, [1, 2, 3])));   // 위와 같다
+console.log(JSON.stringify(toList(each, [1, 2, 3])));   // [1,2,3]   위와 같다
 ```
 
 **등록하지 않은 Monoid 도 받습니다.** 다만 `{ empty, concat }` 리터럴이 아니라 `Monoid` 여야
@@ -368,7 +368,7 @@ try {
 try {
     review(traversed('array'), 'x');
 } catch (e) {
-    console.log(e.message);  // '... (a Traversal cannot be reviewed)'
+    console.log(e.message);  // review: argument must be a Prism (a Traversal cannot be reviewed)
 }
 ```
 
@@ -382,7 +382,7 @@ const rightP = Prism(e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()),
 const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
 const rightEven = compose(rightP, evenP);
 
-console.log(JSON.stringify(review(rightEven, 4)));   // Right(4)
+console.log(JSON.stringify(review(rightEven, 4)));   // {"value":4,"_typeName":"Either"}   Right(4)
 console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — 법칙 유지
 ```
 

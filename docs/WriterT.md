@@ -135,7 +135,7 @@ const { WriterT } = FunFP;
 const WT = WriterT('maybe');
 const [value, log] = WT.runWriterT(WT.tell(['첫 줄']).chain(() => WT.tell(['둘째 줄']))).value;
 
-console.log(value);   // null
+console.log(value);   // undefined   tell 만 했으니 값이 없다
 console.log(log);     // ['첫 줄', '둘째 줄']
 ```
 
@@ -242,13 +242,13 @@ const WT = WriterT('maybe');
 try {
     WT.runWriterT(42);
 } catch (e) {
-    console.log('runWriterT:', e.constructor.name);   // TypeError
+    console.log('runWriterT:', e.constructor.name);   // runWriterT: TypeError
 }
 
 try {
     WT.runWriterT(WT.of(1).chain(() => 42));   // 콜백이 WriterT를 안 돌려줌
 } catch (e) {
-    console.log('chain callback:', e.constructor.name);   // TypeError
+    console.log('chain callback:', e.constructor.name);   // chain callback: TypeError
 }
 ```
 
@@ -351,7 +351,7 @@ const loadDashboard = query(1, { userId: 7 })
 const [data, queryCount] = WT.runWriterT(loadDashboard).value;
 
 console.log(JSON.stringify(data));
-console.log('총 쿼리 수:', queryCount);   // 6
+console.log('총 쿼리 수:', queryCount);   // 총 쿼리 수: 6
 
 // N+1 문제 감지 같은 단언을 테스트에서 그대로 쓸 수 있다
 console.log('쿼리 10회 미만?', queryCount < 10);
