@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 6f5ddc3a9a49cabdd0fab591f4f27aa36486e520
- * Built: 2026-08-18T15:51:54.205Z
+ * Commit: 28a93ef2be2e91733143625298bf3df1399a4a30
+ * Built: 2026-08-19T10:31:34.732Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -82,8 +82,7 @@ const types = {
     equals: (a, b, typeName = '') => typeName ? types.of(a) === typeName && types.of(b) === typeName : types.of(a) === types.of(b),
     check: (val, expected) => {
         if (typeof expected !== 'string') return false;
-        // 'any' 는 "이 인스턴스는 값 타입을 보지 않는다"는 뜻이다 (first/last 처럼).
-        // 인자끼리 같은 타입이어야 한다는 검사는 types.equals 가 따로 하므로 여전히 살아 있다.
+        // 'any' 는 "값 타입을 보지 않는다" 는 뜻이다 — 같은 타입 검사는 types.equals 가 따로 진다. docs/internals.md#any
         if (expected === 'any') return true;
         const actual = types.of(val);
         return actual === expected || actual.toLowerCase() === expected.toLowerCase();
@@ -144,8 +143,7 @@ const pipeWhile = predicate => {
         value
     );
 };
-// tuple 로 만드는 수단은 있는데 꺼내는 수단이 없었다. 새로 쓰지 않고 조합자로 세운다 —
-// apply(f)([a,b]) 가 f(a,b) 이므로 identity 는 첫 인자를, flip 을 씌우면 마지막 인자를 준다.
+// 꺼내는 수단을 새로 쓰지 않고 조합자로 세운다 — apply(identity) 가 첫 인자, flip 을 씌우면 마지막 인자다.
 const fst = apply(identity);
 const snd = apply(flip(identity));
 // 모듈 지역이다 — second/right 유도(dimap(swap, swap) ∘ first)에만 쓰이므로 공개하지 않는다.
@@ -169,11 +167,17 @@ const once = f => {
     };
 };
 const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
+// 정수·유한을 입구에서 본다 — 안 보면 NaN 은 [], 1.5 는 [0], '3' 은 [0,1,2], Infinity 는 RangeError 로 갈린다(6차 감사 12).
 const range = n => {
-    if (n < 0) raise(new RangeError(`range: n must be non-negative, got ${n}`));
+    if (!Number.isInteger(n) || n < 0) raise(new RangeError(`range: n must be a non-negative integer, got ${String(n)}`));
     return Array.from({ length: n }, (_, i) => i);
 };
-const rangeBy = (start, end) => start >= end ? [] : range(end - start).map(i => start + i);
+const rangeBy = (start, end) => {
+    if (!Number.isInteger(start) || !Number.isInteger(end)) {
+        raise(new RangeError(`rangeBy: start and end must be integers, got ${String(start)} and ${String(end)}`));
+    }
+    return start >= end ? [] : range(end - start).map(i => start + i);
+};
 // 레지스트리에 쓰는 **유일한 문** — 우회하면 역인덱스가 어긋나 Algebra.all 에서 조용히 사라진다. docs/internals.md#registry-writes
 const registryIndex = new Map();
 const registerAs = (types, key, instance) => {
@@ -212,15 +216,13 @@ const setTapErrorHandler = (handler) => {
     types.checkFunction(handler, 'setTapErrorHandler');
     config.tapErrorHandler = handler;
 };
-// type 이 'any' 인 인스턴스는 값 타입을 보지 않으므로 "match any" 라고 하면 원인을 가린다.
-// 그때 남는 실패 이유는 "두 인자의 타입이 다르다" 하나뿐이다.
+// 'any' 에 "match any" 라고 쓰면 원인을 가린다 — 남는 실패 이유는 "두 인자가 다른 타입" 뿐이다. docs/internals.md#any
 const binaryTypeError = (label, type) => new TypeError(
     type === 'any'
         ? `${label}: arguments must be the same type`
         : `${label}: arguments must be the same type and match ${type}`
 );
-// 인자가 하나뿐인 연산용. **type 이 'any' 면 검사가 남지 않는다** — 짝이 없어 "서로 같은
-// 타입" 을 물을 수 없기 때문이다(CLAUDE.md 「Traps」). 그 사실을 메시지가 숨기지 않는다.
+// 단항 연산용 — type 이 'any' 면 짝이 없어 검사가 남지 않고, 메시지가 그 사실을 숨기지 않는다. docs/internals.md#any
 const unaryTypeError = (label, type) => new TypeError(`${label}: argument must match ${type}`);
 const checkAndSet = (config => {
     const rules = {
@@ -323,16 +325,12 @@ const checkAndSet = (config => {
         Profunctor: {
             strict: (instance, promap) => {
                 typeof promap !== 'function' && raise(new TypeError('Profunctor.promap: promap must be a function'));
-                // 세 번째 인자는 profunctor 값이지 반드시 함수는 아니다 — Tagged a b = b 다.
-                // isFunction 으로 못 박으면 Tagged 를 등록할 수 없다.
-                // instance.type 으로 보면 'function' 은 전과 같고 'any' 는 통과한다.
+                // 세 번째 인자는 함수가 아닐 수 있다(Tagged a b = b) — 함수로 못 박지 않고 instance.type 으로 본다. docs/internals.md#optics
                 instance.promap = (f, g, fn) => (types.equals(f, g, 'function') && types.check(fn, instance.type)) ? promap(f, g, fn) : raise(new TypeError(`Profunctor.promap: f and g must be functions and the third argument must match ${instance.type}`));
             },
             loose: (instance, promap) => { instance.promap = (f, g, fn) => promap(f, g, fn); }
         },
-        // profunctor 값에는 공통 모양이 없다 — 함수(function·Forget)일 수도, 아무 값(Tagged)일
-        // 수도 있다. 그래서 인자를 함수로 못 박지 않고 instance.type 으로만 본다.
-        // Tagged 는 .type 이 'any' 라 그 검사를 통과한다 — 값 타입을 안 본다는 뜻이다.
+        // profunctor 값에 공통 모양은 없다 — 함수(function·Forget)도 아무 값(Tagged, .type 'any')도 된다. docs/internals.md#optics
         'Strong.super': {
             strict: (profunctor) => { !(profunctor && profunctor[Symbols.Profunctor]) && raise(new TypeError('Strong: argument must be a Profunctor')); },
             loose: emptyFunc
@@ -753,8 +751,7 @@ const deriveFromPlus = (plus, type, aliases) => {
     const monoid = new Monoid(semigroup, plus.zero, type);
     for (const alias of aliases) {
         const key = alias.toLowerCase();
-        // 그 타입에 이미 Monoid 가 있으면 유도본은 중복이다 — Array 가 그렇다(alt 가 곧 concat).
-        // registerAs 는 조용히 덮으므로 여기서 막지 않으면 기존 인스턴스가 사라진다.
+        // 이미 Monoid 가 있으면 유도본은 중복이고, registerAs 는 조용히 덮는다 — 여기서 막는다. docs/internals.md#plus-monoid
         if (Semigroup.types[key] === undefined) registerAs(Semigroup.types, key, semigroup);
         if (Monoid.types[key] === undefined) registerAs(Monoid.types, key, monoid);
     }
@@ -898,8 +895,7 @@ const composedName = (key, className) =>
     camelHead(key.split(/[(),]+/).filter(Boolean).map(capHead).join('') + className);
 Algebra.all = key => {
     typeof key === 'string' || raise(new TypeError('Algebra.all: key must be a string'));
-    // 소문자만 받는다. 대문자도 받으면 같은 묶음을 두 이름으로 부르게 되고,
-    // `.type` 이 대문자('Maybe')인 것과 소문자('number')인 것이 섞여 있어 더 헷갈린다.
+    // 소문자만 받는다 — 역인덱스가 .type 을 소문자로 눕혀 쌓으므로 입구도 하나로 고정한다. docs/internals.md#algebra-all
     key === key.toLowerCase() || raise(new TypeError(`Algebra.all: key must be lowercase, got ${key}`));
     const found = registryIndex.get(key);
     (found && found.size > 0) || raise(new TypeError(`Algebra.all: unsupported type ${key}`));
@@ -926,8 +922,7 @@ withTypeRegistry(Functor);
 withTypeRegistry(Bifunctor);
 withTypeRegistry(Contravariant);
 withTypeRegistry(Profunctor);
-// 빼먹으면 Strong.types 가 정적 상속으로 Profunctor.types 를 가리켜, 남의 인스턴스를
-// 자기 것으로 착각한다 — 명세 게이트 ①이 그것을 잡았다.
+// 빼먹으면 Strong.types 가 정적 상속으로 Profunctor.types 를 가리켜 남의 인스턴스를 자기 것으로 착각한다.
 withTypeRegistry(Strong);
 withTypeRegistry(Choice);
 withTypeRegistry(Wander);
@@ -1185,9 +1180,15 @@ class DefaultSetoid extends Setoid {
     }
 }
 modules.push(DefaultSetoid);
+// 확실히 비교되는 것만 답한다(소유자, 2026-08-19) — 객체끼리 `<=` 는 둘 다 "[object Object]" 로
+// 강제 변환돼 서로 다른 값이 양방향으로 참이 되고, 짝 Setoid(===)와 어긋난다. docs/internals.md#any
+const ORDERABLE = ['number', 'string', 'boolean', 'bigint'];
+const defaultLte = (a, b) => ORDERABLE.indexOf(typeof a) === -1
+    ? raise(new TypeError(`Ord.lte: default Ord compares number, string, boolean, and bigint only, got ${typeof a}`))
+    : Ord.op(a, b);
 class DefaultOrd extends Ord {
     constructor() {
-        super(Setoid.types.DefaultSetoid, Ord.op, 'any', Ord.types, 'default');
+        super(Setoid.types.DefaultSetoid, defaultLte, 'any', Ord.types, 'default');
     }
 }
 modules.push(DefaultOrd);
@@ -1204,9 +1205,7 @@ class ObjectFoldable extends Foldable {
     }
 }
 modules.push(ObjectFoldable);
-// 키 문자열이든 인스턴스든 { key, instance } 로 정규화한다.
-// key 는 등록된 소문자 alias 중 가장 짧은 것이고, 등록 안 된 인스턴스면 null 이다.
-// 그 null 이 "레지스트리에 올릴 수 없다 → 인스턴스로 캐시한다" 의 신호가 된다.
+// 키 문자열이든 인스턴스든 { key, instance } 로 정규화한다 — key 가 null 이면 "레지스트리 대신 인스턴스로 캐시" 신호다.
 const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
     const instance = typeof x === 'string' ? TypeClass.lookup(x) : x;
     if (typeof x !== 'string' && !(x && x[symbol] === true)) {
@@ -1281,24 +1280,18 @@ class IdentityReducible extends Reducible {
     }
 }
 modules.push(IdentityReducible);
-// Const 는 monoid 마다 다르므로 매개변수화한다 — Monoid.Maybe(innerSG) 와 같은 모양이다.
-// 키로 만들면 const(<키>) 로 레지스트리에 올리고, 등록 안 된 인스턴스면 인스턴스로 캐시한다.
-// 담는 모양이 정해져 있으면 클래스로 선언한다 — 객체 리터럴은 모양을 말하지 않는다.
-// 태그는 모노이드마다 달라(Const(array)·Const(number)) 인스턴스가 지닌다.
+// Const 는 monoid 마다 다르므로 매개변수화하고, 담는 모양이 있으니 클래스로 선언한다. docs/internals.md#identity-const
 class Const {
     constructor(value, typeName) { this.value = value; this._typeName = typeName; }
 }
-// 키 없는(미등록) 모노이드에 붙이는 고유 번호 — 트랜스포머의 _transformerAutoId 와 같은 수법.
-// 조회 키가 아니라 런타임 캐리어 판별(_typeName)용이라 "한 실행 안에서 고유" 면 충분하다.
-// 이게 없으면 합 모노이드 Const 와 곱 모노이드 Const 가 같은 'Const' 태그로 섞인다.
+// 키 없는 모노이드에 붙이는 고유 번호 — 없으면 합 모노이드 Const 와 곱 모노이드 Const 가 한 태그로 섞인다. docs/internals.md#anon-monoid-tag
 let _anonMonoidId = 0;
 const normalizeConstMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Applicative.Const');
 Applicative.Const = monoid => {
     const { key, instance: m } = normalizeConstMonoid(monoid);
     if (key !== null && Applicative.Const._keyCache.has(key)) return Applicative.Const._keyCache.get(key);
     if (key === null && Applicative.Const._instanceCache.has(m)) return Applicative.Const._instanceCache.get(m);
-    // 태그가 안쪽까지 말한다 — const(array) 는 "배열로 모으는 Const" 다. 그냥 Object 라고
-    // 하면 Identity 와도, 평범한 객체와도 구분되지 않는다. 키가 없으면 고유 번호로 갈린다.
+    // 태그가 안쪽까지 말한다 — const(array) 는 "배열로 모으는 Const" 다. 키가 없으면 고유 번호로 갈린다. docs/internals.md#anon-monoid-tag
     const tag = key === null ? `Const(#${++_anonMonoidId})` : `Const(${key})`;
     const constOf = value => new Const(value, tag);
     const result = new Applicative(
@@ -1346,8 +1339,7 @@ class ArrayFunctor extends Functor {
     }
 }
 modules.push(ArrayFunctor);
-// 튜플은 JS 타입이 아니다 — .type 이 'Array' 인 것은 사실이라 그대로 두고, 길이를 여기서 본다.
-// 느슨한 모드에서도 산다: [] 에서 [NaN, NaN] 이 나오는 것은 타입 문제가 아니라 결함이다.
+// 튜플은 JS 타입이 아니다 — .type 은 'Array' 로 두고 길이를 여기서 본다(느슨한 모드에서도 산다). docs/Bifunctor.md
 class TupleBifunctor extends Bifunctor {
     constructor() {
         super((f, g, t) => t.length === 2 ? [f(t[0]), g(t[1])]
@@ -1396,12 +1388,16 @@ class ArrayChain extends Chain {
 modules.push(ArrayChain);
 class ArrayChainRec extends ChainRec {
     constructor() {
+        // 스택으로 돈다 — shift/unshift 는 큐 길이만큼 원소를 옮겨 갈래가 쌓이면 제곱이 된다(6차 감사 8).
+        // 자식을 거꾸로 쌓으면 깊이 우선 순서가 그대로다 — 그 순서는 결과 배열에 그대로 드러난다.
         super(Chain.types.ArrayChain, (f, i) => {
             const res = [];
-            const queue = f(ChainRec.next, ChainRec.done, i);
-            while (queue.length > 0) {
-                const step = queue.shift();
-                step.tag === 'next' ? queue.unshift(...f(ChainRec.next, ChainRec.done, step.value)) : res.push(step.value);
+            const stack = f(ChainRec.next, ChainRec.done, i).slice().reverse();
+            while (stack.length > 0) {
+                const step = stack.pop();
+                if (step.tag !== 'next') { res.push(step.value); continue; }
+                const children = f(ChainRec.next, ChainRec.done, step.value);
+                for (let k = children.length - 1; k >= 0; k--) stack.push(children[k]);
             }
             return res;
         }, 'Array', ChainRec.types, 'array');
@@ -1438,9 +1434,18 @@ class ArrayTraversable extends Traversable {
     constructor() {
         super(Functor.types.ArrayFunctor,
             Foldable.types.ArrayFoldable,
-            (applicative, f, arr) => arr.reduce(
-                (acc, x) => applicative.ap(applicative.map(a => b => [...a, b], acc), f(x)),
-                applicative.of([])
+            // 누적을 걸음마다 펼치면([...a, b]) 원소 수의 제곱만큼 복사한다(6차 감사 9).
+            // cons 로 O(1) 씩 잇고 **끝에서 한 번만** 편다 — 변이가 없으니 비결정 applicative(Array)도 안전하다.
+            (applicative, f, arr) => applicative.map(
+                node => {
+                    const out = [];
+                    for (let at = node; at !== null; at = at.prev) out.push(at.value);
+                    return out.reverse();
+                },
+                arr.reduce(
+                    (acc, x) => applicative.ap(applicative.map(prev => value => ({ prev, value }), acc), f(x)),
+                    applicative.of(null)
+                )
             ),
             'Array', Traversable.types, 'array');
     }
@@ -1493,7 +1498,8 @@ class Nothing extends Maybe {
     chain(f) { return Chain.lookup('maybe').chain(f, this); }
     toString() { return 'Nothing'; }
 }
-Maybe.prototype[Symbols.Maybe] = true;
+Just.prototype[Symbols.Maybe] = true;
+Nothing.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
 Maybe.Nothing = () => new Nothing();
 Maybe.of = x => new Just(x);
@@ -1503,10 +1509,7 @@ Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
 Maybe.fold = (onNothing, onJust, m) => m.isJust() ? onJust(m.value) : onNothing();
 Maybe.catch = runCatch(f => Maybe.Just(f()), Maybe.Nothing);
-// Kleisli 합성이므로 compose 가 받는 것은 a -> Maybe b 꼴의 **함수**다. 'Maybe' 는 합성
-// 결과가 품는 타입이지 인자의 타입이 아니다 — Either/Task 쪽과 같이 'function' 이다.
-// 셋(Maybe/Either/Task)의 공용 몸. 짝 Chain 이 자기보다 늦게 등록되므로 조회는 호출 시점이다.
-// f·g 검사는 클래스 게이트 몫이라 여기서 안 한다 — 이 헬퍼의 빈틈은 chainOf 뿐이다.
+// Kleisli 합성이라 인자가 함수다 — 셋(Maybe/Either/Task)의 공용 몸이고, 짝 Chain 조회는 호출 시점이다. docs/internals.md#type
 const kleisliCompose = chainOf => {
     types.checkFunction(chainOf, 'kleisliCompose');
     return (f, g) => x => {
@@ -1628,7 +1631,8 @@ class Right extends Either {
     chain(f) { return Chain.lookup('either').chain(f, this); }
     toString() { return `Right(${showValue(this.value)})`; }
 }
-Either.prototype[Symbols.Either] = true;
+Left.prototype[Symbols.Either] = true;
+Right.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
 Either.Right = x => new Right(x);
 Either.of = x => new Right(x);
@@ -1761,8 +1765,7 @@ const splitTopLevel = s => {
     }
     return (out.push(s.slice(start)), out);
 };
-// 안쪽이 전부 키로 밝혀졌을 때만 레지스트리에 올린다. 인스턴스 캐시(WeakMap)는 안쪽이
-// 하나일 때만 자리가 있다 — 둘 이상이면 무엇을 WeakMap 키로 삼을지 정할 수 없다.
+// 안쪽이 전부 키일 때만 레지스트리에 올린다 — 인스턴스 캐시(WeakMap)는 안쪽이 하나일 때만 자리가 있다.
 const cachedInnerFactory = (label, resolveInner, registry, keyOf, build) => {
     // 받을 안쪽의 개수는 키를 만드는 함수에서 끌어온다 — 따로 적으면 키 모양과 갈라진다.
     const arity = keyOf.length;
@@ -1793,8 +1796,7 @@ Semigroup.Maybe = cachedInnerFactory('Semigroup.Maybe', resolveInnerSemigroup, S
 // inner 가 Semigroup 이기만 해도 Monoid 가 된다 — Nothing 이 항등원이라 inner 의 empty 가 필요 없다.
 Monoid.Maybe = cachedInnerFactory('Monoid.Maybe', resolveInnerSemigroup, Monoid.types, k => `maybe(${k})`,
     sg => new Monoid(Semigroup.Maybe(sg), () => Maybe.Nothing(), 'Maybe', null));
-// 자리가 둘이면 합치는 법도 둘이다 — Setoid 쪽 either 와 같은 키 형식을 쓴다.
-// 둘 다 Left 면 왼쪽 법으로 **누적**한다(Validation 선례). 한쪽만 Left 면 그것이 이긴다.
+// 자리가 둘이면 합치는 법도 둘이다 — 둘 다 Left 면 왼쪽 법으로 누적한다(Validation 선례). docs/internals.md#container-setoid
 Semigroup.Either = cachedInnerFactory('Semigroup.Either', resolveInnerSemigroup, Semigroup.types,
     (l, r) => `either(${l},${r})`,
     (l, r) => new Semigroup((a, b) =>
@@ -1812,8 +1814,7 @@ addResolver(Monoid, key => {
     const m = /^maybe\((.+)\)$/.exec(key);
     return m ? Monoid.Maybe(m[1]) : null;
 });
-// Applicative.Const(monoid) 의 지연 해석 — 팩토리를 부르기 전에도 const(<키>) 로 꺼낼 수 있다.
-// key => 클로저 안에서 부르므로 Applicative.Const 정의(위쪽)와의 순서는 문제되지 않는다.
+// Applicative.Const(monoid) 의 지연 해석 — 클로저 안에서 부르므로 정의 순서와 무관하다.
 addResolver(Applicative, key => {
     const m = /^const\((.+)\)$/.exec(key);
     return m ? Applicative.Const(m[1]) : null;
@@ -1854,11 +1855,7 @@ Setoid.Struct = fields => {
     const names = Object.keys(fields).sort();
     names.length > 0 || raise(new TypeError('Setoid.Struct: fields must not be empty'));
     const resolved = names.map(n => [n, resolveInnerSetoid('Setoid.Struct', fields[n])]);
-    // 레지스트리에 올리지 않는다 — maybe/array/either 는 이 라이브러리의 이름 있는
-    // 타입이지만 레코드는 사용자마다 다른 즉석 모양이라 무한히 많다. 전역 명부에
-    // 올리면 Algebra.all('object') 가 오염된다. 캐시는 내부에만 둔다(정규화 유지 —
-    // 필드 순서가 달라도, 안쪽이 전부 키로 밝혀져 있으면 같은 인스턴스).
-    // 필드 이름에 ':' 나 ',' 가 들어가면 다른 모양이 같은 키가 된다 — JSON 으로 무해화한다.
+    // 레코드는 즉석 모양이라 레지스트리에 안 올린다. 키의 ':' ',' 는 JSON 으로 무해화한다. docs/internals.md#container-setoid
     const cacheKey = resolved.every(([, r]) => r.key !== null)
         ? JSON.stringify(resolved.map(([n, r]) => [n, r.key]))
         : null;
@@ -2133,7 +2130,8 @@ class Invalid extends Validation {
     isInvalid() { return true; }
     map(f) { return this; }
 }
-Validation.prototype[Symbols.Validation] = true;
+Valid.prototype[Symbols.Validation] = true;
+Invalid.prototype[Symbols.Validation] = true;
 Validation.Valid = x => new Valid(x);
 Validation.Invalid = (errors, monoid) => new Invalid(errors, monoid);
 Validation.of = x => new Valid(x);
@@ -2264,12 +2262,17 @@ class NonEmptyListChain extends Chain {
 modules.push(NonEmptyListChain);
 class NonEmptyListChainRec extends ChainRec {
     constructor() {
+        // Array 쪽과 같은 스택 — shift/unshift 는 큐 길이만큼 옮겨 제곱이고, spread 는 갈래가
+        // 넓으면 인자 한도를 넘겨 **스택을 터뜨린다**(7차 감사 1). ChainRec 은 스택 안전이 존재
+        // 이유이므로 그 자리에서 터지면 안 된다. 자식을 거꾸로 쌓아 깊이 우선 순서를 지킨다.
         super(Chain.types.NonEmptyListChain, (f, i) => {
             const res = [];
-            const queue = f(ChainRec.next, ChainRec.done, i).toArray();
-            while (queue.length > 0) {
-                const step = queue.shift();
-                step.tag === 'next' ? queue.unshift(...f(ChainRec.next, ChainRec.done, step.value).toArray()) : res.push(step.value);
+            const stack = f(ChainRec.next, ChainRec.done, i).toArray().reverse();
+            while (stack.length > 0) {
+                const step = stack.pop();
+                if (step.tag !== 'next') { res.push(step.value); continue; }
+                const children = f(ChainRec.next, ChainRec.done, step.value).toArray();
+                for (let k = children.length - 1; k >= 0; k--) stack.push(children[k]);
             }
             return new NonEmptyList(res[0], res.slice(1));
         }, 'NonEmptyList', ChainRec.types, 'nonEmptyList');
@@ -2318,8 +2321,20 @@ modules.push(NonEmptyListReducible);
 class NonEmptyListTraversable extends Traversable {
     constructor() {
         super(Functor.types.NonEmptyListFunctor, Foldable.types.NonEmptyListFoldable,
-            (A, f, w) => A.map(arr => new NonEmptyList(arr[0], arr.slice(1)),
-                w.toArray().reduce((acc, x) => A.ap(A.map(xs => y => xs.concat([y]), acc), f(x)), A.of([]))),
+            // Array 쪽과 같은 cons 누적 — concat([y]) 는 걸음마다 누적을 통째로 복사해 제곱이다
+            // (7차 감사 3). 변이가 없으니 비결정 applicative 에서도 안전하다.
+            (A, f, w) => A.map(
+                node => {
+                    const out = [];
+                    for (let at = node; at !== null; at = at.prev) out.push(at.value);
+                    out.reverse();
+                    return new NonEmptyList(out[0], out.slice(1));
+                },
+                w.toArray().reduce(
+                    (acc, x) => A.ap(A.map(prev => value => ({ prev, value }), acc), f(x)),
+                    A.of(null)
+                )
+            ),
             'NonEmptyList', Traversable.types, 'nonEmptyList');
     }
 }
@@ -2458,9 +2473,7 @@ class WriterMonad extends Monad {
     }
 }
 modules.push(WriterMonad);
-// 등록된 writer 인스턴스의 of 는 array monoid 를 박는다 — 다른 monoid Writer 에는 법칙이
-// 깨진다(chain(of, w) 가 monoid 를 섞어 던진다). Const 처럼 monoid 마다 하나씩 만든다.
-// monoid 에 의존하는 것은 of 뿐이라 map/ap/chain 은 등록 인스턴스를 그대로 빌린다.
+// 등록본의 of 는 array monoid 를 박으므로 monoid 마다 하나씩 만든다 — 의존하는 것은 of 뿐이다. docs/internals.md#writer-factory-internals
 const normalizeWriterMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'Writer factory');
 const buildWriterMonad = monoid => {
     const { key, instance: m } = normalizeWriterMonoid(monoid);
@@ -2677,6 +2690,10 @@ const { transducer } = (() => {
     };
 })();
 const { Free, trampoline } = (() => {
+    // 러너 셋의 **입구**만 검사한다 — 러너가 마지막에 평범한 값을 내는 것은 문서화된 정상 계약이다(6차 감사 10).
+    const checkProgram = (label, program) => Free.isFree(program)
+        ? program
+        : raise(new TypeError(`Free.${label}: program must be a Free value`));
     const reentrantGuard = (runner, f, onReentry = f) => {
         let active = false;
         return (...args) => {
@@ -2685,8 +2702,12 @@ const { Free, trampoline } = (() => {
             return runCatch(
                 () => {
                     const result = runner(f(...args));
+                    // then 만 보고 인정했으면 then 만으로 다뤄야 한다 — finally 는 Promise 의
+                    // 선택 메서드라 최소 thenable 에는 없다(8차 감사 4). 정착하면 가드를 푼다.
                     if (result instanceof Promise || (result && typeof result.then === 'function')) {
-                        return result.finally(() => { active = false; });
+                        const release = () => { active = false; };
+                        result.then(release, release);
+                        return result;
                     }
                     active = false;
                     return result;
@@ -2731,12 +2752,13 @@ const { Free, trampoline } = (() => {
                     }
                     return result.value;
                 };
-                return typeof target === 'function' ? reentrantGuard(execute, target) : execute(target);
+                return typeof target === 'function' ? reentrantGuard(execute, target) : execute(checkProgram('runSync', target));
             };
         }
         static runAsync(runner) {
             return target => {
                 const execute = async program => {
+                    checkProgram('runAsync', program);
                     const gen = Free.runGenerator(runner, program);
                     let result = gen.next();
                     while (!result.done) {
@@ -2749,8 +2771,8 @@ const { Free, trampoline } = (() => {
         }
         static runWithTask(runner) {
             return program => new Promise((resolve, reject) => {
-                // 첫 step 은 Promise executor 가 throw 를 reject 로 바꾸지만, 비동기 Task 가
-                // 부르는 후속 step 은 그 밖이다 — try 로 감싸야 후속 runner 예외가 안 샌다.
+                if (!Free.isFree(program)) return reject(new TypeError('Free.runWithTask: program must be a Free value'));
+                // 걸음마다 감싼다 — 첫 step 밖에서 도는 후속 step 의 예외가 안 새게. docs/Free.md
                 const step = free => {
                     try {
                         if (Free.isPure(free)) return resolve(free.value);
@@ -2986,12 +3008,7 @@ class FunctionWander extends Wander {
     }
 }
 modules.push(FunctionWander);
-// Tagged: p a b = b.  입력을 무시하므로 거꾸로만 쓸 수 있다 — review 가 쓴다.
-// **Strong 도 Wander 도 아니다.** Tagged 는 입력을 만들어낼 수 없어 first/wander 가 원리적으로
-// 정의되지 않는다. 그 부재가 곧 "Lens/Traversal 은 review 할 수 없다" 다 — 던지는 스텁을 대신한다.
-// Profunctor 레지스트리에는 안 올린다. 명세는 Profunctor 에 "첫 매개변수를 고정하면 Functor"
-// 를 요구하는데 .type 이 'any' 인 Functor 는 없다 — 지킬 수 없는 보증은 걸지 않는다
-// (Filterable 에서 Either/Task 를 뺀 것과 같은 판단). Forget 의 내부 P 도 같은 이유로 익명이다.
+// Tagged: p a b = b. 입력을 무시해 review 만 쓴다 — first/wander 의 부재가 곧 타입 안전성이다. docs/internals.md#optics
 const taggedProfunctorBase = new Profunctor((_f, g, p) => g(p), 'any');
 class TaggedChoice extends Choice {
     constructor() {
@@ -2999,8 +3016,7 @@ class TaggedChoice extends Choice {
     }
 }
 modules.push(TaggedChoice);
-// Forget<r>: p a b = a -> r.  monoid 마다 다르므로 Applicative.Const 와 같은 팩토리다.
-// Const 와 같다 — 담는 모양이 있으니 클래스로 선언한다. 안에 든 것은 함수다.
+// Forget<r>: p a b = a -> r. monoid 마다 다른 팩토리이고, 담는 모양이 있으니 클래스다. docs/internals.md#forget-newtype
 class Forget {
     constructor(run, typeName) { this.run = run; this._typeName = typeName; }
 }
@@ -3010,8 +3026,7 @@ Wander.Forget = monoid => {
     if (key !== null && Wander.Forget._keyCache.has(key)) return Wander.Forget._keyCache.get(key);
     if (key === null && Wander.Forget._instanceCache.has(m)) return Wander.Forget._instanceCache.get(m);
     const C = Applicative.Const(m);
-    // 캐리어가 스스로를 밝힌다 — 벌거벗은 함수로 두면 FunctionWander 와 한 태그가 된다.
-    // 키가 없으면 Const 와 같은 고유 번호로 갈린다 — 안 그러면 다른 모노이드 Forget 이 섞인다.
+    // 캐리어가 스스로를 밝힌다 — 벌거벗은 함수로 두면 FunctionWander 와 한 태그가 된다. docs/internals.md#forget-newtype
     const tag = key === null ? `Forget(#${++_anonMonoidId})` : `Forget(${key})`;
     const forgetOf = fn => new Forget(fn, tag);
     // 출력을 버리므로 첫 인자에만 반변이다 — 그 이름이 Contravariant 다.
@@ -3027,8 +3042,7 @@ Wander.Forget = monoid => {
     result.wrap = fn => forgetOf(a => C.unwrap(C.wrap(fn(a))));
     result.unwrap = p => p.run;
     if (key !== null) {
-        // Forget 은 Profunctor 의 하위 개념이다(소유자, 2026-08-15) — Just 가 Maybe 아래인 것과 같다.
-        // 네 층에 다 올린다. Profunctor 만 빼 두면 명부가 사실과 달라진다.
+        // Forget 은 Profunctor 의 하위 개념이라 네 층에 다 올린다(소유자, 2026-08-15). docs/Profunctor.md
         registerAs(Profunctor.types, `forget(${key})`, result);
         registerAs(Strong.types, `forget(${key})`, result);
         registerAs(Choice.types, `forget(${key})`, result);
@@ -3049,15 +3063,12 @@ load(...modules);
 const { Optics } = (() => {
     // Optic s a = P => P a a -> P s s — 주입하는 P 가 연산을 정한다(함수=over·Forget=view·Tagged=review). docs/internals.md#optics
 
-    // ── 주입하는 P 셋 — 전부 레지스트리에서 온다 ──────────────────────
-    // 사설 딕셔너리가 아니다. Strong/Choice/Wander 인스턴스라 법칙·명세·.type 게이트가 본다.
+    // ── 주입하는 P 셋 — 사설 딕셔너리가 아니라 등록 인스턴스다(게이트가 본다). docs/internals.md#optics ──
     const functionProfunctor = Wander.types.FunctionWander;
     const forgetProfunctor = monoid => Wander.Forget(monoid);
-    // Tagged 는 **Choice 일 뿐이다.** Strong·Wander 가 아니라 first/wander 가 아예 없다 —
-    // 던지는 스텁이 아니라 그 부재가 "Lens/Traversal 은 review 할 수 없다" 를 말한다.
+    // Tagged 는 Choice 일 뿐이다 — first/wander 의 부재가 "Lens/Traversal 은 review 할 수 없다" 를 말한다. docs/internals.md#optics
     const taggedProfunctor = Choice.types.TaggedChoice;
-    // 없는 메서드를 부르면 "P.first is not a function" 이라는 뜻 모를 말이 나온다.
-    // 등록 인스턴스는 깨끗하게 두고, review 경로에서만 그 **부재**를 사용자 언어로 옮긴다.
+    // 등록 인스턴스는 깨끗하게 두고, review 경로에서만 그 부재를 사용자 언어로 옮긴다. docs/internals.md#optics
     const taggedForReview = Object.assign(Object.create(taggedProfunctor), {
         first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
         wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
@@ -3089,16 +3100,16 @@ const { Optics } = (() => {
             P.left(pab)
         );
     };
-    // 속성 하나를 보는 Lens. 이것이 없어서 쓰는 사람마다 같은 한 줄을 직접 썼다.
-    // 배열도 받는다 — 복사가 자기 모양을 지켜야 순회 optic 과 합성해도 배열로 남는다.
+    // 속성 하나를 보는 Lens — 배열도 받는다(복사가 자기 모양을 지켜야 순회 optic 과 합성된다). docs/Optics.md
     const prop = key => {
         (typeof key === 'string' || typeof key === 'number')
             || raise(new TypeError('Optics.prop: key must be a string or number'));
-        return Lens(o => o[key], (v, o) => {
-            const copy = Array.isArray(o) ? o.slice() : Object.assign({}, o);
-            copy[key] = v;
-            return copy;
-        });
+        // 복제도 대입도 defineProperty 로 — `=` 와 Object.assign 은 __proto__ 를 프로토타입으로 둔갑시킨다(6차 감사 1).
+        const putOwn = (acc, k, val) => (Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }), acc);
+        return Lens(o => o[key], (v, o) => putOwn(
+            Array.isArray(o) ? o.slice() : Object.keys(o).reduce((acc, k) => putOwn(acc, k, o[k]), {}),
+            key, v
+        ));
     };
     // 기존 Traversable 인스턴스를 optic으로 끌어온다 ('array' | 'maybe' | 'either' ...)
     const traversed = key => {
@@ -3106,8 +3117,7 @@ const { Optics } = (() => {
         return P => pab => P.wander(instance.traverse, pab);
     };
 
-    // ── 연산: P를 고르는 것이 전부 ─────────────────────────────────────
-    // 결과에 s 를 적용하는 것은 호출자 몫이다 — Forget 은 결과가 벌거벗은 함수가 아니다.
+    // ── 연산: P 를 고르는 것이 전부다 — 결과에 s 를 적용하는 것은 호출자 몫이다. docs/internals.md#optics ──
     const runOptic = (name, optic, P, pab) => {
         typeof optic !== 'function' && raise(new TypeError(`${name}: optic must be a function`));
         return optic(P)(pab);
@@ -3115,8 +3125,7 @@ const { Optics } = (() => {
     const resolveFoldMonoid = normalizeTypeClassKey(Monoid, Symbols.Monoid, 'foldMapOf');
     // 읽기 셋의 공통 몸 — monoid 상시 요구는 optic 종류별 검사 갈림을 막는다. docs/internals.md#optics
     const foldMapOf = (monoid, optic, f, s) => {
-        // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그러므로
-        // 입구만 안 받으면 체인이 어긋난다. resolveFoldMonoid 는 Monoid 가 아니면 던진다.
+        // 키든 인스턴스든 받는다 — 안에서 부르는 Applicative.Const 가 이미 그래서 입구만 좁으면 체인이 어긋난다.
         const { instance: m } = resolveFoldMonoid(monoid);
         typeof f !== 'function' && raise(new TypeError('foldMapOf: f must be a function'));
         const P = forgetProfunctor(m);
@@ -3127,9 +3136,7 @@ const { Optics } = (() => {
         typeof optic !== 'function' && raise(new TypeError('toList: optic must be a function'));
         return foldMapOf(Monoid.lookup('array'), optic, a => [a], s);
     };
-    // preview 는 대상을 "합치는" 게 아니라 "고르는" 것이므로 컨테이너를 열지 않는 Monoid 를
-    // 쓴다 — Monoid.lookup('maybe') 다. maybe(first) 를 쓰면 안쪽 값을 합치려 들어 [1, 'a'] 처럼 타입이
-    // 섞인 대상에서 던진다. 배열에 뭐가 들었든 "첫 번째" 는 답할 수 있어야 한다.
+    // preview 는 합치는 게 아니라 고르는 것이라 컨테이너를 안 여는 Monoid.lookup('maybe') 를 쓴다. docs/internals.md#optics
     const preview = (optic, s) => {
         typeof optic !== 'function' && raise(new TypeError('preview: optic must be a function'));
         return foldMapOf(Monoid.lookup('maybe'), optic, Maybe.Just, s);
@@ -3164,8 +3171,7 @@ const { Optics } = (() => {
         return P => compose(...optics.map(o => o(P)));
     };
 
-    // 내부 이름을 compose 로 두면 이 함수가 의존하는 최상위 compose 를 가린다.
-    // 그래서 정의는 composeOptic 으로 두고 모듈 키에서만 compose 로 낸다.
+    // 정의는 composeOptic 이고 모듈 키에서만 compose 로 낸다 — 같은 이름이면 최상위 compose 를 가린다.
     return {
         Optics: {
             Iso, Lens, Prism, prop, traversed,
@@ -3458,8 +3464,7 @@ const WriterT = (M, writerMonoid) => {
 };
 WriterT._cache = new Map();
 
-// 핸들러가 낸 것을 Task 로 들어올린다 — Task 는 그대로, thenable 은 Promise.resolve
-// 동화(fromPromise 와 같은 방식), 값은 Task.of. Actor 와 Free.api 해석기가 같은 몸을 쓴다.
+// 핸들러가 낸 것을 Task 로 들어올린다(Task 는 그대로·thenable 은 동화·값은 of) — Actor 와 해석기의 공용 몸. docs/Actor.md
 const liftHandlerResult = r => {
     if (Task.isTask(r)) return r;
     if (r !== null && r !== undefined && typeof r.then === 'function') {
@@ -3472,36 +3477,90 @@ const liftHandlerResult = r => {
    Actor — 가벼운 메시지 큐 + 순차 처리
    ═══════════════════════════════════════════════════════════════ */
 
-const Actor = ({ init, handle }) => {
+// 타이머가 있으면 타이머로, 없으면 경계 검사로 — GAS 에는 setTimeout 이 없다(실측·1차 자료).
+// 경계 검사는 이 라이브러리의 협조적 취소(Free.api start/cancel)와 같은 의미론이다. docs/Actor.md
+const hasTimer = typeof setTimeout === 'function';
+const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
     if (typeof handle !== 'function') raise(new TypeError('Actor: handle must be a function'));
+    (typeof timeout === 'number' && timeout > 0 && !Number.isNaN(timeout))
+        || raise(new TypeError('Actor: timeout must be a positive number of milliseconds (Infinity to disable)'));
     let state = init;
     const queue = [];
     let processing = false;
     const subscribers = [];
+    let inflight = null;
+    const timers = [];   // 이긴 뒤 남은 마감 타이머를 걷는다 — 안 걷으면 프로세스가 그만큼 더 산다.
+
+    const notify = (result, newState) => {
+        // 사본을 돈다 — 통지 중 해지가 원본을 줄이면 뒤의 구독자를 건너뛴다(6차 감사 11).
+        // 다만 해지는 즉시 발효한다: 사본에 있어도 그 사이 빠졌으면 안 부른다.
+        const current = subscribers.slice();
+        for (let i = 0; i < current.length; i++) {
+            if (subscribers.indexOf(current[i]) === -1) continue;
+            try { current[i](result, newState); }
+            catch (e) { runCatch(config.tapErrorHandler, emptyFunc)(e); }
+        }
+    };
+
+    // 타이머 없는 환경(GAS)의 몫 — 다음 경계에서 마감을 확인한다. 타이머가 있으면 이미 발동했다.
+    // 이미 정착한 것을 다시 만료시키려 해도 once 가 막으므로 여기서 상태를 따로 안 본다.
+    const expireIfDue = () => {
+        if (inflight === null || timeout === Infinity) return;
+        if (Date.now() - inflight.startedAt >= timeout) inflight.expire();
+    };
+
+    // 마감을 Task 로 세운다 — 그러면 「먼저 정착한 쪽이 이긴다」는 Task.race 가 진다.
+    // 타이머가 없는 환경(GAS)에서는 이 Task 를 만들 수 없어 경계 검사가 대신한다.
+    const deadline = ms => new Task(reject => {
+        const timer = setTimeout(() => {
+            const e = new Error(`Actor: handle timed out after ${ms}ms`);
+            e.timedOut = true;
+            reject(e);
+        }, ms);
+        timers.push(timer);
+    });
 
     const process = () => {
         if (processing || queue.length === 0) return;
         processing = true;
         const { msg, resolve, reject } = queue.shift();
         const done = () => { processing = false; if (queue.length > 0) process(); };
-        const onSuccess = value => {
+        // 일회 정착은 라이브러리의 once 가 진다 — 늦게 온 결과도, 중복 만료도 한 자리에서 막힌다.
+        // 정착하면 남은 마감 타이머를 걷는다 — 한 번에 한 메시지만 비행하므로 목록은 그것 하나다.
+        const settleOnce = once(step => {
+            while (timers.length > 0) clearTimeout(timers.pop());
+            inflight = null;
+            step();
+        });
+        const finish = step => settleOnce(step);
+        inflight = {
+            startedAt: Date.now(),
+            expire: () => finish(() => {
+                const e = new Error(`Actor: handle timed out after ${timeout}ms`);
+                e.timedOut = true;
+                reject(e);
+                done();
+            }),
+        };
+        const onSuccess = value => finish(() => {
             // 비동기 경로에서 모양이 틀리면 던질 곳이 없다 — 거부로 돌려야 큐가 산다.
-            if (!Array.isArray(value) || value.length !== 2) return onError(new TypeError('Actor: handle must produce a [result, newState] pair'));
+            if (!Array.isArray(value) || value.length !== 2) {
+                reject(new TypeError('Actor: handle must produce a [result, newState] pair'));
+                return done();
+            }
             const [result, newState] = value;
             state = newState;
-            // 먼저 정착·진행을 확정하고 통지한다 — 통지 예외가 actor 를 멈추면 큐가 영구 대기한다.
             resolve(result);
-            done();
-            // state 가 아니라 newState 다 — done() 의 재진입이 state 를 먼저 전진시킬 수 있다.
-            for (let i = 0; i < subscribers.length; i++) {
-                try { subscribers[i](result, newState); }
-                catch (e) { runCatch(config.tapErrorHandler, emptyFunc)(e); }
-            }
-        };
-        const onError = e => { reject(e); done(); };
+            // notifyInOrder 면 진행보다 통지가 먼저다 — 안 그러면 다음 메시지의 통지가 앞질러
+            // 구독자가 역순으로 받는다(6차 감사 2). 구독자 호출은 각각 감싸여 있어 큐는 안 멈춘다.
+            if (notifyInOrder) { notify(result, newState); done(); }
+            else { done(); notify(result, newState); }
+        });
+        const onError = e => finish(() => { reject(e); done(); });
         try {
             // 값·Promise·Task 를 다 받는다 — Free.api 해석기 핸들러와 같은 관용도(같은 헬퍼).
-            liftHandlerResult(handle(state, msg)).fork(onError, onSuccess);
+            const work = liftHandlerResult(handle(state, msg));
+            (hasTimer && timeout !== Infinity ? Task.race([deadline(timeout), work]) : work).fork(onError, onSuccess);
         } catch (e) {
             onError(e);
         }
@@ -3509,6 +3568,7 @@ const Actor = ({ init, handle }) => {
 
     return {
         send: msg => new Task((reject, resolve) => {
+            expireIfDue();                            // 타이머 없는 환경의 경계 — 새 메시지가 곧 경계다
             queue.push({ msg, resolve, reject });
             process();
         }),
@@ -3613,8 +3673,7 @@ const makeApiCommand = (name, args, fns, api) => {
     cmd[Symbols.Functor] = true;
     return cmd;
 };
-// 반복문 적용이라 fns 길이만큼만 돈다 — 스택이 안 자란다.
-// 연속은 사용자 코드라 그 안에서 cancel 이 동기로 발효될 수 있다 — 걸음마다 경계를 검사한다.
+// 반복문이라 스택이 안 자란다. 연속은 사용자 코드라 걸음마다 취소 경계를 검사한다. docs/Free.md
 const CONTINUATION_CANCELLED = Symbol('fun-fp-js/Free.api.cancelled');
 const runApiContinuation = (fns, value, token) => {
     const stack = [];
@@ -3654,8 +3713,7 @@ const makeApiStart = tables => program => {
                     }
                     return Task.rejected(new TypeError(`Free.api.run: no handler for '${name}'${hint}`));
                 }
-                // 취소 경계 — 비행 완료 직후부터 연속의 매 걸음 사이까지. 연속 안에서 동기로
-                // cancel 이 발효될 수 있으므로(사용자 코드), 걸음마다 검사한다(구현 리뷰 Blocker).
+                // 취소 경계 — 비행 완료 직후부터 연속의 매 걸음 사이까지, 걸음마다 검사한다. docs/Free.md
                 return liftHandlerResult(h(...cmd.args)).chain(v => {
                     const out = runApiContinuation(cmd.fns, v, token);
                     return out === CONTINUATION_CANCELLED ? Task.rejected(cancelledError()) : Task.of(out);
@@ -3666,8 +3724,7 @@ const makeApiStart = tables => program => {
     return { promise, cancel: () => { token.cancelled = true; } };
 };
 Free.api = (...names) => {
-    // 어휘·api·핸들러 테이블은 전부 null-프로토타입 + own-property — 명령 이름이
-    // toString/__proto__ 여도 안전하다(레지스트리 리졸버 수리와 같은 규율).
+    // 어휘·api·핸들러 테이블은 전부 null-프로토타입 + own-property — 예약된 이름도 안전하다. docs/Free.md
     const vocabulary = Object.create(null);
     for (const name of names) {
         (typeof name !== 'string' || name.length === 0) && raise(new TypeError('Free.api: command name must be a non-empty string'));
