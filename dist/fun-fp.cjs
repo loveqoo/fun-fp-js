@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: d31688ada777ba198f3fbac5dba0f282d15de5e2
- * Built: 2026-08-19T13:46:31.121Z
+ * Commit: a2cf10f47e5892ac4c6d2a438a4b8376b7b6db7b
+ * Built: 2026-08-19T13:57:57.930Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -185,7 +185,22 @@ const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'conver
 // 정수·유한을 입구에서 본다 — 안 보면 NaN 은 [], 1.5 는 [0], '3' 은 [0,1,2], Infinity 는 RangeError 로 갈린다(6차 감사 12).
 // 객체 복제의 유일한 문 — 서술자를 통째로 옮긴다. Object.keys 는 열거 가능한 문자열 키만 보고,
 // Object.assign 은 own __proto__ 를 프로토타입으로 둔갑시킨다. 둘 다 실제로 결함이 됐다(6차 1·9차 2).
-const copyOwn = source => Object.defineProperties({}, Object.getOwnPropertyDescriptors(source));
+// 서술자를 옮기되 **자물쇠는 안 옮긴다** — configurable:false 까지 옮기면 동결 객체의 기존 키를
+// 갱신할 수 없다(10차 감사 1). 복제는 데이터를 옮기는 일이지 원본의 쓰기 제한을 물려주는 일이 아니다.
+// 열거 여부와 접근자 여부는 데이터의 모양이므로 그대로 둔다.
+const copyOwn = source => {
+    const from = Object.getOwnPropertyDescriptors(source);
+    // 서술자를 모으는 그릇도 프로토타입 없는 객체다 — `to['__proto__'] = …` 는 키를 만드는 대신
+    // 그릇의 프로토타입을 바꾼다. 같은 함정에 두 번 빠졌다(4차-1·5차·여기).
+    const to = Object.create(null);
+    for (const key of Reflect.ownKeys(from)) {
+        const d = from[key];
+        to[key] = d.get || d.set
+            ? { get: d.get, set: d.set, enumerable: d.enumerable, configurable: true }
+            : { value: d.value, enumerable: d.enumerable, writable: true, configurable: true };
+    }
+    return Object.defineProperties({}, to);
+};
 const putOwn = (acc, k, val) => (Object.defineProperty(acc, k, { value: val, enumerable: true, writable: true, configurable: true }), acc);
 const range = n => {
     if (!Number.isInteger(n) || n < 0) raise(new RangeError(`range: n must be a non-negative integer, got ${String(n)}`));
@@ -2744,9 +2759,10 @@ const { Free, trampoline } = (() => {
                     // then 만 보고 인정했으면 then 만으로 다뤄야 한다 — finally 는 Promise 의
                     // 선택 메서드라 최소 thenable 에는 없다(8차 감사 4). 정착하면 가드를 푼다.
                     if (result instanceof Promise || (result && typeof result.then === 'function')) {
-                        const release = () => { active = false; };
-                        result.then(release, release);
-                        return result;
+                        // Promise 로 동화해서 돌려준다 — thenable 을 그대로 돌려주면 소비자가
+                        // 다시 await 할 때 then 이 한 번 더 불려 부수 효과가 두 번 돈다(10차 감사 2).
+                        // finally 는 여기서 안전하다: 동화된 것은 진짜 Promise 다(8차 감사 4는 그 반대였다).
+                        return Promise.resolve(result).finally(() => { active = false; });
                     }
                     active = false;
                     return result;
