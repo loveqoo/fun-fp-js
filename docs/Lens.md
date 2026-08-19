@@ -1,5 +1,7 @@
 # Lens
 
+> English: [./en/Lens.md](./en/Lens.md)
+
 중첩된 불변 데이터의 특정 부분을 **읽고 쓰는 합성 가능한 접근자**
 
 > Lens는 **대상이 정확히 1개**인 optic입니다. 0개이거나 여러 개일 수 있는 경우와
@@ -23,8 +25,6 @@ over(userCity, s => s.toUpperCase(), user);
 // 원본은 그대로다
 console.log(user.address.city);    // 'Seoul'
 ```
-
-한 번 만든 `userCity`는 읽기·쓰기·변환 **세 가지 모두에 쓰입니다.**
 
 한 번 만든 `userCity`는 읽기·쓰기·변환 **세 가지 모두에 쓰입니다.**
 

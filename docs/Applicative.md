@@ -1,5 +1,7 @@
 # Applicative
 
+> English: [./en/Applicative.md](./en/Applicative.md)
+
 **여러 값에 함수를 적용하는 타입**
 
 ## 개념

@@ -107,7 +107,7 @@ so you can pull them out as plain dictionaries. **One deviation**: `compose` on 
 and `Category` follows convention (right-to-left, the same direction as `fp.compose`) rather than
 the spec's direction. This matches the direction Ramda and Sanctuary give their users, and if you
 need the spec's direction, use `pipe`. Rationale:
-[`docs/internals.md#compose-direction`](./docs/internals.md#compose-direction).
+[`docs/internals.md#compose-direction`](./docs/en/internals.md#compose-direction).
 
 ## The docs don't go stale
 
@@ -123,7 +123,7 @@ distinction is carried by a dedicated test instead.
 Links and anchors between docs are checked too (226 of them) — none of them 404 when clicked.
 
 - [Guide](./docs/en/README.md) — learning order and per-type docs
-- [Internals](./docs/internals.md) — for anyone modifying `index.js`
+- [Internals](./docs/en/internals.md) — for anyone modifying `index.js`
 - [Changelog](./CHANGELOG.md)
 
 ## Status — `0.1.0`

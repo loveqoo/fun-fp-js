@@ -1,5 +1,7 @@
 # StateT
 
+> English: [./en/StateT.md](./en/StateT.md)
+
 **상태 전이에 다른 효과를 합성**하는 Monad Transformer
 
 > 이 문서는 Monad Transformer 4종([StateT](./StateT.md) · [EitherT](./EitherT.md) ·
@@ -66,7 +68,7 @@ console.log(ST.runState(20, step).isNothing());            // true — 즉시 �
 `chain`만 이어붙이면 됩니다. 상태는 자동으로 흐르고, `Nothing`이 나오는 순간 나머지 단계는
 실행되지 않습니다.
 
-## M은 문자열로 넘긴다
+## M은 문자열로 넘긴다 {#m-as-string}
 
 **이 항목은 4종 Transformer 모두에 해당합니다.**
 

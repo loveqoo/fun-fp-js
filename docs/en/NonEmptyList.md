@@ -35,7 +35,7 @@ the empty list. That's why the `first` (keep the earlier one) and `last` (keep t
 Semigroups, which have no possible identity, can't be used with `foldMap`. NonEmptyList folds
 **with only a Semigroup**, since head serves as the seed — that door is `reduceMap` (transform, then
 combine) and `reduceLeft` (from the left, with no initial value). The owner of this fold is the
-**[Reducible](../Reducible.md)** type class (`Reducible.lookup('nonemptylist')` — it shares the same
+**[Reducible](./Reducible.md)** type class (`Reducible.lookup('nonemptylist')` — it shares the same
 contract as Identity). The static `NonEmptyList.reduceLeft/reduceMap` entries below delegate to
 that instance.
 

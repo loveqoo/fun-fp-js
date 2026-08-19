@@ -1,5 +1,7 @@
 # Reducible
 
+> English: [./en/Reducible.md](./en/Reducible.md)
+
 **비어 있을 수 없는 것을 접습니다.** `Foldable` 을 상속하고, 접는 규칙으로 Monoid 가
 아니라 **Semigroup** 만 받습니다.
 

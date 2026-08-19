@@ -64,71 +64,71 @@ console.log(thrown);   // 'TypeError'
 
 #### Environment / state management
 
-- [Reader](../Reader.md) - environment-based computation (dependency injection)
-- [Writer](../Writer.md) - output tracking (logging)
-- [State](../State.md) - state transformation
+- [Reader](./Reader.md) - environment-based computation (dependency injection)
+- [Writer](./Writer.md) - output tracking (logging)
+- [State](./State.md) - state transformation
 
 #### Advanced
 
-- [Free](../Free.md) - stack-safe recursion, building DSLs
+- [Free](./Free.md) - stack-safe recursion, building DSLs
 
 #### Working with data
 
-- [Optics](../Optics.md) - an overview of Lens/Prism/Traversal and how they compose (**start here**)
-- [Lens](../Lens.md) - composable accessors for nested immutable data
-- [Transducer](../Transducer.md) - transformation pipelines with no intermediate arrays
-- [Actor](../Actor.md) - a stateful container that processes messages sequentially
+- [Optics](./Optics.md) - an overview of Lens/Prism/Traversal and how they compose (**start here**)
+- [Lens](./Lens.md) - composable accessors for nested immutable data
+- [Transducer](./Transducer.md) - transformation pipelines with no intermediate arrays
+- [Actor](./Actor.md) - a stateful container that processes messages sequentially
 
 ### Stage 3: transformation and composition
 
-- [Functor](../Functor.md) - transforming values (map)
-- [Applicative](../Applicative.md) - applying a function across several values (ap)
-- [Monad](../Monad.md) - sequential execution (chain)
-- [MonadError](../MonadError.md) - failure as a first-class citizen (raiseError/handleError, **outside the spec**)
+- [Functor](./Functor.md) - transforming values (map)
+- [Applicative](./Applicative.md) - applying a function across several values (ap)
+- [Monad](./Monad.md) - sequential execution (chain)
+- [MonadError](./MonadError.md) - failure as a first-class citizen (raiseError/handleError, **outside the spec**)
 
 ### Stage 4: advanced patterns
 
-- [Traversable](../Traversable.md) - traversing effects (traverse)
-- [Foldable](../Foldable.md) - reduction (reduce)
-- [Reducible](../Reducible.md) - reduction with no empty case (reduceLeft/reduceMap, **outside the spec**)
-- [Filterable](../Filterable.md) - filtering
+- [Traversable](./Traversable.md) - traversing effects (traverse)
+- [Foldable](./Foldable.md) - reduction (reduce)
+- [Reducible](./Reducible.md) - reduction with no empty case (reduceLeft/reduceMap, **outside the spec**)
+- [Filterable](./Filterable.md) - filtering
 
 ### Stage 5: function composition
 
-- [Semigroupoid](../Semigroupoid.md) - function composition
-- [Category](../Category.md) - function composition + identity function
+- [Semigroupoid](./Semigroupoid.md) - function composition
+- [Category](./Category.md) - function composition + identity function
 
 ### Stage 6: choosing between alternatives
 
-- [Alt](../Alt.md) - choosing an alternative
-- [Plus](../Plus.md) - the empty alternative
-- [Alternative](../Alternative.md) - Applicative + Plus
+- [Alt](./Alt.md) - choosing an alternative
+- [Plus](./Plus.md) - the empty alternative
+- [Alternative](./Alternative.md) - Applicative + Plus
 
 ### Stage 7: specialized transformations
 
-- [Bifunctor](../Bifunctor.md) - two-way transformation
-- [Contravariant](../Contravariant.md) - transforming the input
-- [Profunctor](../Profunctor.md) - transforming input and output
-- [Strong · Choice · Wander](../Profunctor.md#extensions) - the three profunctor extensions (**outside the spec** — used by optics)
+- [Bifunctor](./Bifunctor.md) - two-way transformation
+- [Contravariant](./Contravariant.md) - transforming the input
+- [Profunctor](./Profunctor.md) - transforming input and output
+- [Strong · Choice · Wander](./Profunctor.md#extensions) - the three profunctor extensions (**outside the spec** — used by optics)
 
 ### Stage 8: recursion and Comonad
 
-- [ChainRec](../ChainRec.md) - stack-safe recursion
-- [Extend](../Extend.md) - context-based transformation
-- [Comonad](../Comonad.md) - the dual of Monad
+- [ChainRec](./ChainRec.md) - stack-safe recursion
+- [Extend](./Extend.md) - context-based transformation
+- [Comonad](./Comonad.md) - the dual of Monad
 
 ### Stage 9: Monad Transformers
 
 Composing two monads gives you combinations like "state + failure" or "environment + async".
-It's built on top of [Free](../Free.md), so it's stack-safe.
+It's built on top of [Free](./Free.md), so it's stack-safe.
 
-**Read [StateT](../StateT.md) first.** The four transformers' shared concepts (`of`/`lift`, the
+**Read [StateT](./StateT.md) first.** The four transformers' shared concepts (`of`/`lift`, the
 rule that `M` must be a string) are laid out there, and the other three refer back to it.
 
-- [StateT](../StateT.md) - state transitions + effects (includes the shared concepts)
-- [EitherT](../EitherT.md) - error handling + effects (`EitherT('task')` is the representative combination)
-- [ReaderT](../ReaderT.md) - dependency injection + effects
-- [WriterT](../WriterT.md) - output accumulation + effects
+- [StateT](./StateT.md) - state transitions + effects (includes the shared concepts)
+- [EitherT](./EitherT.md) - error handling + effects (`EitherT('task')` is the representative combination)
+- [ReaderT](./ReaderT.md) - dependency injection + effects
+- [WriterT](./WriterT.md) - output accumulation + effects
 
 ## Abstract functions
 
@@ -174,8 +174,8 @@ Strong + Choice ─────> Wander          wander
 ```
 
 The last three aren't in the Static Land spec. Optics require them, so they're implemented
-explicitly, and which optic each one produces is covered in [Optics](../Optics.md). Rationale:
-[internals.md#optics](../internals.md#optics).
+explicitly, and which optic each one produces is covered in [Optics](./Optics.md). Rationale:
+[internals.md#optics](./internals.md#optics).
 
 ## Core concepts, summarized
 
@@ -203,7 +203,7 @@ explicitly, and which optic each one produces is covered in [Optics](../Optics.m
 | Plus           | zero              | The empty alternative    |
 | Alternative    | ap + alt + zero   | Applicative + Plus       |
 | Foldable       | reduce            | Reduction                |
-| [Reducible](../Reducible.md) | reduceLeft + reduceMap | Folding with no empty case (outside the spec) |
+| [Reducible](./Reducible.md) | reduceLeft + reduceMap | Folding with no empty case (outside the spec) |
 | Traversable    | traverse          | Traversing effects       |
 | Filterable     | filter            | Filtering out             |
 | Semigroupoid   | compose           | Function composition      |
@@ -296,15 +296,15 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | `<type>`              | That type's default instance                                  | `array`, `maybe`, `number`                 | Each type's own doc                |
 | `<ClassName>`         | A different instance of the same type                         | `NumberProductMonoid`, `NumberMaxMonoid`   | [Monoid](./Monoid.md)              |
 | `maybe(<inner>)`      | A Maybe with its inner Semigroup specified                    | `maybe(first)`, `maybe(array)`             | [Monoid](./Monoid.md)              |
-| `<type>`              | **A Monoid derived from `Plus`** — only when that type has no Monoid of its own | `Monoid.lookup('maybe')`                   | [Plus](../Plus.md)                 |
-| `const(<monoid>)`     | **The `Const` Applicative**                                    | `const(array)`, `const(number)`            | [Applicative](../Applicative.md)   |
-| `writer(<monoid>)`    | **The `Writer` monad using that Monoid** — the registered `writer` is Array-only | `writer(number)`, `writer(string)`         | [Writer](../Writer.md)             |
-| `statet(<M>)` etc.    | Transformer                                                    | `statet(maybe)`, `eithert(task)`           | [StateT](../StateT.md)             |
+| `<type>`              | **A Monoid derived from `Plus`** — only when that type has no Monoid of its own | `Monoid.lookup('maybe')`                   | [Plus](./Plus.md)                 |
+| `const(<monoid>)`     | **The `Const` Applicative**                                    | `const(array)`, `const(number)`            | [Applicative](./Applicative.md)   |
+| `writer(<monoid>)`    | **The `Writer` monad using that Monoid** — the registered `writer` is Array-only | `writer(number)`, `writer(string)`         | [Writer](./Writer.md)             |
+| `statet(<M>)` etc.    | Transformer                                                    | `statet(maybe)`, `eithert(task)`           | [StateT](./StateT.md)             |
 
 
 `identity` is also registered in seven places (`Functor`/`Apply`/`Applicative`/`Extend`/`Comonad`/
 `Foldable`/`Reducible`). Passing it to `traverse` for "just mapping" is its main use
-([Applicative](../Applicative.md)).
+([Applicative](./Applicative.md)).
 
 ### Data types
 
@@ -319,25 +319,25 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | Reader                            | Dependency injection                   | Propagating an environment                                                  |
 | Writer                            | Logging / output tracking              | A value + output (Monoid)                                                   |
 | State                             | State transformation                   | Threading state                                                             |
-| Free                              | Separating program from execution, stack-safe recursion | Pure / Impure — [Free.api](../Free.md#api) lets you use Free without knowing it |
-| [Optics](../Optics.md)            | Partial access and update              | The `Optics` module — Lens/Prism/Traversal, `compose`, `foldMapOf`          |
-| [Lens](../Lens.md)                | Immutable updates on nested data       | A getter/setter pair, targets exactly one value                            |
-| [Transducer](../Transducer.md)    | Transformation pipelines               | No intermediate arrays, early exit                                         |
-| [Actor](../Actor.md)              | Sequential message processing          | A queue + state, `send` is a Task                                          |
+| Free                              | Separating program from execution, stack-safe recursion | Pure / Impure — [Free.api](./Free.md#api) lets you use Free without knowing it |
+| [Optics](./Optics.md)            | Partial access and update              | The `Optics` module — Lens/Prism/Traversal, `compose`, `foldMapOf`          |
+| [Lens](./Lens.md)                | Immutable updates on nested data       | A getter/setter pair, targets exactly one value                            |
+| [Transducer](./Transducer.md)    | Transformation pipelines               | No intermediate arrays, early exit                                         |
+| [Actor](./Actor.md)              | Sequential message processing          | A queue + state, `send` is a Task                                          |
 
 
 ### Monad Transformers
 
 Composing two monads. **Pass `M` as a string** (`StateT('maybe')`). Passing an object makes the
-type name depend on execution order. See [StateT](../StateT.md) for details.
+type name depend on execution order. See [StateT](./StateT.md) for details.
 
 
 | Type                      | Composition | Running it            | Result            |
 | -------------------------- | ------------ | ----------------------- | -------------------- |
-| [StateT](../StateT.md)     | State + M    | `runState(s, p)`        | `M [a, s]`            |
-| [EitherT](../EitherT.md)   | Either + M   | `runEitherT(p)`         | `M (Either e a)`      |
-| [ReaderT](../ReaderT.md)   | Reader + M   | `runReaderT(env, p)`    | `M a`                 |
-| [WriterT](../WriterT.md)   | Writer + M   | `runWriterT(p)`         | `M [a, w]`            |
+| [StateT](./StateT.md)     | State + M    | `runState(s, p)`        | `M [a, s]`            |
+| [EitherT](./EitherT.md)   | Either + M   | `runEitherT(p)`         | `M (Either e a)`      |
+| [ReaderT](./ReaderT.md)   | Reader + M   | `runReaderT(env, p)`    | `M a`                 |
+| [WriterT](./WriterT.md)   | Writer + M   | `runWriterT(p)`         | `M [a, w]`            |
 
 
 ## Common patterns
@@ -428,7 +428,7 @@ pipe(
 
 ## To modify `index.js`
 
-[Internals](../internals.md) — the `.type` convention, `'any'`, deriving `Plus`→`Monoid`,
+[Internals](./internals.md) — the `.type` convention, `'any'`, deriving `Plus`→`Monoid`,
 Identity/Const, where the validation layers peel off, the Profunctor encoding behind optics,
 transformer registration, the registry's write path. Source comments carry only a one-line
 hint, and the rationale is collected over there.

@@ -1,5 +1,7 @@
 # ChainRec
 
+> English: [./en/ChainRec.md](./en/ChainRec.md)
+
 **스택 안전한 재귀를 위한 타입**
 
 ## 개념

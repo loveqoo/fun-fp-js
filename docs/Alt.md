@@ -1,5 +1,7 @@
 # Alt
 
+> English: [./en/Alt.md](./en/Alt.md)
+
 **대안을 선택할 수 있는 타입**
 
 ## 개념

@@ -1,5 +1,7 @@
 # Alternative
 
+> English: [./en/Alternative.md](./en/Alternative.md)
+
 Applicative와 Plus를 결합한 타입 클래스. 선택과 병렬 실행 패턴을 지원.
 
 ## 정의

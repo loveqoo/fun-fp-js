@@ -1,5 +1,7 @@
 # EitherT
 
+> English: [./en/EitherT.md](./en/EitherT.md)
+
 **에러 처리에 다른 효과를 합성**하는 Monad Transformer
 
 > Transformer 4종의 공통 개념(`of`/`lift`, 문자열 M 규칙, Free 기반 스택 안전성)은
@@ -70,7 +72,7 @@ console.log(bad.isLeft(), bad.value);           // true '잘못된 id'
 
 **Transformer 4종 공통 규칙입니다.** `EitherT('task')`처럼 문자열로 만드십시오.
 객체를 넘기면 타입명이 `EitherT(M1)`처럼 실행 순서에 따라 달라지고, 두 형태는 서로 다른
-클래스가 되어 섞어 쓸 수 없습니다. 자세한 내용은 [StateT](./StateT.md#m은-문자열로-넘긴다)를
+클래스가 되어 섞어 쓸 수 없습니다. 자세한 내용은 [StateT](./StateT.md#m-as-string)를
 보십시오.
 
 ```javascript

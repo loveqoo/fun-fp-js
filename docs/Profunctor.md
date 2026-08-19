@@ -1,5 +1,7 @@
 # Profunctor
 
+> English: [./en/Profunctor.md](./en/Profunctor.md)
+
 입력과 출력 모두를 변환할 수 있는 타입 클래스 (bifunctor의 반공변 버전).
 
 ## 정의

@@ -1,5 +1,7 @@
 # Semigroupoid & Category
 
+> English: [./en/Semigroupoid.md](./en/Semigroupoid.md)
+
 **함수 합성을 추상화한 타입**
 
 ## Semigroupoid

@@ -1,5 +1,7 @@
 # 내부 구조 — 왜 이렇게 되어 있나
 
+> English: [./en/internals.md](./en/internals.md)
+
 **이 문서는 `index.js` 를 고치는 사람을 위한 것입니다.** 라이브러리를 *쓰는* 법은
 [README](./README.md)와 각 타입 문서에 있습니다.
 

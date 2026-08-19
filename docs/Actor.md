@@ -1,5 +1,7 @@
 # Actor
 
+> English: [./en/Actor.md](./en/Actor.md)
+
 메시지를 **순차 처리**하는 가벼운 상태 컨테이너
 
 ## 개념

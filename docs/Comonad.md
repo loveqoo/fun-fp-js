@@ -1,5 +1,7 @@
 # Comonad
 
+> English: [./en/Comonad.md](./en/Comonad.md)
+
 Extend에 값 추출(extract)을 추가한 타입 클래스. Monad의 쌍대(dual).
 
 ## 정의

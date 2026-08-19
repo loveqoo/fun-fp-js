@@ -1,5 +1,7 @@
 # WriterT
 
+> English: [./en/WriterT.md](./en/WriterT.md)
+
 **출력 누적에 다른 효과를 합성**하는 Monad Transformer
 
 > Transformer 4종의 공통 개념(`of`/`lift`, 문자열 M 규칙, Free 기반 스택 안전성)은
@@ -69,7 +71,7 @@ console.log(log);     // ['입력 21', '두 배 42']
 **Transformer 4종 공통 규칙입니다.** `WriterT('task')`처럼 문자열로 만드십시오.
 객체를 넘기면 타입명이 `WriterT(M1,Array)`처럼 실행 순서에 따라 달라지고, 두 형태는 서로
 다른 클래스가 되어 섞어 쓸 수 없습니다. 자세한 내용은
-[StateT](./StateT.md#m은-문자열로-넘긴다)를 보십시오.
+[StateT](./StateT.md#m-as-string)를 보십시오.
 
 ```javascript
 const { WriterT, Maybe } = FunFP;

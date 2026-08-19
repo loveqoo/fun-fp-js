@@ -615,10 +615,10 @@ Validation.collect = (...validators) => f => (...args) => {
 - [Either](./Either.md) - Validation is the error-accumulating counterpart of Either
 
 **Type classes it uses:**
-- [Functor](../Functor.md)
-- [Apply](../Applicative.md) - `ap` is documented alongside Applicative
-- [Applicative](../Applicative.md)
-- [Bifunctor](../Bifunctor.md)
+- [Functor](./Functor.md)
+- [Apply](./Applicative.md) - `ap` is documented alongside Applicative
+- [Applicative](./Applicative.md)
+- [Bifunctor](./Bifunctor.md)
 
 **Used together with:**
 - [Monoid](./Monoid.md) - used for error accumulation (Array Monoid, String Monoid, etc.)

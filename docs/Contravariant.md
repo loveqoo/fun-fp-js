@@ -1,5 +1,7 @@
 # Contravariant
 
+> English: [./en/Contravariant.md](./en/Contravariant.md)
+
 입력 타입에 대해 반공변적인(contravariant) 변환을 수행하는 타입 클래스.
 
 ## 정의

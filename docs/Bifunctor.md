@@ -1,5 +1,7 @@
 # Bifunctor
 
+> English: [./en/Bifunctor.md](./en/Bifunctor.md)
+
 **양쪽을 모두 변환할 수 있는 타입**
 
 ## 개념

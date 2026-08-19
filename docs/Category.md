@@ -1,5 +1,7 @@
 # Category
 
+> English: [./en/Category.md](./en/Category.md)
+
 Semigroupoid에 항등 함수(id)를 추가한 타입 클래스.
 
 ## 정의

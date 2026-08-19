@@ -1,5 +1,7 @@
 # Functor
 
+> English: [./en/Functor.md](./en/Functor.md)
+
 **매핑 가능한(Mappable) 타입**
 
 ## 개념

@@ -1,5 +1,7 @@
 # Optics
 
+> English: [./en/Optics.md](./en/Optics.md)
+
 **데이터의 일부를 가리키는 합성 가능한 접근자** — Iso, Lens, Prism, Traversal
 
 Optic은 큰 구조 안의 부분을 **읽고 쓰는 방법을 값으로 만든 것**입니다. 값이므로 합성할 수

@@ -1,5 +1,7 @@
 # Extend
 
+> English: [./en/Extend.md](./en/Extend.md)
+
 Functor에 컨텍스트 기반 변환(extend)을 추가한 타입 클래스.
 
 ## 정의

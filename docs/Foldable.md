@@ -1,5 +1,7 @@
 # Foldable
 
+> English: [./en/Foldable.md](./en/Foldable.md)
+
 **값을 접어서(fold) 하나로 축소하는 타입**
 
 ## 개념
