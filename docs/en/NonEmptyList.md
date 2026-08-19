@@ -18,12 +18,12 @@ The only door through which an empty array can enter is `fromArray`, and it's th
 ```javascript
 const { NonEmptyList } = FunFP;
 
-const nel = NonEmptyList.make(3, 9, 4);          // 리터럴 생성
-console.log(nel.head);                            // 3 — Maybe 없이, 항상 있다
+const nel = NonEmptyList.make(3, 9, 4);          // created from literals
+console.log(nel.head);                            // 3 — no Maybe, always present
 console.log(nel.last());                          // 4
-console.log(nel.toArray());                       // [ 3, 9, 4 ] — 배열로 나가는 문
+console.log(nel.toArray());                       // [ 3, 9, 4 ] — the door out to an array
 
-// 배열에서 들어올 때만 Maybe — 비어 있을 가능성은 이 문에서 끝난다
+// Maybe only when coming in from an array — the possibility of empty ends at this door
 console.log(NonEmptyList.fromArray([1, 2]).isJust());   // true
 console.log(NonEmptyList.fromArray([]).isNothing());    // true
 ```
@@ -43,17 +43,17 @@ that instance.
 const { NonEmptyList, Semigroup, Foldable, foldMap } = FunFP;
 const nel = NonEmptyList.make(3, 9, 4);
 
-// first·last 가 접기에 들어온다 — 배열의 foldMap 으로는 표현할 수 없던 것
+// first·last enter the fold — something the array's foldMap could never express
 console.log(NonEmptyList.reduceMap(Semigroup.lookup('first'), x => x, nel));  // 3
 console.log(NonEmptyList.reduceMap(Semigroup.lookup('last'), x => x, nel));   // 4
 
-// 같은 규칙을 foldMap 에 넣으면 여전히 거부된다 — Monoid 가 아니라서
+// putting the same rule into foldMap is still rejected — it isn't a Monoid
 let thrown = '';
 try { foldMap(Foldable.lookup('array'), Semigroup.lookup('first')); }
 catch (e) { thrown = e.message; }
 console.log(thrown);   // foldMap: second argument must be a Monoid
 
-// reduceLeft — 초기값 없이 head 부터
+// reduceLeft — starts from head, no initial value
 console.log(NonEmptyList.reduceLeft((a, b) => a + b, nel));   // 16
 ```
 
@@ -92,17 +92,17 @@ filter, going out through `toArray` is the honest path.
 ```javascript
 const { NonEmptyList, Maybe } = FunFP;
 
-// 서명이 곧 계약 — NonEmptyList 를 받는 함수는 빈 경우를 고려하지 않는다.
-// (JS 는 타입을 강제하지 않는다 — 계약을 지키는 쪽은 fromArray 로 만들어 넘기는 호출자다)
-const pickLeader = candidates => candidates.head;   // 검사 없음 — 계약이 대신한다
+// the signature is the contract — a function that takes NonEmptyList never considers the empty case.
+// (JS doesn't enforce types — the caller who honors the contract is the one who builds it with fromArray)
+const pickLeader = candidates => candidates.head;   // no check — the contract stands in for it
 const report = candidates =>
-    '대표: ' + pickLeader(candidates) + ' / 총 ' + candidates.toArray().length + '명';
+    'Leader: ' + pickLeader(candidates) + ' / ' + candidates.toArray().length + ' total';
 
-// 걱정은 경계 한 곳에서만 — 안쪽 함수들은 전부 검사 없이 이어진다
-console.log(Maybe.fold(() => '후보가 없다', report, NonEmptyList.fromArray(['갑', '을'])));
-// 대표: 갑 / 총 2명
-console.log(Maybe.fold(() => '후보가 없다', report, NonEmptyList.fromArray([])));
-// 후보가 없다
+// the worry lives at one boundary only — every inner function chains on with no check at all
+console.log(Maybe.fold(() => 'no candidates', report, NonEmptyList.fromArray(['Alice', 'Bob'])));
+// Leader: Alice / 2 total
+console.log(Maybe.fold(() => 'no candidates', report, NonEmptyList.fromArray([])));
+// no candidates
 ```
 
 ## See also

@@ -17,50 +17,50 @@ Task represents a **deferred asynchronous computation**. It resembles a Promise,
 ### The problem: Promise runs immediately
 
 ```javascript
-// Promise는 생성 즉시 실행!
+// A Promise runs immediately upon creation!
 const promise = new Promise((resolve) => {
-    console.log('실행됨!');  // 실행됨!   만들자마자 돈다
+    console.log('ran!');  // ran!   runs the moment it's created
     resolve(42);
 });
-// 아무것도 안 해도 '실행됨!' 출력
+// prints 'ran!' even though nothing else runs
 ```
 
 ### The fix: Task defers execution
 
 ```javascript
 const task = new Task((reject, resolve) => {
-    console.log('실행됨!');  // 실행됨!   단, fork 한 뒤에야 찍힌다
+    console.log('ran!');  // ran!   but only prints after fork is called
     resolve(42);
 });
-// 아무것도 출력되지 않음
+// nothing is printed
 
-task.fork(console.error, console.log);  // 42   이때서야 위 줄이 찍히고 값이 온다
+task.fork(console.error, console.log);  // 42   only now does the line above print, and the value arrives
 ```
 
 ## Construction
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature/pseudocode notation
 import FunFP from 'fun-fp-js';
 const { Task } = FunFP;
 
-// 기본 생성
+// Basic creation
 const task = new Task((reject, resolve) => {
     setTimeout(() => resolve(42), 1000);
 });
 
-// 즉시 성공
+// Immediate success
 const success = Task.of(42);
 
-// 즉시 실패
+// Immediate failure
 const failure = Task.rejected('error');
 
-// Promise에서 변환
+// Converting from a Promise
 const fetchTask = Task.fromPromise(
     url => fetch(url).then(r => r.json())
 );
 const task = fetchTask('/api/data');
 
-// Either에서 변환
+// Converting from an Either
 const fromEither = Task.fromEither(Either.Right(42));  // Task.of(42)
 ```
 
@@ -70,7 +70,7 @@ const fromEither = Task.fromEither(Either.Right(42));  // Task.of(42)
 const task = Task.of(42);
 
 task.fork(
-    error => console.error('Error:', error),  // 실패 콜백
+    error => console.error('Error:', error),  // failure callback
     value => console.log('Success:', value)   // Success: 42
 );
 // 'Success: 42'
@@ -121,7 +121,7 @@ Task.all(tasks).fork(
     results => console.log(results)  // [1, 2, 3]
 );
 
-// 하나라도 실패하면 전체 실패
+// if even one fails, the whole thing fails
 const tasksWithError = [
     Task.of(1),
     Task.rejected('oops'),
@@ -164,7 +164,7 @@ const api = {
     )()
 };
 
-// 사용
+// Usage
 api.get('/api/users/1')
     .map(user => user.name)
     .fork(
@@ -240,7 +240,7 @@ const tasks = [
 
 sequence(tasks).fork(
     console.error,
-    results => console.log(results)  // [ 1, 2, 3 ]   순차 실행됐다
+    results => console.log(results)  // [ 1, 2, 3 ]   ran sequentially
 );
 ```
 
@@ -252,10 +252,10 @@ const fetchUser = id => Task.fromPromise(() =>
 )();
 const fetchIfNeeded = (cache, id) =>
     cache[id] 
-        ? Task.of(cache[id])  // 캐시 있으면 즉시 반환
-        : fetchUser(id);       // 없으면 API 호출
+        ? Task.of(cache[id])  // return immediately if cached
+        : fetchUser(id);       // otherwise call the API
 
-// 캐시에 없으면 진짜 fetch 로 간다 — 이 문서를 실행하는 환경에는 서버가 없어 실패 콜백으로 떨어진다
+// if not cached, it goes to a real fetch — this doc's runtime has no server, so it falls into the failure callback
 fetchIfNeeded({}, 1).fork(console.error, console.log);
 fetchIfNeeded({1: 'cached'}, 1).fork(console.error, console.log);  // cached
 ```
@@ -269,10 +269,10 @@ fetchIfNeeded({1: 'cached'}, 1).fork(console.error, console.log);  // cached
 ```javascript
 const { Task } = FunFP;
 
-// 순수 함수
+// A pure function
 const add = (a, b) => a + b;
 
-// Task로 리프트
+// Lift into Task
 const taskAdd = Task.lift(add);
 
 taskAdd(Task.of(5), Task.of(3)).fork(
@@ -281,7 +281,7 @@ taskAdd(Task.of(5), Task.of(3)).fork(
 );
 // 8
 
-// 3개 이상의 인자도 지원
+// also supports 3 or more arguments
 const sum3 = (a, b, c) => a + b + c;
 const taskSum3 = Task.lift(sum3);
 
@@ -299,7 +299,7 @@ The most important thing `Task.lift` does is **catch exceptions thrown inside th
 ```javascript
 const { Task } = FunFP;
 
-// 예외를 던지는 함수
+// A function that throws
 const divide = (a, b) => {
     if (b === 0) {
         throw new Error('Division by zero');
@@ -307,24 +307,24 @@ const divide = (a, b) => {
     return a / b;
 };
 
-// lift로 예외 안전하게 만들기
+// make it exception-safe with lift
 const safeDivide = Task.lift(divide);
 
-// 정상 케이스
+// Normal case
 safeDivide(Task.of(10), Task.of(2)).fork(
     err => console.error('Error:', err.message),
     result => console.log('Result:', result)
 );
 // 'Result: 5'
 
-// 예외 케이스 - throw가 Task.rejected로 자동 변환!
+// Exception case - throw is automatically converted to Task.rejected!
 safeDivide(Task.of(10), Task.of(0)).fork(
     err => console.error('Error:', err.message),
     result => console.log('Result:', result)
 );
 // 'Error: Division by zero'
 
-// Task가 rejected인 경우도 처리
+// also handles the case where the Task is already rejected
 safeDivide(Task.rejected('Invalid input'), Task.of(2)).fork(
     err => console.error('Error:', err),
     result => console.log('Result:', result)
@@ -337,20 +337,20 @@ safeDivide(Task.rejected('Invalid input'), Task.of(2)).fork(
 ```javascript
 const { Task } = FunFP;
 
-// JSON.parse는 예외를 던질 수 있음
+// JSON.parse can throw
 const parseJSON = str => JSON.parse(str);
 
-// lift로 예외 안전하게
+// make it exception-safe with lift
 const safeParseJSON = Task.lift(parseJSON);
 
-// 정상 케이스
+// Normal case
 safeParseJSON(Task.of('{"name": "Alice"}')).fork(
     err => console.error('Parse error:', err.message),
     obj => console.log('Parsed:', obj)
 );
 // Parsed: { name: 'Alice' }
 
-// 예외 케이스 - 파싱 실패
+// Exception case - parsing failure
 safeParseJSON(Task.of('invalid json')).fork(
     err => console.error('Parse error:', err.message),
     obj => console.log('Parsed:', obj)
@@ -363,7 +363,7 @@ safeParseJSON(Task.of('invalid json')).fork(
 ```javascript
 const { Task } = FunFP;
 
-// API 응답 변환 함수 (검증 포함)
+// API response transform function (includes validation)
 const transformUser = data => {
     if (!data.id) throw new Error('Missing user ID');
     if (!data.email) throw new Error('Missing email');
@@ -381,15 +381,15 @@ const fetchUser = id => Task.fromPromise(() =>
     fetch(`/api/users/${id}`).then(r => r.json())
 )();
 
-// 파이프라인: fetch -> transform
+// Pipeline: fetch -> transform
 fetchUser(1)
     .chain(data => safeTransformUser(Task.of(data)))
     .fork(
         err => console.error('Error:', err.message),
         user => console.log('User:', user)
     );
-// 데이터가 유효하면: User: { id: 1, email: '...', name: '...' }
-// 검증 실패 시: Error: Missing user ID
+// if the data is valid: User: { id: 1, email: '...', name: '...' }
+// if validation fails: Error: Missing user ID
 ```
 
 ### When should you use Task.lift?
@@ -405,10 +405,10 @@ fetchUser(1)
 - `Task.fromPromise`: catches a Promise rejection
 
 ```javascript
-// 동기 함수 -> Task.lift
+// Synchronous function -> Task.lift
 const parseJSON = Task.lift(str => JSON.parse(str));
 
-// 비동기 함수 -> Task.fromPromise
+// Asynchronous function -> Task.fromPromise
 const fetchData = Task.fromPromise(url =>
     fetch(url).then(r => r.json())
 );

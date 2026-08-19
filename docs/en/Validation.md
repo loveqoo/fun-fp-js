@@ -18,7 +18,7 @@ Unlike Either, its `ap` operation collects every error, which makes it well suit
 ### The problem: Either stops at the first error
 
 ```javascript
-// Either는 fail-fast: 첫 번째 Left에서 멈춤
+// Either is fail-fast: it stops at the first Left
 const { Either, Apply } = FunFP;
 const { ap } = Apply.lookup('either');
 
@@ -28,11 +28,11 @@ const validateEmail = email =>
 const validateAge = age =>
     age >= 18 ? Either.Right(age) : Either.Left('Must be 18+');
 
-// Either.ap는 첫 Left를 만나면 중단
+// Either.ap stops as soon as it hits the first Left
 const e1 = Either.Left('Invalid email');
 const e2 = Either.Left('Must be 18+');
 ap(Either.Right(x => y => [x, y]), e1);
-// Left('Invalid email') - e2의 에러는 보지 못함!
+// Left('Invalid email') - never sees e2's error!
 ```
 
 When validating a form, users want to see **all the errors at once**, but Either only ever shows the first one.
@@ -46,9 +46,9 @@ const { ap } = Apply.lookup('validation');
 const v1 = Validation.Invalid(['Invalid email']);
 const v2 = Validation.Invalid(['Must be 18+']);
 
-// Validation.ap는 Invalid들을 Monoid.concat으로 병합
+// Validation.ap merges Invalids with Monoid.concat
 ap(ap(Validation.Valid(x => y => [x, y]), v1), v2);
-// Invalid(['Invalid email', 'Must be 18+']) - 모든 에러 수집!
+// Invalid(['Invalid email', 'Must be 18+']) - collects every error!
 ```
 
 Validation's `ap` (Applicative) **accumulates** errors instead of short-circuiting, which is exactly what parallel validation needs.
@@ -59,21 +59,21 @@ Validation's `ap` (Applicative) **accumulates** errors instead of short-circuiti
 import FunFP from 'fun-fp-js';
 const { Validation } = FunFP;
 
-// Valid 생성 (검증 성공)
+// Create a Valid (validation succeeded)
 const valid = Validation.of(5);           // Valid(5)
 const alsoValid = Validation.Valid(42);   // Valid(42)
 
-// Invalid 생성 (검증 실패)
+// Create an Invalid (validation failed)
 const invalid = Validation.Invalid(['error1', 'error2']);
-// Invalid(['error1', 'error2']) - 기본 Array Monoid 사용
+// Invalid(['error1', 'error2']) - uses the default Array Monoid
 
-// 커스텀 Monoid 지정
+// Specify a custom Monoid
 const { Monoid } = FunFP;
 const stringMonoid = Monoid.lookup('string');
 const stringInvalid = Validation.Invalid('error, ', stringMonoid);
-// Invalid('error, ', stringMonoid) - String Monoid 사용
+// Invalid('error, ', stringMonoid) - uses the String Monoid
 
-// Either에서 변환
+// Convert from Either
 const { Either } = FunFP;
 Validation.fromEither(Either.Right(5));     // Valid(5)
 Validation.fromEither(Either.Left(['err'])); // Invalid(['err'])
@@ -88,9 +88,9 @@ const { Functor } = FunFP;
 const { map } = Functor.lookup('validation');
 
 map(x => x * 2, Validation.Valid(5));          // Valid(10)
-map(x => x * 2, Validation.Invalid(['error'])); // Invalid(['error']) - 함수 실행 안 됨
+map(x => x * 2, Validation.Invalid(['error'])); // Invalid(['error']) - the function never runs
 
-// 또는 Static 메서드
+// Or the Static method
 Validation.map(x => x * 2, Validation.Valid(5)); // Valid(10)
 ```
 
@@ -102,25 +102,25 @@ Validation.map(x => x * 2, Validation.Valid(5)); // Valid(10)
 const { Apply } = FunFP;
 const { ap } = Apply.lookup('validation');
 
-// 둘 다 Valid: 정상 적용
+// Both Valid: applies normally
 const vf = Validation.Valid(x => x * 2);
 const va = Validation.Valid(5);
 ap(vf, va); // Valid(10)
 
-// 하나만 Invalid: 그 Invalid 반환
+// Only one Invalid: returns that Invalid
 ap(Validation.Invalid(['error1']), Validation.Valid(5));
 // Invalid(['error1'])
 
 ap(Validation.Valid(x => x), Validation.Invalid(['error2']));
 // Invalid(['error2'])
 
-// 둘 다 Invalid: Monoid.concat으로 병합!
+// Both Invalid: merges with Monoid.concat!
 const vf2 = Validation.Invalid(['error1']);
 const va2 = Validation.Invalid(['error2']);
 ap(vf2, va2);
-// Invalid(['error1', 'error2']) - 에러 누적!
+// Invalid(['error1', 'error2']) - errors accumulate!
 
-// 또는 Static 메서드
+// Or the Static method
 Validation.ap(vf, va); // Valid(10)
 ```
 
@@ -130,7 +130,7 @@ Validation.ap(vf, va); // Valid(10)
 const { Bifunctor } = FunFP;
 const { bimap } = Bifunctor.lookup('validation');
 
-// Valid는 오른쪽 함수 적용
+// Valid applies the right-hand function
 bimap(
     errs => errs.map(e => e.toUpperCase()),
     v => v * 2,
@@ -138,7 +138,7 @@ bimap(
 );
 // Valid(10)
 
-// Invalid는 왼쪽 함수 적용 (에러 변환)
+// Invalid applies the left-hand function (transforms the error)
 bimap(
     errs => errs.map(e => e.toUpperCase()),
     v => v * 2,
@@ -146,7 +146,7 @@ bimap(
 );
 // Invalid(['ERROR'])
 
-// 또는 Static 메서드
+// Or the Static method
 Validation.bimap(
     errs => errs.map(e => `[ERROR] ${e}`),
     v => v + 1,
@@ -180,28 +180,28 @@ Validation.fold(
 ```javascript
 const { Either } = FunFP;
 
-// Either를 반환하는 검증 함수들
+// Validator functions that return Either
 const validateName = name =>
     name.length >= 2 ? Either.Right(name) : Either.Left('Name too short');
 
 const validateAge = age =>
     age >= 18 ? Either.Right(age) : Either.Left('Must be 18+');
 
-// 검증자들을 조합하여 Validation 반환 함수 생성
+// Combine validators into a function returning Validation
 const validateUser = Validation.collect(
     validateName,
     validateAge
 )((name, age) => ({ name, age }));
 
-// 모든 검증 통과
+// All validations pass
 validateUser('Kim', 20);
 // Valid({ name: 'Kim', age: 20 })
 
-// 일부 실패
+// Some fail
 validateUser('Kim', 15);
 // Invalid(['Must be 18+'])
 
-// 모두 실패 - 모든 에러 수집!
+// All fail - collects every error!
 validateUser('K', 15);
 // Invalid(['Name too short', 'Must be 18+'])
 ```
@@ -216,7 +216,7 @@ Convenience methods added after the Static Land and Static methods.
 // map
 Validation.Valid(5).map(x => x * 2);  // Valid(10)
 
-// toEither 변환
+// toEither conversion
 Validation.Valid(42).toEither();           // Right(42)
 Validation.Invalid(['err']).toEither();    // Left(['err'])
 ```
@@ -242,7 +242,7 @@ Validation.isInvalid(Validation.Valid(5));       // false
 ```javascript
 const { Either, Validation } = FunFP;
 
-// 각 필드 검증 함수 (Either 반환)
+// Per-field validator functions (return Either)
 const validateEmail = email => {
     if (!email) return Either.Left('Email is required');
     if (!/^.+@.+\..+$/.test(email)) return Either.Left('Invalid email format');
@@ -263,18 +263,18 @@ const validateAge = age => {
     return Either.Right(age);
 };
 
-// Validation.collect로 조합
+// Combine with Validation.collect
 const validateRegistration = Validation.collect(
     validateEmail,
     validatePassword,
     validateAge
 )((email, password, age) => ({ email, password, age }));
 
-// 성공 케이스
+// Success case
 validateRegistration('user@example.com', 'pass1234', 25);
 // Valid({ email: 'user@example.com', password: 'pass1234', age: 25 })
 
-// 실패 케이스 - 모든 에러 한번에 수집!
+// Failure case - collects every error at once!
 validateRegistration('', 'short', 15);
 // Invalid([
 //   'Email is required',
@@ -282,7 +282,7 @@ validateRegistration('', 'short', 15);
 //   'Must be 18 or older'
 // ])
 
-// 사용자에게 표시
+// Show to the user
 const result = validateRegistration('bad', '123', 15);
 Validation.fold(
     errors => {
@@ -304,7 +304,7 @@ Validation.fold(
 const fetchUsers = () => Task.of([{ id: 1, name: 'Alice' }]);
 const { Either, Validation } = FunFP;
 
-// 쿼리 파라미터 검증
+// Query parameter validation
 const validateLimit = limit => {
     const num = parseInt(limit);
     if (isNaN(num)) return Either.Left('limit must be a number');
@@ -328,7 +328,7 @@ const validateSort = sort => {
     return Either.Right(sort);
 };
 
-// API 핸들러
+// API handler
 const listUsers = (limitStr, offsetStr, sortStr) => {
     const validateParams = Validation.collect(
         validateLimit,
@@ -375,7 +375,7 @@ const validatePort = port => {
 };
 
 const validateTimeout = timeout => {
-    if (timeout == null) return Either.Right(5000); // 기본값
+    if (timeout == null) return Either.Right(5000); // default
     const num = parseInt(timeout);
     if (isNaN(num)) return Either.Left('timeout must be a number');
     if (num < 0) return Either.Left('timeout must be positive');
@@ -388,7 +388,7 @@ const validateConfig = Validation.collect(
     validateTimeout
 )((host, port, timeout) => ({ host, port, timeout }));
 
-// 설정 파일 로드
+// Load config file
 const loadConfig = configObj => {
     const result = validateConfig(
         configObj.host,
@@ -408,7 +408,7 @@ const loadConfig = configObj => {
 loadConfig({ host: 'localhost', port: 3000 });
 // { host: 'localhost', port: 3000, timeout: 5000 }
 
-// 실패 시 던지므로 호출부에서 잡는다
+// Throws on failure, so the caller catches it
 try {
     loadConfig({ host: '', port: 'abc', timeout: -1 });
 } catch (e) {
@@ -426,14 +426,14 @@ try {
 const { Monoid, Validation, Apply } = FunFP;
 const { ap } = Apply.lookup('validation');
 
-// String Monoid로 에러 메시지를 문자열로 연결
+// Join error messages into a string with the String Monoid
 const stringMonoid = Monoid.lookup('string');
 
 const v1 = Validation.Invalid('Invalid email. ', stringMonoid);
 const v2 = Validation.Invalid('Password too short. ', stringMonoid);
 const v3 = Validation.Invalid('Age out of range.', stringMonoid);
 
-// ap로 에러 누적
+// Accumulate errors with ap
 const result = ap(
     ap(
         ap(
@@ -458,7 +458,7 @@ Validation.fold(
 ```javascript
 const { Either, Validation } = FunFP;
 
-// 중첩된 주소 검증
+// Validate a nested address
 const validateStreet = street =>
     street ? Either.Right(street) : Either.Left('street is required');
 
@@ -477,7 +477,7 @@ const validateAddress = Validation.collect(
     validateZip
 )((street, city, zip) => ({ street, city, zip }));
 
-// 사용자 전체 검증
+// Validate the whole user
 const validateUserWithAddress = (name, email, street, city, zip) => {
     const nameValidation = name
         ? Validation.Valid(name)
@@ -489,7 +489,7 @@ const validateUserWithAddress = (name, email, street, city, zip) => {
 
     const addressValidation = validateAddress(street, city, zip);
 
-    // 모든 검증 결과 조합
+    // Combine all validation results
     const { Apply } = FunFP;
     const { ap } = Apply.lookup('validation');
 
@@ -572,36 +572,36 @@ Type classes Validation implements:
 Understanding how `collect` accumulates errors:
 
 ```javascript
-// collect의 간소화된 구현
+// A simplified implementation of collect
 Validation.collect = (...validators) => f => (...args) => {
-    // 각 validator를 실행하여 Validation으로 변환
+    // Run each validator and convert to Validation
     const validations = validators.map((validator, i) => {
-        const result = validator(args[i]); // Either 반환
+        const result = validator(args[i]); // returns Either
         return result.isRight()
             ? Validation.Valid(result.value)
-            : Validation.Invalid([result.value]); // Array로 감싸기
+            : Validation.Invalid([result.value]); // wrap in an Array
     });
 
-    // f를 커링하여 Validation에 담기
+    // Curry f and wrap it in Validation
     const curriedF = curry(f, validators.length);
     const initialValidation = Validation.Valid(curriedF);
 
-    // ap를 연속 적용하여 에러 누적
+    // Apply ap repeatedly to accumulate errors
     return validations.reduce(
         (acc, v) => Apply.lookup('validation').ap(acc, v),
         initialValidation
     );
 };
 
-// 예시:
+// Example:
 // validators = [validateEmail, validateAge]
 // f = (email, age) => ({ email, age })
 // args = ['bad', 15]
 
-// Step 1: validators 실행
+// Step 1: run the validators
 // [Invalid(['Invalid email']), Invalid(['Must be 18+'])]
 
-// Step 2: reduce로 ap 연속 적용
+// Step 2: apply ap repeatedly via reduce
 // acc = Valid((email) => (age) => ({ email, age }))
 // ap(acc, Invalid(['Invalid email']))
 //   = Invalid(['Invalid email'])

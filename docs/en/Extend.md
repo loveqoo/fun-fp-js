@@ -6,7 +6,7 @@ A type class that adds context-based transformation (`extend`) to Functor.
 
 ## Definition
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 class Extend extends Functor {
     constructor(functor, extend, type, registry, ...aliases)
 }
@@ -23,7 +23,7 @@ the function.
 
 ## Laws
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 // associativity
 extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 ```
@@ -32,14 +32,14 @@ extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 
 ```javascript
 const { extend } = Extend.lookup('array');
-// extend는 "주변 컨텍스트를 보면서 계산"할 때 유용
+// extend is useful when a computation needs to "look at the surrounding context"
 
 const sum = arr => arr.reduce((a, b) => a + b, 0);
 const avg = arr => sum(arr) / arr.length;
 
-// 이동 평균 계산
+// compute a moving average
 const movingAvg = extend(avg, [1, 2, 3, 4, 5]);
-// 각 위치에서 그 위치부터 끝까지의 평균
+// the average from each position to the end
 // [[1,2,3,4,5], [2,3,4,5], [3,4,5], [4,5], [5]]
 // [3, 3.5, 4, 4.5, 5]
 ```
@@ -47,8 +47,8 @@ const movingAvg = extend(avg, [1, 2, 3, 4, 5]);
 ## map vs extend
 
 ```
-map:    F a → (a → b)   → F b    // 값만 변환
-extend: F a → (F a → b) → F b    // 전체 구조를 보고 변환
+map:    F a → (a → b)   → F b    // transforms only the value
+extend: F a → (F a → b) → F b    // transforms by looking at the whole structure
 ```
 
 ## Relationship

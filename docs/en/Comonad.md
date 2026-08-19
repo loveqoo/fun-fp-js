@@ -7,7 +7,7 @@ Monad.
 
 ## Definition
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 class Comonad extends Extend {
     constructor(extend, extract, type, registry, ...aliases)
 }
@@ -22,14 +22,14 @@ class Comonad extends Extend {
 
 ## Laws
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 // left identity
 extend(extract, w) ≡ w
 
 // right identity
 extract(extend(f, w)) ≡ f(w)
 
-// associativity (Extend 법칙)
+// associativity (Extend's law)
 extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 ```
 
@@ -50,16 +50,16 @@ with `lookup`.
 ```javascript
 const { Comonad, Identity } = FunFP;
 
-// Identity Comonad — 상자 하나에 값 하나
+// Identity Comonad — one box, one value
 const IC = Comonad.lookup('identity');
 const w = Identity.of(42);
-console.log(IC.extract(w));                          // 42 — 값 추출
-console.log(IC.extract(IC.extend(IC.extract, w)));   // 42 — 좌항등 관측 (extend(extract, w) ≡ w)
+console.log(IC.extract(w));                          // 42 — extracts the value
+console.log(IC.extract(IC.extend(IC.extract, w)));   // 42 — observes left identity (extend(extract, w) ≡ w)
 
-// Array Comonad — extract 는 첫 원소, extend 는 각 꼬리(suffix)에 f 를 적용
+// Array Comonad — extract takes the first element, extend applies f to each tail (suffix)
 const AC = Comonad.lookup('array');
 console.log(AC.extract([1, 2, 3]));                  // 1
-console.log(AC.extend(xs => xs.length, [1, 2, 3]));  // [3, 2, 1] — 각 위치에서 남은 길이
+console.log(AC.extend(xs => xs.length, [1, 2, 3]));  // [3, 2, 1] — the remaining length at each position
 ```
 
 > **Note — `Array` is a `Comonad` only when non-empty.** `extract([])` has no
@@ -84,7 +84,7 @@ Extend ──> Comonad
    │          │
 extend     extract
 
-(Monad의 쌍대)
+(the dual of Monad)
    of  ↔  extract
  chain ↔  extend
 ```

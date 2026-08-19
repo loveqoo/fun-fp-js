@@ -13,13 +13,13 @@ Ord extends Setoid so that two values can also be compared by **order**. Once yo
 In addition to Setoid's laws, Ord must satisfy the following:
 
 ### 1. Reflexivity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { lte } = Ord.lookup('number');
 lte(a, a) === true
 ```
 
 ### 2. Antisymmetry
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { lte } = Ord.lookup('number');
 if (lte(a, b) && lte(b, a)) {
     equals(a, b) === true
@@ -27,7 +27,7 @@ if (lte(a, b) && lte(b, a)) {
 ```
 
 ### 3. Transitivity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { lte } = Ord.lookup('number');
 if (lte(a, b) && lte(b, c)) {
     lte(a, c) === true
@@ -35,7 +35,7 @@ if (lte(a, b) && lte(b, c)) {
 ```
 
 ### 4. Totality
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { lte } = Ord.lookup('number');
 lte(a, b) === true || lte(b, a) === true
 ```
@@ -43,7 +43,7 @@ Any two values are comparable.
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 Ord.lte(a, b): boolean  // a ≤ b
 ```
 
@@ -55,18 +55,18 @@ Ord.lte(a, b): boolean  // a ≤ b
 import FunFP from 'fun-fp-js';
 const { Ord } = FunFP;
 
-// 숫자
+// numbers
 const num = Ord.lookup('number');
 num.lte(1, 2);   // true (1 ≤ 2)
 num.lte(2, 1);   // false
 num.lte(2, 2);   // true
 
-// 문자열 (사전순)
+// strings (lexicographic order)
 const str = Ord.lookup('string');
 str.lte('apple', 'banana');  // true
 str.lte('z', 'a');           // false
 
-// 날짜
+// dates
 const date = Ord.lookup('date');
 const d1 = new Date('2023-01-01');
 const d2 = new Date('2023-12-31');

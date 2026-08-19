@@ -18,7 +18,7 @@ along.**
 ### Problem: parameter drilling or global variables
 
 ```javascript no-run 문제 상황 — 네트워크 호출
-// 설정을 모든 함수에 전달해야 함
+// config must be passed through every function
 const fetchUser = (id, config) => {
     return fetch(`${config.apiUrl}/users/${id}`, {
         headers: { 'API-Key': config.apiKey }
@@ -32,7 +32,7 @@ const getProfile = (userId, config) => {
     }));
 };
 
-// config를 계속 전달
+// keep passing config along
 getProfile(123, config);
 ```
 
@@ -62,7 +62,7 @@ const getProfile = userId =>
         fetchUser(userId)
     );
 
-// 환경은 run으로 한번만 주입
+// inject the environment only once via run
 getProfile(123).run(config);
 ```
 
@@ -78,21 +78,21 @@ getProfile(123).run(config);
 import FunFP from 'fun-fp-js';
 const { Reader } = FunFP;
 
-// of - 환경 무시, 상수 반환
+// of - ignores the environment, returns a constant
 const reader = Reader.of(42);
 reader.run('any env');  // 42
 reader.run(null);       // 42
 
-// new Reader - 환경 받아서 계산
+// new Reader - takes the environment and computes
 const envReader = new Reader(env => env.value * 2);
 envReader.run({ value: 21 });  // 42
 
-// ask - 환경 자체 반환
+// ask - returns the environment itself
 const askReader = Reader.ask;
 askReader.run({ db: 'connection' });
 // { db: 'connection' }
 
-// asks - 환경에서 값 추출
+// asks - extracts a value from the environment
 const getDb = Reader.asks(env => env.db);
 getDb.run({ db: 'connection', user: 'admin' });
 // 'connection'
@@ -111,14 +111,14 @@ const { map } = Functor.lookup('reader');
 const reader = Reader.of(21);
 map(x => x * 2, reader);  // Reader that returns 42
 
-// 실행
+// run it
 map(x => x * 2, reader).run(null);  // 42
 
-// 환경 사용하는 경우
+// when using the environment
 const envReader = new Reader(env => env.base);
 map(x => x + 10, envReader).run({ base: 32 });  // 42
 
-// 또는 Static 메서드
+// or the Static method
 Reader.map(x => x * 2, reader);
 ```
 
@@ -136,7 +136,7 @@ const useConfig = config => Reader.of(config.value + 10);
 
 chain(useConfig, getConfig).run({ value: 32 });  // 42
 
-// 여러 chain 연결
+// chaining several times
 const reader = Reader.of(1);
 chain(
     b => Reader.of(b * 3),
@@ -146,7 +146,7 @@ chain(
     )
 ).run(null);  // 9
 
-// 또는 Static 메서드
+// or the Static method
 Reader.chain(useConfig, getConfig);
 ```
 
@@ -162,12 +162,12 @@ const rf = Reader.of(x => x * 2);
 const ra = Reader.of(21);
 ap(rf, ra).run(null);  // 42
 
-// 환경 의존적 함수
+// an environment-dependent function
 const envRf = new Reader(env => x => x * env.multiplier);
 const ra2 = Reader.of(7);
 ap(envRf, ra2).run({ multiplier: 6 });  // 42
 
-// 또는 Static 메서드
+// or the Static method
 Reader.ap(rf, ra);
 ```
 
@@ -180,9 +180,9 @@ const reader = Reader.ask;
 const modified = Reader.local(e => e * 2, reader);
 
 reader.run(5);    // 5
-modified.run(5);  // 10 (환경이 2배로)
+modified.run(5);  // 10 (environment doubled)
 
-// 객체 환경 변경
+// changing an object environment
 const getMultiplier = Reader.asks(e => e.multiplier);
 const doubled = Reader.local(
     e => ({ ...e, multiplier: e.multiplier * 2 }),
@@ -197,7 +197,7 @@ doubled.run({ multiplier: 5 });  // 10
 ```javascript
 const reader = Reader.asks(config => config.apiUrl);
 
-// run으로 환경 주입
+// inject the environment via run
 reader.run({ apiUrl: 'https://api.example.com' });
 // 'https://api.example.com'
 ```
@@ -214,7 +214,7 @@ Reader.of(21).map(x => x * 2).run(null);  // 42
 Reader.ask.chain(config => Reader.of(config.value)).run({ value: 42 });
 // 42
 
-// 연속 체이닝
+// chaining in sequence
 Reader.of(1)
     .chain(a => Reader.of(a + 2))
     .chain(b => Reader.of(b * 3))
@@ -226,7 +226,7 @@ Reader.of(1)
 ```javascript
 Reader.isReader(Reader.of(5));         // true
 Reader.isReader(new Reader(_ => 5));   // true
-Reader.isReader(_ => 5);               // false (함수는 Reader 아님)
+Reader.isReader(_ => 5);               // false (a function is not a Reader)
 Reader.isReader(5);                    // false
 ```
 
@@ -239,7 +239,7 @@ const createDatabaseConnection = cfg => ({ query: () => [], cfg });
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.lookup('reader');
 
-// 데이터베이스 쿼리 함수들 (환경에서 DB 연결 사용)
+// database query functions (use the DB connection from the environment)
 const findUser = id => Reader.asks(env =>
     env.db.query('SELECT * FROM users WHERE id = ?', [id])
 );
@@ -248,7 +248,7 @@ const findPosts = userId => Reader.asks(env =>
     env.db.query('SELECT * FROM posts WHERE user_id = ?', [userId])
 );
 
-// 사용자와 게시글을 함께 조회
+// fetch the user and posts together
 const getUserWithPosts = userId =>
     chain(
         user => chain(
@@ -258,12 +258,12 @@ const getUserWithPosts = userId =>
         findUser(userId)
     );
 
-// 실제 사용: DB 연결 주입
+// real usage: inject the DB connection
 const db = createDatabaseConnection();
 const result = getUserWithPosts(123).run({ db });
 // { user: {...}, posts: [...] }
 
-// 테스트: mock DB 주입
+// test: inject a mock DB
 const mockDb = {
     query: (sql, params) => Promise.resolve([
         { id: 123, name: 'Test User' }
@@ -278,12 +278,12 @@ const testResult = getUserWithPosts(123).run({ db: mockDb });
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.lookup('reader');
 
-// 로거를 환경에서 가져오는 헬퍼
+// helper that pulls the logger from the environment
 const log = message => Reader.asks(env => {
     env.logger.log(`[${env.requestId}] ${message}`);
 });
 
-// 비즈니스 로직
+// business logic
 const processOrder = order =>
     chain(
         _ => chain(
@@ -296,7 +296,7 @@ const processOrder = order =>
         log(`Processing order ${order.id}`)
     );
 
-// 각 요청마다 requestId와 logger를 주입
+// inject requestId and logger for each request
 const handleRequest = (req, order) => {
     const context = {
         requestId: req.id,
@@ -318,13 +318,13 @@ handleRequest({ id: 'req-123' }, { id: 'order-456' });
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.lookup('reader');
 
-// 여러 설정 값 읽기
+// read several config values
 const getApiUrl = Reader.asks(config => config.api.url);
 const getApiKey = Reader.asks(config => config.api.key);
 const getCdnUrl = Reader.asks(config => config.cdn.url);
 const getTimeout = Reader.asks(config => config.timeout || 5000);
 
-// 설정 조합하여 HTTP 클라이언트 생성
+// combine the config into an HTTP client
 const createHttpClient =
     chain(
         url => chain(
@@ -341,7 +341,7 @@ const createHttpClient =
         getApiUrl
     );
 
-// 또는 Reader.lift 사용 (더 간결)
+// or use Reader.lift (more concise)
 const createHttpClient2 = Reader.lift(
     (url, key, timeout) => ({
         baseURL: url,
@@ -350,7 +350,7 @@ const createHttpClient2 = Reader.lift(
     })
 )(getApiUrl, getApiKey, getTimeout);
 
-// 설정 주입
+// inject the config
 const config = {
     api: {
         url: 'https://api.example.com',
@@ -373,7 +373,7 @@ const client = createHttpClient.run(config);
 ### 4. Injecting mocks for tests
 
 ```javascript
-// 프로덕션 구현(실제로는 DB·SMTP 를 쓴다). 테스트 환경과 같은 모양이어야 한다.
+// production implementation (uses a real DB/SMTP). Must have the same shape as the test environment.
 const realUserService = {
     findById: id => ({ id, email: 'alice@example.com', name: 'Alice' })
 };
@@ -384,7 +384,7 @@ const realEmailService = {
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.lookup('reader');
 
-// 프로덕션 구현
+// production implementation
 const sendEmail = (to, subject, body) => Reader.asks(env =>
     env.emailService.send({ to, subject, body })
 );
@@ -399,14 +399,14 @@ const notifyUser = userId =>
         Reader.asks(env => env.userService.findById(userId))
     );
 
-// 프로덕션 환경
+// production environment
 const prodEnv = {
     userService: realUserService,
     emailService: realEmailService
 };
 notifyUser(123).run(prodEnv);
 
-// 테스트 환경
+// test environment
 const testEnv = {
     userService: {
         findById: id => ({ id, email: 'test@example.com', name: 'Test' })
@@ -429,12 +429,12 @@ notifyUser(123).run(testEnv);
 const { Reader, Chain } = FunFP;
 const { chain } = Chain.lookup('reader');
 
-// 기본 로거
+// default logger
 const log = message => Reader.asks(env =>
     env.logger.log(`[${env.level}] ${message}`)
 );
 
-// 특정 부분만 DEBUG 레벨로
+// switch just one part to DEBUG level
 const withDebugLevel = reader =>
     Reader.local(env => ({ ...env, level: 'DEBUG' }), reader);
 
@@ -454,7 +454,7 @@ const env = {
 
 processWithLogging.run(env);
 // [INFO] Starting process
-// [DEBUG] Detailed debug info  <- level이 변경됨!
+// [DEBUG] Detailed debug info  <- level changed!
 // [INFO] Processing completed
 ```
 
@@ -492,10 +492,10 @@ const addEnv = x => Reader.asks(env => x + env.offset);
 const double = x => Reader.of(x * 2);
 const toString = x => Reader.of(`Result: ${x}`);
 
-// pipeK와 반대 방향
+// opposite direction from pipeK
 const pipeline = Reader.composeK(toString, double, addEnv);
 pipeline(5).run({ offset: 3 });
-// 'Result: 16' (동일한 결과)
+// 'Result: 16' (same result)
 ```
 
 ## Reader.lift
@@ -503,17 +503,17 @@ pipeline(5).run({ offset: 3 });
 Lifts a multi-argument function into the Reader context.
 
 ```javascript
-// 순수 함수
+// a pure function
 const add = (a, b) => a + b;
 
-// Reader로 리프트
+// lift into Reader
 const liftedAdd = Reader.lift(add);
 
 const r1 = Reader.of(10);
 const r2 = Reader.of(32);
 liftedAdd(r1, r2).run(null);  // 42
 
-// 환경 의존적 Reader들도 가능
+// environment-dependent Readers work too
 const multiply = (a, b) => a * b;
 const liftedMultiply = Reader.lift(multiply);
 

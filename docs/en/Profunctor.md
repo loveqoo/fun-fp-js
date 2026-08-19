@@ -7,7 +7,7 @@ cousin of Bifunctor).
 
 ## Definition
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 class Profunctor extends Algebra {
     constructor(promap, type, registry, ...aliases)
 }
@@ -24,7 +24,7 @@ class Profunctor extends Algebra {
 
 ## Laws
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 // identity
 promap(x => x, x => x, p) ≡ p
 
@@ -36,28 +36,28 @@ promap(f, g, promap(h, i, p)) ≡ promap(x => h(f(x)), x => g(i(x)), p)
 
 ```javascript
 const { promap } = Profunctor.lookup('function');
-// 함수 (a → b)는 Profunctor의 대표적인 예시
-// 입력은 contravariant, 출력은 covariant
+// a function (a → b) is a classic example of a Profunctor
+// the input is contravariant, the output is covariant
 
 const double = x => x * 2;
 
-// promap: 입력 변환 + 출력 변환
+// promap: transforms input + output
 const result = promap(
-    str => parseInt(str),   // 입력: string → number
-    n => `결과: ${n}`,      // 출력: number → string  
-    double                   // 원래 함수: number → number
+    str => parseInt(str),   // input: string → number
+    n => `result: ${n}`,    // output: number → string
+    double                   // original function: number → number
 );
 
-result('5');  // '결과: 10'
-// '5' → parseInt → 5 → double → 10 → format → '결과: 10'
+result('5');  // 'result: 10'
+// '5' → parseInt → 5 → double → 10 → format → 'result: 10'
 ```
 
 ## Relationship
 
 ```
-Contravariant (입력 변환)  ─┐
-                           ├── Profunctor
-Functor (출력 변환)        ─┘
+Contravariant (transforms input)  ─┐
+                                   ├── Profunctor
+Functor (transforms output)       ─┘
 ```
 
 ## The extension set — `Strong` / `Choice` / `Wander` {#extensions}
@@ -82,7 +82,7 @@ console.log(S.second(x => x * 10)(['c', 3]));    // [ 'c', 30 ]
 
 const C = Choice.lookup('function');
 console.log(C.left(x => x * 10)(Either.Left(4)).value);    // 40
-console.log(C.right(x => x * 10)(Either.Left(4)).value);   // 4   통과시킨다
+console.log(C.right(x => x * 10)(Either.Left(4)).value);   // 4   passes it through
 
 console.log(Wander.lookup('function') instanceof Strong);  // true
 ```
@@ -108,20 +108,20 @@ ruling, 2026-08-15), and the registry now has to say so.
 const { Profunctor, Wander, Monoid } = FunFP;
 
 const F = Wander.Forget(Monoid.lookup('array'));
-console.log(Profunctor.lookup('forget(array)') === F);   // true   네 층이 같은 인스턴스다
+console.log(Profunctor.lookup('forget(array)') === F);   // true   all four layers are the same instance
 console.log(F.unwrap(F.promap(s => s.length, x => x, F.wrap(n => [n])))('abc'));
-// [ 3 ]   입력만 손질된다 — 출력 쪽 함수는 버려진다
+// [ 3 ]   only the input gets processed — the output-side function is discarded
 ```
 
 ```javascript
 const { Strong, Choice, Wander, Monoid, Optics } = FunFP;
 
 const F = Wander.Forget(Monoid.lookup('array'));
-console.log(F.type);                             // 'Forget(array)'  자기 타입이다
-// 캐리어는 wrap 을 지난다 — 벌거벗은 함수는 FunctionWander 의 것이라 거부된다.
+console.log(F.type);                             // 'Forget(array)'  its own type
+// the carrier goes through wrap — a bare function belongs to FunctionWander and is rejected.
 const p = F.wrap(a => [a]);
-console.log(F.unwrap(F.first(p))([7, 9]));       // [ 7 ]   왼쪽만 모은다
-console.log(Strong.lookup('forget(array)') === F);  // true  3단으로 등록된다
+console.log(F.unwrap(F.first(p))([7, 9]));       // [ 7 ]   collects only the left side
+console.log(Strong.lookup('forget(array)') === F);  // true  registered under all three levels
 
 console.log(typeof Choice.lookup('tagged').first);  // 'undefined'
 const aLens = Optics.Lens(o => o.a, (b, o) => ({ ...o, a: b }));
@@ -138,7 +138,7 @@ other methods it needs are present.
 const { Optics } = FunFP;
 
 const nameLens = Optics.Lens(o => o.name, (v, o) => ({ ...o, name: v }));
-const myP = {                                   // 등록 안 해도 된다
+const myP = {                                   // no registration needed
     promap: (f, g, p) => s => g(p(f(s))),
     first: p => ([a, c]) => [p(a), c],
 };

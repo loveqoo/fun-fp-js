@@ -8,7 +8,7 @@
 // in its own process with a preamble that puts the whole library in scope, so examples
 // must be self-contained, which is also better for anyone reading from the middle of a page.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test, logSection, allMatches } from './utils.js';
@@ -101,10 +101,19 @@ logSection('Docs examples');
 
 // 루트 README 도 넣는다. **npm 패키지의 첫 화면**이라 여기가 낡으면 가장 먼저 눈에 띈다 —
 // 그런데 한때 이 파일은 "# TODO" 한 줄이었고 아무도 몰랐다.
+const enDir = join(docsDir, 'en');
+// 영어판도 **실행하고 값까지 대조한다.** 번역이 코드 주석·문자열까지 영어로 옮기기로 하면서
+// 두 문서의 코드가 더는 같지 않다 — 그러면 "정본과 글자가 같다"는 보증이 사라지므로,
+// 그 자리를 "영어판도 스스로 돌고 제 값을 낸다"로 메운다(소유자 결정, 2026-08-19).
 const docs = [
     { label: 'README.md', path: join(rootDir, 'README.md') },
+    { label: 'README.en.md', path: join(rootDir, 'README.en.md') },
     ...readdirSync(docsDir).filter(n => n.endsWith('.md')).sort()
         .map(n => ({ label: `docs/${n}`, path: join(docsDir, n) })),
+    ...(existsSync(enDir)
+        ? readdirSync(enDir).filter(n => n.endsWith('.md')).sort()
+            .map(n => ({ label: `docs/en/${n}`, path: join(enDir, n) }))
+        : []),
 ];
 let totalRun = 0;
 let totalSkipped = 0;

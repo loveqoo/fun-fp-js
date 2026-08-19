@@ -32,21 +32,21 @@ Since it isn't a side effect, tests can inspect it directly.
 ### The problem: recording what happened means either a side effect or more plumbing
 
 ```javascript no-run 문제 상황 — 일부러 나쁜 코드
-// 방법 1: console.log — 테스트에서 잡아내기 어렵고 순수하지 않다
+// Method 1: console.log — hard to catch in tests, and not pure
 function calculate(x) {
-    console.log(`입력 ${x}`);
+    console.log(`input ${x}`);
     const doubled = x * 2;
-    console.log(`두 배 ${doubled}`);
+    console.log(`doubled ${doubled}`);
     return doubled;
 }
 
-// 방법 2: 로그를 수동으로 나른다 — 모든 함수의 시그니처가 오염된다
+// Method 2: carry the log by hand — pollutes every function's signature
 function calculate(x, log) {
-    const newLog = [...log, `입력 ${x}`];
+    const newLog = [...log, `input ${x}`];
     const doubled = x * 2;
-    return [doubled, [...newLog, `두 배 ${doubled}`]];
+    return [doubled, [...newLog, `doubled ${doubled}`]];
 }
-// 호출부마다 [값, 로그] 구조분해와 병합이 필요하다
+// Every call site needs to destructure and merge [value, log]
 ```
 
 ### The fix: let the type handle log accumulation
@@ -56,14 +56,14 @@ const { WriterT } = FunFP;
 
 const WT = WriterT('maybe');
 
-const calculate = x => WT.tell([`입력 ${x}`])
+const calculate = x => WT.tell([`input ${x}`])
     .chain(() => WT.of(x * 2))
-    .chain(doubled => WT.tell([`두 배 ${doubled}`]).chain(() => WT.of(doubled)));
+    .chain(doubled => WT.tell([`doubled ${doubled}`]).chain(() => WT.of(doubled)));
 
 const [value, log] = WT.runWriterT(calculate(21)).value;
 
 console.log(value);   // 42
-console.log(log);     // ['입력 21', '두 배 42']
+console.log(log);     // ['input 21', 'doubled 42']
 ```
 
 Since the log is a return value, **you can assert on it.** The calculation function
@@ -99,9 +99,9 @@ try {
 ```javascript
 const { WriterT, Monoid } = FunFP;
 
-const WA = WriterT('maybe');                          // Array (기본)
+const WA = WriterT('maybe');                          // Array (default)
 const WS = WriterT('maybe', Monoid.lookup('string'));     // String
-const WN = WriterT('maybe', Monoid.lookup('number'));     // Number (합산)
+const WN = WriterT('maybe', Monoid.lookup('number'));     // Number (sum)
 
 console.log(WA.of(1)._typeName);   // 'WriterT(Maybe,Array)'
 console.log(WS.of(1)._typeName);   // 'WriterT(Maybe,string)'
@@ -122,7 +122,7 @@ An object that doesn't qualify as a Monoid is rejected.
 const { WriterT } = FunFP;
 
 try {
-    WriterT('maybe', { concat: (a, b) => a });   // empty가 없다
+    WriterT('maybe', { concat: (a, b) => a });   // no empty
 } catch (e) {
     console.log(e.constructor.name);             // TypeError
 }
@@ -138,10 +138,10 @@ Produces no value, only accumulates the log.
 const { WriterT } = FunFP;
 
 const WT = WriterT('maybe');
-const [value, log] = WT.runWriterT(WT.tell(['첫 줄']).chain(() => WT.tell(['둘째 줄']))).value;
+const [value, log] = WT.runWriterT(WT.tell(['first line']).chain(() => WT.tell(['second line']))).value;
 
-console.log(value);   // undefined   tell 만 했으니 값이 없다
-console.log(log);     // ['첫 줄', '둘째 줄']
+console.log(value);   // undefined   only tell was called, so there's no value
+console.log(log);     // ['first line', 'second line']
 ```
 
 ### of - a value with no log
@@ -190,11 +190,11 @@ const { WriterT, Maybe } = FunFP;
 
 const WT = WriterT('maybe');
 
-const program = WT.tell(['시작'])
+const program = WT.tell(['start'])
     .chain(() => WT.lift(Maybe.Nothing()))
-    .chain(() => WT.tell(['끝']));
+    .chain(() => WT.tell(['end']));
 
-console.log(WT.runWriterT(program).isNothing());   // true — '시작' 로그도 남지 않는다
+console.log(WT.runWriterT(program).isNothing());   // true — even the 'start' log doesn't survive
 ```
 
 If the log absolutely must survive, either keep `M` from failing at all, or express
@@ -210,13 +210,13 @@ const { WriterT, Monoid } = FunFP;
 
 const WT = WriterT('maybe', Monoid.lookup('string'));
 
-const program = WT.tell('시작 → ')
-    .chain(() => WT.tell('처리 → '))
-    .chain(() => WT.tell('완료'))
+const program = WT.tell('start → ')
+    .chain(() => WT.tell('process → '))
+    .chain(() => WT.tell('done'))
     .chain(() => WT.of('ok'));
 
 const [value, log] = WT.runWriterT(program).value;
-console.log(value, '/', log);   // ok / 시작 → 처리 → 완료
+console.log(value, '/', log);   // ok / start → process → done
 ```
 
 ### Number - summing cost or count
@@ -228,15 +228,15 @@ const { WriterT, Monoid } = FunFP;
 
 const WT = WriterT('maybe', Monoid.lookup('number'));
 
-// 각 단계의 비용을 누적한다
+// accumulate the cost of each step
 const step = (name, cost, value) => WT.tell(cost).chain(() => WT.of(value));
 
-const program = step('파싱', 3, 10)
-    .chain(v => step('검증', 5, v * 2))
-    .chain(v => step('저장', 12, v + 1));
+const program = step('parse', 3, 10)
+    .chain(v => step('validate', 5, v * 2))
+    .chain(v => step('save', 12, v + 1));
 
 const [result, totalCost] = WT.runWriterT(program).value;
-console.log('결과', result, '/ 총 비용', totalCost);   // 결과 21 / 총 비용 20
+console.log('result', result, '/ total cost', totalCost);   // result 21 / total cost 20
 ```
 
 ## Type checking
@@ -253,7 +253,7 @@ try {
 }
 
 try {
-    WT.runWriterT(WT.of(1).chain(() => 42));   // 콜백이 WriterT를 안 돌려줌
+    WT.runWriterT(WT.of(1).chain(() => 42));   // callback doesn't return a WriterT
 } catch (e) {
     console.log('chain callback:', e.constructor.name);   // chain callback: TypeError
 }
@@ -274,14 +274,14 @@ const applyDiscount = (price, rate, reason) =>
     WT.tell([`${reason}: ${price} → ${Math.round(price * (1 - rate))}`])
         .chain(() => WT.of(Math.round(price * (1 - rate))));
 
-const checkout = price => WT.tell([`정가 ${price}`])
-    .chain(() => applyDiscount(price, 0.1, '회원 할인'))
-    .chain(p => applyDiscount(p, 0.05, '쿠폰'))
-    .chain(p => WT.tell([`최종 ${p}`]).chain(() => WT.of(p)));
+const checkout = price => WT.tell([`list price ${price}`])
+    .chain(() => applyDiscount(price, 0.1, 'member discount'))
+    .chain(p => applyDiscount(p, 0.05, 'coupon'))
+    .chain(p => WT.tell([`final ${p}`]).chain(() => WT.of(p)));
 
 const [final, audit] = WT.runWriterT(checkout(10000)).value;
 
-console.log('최종가:', final);
+console.log('final price:', final);
 audit.forEach(line => console.log('  ' + line));
 ```
 
@@ -296,12 +296,12 @@ const WT = WriterT('task');
 const run = t => new Promise((resolve, reject) => t.fork(reject, resolve));
 const delay = (ms, v) => new Task((reject, resolve) => setTimeout(() => resolve(v), ms));
 
-const fetchStep = (name, ms, value) => WT.tell([`${name} 시작`])
+const fetchStep = (name, ms, value) => WT.tell([`${name} started`])
     .chain(() => WT.lift(delay(ms, value)))
-    .chain(v => WT.tell([`${name} 완료 (${ms}ms)`]).chain(() => WT.of(v)));
+    .chain(v => WT.tell([`${name} done (${ms}ms)`]).chain(() => WT.of(v)));
 
-const pipeline = fetchStep('사용자', 3, { id: 1 })
-    .chain(user => fetchStep('권한', 2, ['read', 'write'])
+const pipeline = fetchStep('user', 3, { id: 1 })
+    .chain(user => fetchStep('permissions', 2, ['read', 'write'])
         .chain(perms => WT.of({ ...user, perms })));
 
 const [result, trace] = await run(WT.runWriterT(pipeline));
@@ -320,14 +320,14 @@ const { WriterT } = FunFP;
 const WT = WriterT('maybe');
 
 const validateField = (name, value) => {
-    if (value === undefined) return WT.tell([`${name} 없음 — 기본값 사용`]).chain(() => WT.of(null));
+    if (value === undefined) return WT.tell([`${name} missing — using default`]).chain(() => WT.of(null));
     if (typeof value === 'string' && value.length > 20) {
-        return WT.tell([`${name} 너무 김 — 잘라냄`]).chain(() => WT.of(value.slice(0, 20)));
+        return WT.tell([`${name} too long — truncated`]).chain(() => WT.of(value.slice(0, 20)));
     }
     return WT.of(value);
 };
 
-const input = { name: '아주아주아주아주아주아주 긴 이름입니다', email: undefined };
+const input = { name: 'extremely long name', email: undefined };
 
 const program = validateField('name', input.name)
     .chain(name => validateField('email', input.email)
@@ -336,7 +336,7 @@ const program = validateField('name', input.name)
 const [record, warnings] = WT.runWriterT(program).value;
 
 console.log(JSON.stringify(record));
-console.log('경고 ' + warnings.length + '건:');
+console.log('warnings: ' + warnings.length);
 warnings.forEach(w => console.log('  ' + w));
 ```
 
@@ -347,7 +347,7 @@ const { WriterT, Monoid } = FunFP;
 
 const WT = WriterT('maybe', Monoid.lookup('number'));
 
-// 각 연산이 소비한 가상의 쿼리 수를 누적한다
+// accumulate the number of hypothetical queries each operation spent
 const query = (n, result) => WT.tell(n).chain(() => WT.of(result));
 
 const loadDashboard = query(1, { userId: 7 })
@@ -358,10 +358,10 @@ const loadDashboard = query(1, { userId: 7 })
 const [data, queryCount] = WT.runWriterT(loadDashboard).value;
 
 console.log(JSON.stringify(data));
-console.log('총 쿼리 수:', queryCount);   // 총 쿼리 수: 6
+console.log('total queries:', queryCount);   // total queries: 6
 
-// N+1 문제 감지 같은 단언을 테스트에서 그대로 쓸 수 있다
-console.log('쿼리 10회 미만?', queryCount < 10);
+// an assertion like N+1 detection can be used as-is in tests
+console.log('under 10 queries?', queryCount < 10);
 ```
 
 ## Related type classes

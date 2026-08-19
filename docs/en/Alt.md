@@ -15,21 +15,21 @@ Alt is the ability to **choose one of two values**. If the first is a
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 Alt.alt(a, b): Alt a
-// a가 "성공"이면 a, 아니면 b
+// a if a is a "success", otherwise b
 ```
 
 ## Laws
 
 ### Associativity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { alt } = Alt.lookup('maybe');
 alt(alt(a, b), c) === alt(a, alt(b, c))
 ```
 
 ### Distributivity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 map(f, alt(a, b)) === alt(map(f, a), map(f, b))
 ```
 
@@ -94,20 +94,20 @@ const fileConfig = Maybe.of({ port: 3000 });
 const defaultConfig = Maybe.of({ port: 8080 });
 
 alt(envConfig, alt(fileConfig, defaultConfig));
-// 환경변수 > 파일 > 기본값 순서로 시도
+// tries in order: env var > file > default
 ```
 
 ## Plus - Alt + zero
 
 Plus is Alt with a **zero value** added:
 
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { alt } = Alt.lookup('maybe');
 const { Plus } = FunFP;
 
 Plus.lookup('maybe').zero();  // Nothing
 
-// zero는 alt의 항등원
+// zero is the identity element of alt
 alt(a, zero) === a
 alt(zero, a) === a
 ```

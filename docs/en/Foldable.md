@@ -15,11 +15,11 @@ The same idea as JavaScript's `Array.reduce`:
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 Foldable.reduce(f, initial, t): b
-// f: (b, a) -> b  (누적 함수)
-// initial: b     (초기값)
-// t: Foldable a  (접을 컨테이너)
+// f: (b, a) -> b  (accumulator function)
+// initial: b     (initial value)
+// t: Foldable a  (container to fold)
 ```
 
 ## Usage examples
@@ -32,19 +32,19 @@ const { Foldable } = FunFP;
 
 const { reduce } = Foldable.lookup('array');
 
-// 합계
+// sum
 reduce((acc, x) => acc + x, 0, [1, 2, 3, 4, 5]);
 // 15
 
-// 곱
+// product
 reduce((acc, x) => acc * x, 1, [1, 2, 3, 4, 5]);
 // 120
 
-// 문자열 연결
+// string concatenation
 reduce((acc, x) => acc + x, '', ['a', 'b', 'c']);
 // 'abc'
 
-// 배열 평탄화
+// array flattening
 reduce((acc, x) => [...acc, ...x], [], [[1, 2], [3, 4], [5]]);
 // [1, 2, 3, 4, 5]
 ```
@@ -56,7 +56,7 @@ const { reduce } = Foldable.lookup('object');
 
 const obj = { a: 1, b: 2, c: 3 };
 
-// 값 합계
+// sum of values
 reduce((acc, x) => acc + x, 0, obj);
 // 6
 ```
@@ -127,7 +127,7 @@ frequencies(['a', 'b', 'a', 'c', 'b', 'a']);
 const { reduce } = Foldable.lookup('array');
 const numbers = [1, 2, 3, 4, 5];
 
-// fold로 통계 계산
+// compute statistics with fold
 const stats = reduce(
     (acc, x) => ({
         sum: acc.sum + x,
@@ -162,9 +162,9 @@ The usual pattern:
 import FunFP from 'fun-fp-js';
 const { foldMap, Foldable, Monoid } = FunFP;
 
-// foldMap(Foldable, Monoid) -> (매핑함수) -> (컨테이너) -> 결과
+// foldMap(Foldable, Monoid) -> (mapping function) -> (container) -> result
 
-// 기본 사용
+// basic usage
 const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 sumFold(x => x * x)([1, 2, 3, 4]);
@@ -174,7 +174,7 @@ sumFold(x => x * x)([1, 2, 3, 4]);
 ### How it works internally
 
 ```javascript
-// foldMap의 간소화된 구현
+// simplified implementation of foldMap
 const foldMap = (foldable, monoid) => f => container =>
     foldable.reduce(
         (acc, x) => monoid.concat(acc, f(x)),
@@ -196,11 +196,11 @@ const { foldMap, Foldable, Monoid } = FunFP;
 
 const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
-// 배열 요소의 제곱 합
+// sum of squares of array elements
 sumFold(x => x * x)([1, 2, 3, 4]);
 // 30
 
-// 절대값의 합
+// sum of absolute values
 sumFold(Math.abs)([-5, 3, -2, 7]);
 // 17
 ```
@@ -218,7 +218,7 @@ const users = [
     { name: 'Charlie', score: 15 }
 ];
 
-// 모든 사용자의 점수 합
+// sum of all users' scores
 sumFold(u => u.score)(users);
 // 45
 ```
@@ -232,7 +232,7 @@ const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 const words = ['hello', 'world', 'foo', 'bar'];
 
-// 모든 단어의 길이 합
+// sum of all word lengths
 sumFold(str => str.length)(words);
 // 5 + 5 + 3 + 3 = 16
 ```
@@ -242,13 +242,13 @@ sumFold(str => str.length)(words);
 ```javascript
 const { foldMap, Foldable, Monoid } = FunFP;
 
-// String Monoid로 문자열 연결
+// concatenate strings with the String Monoid
 const stringFold = foldMap(Foldable.lookup('array'), Monoid.lookup('string'));
 
 stringFold(n => `${n}, `)([1, 2, 3, 4]);
 // '1, 2, 3, 4, '
 
-// Array Monoid로 배열 병합
+// merge arrays with the Array Monoid
 const arrayFold = foldMap(Foldable.lookup('array'), Monoid.lookup('array'));
 
 arrayFold(n => [n, n * 2])([1, 2, 3]);
@@ -264,11 +264,11 @@ const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 
 const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-// 짝수의 합
+// sum of even numbers
 sumFold(n => n % 2 === 0 ? n : 0)(numbers);
 // 2 + 4 + 6 + 8 + 10 = 30
 
-// 5보다 큰 수의 합
+// sum of numbers greater than 5
 sumFold(n => n > 5 ? n : 0)(numbers);
 // 6 + 7 + 8 + 9 + 10 = 40
 ```
@@ -286,11 +286,11 @@ sumFold(n => n > 5 ? n : 0)(numbers);
 const sumFold = foldMap(Foldable.lookup('array'), Monoid.lookup('number'));
 // map + reduce
 [1, 2, 3, 4]
-    .map(x => x * x)  // [1, 4, 9, 16] (중간 배열 생성)
+    .map(x => x * x)  // [1, 4, 9, 16] (intermediate array created)
     .reduce((a, b) => a + b, 0);  // 30
 
 // foldMap
-sumFold(x => x * x)([1, 2, 3, 4]);  // 30 (중간 배열 없음)
+sumFold(x => x * x)([1, 2, 3, 4]);  // 30 (no intermediate array)
 ```
 
 ### When should you use foldMap?

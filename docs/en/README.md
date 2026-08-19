@@ -23,17 +23,17 @@ that tool to put something in."
 ```javascript
 const { Monoid, Maybe, Applicative } = FunFP;
 
-// lookup: 명부에서 도구를 꺼낸다 — 값이 아니라 연산 묶음이 나온다
+// lookup: pulls a tool out of the registry — an operation bundle, not a value
 const arrayMonoid = Monoid.lookup('array');
 console.log(arrayMonoid.concat([1], [2]));   // [1, 2]
 
-// of: 값을 상자에 넣는다
+// of: puts a value into a box
 console.log(Maybe.of(1).isJust());           // true
 
-// 꺼낸 인스턴스가 of 를 지니기도 한다 — 먼저 꺼내고, 그 도구로 넣는다
+// the instance you pull out sometimes carries its own of — pull it out first, then use it to put something in
 console.log(Applicative.lookup('maybe').of(1).isJust());   // true
 
-// 반대로 부르면 던진다 — lookup 은 값을 받지 않는다
+// calling it the other way throws — lookup does not accept a value
 let thrown = '';
 try { Monoid.lookup([1, 2]); } catch (e) { thrown = e.constructor.name; }
 console.log(thrown);   // 'TypeError'
@@ -164,10 +164,10 @@ Applicative + Plus ──> Alternative
 Functor ─────────────> Extend ──> Comonad
 Functor + Foldable ──> Traversable
 
-Bifunctor, Profunctor — 첫 매개변수를 고정한 타입이 Functor 여야 한다 (같은 T 가 아니다)
-Filterable, Contravariant — 요구하는 상위 클래스가 없다
+Bifunctor, Profunctor — the type with its first parameter fixed must be a Functor (not the same T)
+Filterable, Contravariant — no superclass is required
 
-명세 밖 — optics 가 요구하는 profunctor 확장이다
+outside the spec — profunctor extensions that optics require
 Profunctor ──────────> Strong          first · second
 Profunctor ──────────> Choice          left  · right
 Strong + Choice ─────> Wander          wander
@@ -224,11 +224,11 @@ explicitly, and which optic each one produces is covered in [Optics](./Optics.md
 ```javascript
 const { Maybe, Functor, Applicative } = FunFP;
 
-Functor.lookup('maybe')            // MaybeFunctor 인스턴스를 꺼낸다
-Maybe.of(1)                        // Just(1) — 값을 넣는다
-Applicative.lookup('maybe').of(1)  // 꺼낸 다음 넣는다
+Functor.lookup('maybe')            // pulls out the MaybeFunctor instance
+Maybe.of(1)                        // Just(1) — puts a value in
+Applicative.lookup('maybe').of(1)  // pulls it out, then puts one in
 
-Maybe.of('array')                  // Just('array') — 조회가 아니다
+Maybe.of('array')                  // Just('array') — not a lookup
 ```
 
 If one name did both jobs, that last line would read as a lookup. That's why type classes have
@@ -258,8 +258,8 @@ anything built from an assembled key gets its key fragment prefixed
 const { Algebra: A } = FunFP;
 
 const { maybeMonoid } = A.all('maybe');
-console.log(maybeMonoid.empty().isNothing());   // true   ← Plus 에서 유도된 것
-console.log(A.all('array').arrayMonoid.empty());  // []   ← Array 는 원래의 ArrayMonoid 를 쓴다
+console.log(maybeMonoid.empty().isNothing());   // true   ← derived from Plus
+console.log(A.all('array').arrayMonoid.empty());  // []   ← Array uses its original ArrayMonoid
 ```
 
 Three things to remember.
@@ -282,7 +282,7 @@ type is just a hint; if you need to name one exactly, `lookup` it by its assembl
 ```javascript
 const { Semigroup, Maybe } = FunFP;
 
-const inner = Semigroup.lookup('maybe(number)');          // 명확한 키로 정확히 하나
+const inner = Semigroup.lookup('maybe(number)');          // exactly one, by its explicit key
 console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _typeName: 'Maybe' }
 ```
 
@@ -350,7 +350,7 @@ const { Maybe } = FunFP;
 const getAddress = user => user.address ? Maybe.of(user.address) : Maybe.Nothing();
 const getCity = addr => addr.city ? Maybe.of(addr.city) : Maybe.Nothing();
 
-// pipeK로 깔끔하게 체이닝
+// chain cleanly with pipeK
 const getCityFromUser = Maybe.pipeK(getAddress, getCity);
 
 getCityFromUser({ name: 'Alice', address: { city: 'Seoul' } });  // Just('Seoul')
@@ -368,7 +368,7 @@ const parseNumber = str => {
 };
 const validatePositive = n => n > 0 ? Either.Right(n) : Either.Left('Must be positive');
 
-// pipeK로 검증 파이프라인 구성
+// build a validation pipeline with pipeK
 const validate = Either.pipeK(parseNumber, validatePositive);
 
 validate('50');   // Right(50)
@@ -394,8 +394,8 @@ fetchData(1).fork(console.error, console.log);
 ### Running in parallel, then combining
 
 ```javascript
-const fetchComments = postId => Task.of([{ id: 1, postId, body: '댓글' }]);
-const fetchPosts = userId => Task.of([{ id: 1, userId, title: '첫 글' }]);
+const fetchComments = postId => Task.of([{ id: 1, postId, body: 'a comment' }]);
+const fetchPosts = userId => Task.of([{ id: 1, userId, title: 'first post' }]);
 const fetchUser = id => Task.of({ id, name: 'Alice' });
 const { Task } = FunFP;
 
@@ -414,12 +414,12 @@ Task.all([
 ```javascript
 const userId = 1;
 const fetchUser = id => Task.of({ id, name: 'Alice' });
-const fetchPosts = uid => Task.of([{ id: 10, uid, title: '첫 글' }]);
-const fetchComments = postId => Task.of([{ id: 100, postId, body: '댓글' }]);
+const fetchPosts = uid => Task.of([{ id: 10, uid, title: 'first post' }]);
+const fetchComments = postId => Task.of([{ id: 100, postId, body: 'a comment' }]);
 const { pipe, Chain } = FunFP;
 const { chain } = Chain.lookup('task');
 
-// pipe 는 함수를 돌려준다 — 값이 아니라 함수들을 넘기고 마지막에 적용한다
+// pipe returns a function — pass functions in, not values, and apply it last
 pipe(
     task => chain(user => fetchPosts(user.id), task),
     task => chain(posts => fetchComments(posts[0].id), task)

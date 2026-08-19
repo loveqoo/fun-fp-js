@@ -16,44 +16,44 @@ map(x => x + 1, Maybe.Just(5))  // Maybe.Just(6)
 
 What if the function needs two or more arguments?
 ```javascript
-const add = a => b => a + b;  // 커리된 함수
+const add = a => b => a + b;  // a curried function
 const { map } = Functor.lookup('maybe');
-// add = (a, b) => a + b 를 Maybe.Just(5)와 Maybe.Just(3)에 적용하려면?
-map(add, Maybe.Just(5))  // Maybe.Just(b => 5 + b) - 부분 적용된 함수가 됨
-// 이 함수를 어떻게 Maybe.Just(3)에 적용하지?
+// how do you apply add = (a, b) => a + b to Maybe.Just(5) and Maybe.Just(3)?
+map(add, Maybe.Just(5))  // Maybe.Just(b => 5 + b) - becomes a partially applied function
+// how do you apply this function to Maybe.Just(3)?
 ```
 
 This is where `ap` comes in.
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 Apply.ap(mf, mv): Apply b   // mf: Apply (a -> b), mv: Apply a
-Applicative.lookup(a): Applicative a  // 값을 Applicative로 감싸기
+Applicative.lookup(a): Applicative a  // wraps a value in an Applicative
 ```
 
 ## Laws
 
 ### Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { ap } = Apply.lookup('maybe');
 ap(of(x => x), v) === v
 ```
 
 ### Homomorphism
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { ap } = Apply.lookup('maybe');
 ap(of(f), of(x)) === of(f(x))
 ```
 
 ### Interchange
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { ap } = Apply.lookup('maybe');
 ap(u, of(y)) === ap(of(f => f(y)), u)
 ```
 
 ### Composition
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { ap } = Apply.lookup('maybe');
 ap(ap(ap(of(f => g => x => f(g(x))), u), v), w) === ap(u, ap(v, w))
 ```
@@ -66,9 +66,9 @@ ap(ap(ap(of(f => g => x => f(g(x))), u), v), w) === ap(u, ap(v, w))
 import FunFP from 'fun-fp-js';
 const { Maybe, Apply, Applicative } = FunFP;
 
-const add = a => b => a + b;  // 커리된 함수
+const add = a => b => a + b;  // a curried function
 
-// Maybe에 적용
+// apply to Maybe
 const maybeAdd = Maybe.of(add);      // Maybe.Just(a => b => a + b)
 const maybeA = Maybe.of(5);          // Maybe.Just(5)
 const maybeB = Maybe.of(3);          // Maybe.Just(3)
@@ -86,11 +86,11 @@ const { ap } = Apply.lookup('maybe');
 
 const liftA2 = (f, a, b) => ap(a.map(f), b);
 
-// 두 Maybe 값 더하기
+// add two Maybe values
 const result = liftA2(a => b => a + b, Maybe.of(5), Maybe.of(3));
 // Maybe.Just(8)
 
-// 하나라도 Nothing이면
+// when even one is Nothing
 const noResult = liftA2(a => b => a + b, Maybe.of(5), Maybe.Nothing());
 // Nothing
 ```
@@ -129,8 +129,8 @@ const Id = Applicative.lookup('identity');
 console.log(Id.of(1).value);                            // 1
 console.log(Id.ap(Id.of(x => x * 3), Id.of(2)).value);  // 6
 
-// Functor / Apply 층도 같은 키로 등록돼 있습니다
-// 캐리어는 반드시 of 로 만든다 — { value: 1 } 리터럴은 Identity 가 아니라 평범한 객체다.
+// the Functor / Apply layers are registered under the same key too
+// the carrier must be built with of — an { value: 1 } literal is a plain object, not an Identity.
 console.log(Functor.lookup('identity').map(x => x + 1, Id.of(1)).value);  // 2
 ```
 
@@ -145,15 +145,15 @@ const { Applicative } = FunFP;
 
 const C = Applicative.Const('array');
 
-console.log(C.of().value);                               // []        monoid 의 항등원
-console.log(C.ap(C.wrap([1]), C.wrap([2])).value);       // [ 1, 2 ]  monoid 로 합침
-console.log(C.map(x => x + 1, C.wrap([9])).value);       // [ 9 ]     값을 버린다
+console.log(C.of().value);                               // []        the monoid's empty value
+console.log(C.ap(C.wrap([1]), C.wrap([2])).value);       // [ 1, 2 ]  combined via the monoid
+console.log(C.map(x => x + 1, C.wrap([9])).value);       // [ 9 ]     the value is discarded
 
-// of 는 값을 버리고 wrap 은 담는다 — 법칙이 of 를 그렇게 요구한다.
+// of discards the value and wrap holds it — the laws require of to behave that way.
 console.log(C.of([7]).value);                            // []
 console.log(C.wrap([7]).value);                          // [ 7 ]
 
-// 키로 만든 것은 레지스트리에서도 꺼낼 수 있습니다
+// what a key creates can also be pulled from the registry
 console.log(Applicative.lookup('const(array)') === C);       // true
 ```
 
@@ -183,7 +183,7 @@ const validateEmail = email =>
 
 const createUser = name => age => email => ({ name, age, email });
 
-// 모든 검증 통과시에만 사용자 생성
+// create the user only when every check passes
 const { ap } = Apply.lookup('either');
 
 const liftA3 = (f, a, b, c) => ap(ap(a.map(f), b), c);
@@ -216,7 +216,7 @@ const fetchComments = postId => Task.of([{ id: 1, text: 'Nice!' }]);
 
 const combine = user => posts => comments => ({ user, posts, comments });
 
-// 세 개의 Task를 병렬로 실행하고 결합
+// run three Tasks in parallel and combine them
 const { ap } = Apply.lookup('task');
 const { map } = Functor.lookup('task');
 
@@ -242,11 +242,11 @@ liftA3(
 | dependency | independent | depends on the previous result |
 | use | combining several values | conditional branching |
 
-```javascript no-run 개념 비교 — 의사코드
-// ap: 두 요청이 서로 독립적 → 병렬 가능
+```javascript no-run concept comparison — pseudocode
+// ap: the two requests are independent → can run in parallel
 ap(fetchUser, fetchPosts)
 
-// chain: 두 번째가 첫 번째 결과에 의존 → 순차 필수
+// chain: the second depends on the first's result → must run sequentially
 fetchUser.chain(user => fetchPosts(user.id))
 ```
 

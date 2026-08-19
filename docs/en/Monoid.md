@@ -18,7 +18,7 @@ Monoid adds an **identity element** (`empty`) to Semigroup. The identity element
 In addition to Semigroup's law (associativity):
 
 ### 1. Right Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const objectMonoid = new Monoid(
     new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
     () => ({}),
@@ -29,7 +29,7 @@ concat(a, empty) === a
 ```
 
 ### 2. Left Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const objectMonoid = new Monoid(
     new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
     () => ({}),
@@ -41,9 +41,9 @@ concat(empty, a) === a
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
-Monoid.empty(): a         // 항등원 반환
-Monoid.concat(a, b): a    // Semigroup에서 상속
+```javascript no-run signature / pseudocode
+Monoid.empty(): a         // returns the identity element
+Monoid.concat(a, b): a    // inherited from Semigroup
 ```
 
 ## Usage examples
@@ -54,17 +54,17 @@ Monoid.concat(a, b): a    // Semigroup에서 상속
 import FunFP from 'fun-fp-js';
 const { Monoid } = FunFP;
 
-// 문자열
+// string
 const str = Monoid.lookup('string');
 str.empty();  // ''
 str.concat('Hello', str.empty());  // 'Hello'
 
-// 배열
+// array
 const arr = Monoid.lookup('array');
 arr.empty();  // []
 arr.concat([1, 2], arr.empty());  // [1, 2]
 
-// 숫자 덧셈
+// number addition
 const num = Monoid.lookup('number');
 num.empty();  // 0
 num.concat(5, num.empty());  // 5
@@ -79,14 +79,14 @@ num.concat(5, num.empty());  // 5
 ```javascript
 const { Monoid, Semigroup, Maybe } = FunFP;
 
-const pm = Monoid.lookup('maybe');                           // Plus 에서 유도된 것
-console.log(pm.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 첫 Just 를 고른다
+const pm = Monoid.lookup('maybe');                           // derived from Plus
+console.log(pm.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — picks the first Just
 console.log(pm.empty().isNothing());                         // true
 
-// Semigroup 짝도 함께 등록됩니다
+// the paired Semigroup is registered too
 console.log(Semigroup.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1
 
-// Array 는 이미 ArrayMonoid 가 있으므로 유도본이 등록되지 않습니다
+// Array already has an ArrayMonoid, so no derived instance is registered
 console.log(Monoid.lookup('array') === Monoid.types.ArrayMonoid);   // true
 ```
 
@@ -102,14 +102,14 @@ The names look similar, but these are **different monoids**. They diverge exactl
 ```javascript
 const { Monoid, Maybe } = FunFP;
 
-const plus = Monoid.lookup('maybe');       // 봉투째 고른다 — 안을 열지 않는다
-const inner = Monoid.Maybe('first');       // 안을 열어 first 로 합친다
+const plus = Monoid.lookup('maybe');       // picks by the whole envelope — never opens it
+const inner = Monoid.Maybe('first');       // opens it and merges with first
 
-// payload 타입이 같으면 결과도 같다
+// same payload type gives the same result
 console.log(plus.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1
 console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1
 
-// 섞이면 갈린다
+// mixed types diverge
 console.log(plus.concat(Maybe.Just(1), Maybe.Just('a')).value);  // 1
 try {
     inner.concat(Maybe.Just(1), Maybe.Just('a'));
@@ -129,10 +129,10 @@ Either way, the identity element is `Nothing`.
 Semigroup alone cannot handle an empty array, but Monoid can:
 
 ```javascript
-// Semigroup - 빈 배열에서 에러!
+// Semigroup - errors on an empty array!
 // arr.reduce((a, b) => semigroup.concat(a, b))  // Error on []
 
-// Monoid - 안전!
+// Monoid - safe!
 const monoid = Monoid.lookup('number');
 
 const foldMonoid = arr => arr.reduce(
@@ -141,13 +141,13 @@ const foldMonoid = arr => arr.reduce(
 );
 
 foldMonoid([1, 2, 3]);  // 6
-foldMonoid([]);         // 0 (안전!)
+foldMonoid([]);         // 0 (safe!)
 ```
 
 ### Conditional combination
 
 ```javascript
-const errors = ['이름은 필수입니다'];
+const errors = ['Name is required'];
 const warnings = [];
 const hasErrors = errors.length > 0;
 const hasWarnings = warnings.length > 0;
@@ -160,13 +160,13 @@ const result = arr.concat(
     concatIf(hasErrors, errors),
     concatIf(hasWarnings, warnings)
 );
-// 조건에 맞는 것만 결합, 없으면 빈 배열
+// combines only what matches the condition, empty array otherwise
 ```
 
 ### Object defaults pattern
 
 ```javascript
-// 객체 병합 Monoid 는 기본 제공되지 않으므로 직접 만든다
+// an object-merging Monoid isn't provided by default, so build one
 const objectMonoid = new Monoid(
     new Semigroup((a, b) => ({ ...a, ...b }), 'Object'),
     () => ({}),

@@ -31,7 +31,7 @@ const user = { id: 7, address: { city: 'Seoul', zip: '04524' } };
 
 console.log(Optics.view(cityL, user));              // 'Seoul'
 console.log(Optics.set(cityL, 'Busan', user).address.city);   // 'Busan'
-console.log(user.address.city);                     // 'Seoul'  원본은 그대로
+console.log(user.address.city);                     // 'Seoul'  the original stays unchanged
 ```
 
 **It also accepts array indices.** Since the copy preserves its own shape, an
@@ -54,7 +54,7 @@ case of it.
 const { Maybe, Either } = FunFP;
 const { Lens, Prism, traversed, compose, preview, toList, over } = FunFP.Optics;
 
-// Prism — 있을 수도, 없을 수도
+// Prism — may or may not exist
 const rightP = Prism(
     e => (e.isRight() ? Maybe.Just(e.value) : Maybe.Nothing()),
     v => Either.Right(v)
@@ -62,13 +62,13 @@ const rightP = Prism(
 
 console.log(preview(rightP, Either.Right(5)).value);        // 5
 console.log(preview(rightP, Either.Left('e')).isNothing()); // true
-console.log(over(rightP, x => x * 2, Either.Left('e')).value); // 'e' — 원본 그대로
+console.log(over(rightP, x => x * 2, Either.Left('e')).value); // 'e' — the original stays unchanged
 
-// Traversal — 0..n 개
+// Traversal — 0..n targets
 const each = traversed('array');
 console.log(over(each, x => x * 10, [1, 2, 3]));   // [10, 20, 30]
 
-// 합성 — 셋을 자유롭게 섞는다
+// composition — freely mixes all three
 const usersL = Lens(o => o.users, (v, o) => ({ ...o, users: v }));
 const nameL = Lens(u => u.name, (v, u) => ({ ...u, name: v }));
 const allNames = compose(usersL, each, nameL);
@@ -87,14 +87,14 @@ here is a variation on these four.
 ### Problem: Lens alone can't handle "may not exist" or "may be many"
 
 ```javascript no-run 문제 상황 — Lens 로는 표현할 수 없다
-// Lens 는 대상이 반드시 1개여야 한다.
-// Either 의 Right 는 없을 수도 있다 → getter 가 무엇을 돌려줘야 하나?
+// A Lens's target must be exactly 1.
+// Either's Right may not exist → what should the getter return?
 const rightLens = Lens(
-    e => e.value,              // Left 일 때는? 거짓말이 된다
-    (v, e) => Either.Right(v)  // Left 를 Right 로 바꿔버린다
+    e => e.value,              // What about when it's Left? This becomes a lie.
+    (v, e) => Either.Right(v)  // turns a Left into a Right
 );
 
-// 배열 전체를 바꾸려면 매번 map 을 직접 쓴다
+// to change the whole array, you write map by hand every time
 const updated = {
     ...db,
     users: db.users.map(u => ({ ...u, name: u.name.toUpperCase() }))
@@ -113,9 +113,9 @@ const { Iso, view, review, over } = FunFP.Optics;
 
 const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
 
-console.log(view(fahrenheit, 100));            // 212  — 정방향
-console.log(review(fahrenheit, 212));          // 100  — 역방향
-console.log(over(fahrenheit, f => f + 18, 100)); // 110 — 화씨에서 더하고 섭씨로 돌아온다
+console.log(view(fahrenheit, 100));            // 212  — forward direction
+console.log(review(fahrenheit, 212));          // 100  — reverse direction
+console.log(over(fahrenheit, f => f + 18, 100)); // 110 — add in Fahrenheit, then convert back to Celsius
 ```
 
 **Two laws** guarantee losslessness. If either breaks, it isn't an Iso.
@@ -137,8 +137,8 @@ const { Iso, view, preview, toList, over, set, review } = FunFP.Optics;
 const fahrenheit = Iso(c => c * 9 / 5 + 32, f => (f - 32) * 5 / 9);
 
 console.log(view(fahrenheit, 0));              // 32
-console.log(preview(fahrenheit, 0).value);     // 32   — 항상 Just
-console.log(toList(fahrenheit, 0));          // [32] — 항상 1개
+console.log(preview(fahrenheit, 0).value);     // 32   — always Just
+console.log(toList(fahrenheit, 0));          // [32] — always 1 target
 console.log(set(fahrenheit, 212, 0));          // 100
 console.log(review(fahrenheit, 32));           // 0
 ```
@@ -179,7 +179,7 @@ console.log(view(nameLens, { name: 'Anthony', age: 30 }));  // 'Anthony'
 const { Maybe } = FunFP;
 const { Prism, preview, review } = FunFP.Optics;
 
-// 짝수만 통과시키는 Prism
+// a Prism that only passes even numbers
 const evenP = Prism(
     n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()),
     n => n
@@ -187,7 +187,7 @@ const evenP = Prism(
 
 console.log(preview(evenP, 4).value);         // 4
 console.log(preview(evenP, 3).isNothing());   // true
-console.log(review(evenP, 8));                // 8 — 거꾸로 만들기
+console.log(review(evenP, 8));                // 8 — building backward
 ```
 
 If `match` doesn't return a `Maybe`, it throws `TypeError` immediately.
@@ -218,7 +218,7 @@ console.log(toList(each, [1, 2, 3]));       // [1, 2, 3]
 
 const inMaybe = traversed('maybe');
 console.log(toList(inMaybe, Maybe.Just(5)));    // [5]
-console.log(toList(inMaybe, Maybe.Nothing()));  // [] — 대상 없음
+console.log(toList(inMaybe, Maybe.Nothing()));  // [] — no target
 ```
 
 ## Main operations
@@ -261,7 +261,7 @@ returned as-is. For a spot where the target count might not be 1, use
 const { traversed, preview } = FunFP.Optics;
 
 const each = traversed('array');
-console.log(preview(each, [7, 8, 9]).value);   // 7 — 첫 번째만
+console.log(preview(each, [7, 8, 9]).value);   // 7 — first only
 console.log(preview(each, []).isNothing());    // true
 ```
 
@@ -289,9 +289,9 @@ const { traversed, foldMapOf } = FunFP.Optics;
 
 const each = traversed('array');
 
-console.log(foldMapOf(Monoid.lookup('number'), each, x => x, [1, 2, 3]));            // 6  합계
-console.log(foldMapOf(Monoid.lookup('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24   곱으로 모은다
-console.log(foldMapOf(Monoid.lookup('NumberMaxMonoid'), each, x => x, [2, 9, 4]));   // 9  최대
+console.log(foldMapOf(Monoid.lookup('number'), each, x => x, [1, 2, 3]));            // 6  sum
+console.log(foldMapOf(Monoid.lookup('NumberProductMonoid'), each, x => x, [2, 3, 4])); // 24   combined by product
+console.log(foldMapOf(Monoid.lookup('NumberMaxMonoid'), each, x => x, [2, 9, 4]));   // 9  max
 console.log(foldMapOf(Monoid.lookup('string'), each, String, [1, 2, 3]));            // '123'
 ```
 
@@ -313,7 +313,7 @@ const { traversed, foldMapOf, toList } = FunFP.Optics;
 
 const each = traversed('array');
 console.log(JSON.stringify(foldMapOf(Monoid.lookup('array'), each, a => [a], [1, 2, 3])));
-console.log(JSON.stringify(toList(each, [1, 2, 3])));   // [1,2,3]   위와 같다
+console.log(JSON.stringify(toList(each, [1, 2, 3])));   // [1,2,3]   same as above
 ```
 
 **Monoids you never registered work too.** They just have to be an actual
@@ -343,12 +343,12 @@ const { Prism, traversed, over, set } = FunFP.Optics;
 
 const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
 
-console.log(over(evenP, x => x * 100, 4));   // 400 — 매칭됨
-console.log(over(evenP, x => x * 100, 3));   // 3   — 매칭 안 됨, 원본
-console.log(set(evenP, 0, 3));               // 3   — set 도 마찬가지
+console.log(over(evenP, x => x * 100, 4));   // 400 — matched
+console.log(over(evenP, x => x * 100, 3));   // 3   — no match, original
+console.log(set(evenP, 0, 3));               // 3   — same for set
 
 const each = traversed('array');
-console.log(over(each, x => x + 1, []));     // [] — 빈 배열도 안전
+console.log(over(each, x => x + 1, []));     // [] — safe even for an empty array
 ```
 
 ### review - building backward with a Prism
@@ -364,7 +364,7 @@ const rightP = Prism(
 
 const built = review(rightP, 42);
 console.log(built.isRight(), built.value);            // true 42
-console.log(preview(rightP, built).value);            // 42 — 법칙: preview ∘ review = Just
+console.log(preview(rightP, built).value);            // 42 — law: preview ∘ review = Just
 ```
 
 `review` only works **on a Prism.** `Tagged` ignores its input and holds only
@@ -401,7 +401,7 @@ const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n
 const rightEven = compose(rightP, evenP);
 
 console.log(JSON.stringify(review(rightEven, 4)));   // {"value":4,"_typeName":"Either"}   Right(4)
-console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — 법칙 유지
+console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — the law holds
 ```
 
 ## Composition
@@ -417,7 +417,7 @@ const { Lens, Prism, traversed, compose, toList, over } = FunFP.Optics;
 const each = traversed('array');
 const evenP = Prism(n => (n % 2 === 0 ? Maybe.Just(n) : Maybe.Nothing()), n => n);
 
-// Traversal + Prism — 통과한 것만 바꾼다
+// Traversal + Prism — changes only what passes
 const evens = compose(each, evenP);
 console.log(toList(evens, [1, 2, 3, 4]));              // [2, 4]
 console.log(over(evens, x => x * 100, [1, 2, 3, 4]));    // [1, 200, 3, 400]
@@ -453,10 +453,10 @@ const rightP = Prism(
     v => Either.Right(v)
 );
 
-// 1. build 한 것은 반드시 match 된다
+// 1. anything built must match
 console.log(preview(rightP, review(rightP, 42)).value === 42);   // true
 
-// 2. match 된 것을 build 하면 원본과 같다
+// 2. building what matched gives back the original
 const s = Either.Right(7);
 const focus = preview(rightP, s).value;
 console.log(review(rightP, focus).value === s.value);            // true
@@ -487,15 +487,15 @@ const allPrices = compose(itemsL, each, priceL);
 
 const cart = {
     items: [
-        { name: '책', price: 15000 },
-        { name: '펜', price: 2000 }
+        { name: 'book', price: 15000 },
+        { name: 'pen', price: 2000 }
     ]
 };
 
 console.log(toList(allPrices, cart));                    // [15000, 2000]
 const taxed = over(allPrices, p => Math.round(p * 1.1), cart);
 console.log(taxed.items.map(i => i.price));                // [16500, 2200]
-console.log(cart.items.map(i => i.price));                 // [15000, 2000] — 원본 불변
+console.log(cart.items.map(i => i.price));                 // [15000, 2000] — the original is unchanged
 ```
 
 ### 2. Handling only the ones that succeeded
@@ -514,11 +514,11 @@ const rightP = Prism(
 );
 const successes = compose(each, rightP);
 
-const results = [Either.Right(1), Either.Left('실패'), Either.Right(3)];
+const results = [Either.Right(1), Either.Left('fail'), Either.Right(3)];
 
-console.log(toList(successes, results));          // [1, 3] — 성공만
+console.log(toList(successes, results));          // [1, 3] — successes only
 const doubled = over(successes, x => x * 2, results);
-console.log(doubled.map(e => e.value));             // [2, '실패', 6] — 실패는 그대로
+console.log(doubled.map(e => e.value));             // [2, 'fail', 6] — the failure stays unchanged
 ```
 
 ### 3. Conditional partial updates
@@ -568,7 +568,7 @@ const bioL = Lens(p => p.bio, (v, p) => ({ ...p, bio: v }));
 
 const bio = compose(profileL, definedP, bioL);
 
-console.log(preview(bio, { profile: { bio: '안녕' } }).value);      // '안녕'
+console.log(preview(bio, { profile: { bio: 'hi' } }).value);      // 'hi'
 console.log(preview(bio, { profile: undefined }).isNothing());      // true
 ```
 

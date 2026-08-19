@@ -13,27 +13,27 @@ The core property is **associativity**: changing the grouping of the combination
 ## Laws
 
 ### Associativity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { concat } = Semigroup.lookup('array');
 concat(concat(a, b), c) === concat(a, concat(b, c))
 ```
 
 Examples:
-```javascript no-run 시그니처·의사코드 표기
-// 문자열
+```javascript no-run signature / pseudocode
+// string
 ("a" + "b") + "c" === "a" + ("b" + "c")  // "abc" === "abc"
 
-// 숫자 덧셈
+// number addition
 (1 + 2) + 3 === 1 + (2 + 3)  // 6 === 6
 
-// 배열
+// array
 [...[...a, ...b], ...c] === [...a, ...[...b, ...c]]
 ```
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
-Semigroup.concat(a, b): a  // a와 b를 결합
+```javascript no-run signature / pseudocode
+Semigroup.concat(a, b): a  // combines a and b
 ```
 
 ## Usage examples
@@ -44,16 +44,16 @@ Semigroup.concat(a, b): a  // a와 b를 결합
 import FunFP from 'fun-fp-js';
 const { Semigroup } = FunFP;
 
-// 문자열 연결
+// string concatenation
 Semigroup.lookup('string').concat('Hello, ', 'World!');  // 'Hello, World!'
 
-// 배열 병합
+// array merging
 Semigroup.lookup('array').concat([1, 2], [3, 4]);  // [1, 2, 3, 4]
 
-// 숫자 덧셈
+// number addition
 Semigroup.lookup('number').concat(5, 3);  // 8
 
-// 함수 합성
+// function composition
 const add1 = x => x + 1;
 const mul2 = x => x * 2;
 const composed = Semigroup.lookup('function').concat(add1, mul2);
@@ -76,7 +76,7 @@ concatAll([[1], [2], [3]]);  // [1, 2, 3]
 ```javascript
 const name = 'Alice';
 const email = 'alice@example.com';
-// 에러 메시지 수집
+// collect error messages
 const errors = [];
 const validate = (cond, msg) => cond ? [] : [msg];
 
@@ -97,7 +97,7 @@ Using Semigroup instead of plain operators gives you:
 3. **Composability**: combines with other FP patterns
 
 ```javascript
-// 추상화된 합계 함수
+// an abstracted sum function
 const sum = (type, arr) => arr.reduce(Semigroup.lookup(type).concat);
 
 sum('number', [1, 2, 3]);     // 6

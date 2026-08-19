@@ -30,23 +30,23 @@ like this.
 ### The problem: passing a dependency to every function by hand
 
 ```javascript no-run 문제 상황 — 일부러 나쁜 코드
-// 모든 함수가 config를 받아 아래로 전달한다
+// every function takes config and passes it down
 function getUser(config, id) {
     return query(config.db, `SELECT * FROM users WHERE id=${id}`);
 }
 
 function getUserPosts(config, id) {
-    const user = getUser(config, id);          // config 전달
-    return query(config.db, `... ${user.id}`); // 또 전달
+    const user = getUser(config, id);          // pass config
+    return query(config.db, `... ${user.id}`); // pass it again
 }
 
 function renderProfile(config, id) {
-    const posts = getUserPosts(config, id);    // 또
-    return format(config.locale, posts);       // 또
+    const posts = getUserPosts(config, id);    // again
+    return format(config.locale, posts);       // again
 }
 
-// config를 실제로 쓰는 곳은 맨 아래인데
-// 중간 함수 전부가 시그니처에 config를 달고 있다.
+// config is actually used only at the very bottom,
+// yet every function in between carries it in its signature.
 ```
 
 ### The fix: let the type carry the environment
@@ -57,16 +57,16 @@ const { ReaderT } = FunFP;
 const RT = ReaderT('maybe');
 
 const getUser = id => RT.asks(env => ({ id, db: env.db }));
-const getPosts = user => RT.asks(env => [`${env.db}의 ${user.id}번 글`]);
+const getPosts = user => RT.asks(env => [`post #${user.id} of ${env.db}`]);
 
 const profile = id => getUser(id).chain(user => getPosts(user));
 
-// 환경은 실행 시점에 딱 한 번 주입한다
+// the environment is injected exactly once, at run time
 console.log(JSON.stringify(RT.runReaderT({ db: 'prod' }, profile(7)).value));
-// ["prod의 7번 글"]
+// ["post #7 of prod"]
 
 console.log(JSON.stringify(RT.runReaderT({ db: 'test' }, profile(7)).value));
-// ["test의 7번 글"]
+// ["post #7 of test"]
 ```
 
 None of the intermediate functions have an `env` parameter. The same program can run
@@ -100,8 +100,8 @@ try {
 ```javascript
 const { ReaderT } = FunFP;
 
-const RT = ReaderT('task');     // 환경 + 비동기
-const RM = ReaderT('maybe');    // 환경 + 실패 가능
+const RT = ReaderT('task');     // env + async
+const RM = ReaderT('maybe');    // env + can fail
 
 console.log(RT.of(1)._typeName);   // 'ReaderT(Task)'
 console.log(RM.of(1)._typeName);   // 'ReaderT(Maybe)'
@@ -164,8 +164,8 @@ const { ReaderT } = FunFP;
 
 const RT = ReaderT('maybe');
 
-try { RT.local(42, RT.ask); } catch (e) { console.log('함수 아님:', e.constructor.name); }
-try { RT.local(x => x, 42); } catch (e) { console.log('RT 아님:', e.constructor.name); }
+try { RT.local(42, RT.ask); } catch (e) { console.log('not a function:', e.constructor.name); }
+try { RT.local(x => x, 42); } catch (e) { console.log('not a RT:', e.constructor.name); }
 ```
 
 ### of / lift
@@ -208,7 +208,7 @@ const { ReaderT } = FunFP;
 
 const RT = ReaderT('maybe');
 
-// 비즈니스 로직 — 환경이 무엇인지 모른다
+// business logic — has no idea what the environment is
 const buildUrl = path => RT.asks(env => `${env.protocol}://${env.host}:${env.port}${path}`);
 const withAuth = url => RT.asks(env => `${url}?token=${env.token}`);
 
@@ -238,21 +238,21 @@ const RT = ReaderT('task');
 const run = t => new Promise((resolve, reject) => t.fork(reject, resolve));
 const delay = (ms, v) => new Task((reject, resolve) => setTimeout(() => resolve(v), ms));
 
-// 환경에서 db를 꺼내 쓰는 저장소
+// a repository that pulls db out of the environment
 const findUser = id => RT.ask.chain(env => RT.lift(env.db.findUser(id)));
 const countPosts = user => RT.ask.chain(env => RT.lift(env.db.countPosts(user.id)));
 
 const summary = id => findUser(id)
-    .chain(user => countPosts(user).chain(n => RT.of(`${user.name}: 글 ${n}개`)));
+    .chain(user => countPosts(user).chain(n => RT.of(`${user.name}: ${n} posts`)));
 
-// 가짜 DB를 환경으로 주입 — 실제 DB 없이 테스트할 수 있다
+// inject a fake DB as the environment — testable without a real DB
 const fakeDb = {
-    findUser: id => delay(3, { id, name: '테스트유저' }),
+    findUser: id => delay(3, { id, name: 'testuser' }),
     countPosts: () => delay(3, 5)
 };
 
 console.log(await run(RT.runReaderT({ db: fakeDb }, summary(1))));
-// 테스트유저: 글 5개
+// testuser: 5 posts
 ```
 
 ### 3. Running with reduced permissions via local
@@ -272,7 +272,7 @@ const audit = RT.ask.chain(() =>
 );
 
 const program = audit.chain(outer =>
-    // 이 블록만 게스트 권한으로
+    // just this block, with guest permissions
     RT.local(env => ({ ...env, role: 'guest' }), audit)
         .chain(inner => RT.of({ outer, inner }))
 );
@@ -300,7 +300,7 @@ console.log(RT.runReaderT({ host: 'db.local', port: 5432 }, connectionString).va
 // db.local:5432
 
 console.log(RT.runReaderT({ host: 'db.local' }, connectionString).isNothing());
-// true — port가 없으면 전체가 Nothing
+// true — without port, the whole thing is Nothing
 ```
 
 ## Related type classes

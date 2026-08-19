@@ -18,7 +18,7 @@ Unlike Maybe, it can also carry **the reason for the failure**.
 ### The problem: try-catch hell
 
 ```javascript
-const handleParseError = e => `파싱 실패: ${e}`;
+const handleParseError = e => `parse failed: ${e}`;
 let result;
 try {
     const parsed = JSON.parse(data);
@@ -39,7 +39,7 @@ try {
 
 ### The fix: handle it gracefully with Either
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature/pseudocode notation
 const { Either, Chain } = FunFP;
 const { chain } = Chain.lookup('either');
 
@@ -53,7 +53,7 @@ const result = Either.fold(
     )
 );
 
-// 또는 Either.pipeK 사용 (더 가독성 좋음)
+// or use Either.pipeK (more readable)
 const process = Either.pipeK(parseJson, validate, transform);
 const result = Either.fold(handleError, value => value, process(data));
 ```
@@ -64,18 +64,18 @@ const result = Either.fold(handleError, value => value, process(data));
 import FunFP from 'fun-fp-js';
 const { Either } = FunFP;
 
-// 성공 (Right)
+// success (Right)
 const right = Either.Right(42);
-const alsoRight = Either.of(42);  // of는 항상 Right
+const alsoRight = Either.of(42);  // of is always Right
 
-// 실패 (Left)
+// failure (Left)
 const left = Either.Left('Something went wrong');
 
-// null 체크
+// null check
 Either.fromNullable(5);         // Right(5)
 Either.fromNullable(null);      // Left(null)
 
-// try-catch 래핑
+// wrapping try-catch
 Either.catch(() => JSON.parse('{"a": 1}'));  // Right({a: 1})
 Either.catch(() => JSON.parse('invalid'));    // Left(SyntaxError)
 ```
@@ -89,7 +89,7 @@ const { Functor } = FunFP;
 const { map } = Functor.lookup('either');
 
 map(x => x * 2, Either.Right(5));       // Right(10)
-map(x => x * 2, Either.Left('error'));  // Left('error') - 변환 안 됨
+map(x => x * 2, Either.Left('error'));  // Left('error') - not transformed
 ```
 
 ### chain — avoid nesting (Monad)
@@ -110,8 +110,8 @@ chain(validatePositive, Either.Left('error')); // Left('error')
 
 ```javascript
 const result = Either.fold(
-    error => `Error: ${error}`,    // Left일 때
-    value => `Success: ${value}`,  // Right일 때
+    error => `Error: ${error}`,    // when it's Left
+    value => `Success: ${value}`,  // when it's Right
     Either.Right(5)
 );
 // 'Success: 5'
@@ -130,8 +130,8 @@ Either.fold(
 const { bimap } = Bifunctor.lookup('either');
 
 bimap(
-    err => err.toUpperCase(),  // Left 변환
-    val => val * 2,            // Right 변환
+    err => err.toUpperCase(),  // transforms Left
+    val => val * 2,            // transforms Right
     Either.Right(5)
 );
 // Right(10)
@@ -172,7 +172,7 @@ const validateName = name => {
 
 const toUpperCase = str => Either.Right(str.toUpperCase());
 
-// Either.pipeK로 검증 파이프라인 구성
+// build a validation pipeline with Either.pipeK
 const validateAndTransformEmail = Either.pipeK(
     validateEmail,
     toUpperCase
@@ -201,7 +201,7 @@ const extractUser = data => {
     return Either.Right(data.user);
 };
 
-// fold 는 정적 메서드다 — Either.fold(onLeft, onRight, either)
+// fold is a static method — Either.fold(onLeft, onRight, either)
 const processApiCall = response =>
     Either.fold(
         error => ({ success: false, error }),
@@ -223,7 +223,7 @@ const readFile = path => {
     }
 };
 
-// mapLeft 도 메서드가 아니다 — bimap 으로 만든다
+// mapLeft is not a method either — build it with bimap
 const mapLeft = (f, either) => Either.bimap(f, x => x, either);
 
 const parseConfig = content =>
@@ -260,11 +260,11 @@ const validate = value => ({
     )
 });
 
-// 첫 에러만
+// first error only
 validate('a').check(s => s.length > 5, 'Too short');
 // Left(['Too short'])
 
-// 모든 에러 수집 (별도 구현 필요)
+// collecting all errors (needs separate implementation)
 ```
 
 ## Either vs Maybe
@@ -314,7 +314,7 @@ Either.pipe(
 ### Either.pipeK — Kleisli composition (for chain)
 
 ```javascript
-// a -> Either e b 형태의 함수들을 연결
+// chain functions of the form a -> Either e b
 const parseNumber = str => {
     const n = parseInt(str);
     return isNaN(n) ? Either.Left('Not a number') : Either.Right(n);
@@ -326,7 +326,7 @@ const validatePositive = n =>
 const validateMax = max => n =>
     n <= max ? Either.Right(n) : Either.Left(`Must be <= ${max}`);
 
-// 한 번에 연결
+// chain them all at once
 const validateNumber = Either.pipeK(
     parseNumber,
     validatePositive,
@@ -347,9 +347,9 @@ validateNumber('200');  // Left('Must be <= 100')
 ```javascript
 const { Either, Maybe } = FunFP;
 
-if (String(Either.Right(1)) !== 'Right(1)') throw new Error('Right 표기가 다르다');
-if (String(Either.Left('boom')) !== 'Left("boom")') throw new Error('Left 표기가 다르다');
-if (String(Either.Right(Maybe.Nothing())) !== 'Right(Nothing)') throw new Error('중첩 표기가 다르다');
-if (JSON.stringify(Either.Left('e')) !== '{"value":"e","_typeName":"Either"}') throw new Error('JSON 이 달라졌다');
+if (String(Either.Right(1)) !== 'Right(1)') throw new Error('Right notation differs');
+if (String(Either.Left('boom')) !== 'Left("boom")') throw new Error('Left notation differs');
+if (String(Either.Right(Maybe.Nothing())) !== 'Right(Nothing)') throw new Error('nested notation differs');
+if (JSON.stringify(Either.Left('e')) !== '{"value":"e","_typeName":"Either"}') throw new Error('JSON changed');
 console.log(`${Either.Right({ id: 7 })}`);   // Right({"id":7})
 ```

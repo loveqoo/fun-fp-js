@@ -12,7 +12,7 @@ updates never race.
 
 ```
 handle : (state, msg) -> [result, newState]
-       | (state, msg) -> Task [result, newState]     // 비동기도 가능
+       | (state, msg) -> Task [result, newState]     // async is also possible
 ```
 
 `send` returns a [Task](./Task.md), so you can wait on the result or compose it with
@@ -23,18 +23,18 @@ message can cut in ahead of it.**
 
 ### Problem: overlapping async updates corrupt state
 
-```javascript no-run 문제 상황 — 일부러 나쁜 코드
+```javascript no-run problem scenario — deliberately bad code
 let balance = 100;
 
 async function withdraw(amount) {
-    const current = balance;          // 읽고
-    await checkFraud(amount);         // ← 여기서 다른 요청이 끼어든다
-    balance = current - amount;       // 낡은 값으로 덮어쓴다
+    const current = balance;          // read
+    await checkFraud(amount);         // ← another request cuts in here
+    balance = current - amount;       // overwrites with a stale value
 }
 
-// 동시에 두 번 호출하면
+// if you call it twice concurrently
 await Promise.all([withdraw(30), withdraw(50)]);
-// balance가 20이 아니라 50이나 70이 된다 — 어느 쪽이 마지막에 썼느냐에 달렸다
+// balance ends up 50 or 70 instead of 20 — depends on which write lands last
 ```
 
 Whenever there is an `await` between a read and a write, another execution can slip
@@ -58,13 +58,13 @@ const account = Actor({
     }
 });
 
-// 동시에 보내도 순서대로 처리된다
+// processed in order even when sent concurrently
 await Promise.all([
     run(account.send({ type: 'withdraw', amount: 30 })),
     run(account.send({ type: 'withdraw', amount: 50 }))
 ]);
 
-console.log(account.getState());  // 20 — 항상
+console.log(account.getState());  // 20 — always
 ```
 
 ## Creation
@@ -96,12 +96,12 @@ const { Actor } = FunFP;
 const slow = Actor({
     init: 0,
     timeout: 30,
-    handle: () => new Promise(() => {}),   // 영영 정착하지 않는다
+    handle: () => new Promise(() => {}),   // never settles
 });
 
-slow.send('멈춤').fork(
-    e => console.log(e.message, '/ 표식:', e.timedOut),   // Actor: handle timed out after 30ms / 표식: true
-    () => console.log('성공해버림')
+slow.send('stuck').fork(
+    e => console.log(e.message, '/ marker:', e.timedOut),   // Actor: handle timed out after 30ms / marker: true
+    () => console.log('succeeded unexpectedly')
 );
 ```
 
@@ -119,7 +119,7 @@ const counter = Actor({
     init: 0,
     handle: (state, msg) => {
         const next = state + msg;
-        return [next, next];   // [호출자에게 줄 값, 다음 상태]
+        return [next, next];   // [value returned to caller, next state]
     }
 });
 
@@ -138,7 +138,7 @@ const collector = Actor({
     init: [],
     handle: (items, msg) => {
         const next = [...items, msg];
-        return [next.length, next];   // 결과는 개수, 상태는 목록
+        return [next.length, next];   // result is the count, state is the list
     }
 });
 
@@ -209,17 +209,17 @@ const counter = Actor({ init: 0, handle: (s, m) => [s + m, s + m] });
 
 const log = [];
 const unsubscribe = counter.subscribe((result, state) => {
-    log.push(`결과 ${result}, 상태 ${state}`);
+    log.push(`result ${result}, state ${state}`);
 });
 
 await run(counter.send(1));
 await run(counter.send(2));
 
 unsubscribe();
-await run(counter.send(3));   // 더 이상 기록되지 않는다
+await run(counter.send(3));   // no longer recorded
 
-console.log(log);                 // [ '결과 1, 상태 1', '결과 3, 상태 3' ]   두 건만
-console.log(counter.getState());  // 6 — 상태는 그대로 갱신됨
+console.log(log);                 // [ 'result 1, state 1', 'result 3, state 3' ]   only two entries
+console.log(counter.getState());  // 6 — state is still updated as normal
 ```
 
 If the subscriber is not a function, a `TypeError` is thrown.
@@ -254,7 +254,7 @@ const order = [];
 const slow = Actor({
     init: 0,
     handle: (state, msg) => {
-        // 먼저 온 메시지가 더 오래 걸려도 순서는 지켜진다
+        // order is preserved even though the earlier message takes longer
         const ms = msg === 'first' ? 30 : 1;
         return delay(ms, null).map(() => {
             order.push(msg);
@@ -265,7 +265,7 @@ const slow = Actor({
 
 await Promise.all([run(slow.send('first')), run(slow.send('second'))]);
 
-console.log(order);              // ['first', 'second'] — 보낸 순서 그대로
+console.log(order);              // ['first', 'second'] — same order as sent
 console.log(slow.getState());    // 2
 ```
 
@@ -282,7 +282,7 @@ const run = task => new Promise((resolve, reject) => task.fork(reject, resolve))
 const strict = Actor({
     init: 0,
     handle: (state, msg) => {
-        if (msg < 0) throw new Error(`음수는 안 됨: ${msg}`);
+        if (msg < 0) throw new Error(`negative not allowed: ${msg}`);
         return [state + msg, state + msg];
     }
 });
@@ -292,10 +292,10 @@ console.log(await run(strict.send(10)));   // 10
 try {
     await run(strict.send(-1));
 } catch (e) {
-    console.log('실패:', e.message);       // 실패: 음수는 안 됨: -1
+    console.log('failed:', e.message);       // failed: negative not allowed: -1
 }
 
-// 실패 뒤에도 큐는 정상 동작한다
+// the queue still works normally after a failure
 console.log(await run(strict.send(5)));    // 15
 console.log(strict.getState());            // 15
 ```
@@ -325,10 +325,10 @@ const counter = Actor({
     }
 });
 
-// 100번 동시 요청
+// 100 concurrent requests
 await Promise.all(Array.from({ length: 100 }, () => run(counter.send(1))));
 
-console.log(counter.getState().count);            // 100 — 정확히
+console.log(counter.getState().count);            // 100 — exactly
 console.log(counter.getState().history.length);   // 100
 ```
 
@@ -352,7 +352,7 @@ const machine = Actor({
     init: 'idle',
     handle: (state, event) => {
         const next = transitions[state][event];
-        if (!next) throw new Error(`${state} 상태에서 '${event}' 는 불가능`);
+        if (!next) throw new Error(`cannot '${event}' from state ${state}`);
         return [next, next];
     }
 });
@@ -361,7 +361,7 @@ console.log(await run(machine.send('start')));   // 'running'
 console.log(await run(machine.send('pause')));   // 'paused'
 
 try {
-    await run(machine.send('start'));            // paused 에서는 불가
+    await run(machine.send('start'));            // not possible from paused
 } catch (e) {
     console.log(e.message);
 }
@@ -393,11 +393,11 @@ const cart = Actor({
 
 const auditLog = [];
 cart.subscribe((total, state) => {
-    auditLog.push(`${state.items[state.items.length - 1]} 추가 → 합계 ${total}`);
+    auditLog.push(`${state.items[state.items.length - 1]} added → total ${total}`);
 });
 
-await run(cart.send({ name: '책', price: 15000 }));
-await run(cart.send({ name: '펜', price: 2000 }));
+await run(cart.send({ name: 'book', price: 15000 }));
+await run(cart.send({ name: 'pen', price: 2000 }));
 
 console.log(auditLog);
 console.log(cart.getState().total);  // 17000
@@ -413,11 +413,11 @@ const { Actor, Task } = FunFP;
 
 const run = task => new Promise((resolve, reject) => task.fork(reject, resolve));
 
-// 동시 호출을 견디지 못하는 가상의 자원
+// a hypothetical resource that cannot tolerate concurrent calls
 let inFlight = 0;
 const fragileWrite = line => new Task((reject, resolve) => {
     inFlight++;
-    if (inFlight > 1) { reject(new Error('동시 접근 감지')); return; }
+    if (inFlight > 1) { reject(new Error('concurrent access detected')); return; }
     setTimeout(() => { inFlight--; resolve(line.length); }, 5);
 });
 
@@ -426,13 +426,13 @@ const writer = Actor({
     handle: (written, line) => fragileWrite(line).map(n => [n, written + n])
 });
 
-// 다섯 줄을 한꺼번에 보내도 액터가 직렬화한다
+// even sending five lines at once, the actor serializes them
 const sizes = await Promise.all(
-    ['가', '나다', '라마바', '사', '아자차카'].map(s => run(writer.send(s)))
+    ['a', 'bc', 'def', 'g', 'hijk'].map(s => run(writer.send(s)))
 );
 
 console.log(sizes);                // [1, 2, 3, 1, 4]
-console.log(writer.getState());    // 11 — 누적 바이트 수
+console.log(writer.getState());    // 11 — accumulated byte count
 ```
 
 ## Related type classes

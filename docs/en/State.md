@@ -17,7 +17,7 @@ State represents **a computation that takes a state and returns (value, new stat
 ### The problem: state has to be passed to every function
 
 ```javascript
-// 상태를 파라미터로 계속 전달
+// Keep passing the state as a parameter
 const increment = state => state + 1;
 const double = state => state * 2;
 const decrement = state => state - 1;
@@ -56,12 +56,12 @@ const pipeline = chain(
     increment
 );
 
-// 또는 인스턴스 메서드로
+// Or as instance methods
 const pipeline2 = increment
     .chain(_ => double)
     .chain(_ => decrement);
 
-pipeline.exec(5);  // 11 - 상태만 반환
+pipeline.exec(5);  // 11 - returns only the state
 ```
 
 **Advantages:**
@@ -76,24 +76,24 @@ pipeline.exec(5);  // 11 - 상태만 반환
 import FunFP from 'fun-fp-js';
 const { State } = FunFP;
 
-// of - 상태 불변, 값만 반환
+// of - state unchanged, returns only the value
 const state = State.of(42);
 state.run('any state');  // [42, 'any state']
 
-// new State - 상태 변환 함수
+// new State - a state-transforming function
 const transform = new State(s => [s * 2, s + 10]);
 transform.run(5);  // [10, 15]
 
-// get - 현재 상태 읽기
+// get - read the current state
 State.get.run(42);  // [42, 42]
 
-// put - 상태 교체
+// put - replace the state
 State.put(100).run(42);  // [undefined, 100]
 
-// modify - 상태 변환
+// modify - transform the state
 State.modify(s => s * 2).run(21);  // [undefined, 42]
 
-// gets - 상태에서 값 추출
+// gets - extract a value from the state
 State.gets(s => s.name).run({ name: 'Alice', age: 30 });
 // ['Alice', { name: 'Alice', age: 30 }]
 ```
@@ -108,14 +108,14 @@ const { map } = Functor.lookup('state');
 
 const state = State.of(21);
 map(x => x * 2, state).run('any');
-// [42, 'any'] - 값만 변경, 상태는 그대로
+// [42, 'any'] - only the value changes, the state stays the same
 
-// 상태 변환하는 경우
+// When the state itself is transformed
 const transform = new State(s => [s, s + 10]);
 map(x => x * 2, transform).run(5);
-// [10, 15] - 값 2배, 상태 +10
+// [10, 15] - value doubled, state +10
 
-// 또는 Static 메서드
+// Or the Static method
 State.map(x => x * 2, state);
 ```
 
@@ -134,7 +134,7 @@ chain(useValue, state).run(10);
 // of(5): [5, 10]
 // useValue(5): [5 + 10, 10 * 2] = [15, 20]
 
-// 여러 chain 연결
+// Chaining several times
 State.of(1)
     .chain(a => new State(s => [a + s, s + 1]))
     .chain(b => new State(s => [b * s, s + 1]))
@@ -144,7 +144,7 @@ State.of(1)
 // chain 2: [11 * 11, 11 + 1] = [121, 12]
 // [121, 12]
 
-// 또는 Static 메서드
+// Or the Static method
 State.chain(useValue, state);
 ```
 
@@ -159,7 +159,7 @@ const sa = State.of(21);
 ap(sf, sa).run(null);
 // [42, null]
 
-// 상태 의존적 계산
+// A state-dependent computation
 const sf2 = new State(s => [x => x + s, s * 2]);
 const sa2 = new State(s => [s, s + 1]);
 ap(sf2, sa2).run(5);
@@ -168,7 +168,7 @@ ap(sf2, sa2).run(5);
 // apply: (x => x + 5)(10) = 15
 // [15, 11]
 
-// 또는 Static 메서드
+// Or the Static method
 State.ap(sf, sa);
 ```
 
@@ -177,13 +177,13 @@ State.ap(sf, sa);
 ```javascript
 const state = new State(s => [s * 2, s + 10]);
 
-// run - [값, 새상태] 튜플
+// run - a [value, new state] tuple
 state.run(5);   // [10, 15]
 
-// eval - 값만
+// eval - value only
 state.eval(5);  // 10
 
-// exec - 새상태만
+// exec - new state only
 state.exec(5);  // 15
 ```
 
@@ -194,7 +194,7 @@ state.exec(5);  // 15
 ```javascript
 State.get.run(42);  // [42, 42]
 
-// 상태를 값으로 사용
+// Use the state as a value
 State.get
     .chain(s => State.of(s * 2))
     .run(21);  // [42, 21]
@@ -205,10 +205,10 @@ State.get
 ```javascript
 State.put(100).run(42);  // [undefined, 100]
 
-// chain으로 상태 변경 후 계속
+// Change the state with chain, then continue
 State.put(10)
     .chain(_ => State.get)
-    .run(42);  // [10, 10] - 상태가 42에서 10으로 변경됨
+    .run(42);  // [10, 10] - state changed from 42 to 10
 ```
 
 ### State.modify - transform the state
@@ -216,7 +216,7 @@ State.put(10)
 ```javascript
 State.modify(s => s * 2).run(21);  // [undefined, 42]
 
-// chain으로 변환 후 값 얻기
+// Transform with chain, then get the value
 State.modify(s => s + 10)
     .chain(_ => State.get)
     .run(5);  // [15, 15]
@@ -228,7 +228,7 @@ State.modify(s => s + 10)
 State.gets(s => s.name).run({ name: 'Alice', age: 30 });
 // ['Alice', { name: 'Alice', age: 30 }]
 
-// 여러 필드 추출
+// Extract several fields
 State.gets(s => s.x)
     .chain(x => State.gets(s => s.y).map(y => x + y))
     .run({ x: 10, y: 32 });
@@ -255,7 +255,7 @@ State.get
 ```javascript
 State.isState(State.of(5));              // true
 State.isState(new State(s => [s, s]));   // true
-State.isState(s => [s, s]);              // false (함수는 State 아님)
+State.isState(s => [s, s]);              // false (a function is not a State)
 State.isState(5);                        // false
 ```
 
@@ -270,7 +270,7 @@ const increment = State.modify(n => n + 1);
 const decrement = State.modify(n => n - 1);
 const getCount = State.get;
 
-// 카운터 조작
+// Operate the counter
 const program = increment
     .chain(_ => increment)
     .chain(_ => increment)
@@ -280,7 +280,7 @@ const program = increment
 program.eval(0);  // 2
 program.exec(0);  // 2
 
-// 고유 ID 생성
+// Generate a unique ID
 const freshId = State.get.chain(n =>
     State.put(n + 1).map(_ => `id_${n}`)
 );
@@ -307,7 +307,7 @@ const pop = new State(stack => {
 });
 const peek = State.gets(stack => stack[stack.length - 1]);
 
-// 스택 프로그램
+// Stack program
 const program = push(1)
     .chain(_ => push(2))
     .chain(_ => push(3))
@@ -317,13 +317,13 @@ const program = push(1)
 program.run([]);
 // [30, [1, 2]]
 
-// 계산기 (후위 표기법)
+// Calculator (postfix notation)
 const calculate = tokens => {
     const processToken = token => {
         if (typeof token === 'number') {
             return push(token);
         }
-        // 연산자
+        // operator
         return pop.chain(b =>
             pop.chain(a => {
                 let result;
@@ -349,23 +349,23 @@ calculate([5, 3, '+', 2, '*']).eval([]);
 ```javascript
 const { State } = FunFP;
 
-// 단순 선형 합동 생성기 (Linear Congruential Generator)
+// A simple Linear Congruential Generator
 const nextRandom = new State(seed => {
     const newSeed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    const value = newSeed % 100;  // 0-99 범위
+    const value = newSeed % 100;  // range 0-99
     return [value, newSeed];
 });
 
-// 3개의 랜덤 넘버 생성
+// Generate three random numbers
 const threeRandoms = nextRandom
     .chain(r1 => nextRandom
         .chain(r2 => nextRandom
             .map(r3 => [r1, r2, r3])));
 
 threeRandoms.run(42);
-// [[67, 12, 89], 1234567890] (예시, 실제 값은 시드에 따라 다름)
+// [[67, 12, 89], 1234567890] (example only, actual values vary by seed)
 
-// 랜덤 범위 헬퍼
+// Random range helper
 const randomRange = (min, max) =>
     nextRandom.map(n => min + (n % (max - min + 1)));
 
@@ -374,7 +374,7 @@ const rollTwoDice = rollDice.chain(d1 =>
     rollDice.map(d2 => d1 + d2)
 );
 
-rollTwoDice.eval(42);  // 2-12 사이 값
+rollTwoDice.eval(42);  // a value between 2 and 12
 ```
 
 ### 4. Parser state management
@@ -382,7 +382,7 @@ rollTwoDice.eval(42);  // 2-12 사이 값
 ```javascript
 const { State } = FunFP;
 
-// 간단한 파서: 입력 문자열에서 문자 읽기
+// A simple parser: read a character from the input string
 const char = new State(input => {
     if (input.length === 0) return [null, input];
     return [input[0], input.slice(1)];
@@ -395,15 +395,15 @@ const satisfy = predicate => char.chain(c =>
 const digit = satisfy(c => /\d/.test(c));
 const letter = satisfy(c => /[a-z]/i.test(c));
 
-// 숫자 파싱
+// Parse a number
 const number = digit.chain(d1 =>
     digit.map(d2 => d2 ? parseInt(d1 + d2) : parseInt(d1))
 );
 
 number.run('42abc');
-// [42, 'abc'] - '42'를 파싱하고 'abc'가 남음
+// [42, 'abc'] - parses '42', leaving 'abc'
 
-// 단어 파싱 (재귀적)
+// Parse a word (recursive)
 const word = letter.chain(c => {
     if (c === null) return State.of('');
     return word.map(rest => c + rest);
@@ -418,7 +418,7 @@ word.run('hello123');
 ```javascript
 const { State } = FunFP;
 
-// 게임 상태: { player: { hp, atk }, enemy: { hp, atk }, turn: number }
+// Game state: { player: { hp, atk }, enemy: { hp, atk }, turn: number }
 const attack = (attacker, defender) => State.modify(game => {
     const damage = game[attacker].atk;
     return {
@@ -453,7 +453,7 @@ const initialState = {
 
 const finalState = playUntilOver.exec(initialState);
 console.log('Final state:', finalState);
-// 플레이어 또는 적의 HP가 0 이하가 될 때까지 턴 진행
+// Runs turns until either the player's or the enemy's HP drops to 0 or below
 ```
 
 ### 6. Complex state transformation through State chaining
@@ -461,7 +461,7 @@ console.log('Final state:', finalState);
 ```javascript
 const { State } = FunFP;
 
-// 사용자 프로필 업데이트
+// Update the user profile
 const updateProfile = updates => State.modify(profile => ({
     ...profile,
     ...updates,
@@ -526,7 +526,7 @@ const toString = x => new State(s => [`Result: ${x}`, s + 1]);
 const pipeline = State.pipeK(add5, double, toString);
 const [value, finalState] = pipeline(1).run(0);
 // value: 'Result: 12'
-// finalState: 3 (상태가 3번 증가)
+// finalState: 3 (the state increased 3 times)
 ```
 
 ### State.composeK - right-to-left composition
@@ -538,7 +538,7 @@ const toString = x => new State(s => [`Result: ${x}`, s + 1]);
 
 const pipeline = State.composeK(toString, double, add5);
 const [value, finalState] = pipeline(1).run(0);
-// value: 'Result: 12' (동일한 결과)
+// value: 'Result: 12' (same result)
 ```
 
 ## State.lift
@@ -556,7 +556,7 @@ const [value, finalState] = liftedAdd(s1, s2).run(0);
 // value: 42
 // finalState: 2
 
-// 상태 의존적 State
+// A state-dependent State
 const multiply = (a, b) => a * b;
 const liftedMultiply = State.lift(multiply);
 

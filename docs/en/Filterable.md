@@ -15,7 +15,7 @@ The same idea as JavaScript's `Array.filter`:
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 Filterable.filter(pred, a): Filterable a
 // pred: a -> Boolean
 // a: Filterable a
@@ -24,19 +24,19 @@ Filterable.filter(pred, a): Filterable a
 ## Laws
 
 ### Distributivity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { filter } = Filterable.lookup('array');
 filter(x => p(x) && q(x), a) === filter(q, filter(p, a))
 ```
 
 ### Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { filter } = Filterable.lookup('array');
 filter(x => true, a) === a
 ```
 
 ### Annihilation
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { filter } = Filterable.lookup('array');
 filter(x => false, a) === empty
 ```
@@ -89,7 +89,7 @@ const users = [
     { name: 'Charlie', age: 35, role: 'admin' }
 ];
 
-// 복합 조건
+// a compound condition
 const adminOver30 = filter(
     u => u.role === 'admin' && u.age >= 30,
     users
@@ -146,12 +146,12 @@ Instead of `Filterable.lookup`, use the function **the type itself carries.**
 const { Either, Task, Filterable } = FunFP;
 
 console.log(Either.filter(x => x > 0, Either.Right(5)).value);      // 5
-console.log(Either.filter(x => x > 0, Either.Right(-1)).isLeft());  // true   값이 왼쪽으로
-console.log(Either.filter(x => x > 0, Either.Left('err')).value);   // 'err'  실패는 그대로
+console.log(Either.filter(x => x > 0, Either.Right(-1)).isLeft());  // true   the value moved to Left
+console.log(Either.filter(x => x > 0, Either.Left('err')).value);   // 'err'  a failure passes through unchanged
 
-// 세 번째 인자로 걸러진 값을 어떻게 표시할지 정할 수 있다
-console.log(Either.filter(x => x > 0, Either.Right(-1), () => '조건 불충족').value);
-// '조건 불충족'
+// a third argument lets you decide how the filtered-out value is shown
+console.log(Either.filter(x => x > 0, Either.Right(-1), () => 'condition not met').value);
+// 'condition not met'
 
 let message = '';
 try { Filterable.lookup('either'); } catch (e) { message = e.message; }

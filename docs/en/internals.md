@@ -18,16 +18,16 @@ the inner type also has a `Semigroup`**.
 
 ```
 instance Semigroup a => Semigroup (Maybe a)
-         ^^^^^^^^^^^ 이 제약
+         ^^^^^^^^^^^ this constraint
 ```
 
 Haskell resolves this constraint at compile time. There is no compiler here, so
 **the constraint comes in as an argument** — that is the factory.
 
 ```javascript
-Semigroup.lookup('maybe')      // 없다 — 제약을 안 풀었다
-Semigroup.Maybe('array')       // 있다 — 안쪽을 array 로 못박았다
-Semigroup.lookup('maybe(array)')  // 팩토리를 부른 뒤에는 이것도 된다
+Semigroup.lookup('maybe')      // none — the constraint was never resolved
+Semigroup.Maybe('array')       // present — the inner type is pinned to array
+Semigroup.lookup('maybe(array)')  // also works, once the factory has been called
 ```
 
 ### There is one rule — it lives on the type class side
@@ -50,8 +50,8 @@ start.
 **Two — the name reads in type order.**
 
 ```
-Semigroup.Maybe('array')   →  Semigroup < Maybe < Array > >     맞다
-Maybe.Semigroup('array')   →  Maybe < Semigroup < Array > >     그런 값은 없다
+Semigroup.Maybe('array')   →  Semigroup < Maybe < Array > >     correct
+Maybe.Semigroup('array')   →  Maybe < Semigroup < Array > >     no such value
 ```
 
 `concat(Just([1]), Just([2]))` is `Just([1,2])`. It is not `Just(a Semigroup
@@ -79,9 +79,9 @@ value the instance's operations take as arguments**, and it must be the
 ```javascript
 const { Setoid, Functor, Semigroupoid } = FunFP;
 
-console.log(Setoid.lookup('date').type);        // 'Date'      대문자 — types.of(new Date())
+console.log(Setoid.lookup('date').type);        // 'Date'      capitalized — types.of(new Date())
 console.log(Functor.lookup('array').type);      // 'Array'
-console.log(Semigroupoid.lookup('maybe').type); // 'function'  Kleisli 합성이라 인자가 함수다
+console.log(Semigroupoid.lookup('maybe').type); // 'function'  Kleisli composition, so the argument is a function
 ```
 
 The last line is the trap. **The registry key and `.type` are not the same
@@ -114,11 +114,11 @@ const { Functor, Apply } = FunFP;
 const build = (fType, aType) => {
     const f = new Functor((g, x) => ({ value: g(x.value) }), fType);
     const a = new Apply(f, (ff, fa) => ({ value: ff.value(fa.value) }), aType);
-    return a.map === f.map;              // 겹이 벗겨졌나
+    return a.map === f.map;              // did the wrapper layer come off
 };
 
-console.log(build('Object', 'Object'));  // true   같으면 벗긴다
-console.log(build('object', 'Object'));  // false  대소문자만 달라도 안 벗긴다
+console.log(build('Object', 'Object'));  // true   same tag, so it unwraps
+console.log(build('object', 'Object'));  // false  even a case-only mismatch keeps the wrapper
 ```
 
 **The third case does not create a bug** — an extra check layer just stays on;
@@ -213,12 +213,12 @@ const { Maybe, Monoid } = FunFP;
 const merge = Monoid.Maybe('first');
 const pick = Monoid.lookup('maybe');
 
-console.log(merge.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — 안쪽을 합친 결과
-console.log(pick.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1  — 같다
+console.log(merge.concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1  — the merged inner result
+console.log(pick.concat(Maybe.Just(1), Maybe.Just(2)).value);   // 1  — same here
 
 try { merge.concat(Maybe.Just(1), Maybe.Just('a')); }
-catch (e) { console.log('merge: throws'); }                     // merge: throws   이종이면 던진다
-console.log(pick.concat(Maybe.Just(1), Maybe.Just('a')).value); // 1  — 안 열어서 통과
+catch (e) { console.log('merge: throws'); }                     // merge: throws   mismatched types throw
+console.log(pick.concat(Maybe.Just(1), Maybe.Just('a')).value); // 1  — never opened, so it passes
 ```
 
 **Use the first one for "merging," the second for "picking."**
@@ -247,9 +247,9 @@ would make `registerAs` silently overwrite `ArrayMonoid`.
 ```javascript
 const { Semigroup, Monoid, Plus, Maybe } = FunFP;
 
-console.log(Monoid.lookup('maybe').empty().isNothing());        // true   Plus 에서 유도된 것
+console.log(Monoid.lookup('maybe').empty().isNothing());        // true   derived from Plus
 console.log(Semigroup.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1
-console.log(Plus.lookup('maybe').zero().isNothing());           // true  같은 연산이다
+console.log(Plus.lookup('maybe').zero().isNothing());           // true  the same operation
 ```
 
 There is a reason `register()` is not used for the derivation. `register()` also
@@ -275,10 +275,10 @@ At one point `Identity`, `Const`, and plain objects were **all three `'Object'`*
 Back then they bled into each other (verified):
 
 ```
-Identity.map 에 Const 캐리어를   → 통과
-Const.map 에 Identity 캐리어를   → 통과
-Identity.map 에 그냥 { a: 1 } 을 → 통과 (결과가 {} 였다)
-ObjectFoldable 에 Identity 를    → 통과
+a Const carrier into Identity.map    → passed
+an Identity carrier into Const.map   → passed
+a plain { a: 1 } into Identity.map   → passed (the result was {})
+Identity into ObjectFoldable         → passed
 ```
 
 Now all four are rejected. **If there is an inner value type, the type must be
@@ -302,13 +302,13 @@ So `Identity` sits at the same level as `Maybe`.
 const { Identity } = FunFP;
 
 const id = Identity.of(5);
-console.log(id.constructor.name);          // 'Identity'   객체 리터럴이면 'Object' 다
+console.log(id.constructor.name);          // 'Identity'   a plain object literal would say 'Object'
 console.log(id instanceof Identity);       // true
 console.log(id.map(x => x * 2).value);     // 10
 console.log(id.extract());                 // 5
 
 console.log(Identity.isIdentity(id));                                   // true
-console.log(Identity.isIdentity({ value: 5, _typeName: 'Identity' }));  // false  베낀 것
+console.log(Identity.isIdentity({ value: 5, _typeName: 'Identity' }));  // false  a copy, not the real thing
 ```
 
 **Only `isIdentity` looks at the symbol.** [`types.of`](#type) reads the
@@ -318,7 +318,7 @@ type-class methods.
 ```javascript
 const { Functor } = FunFP;
 console.log(Functor.lookup('identity').map(x => x + 1, { value: 5, _typeName: 'Identity' }).value);
-// 6   ← 통과한다. 문자열은 베낄 수 있다.
+// 6   ← passes. the string can be copied.
 ```
 
 A mechanism that pulled the symbol into the value-check path was built and then
@@ -340,12 +340,12 @@ opposite of `Identity`'s, though.
 const { Applicative, Wander, Monoid } = FunFP;
 
 const c = Applicative.Const('array').wrap([1]);
-console.log(c.constructor.name);   // 'Const'          객체 리터럴이면 'Object' 다
+console.log(c.constructor.name);   // 'Const'          a plain object literal would say 'Object'
 console.log(c._typeName);          // 'Const(array)'
 
 const p = Wander.Forget(Monoid.lookup('array')).wrap(a => [a]);
 console.log(p.constructor.name);   // 'Forget'
-console.log(typeof p.run);         // 'function'       안에 든 것은 함수다
+console.log(typeof p.run);         // 'function'       what it holds is a function
 ```
 
 None of the three has a public entry point — only `fp.Identity` sits at the top
@@ -381,8 +381,8 @@ const { Applicative, Semigroup, Monoid } = FunFP;
 const sum = new Monoid(new Semigroup((a, b) => a + b, 'number'), () => 0, 'number');
 const product = new Monoid(new Semigroup((a, b) => a * b, 'number'), () => 1, 'number');
 const A = Applicative.Const(sum), B = Applicative.Const(product);
-if (A.wrap(2)._typeName === B.wrap(3)._typeName) throw new Error('익명 모노이드 태그가 안 갈렸다');
-console.log(A.wrap(2)._typeName !== B.wrap(3)._typeName);   // true — 서로 다른 태그라 안 섞인다
+if (A.wrap(2)._typeName === B.wrap(3)._typeName) throw new Error('anonymous monoid tags did not split');
+console.log(A.wrap(2)._typeName !== B.wrap(3)._typeName);   // true — different tags, so they do not mix
 ```
 
 This number is not a registry lookup key, it is **for telling carriers apart at
@@ -456,9 +456,9 @@ was one, and that is why its `.type` was `'function'` — **the same tag** as
 All four of these used to pass (verified, before 2026-08-15):
 
 ```
-Forget 인스턴스에 평범한 함수 x=>x*2 를    → 통과
-function 인스턴스에 Forget 캐리어를        → 통과
-Forget<array>.left 가 가지에 따라 6 과 [] → 둘을 concat 하면 그제야 던진다
+a plain function x=>x*2 into the Forget instance   → passed
+a Forget carrier into the function instance        → passed
+Forget<array>.left branching to 6 and [] → only concat-ing the two throws
 ```
 
 Now the carrier is `{ run, _typeName: 'Forget(array)' }`, and `wrap`/`unwrap` are
@@ -470,8 +470,8 @@ value, it fails right there.** Before, only the Traversal path caught this —
 `first`:
 
 ```
-foldMapOf('array', traversed('array'), x => x*2, [1,2])  → 던졌다   (Traversal)
-foldMapOf('array', prop('a'),          x => x*2, {a:3})  → 6 이었다 (Lens)
+foldMapOf('array', traversed('array'), x => x*2, [1,2])  → threw     (Traversal)
+foldMapOf('array', prop('a'),          x => x*2, {a:3})  → was 6     (Lens)
 ```
 
 ```javascript
@@ -504,7 +504,7 @@ const { Optics } = FunFP;
 
 const doubled = Optics.Iso(c => c * 2, x => x / 2);
 console.log(Optics.view(doubled, 21));                  // 42
-console.log(Optics.review(doubled, 42));                // 21   Lens 로는 안 되는 것
+console.log(Optics.review(doubled, 42));                // 21   a Lens cannot do this
 ```
 
 The law is lossless conversion — `from(to(s)) === s`, `to(from(a)) === a`.
@@ -524,7 +524,7 @@ just the first value.
 const { Optics } = FunFP;
 
 const each = Optics.traversed('array');
-console.log(Optics.view(each, [7]));                       // 7   1대상이면 된다
+console.log(Optics.view(each, [7]));                       // 7   fine with exactly one target
 try { Optics.view(each, [1, 2, 3]); }
 catch (e) { console.log(e.message); }
 // 'view: expected exactly one target, got 3 — use preview or toList'
@@ -550,7 +550,7 @@ no matter what an array holds.
 const { Optics } = FunFP;
 const { preview, traversed } = Optics;
 
-console.log(preview(traversed('array'), [1, 'a']).value);   // 1   섞여 있어도 첫 번째는 답한다
+console.log(preview(traversed('array'), [1, 'a']).value);   // 1   still answers with the first, even mixed
 console.log(preview(traversed('array'), []).isNothing());   // true
 ```
 
@@ -572,12 +572,12 @@ too.
 const { Strong, Choice, Wander, Either } = FunFP;
 
 const S = Strong.lookup('function');
-console.log(S.first(x => x * 10)([3, 'c']));    // [ 30, 'c' ]   왼쪽만 건드린다
-console.log(S.second(x => x * 10)(['c', 3]));   // [ 'c', 30 ]   오른쪽만 건드린다
+console.log(S.first(x => x * 10)([3, 'c']));    // [ 30, 'c' ]   touches only the left
+console.log(S.second(x => x * 10)(['c', 3]));   // [ 'c', 30 ]   touches only the right
 
 const W = Wander.lookup('function');
-console.log(W.left(x => x * 10)(Either.Left(4)).value);    // 40   Left 만
-console.log(W.left(x => x * 10)(Either.Right(4)).value);   // 4    Right 는 통과
+console.log(W.left(x => x * 10)(Either.Left(4)).value);    // 40   Left only
+console.log(W.left(x => x * 10)(Either.Right(4)).value);   // 4    Right passes through
 ```
 
 **`Tagged` only exists under `Choice`.** It is missing from `Strong` and
@@ -666,7 +666,7 @@ const { StateT, Functor, Monad } = FunFP;
 
 const ST = StateT('maybe');
 console.log(Functor.lookup('statet(maybe)').type);   // 'StateT(Maybe)'
-console.log(Monad.lookup('statet(maybe)') === Monad.lookup('statet(maybe)'));  // true  캐시된다
+console.log(Monad.lookup('statet(maybe)') === Monad.lookup('statet(maybe)'));  // true  it's cached
 ```
 
 ### Why `M` must be passed as a string
@@ -689,7 +689,7 @@ constructor **takes the `Setoid` it is to be paired with** — the same shape as
 const { Ord, Setoid } = FunFP;
 
 const O = Ord.lookup('number');
-console.log(O.lte(1, 2), O.equals(1, 1));   // true true   한 인스턴스가 둘 다 진다
+console.log(O.lte(1, 2), O.equals(1, 1));   // true true   one instance carries both
 console.log(O instanceof Setoid);           // true
 ```
 
@@ -705,10 +705,10 @@ character equality would break that law.
 const { Ord, Setoid } = FunFP;
 
 const byLength = Ord.lookup('StringLengthOrd');
-console.log(byLength.lte('ab', 'cd'), byLength.lte('cd', 'ab'));  // true true  같은 자리
-console.log(byLength.equals('ab', 'cd'));                          // true   그래서 같다
+console.log(byLength.lte('ab', 'cd'), byLength.lte('cd', 'ab'));  // true true  same slot
+console.log(byLength.equals('ab', 'cd'));                          // true   so they are equal
 
-console.log(Setoid.lookup('string').equals('ab', 'cd'));           // false  글자 동등은 다르다
+console.log(Setoid.lookup('string').equals('ab', 'cd'));           // false  literal equality disagrees
 ```
 
 That is why `StringLengthOrd` and `StringLocaleOrd` do not reuse `StringSetoid`
@@ -719,8 +719,8 @@ decomposed forms as equal.
 ```javascript
 const { Setoid } = FunFP;
 
-const nfc = '\u00e9';    // é  완성형 (한 글자)
-const nfd = 'e\u0301';   // é  조합형 (e + 결합 악센트)
+const nfc = '\u00e9';    // é  precomposed (one code point)
+const nfd = 'e\u0301';   // é  decomposed (e + combining accent)
 console.log(Setoid.lookup('string').equals(nfc, nfd));               // false
 console.log(Setoid.lookup('StringLocaleSetoid').equals(nfc, nfd));   // true
 ```
@@ -760,8 +760,8 @@ console.log(S.equals(Maybe.Just(1), Maybe.Just(1)));    // true
 console.log(S.equals(Maybe.Just(1), Maybe.Nothing()));  // false
 
 console.log(Setoid.lookup('array(number)').equals([1, 2], [1, 3]));   // false
-console.log(Ord.lookup('maybe(number)').lte(Maybe.Nothing(), Maybe.Just(1)));  // true  Nothing 이 가장 작다
-console.log(Ord.lookup('array(number)').lte([1, 2], [1, 3]));         // true  사전식
+console.log(Ord.lookup('maybe(number)').lte(Maybe.Nothing(), Maybe.Just(1)));  // true  Nothing sorts smallest
+console.log(Ord.lookup('array(number)').lte([1, 2], [1, 3]));         // true  lexicographic
 ```
 
 ### `Either` has two slots, so it takes two comparators
@@ -776,11 +776,11 @@ here is our own key format.
 const { Setoid, Either } = FunFP;
 
 const S = Setoid.lookup('either(string,number)');
-console.log(S.equals(Either.Left('a'), Either.Left('a')));   // true   왼쪽은 문자열로
-console.log(S.equals(Either.Right(1), Either.Right(1)));     // true   오른쪽은 숫자로
+console.log(S.equals(Either.Left('a'), Either.Left('a')));   // true   Left compares as a string
+console.log(S.equals(Either.Right(1), Either.Right(1)));     // true   Right compares as a number
 console.log(S.equals(Either.Left('a'), Either.Right(1)));    // false
 
-// 중첩도 됩니다 — 쉼표는 최상위에서만 자릅니다
+// nesting works too — the comma only splits at the top level
 console.log(Setoid.lookup('either(maybe(number),array(string))')
     .equals(Either.Right(['a']), Either.Right(['a'])));      // true
 ```
@@ -806,10 +806,10 @@ const { Setoid } = FunFP;
 
 const S = Setoid.Struct({ name: 'string', age: 'number' });
 console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30 }));        // true
-console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30, x: 1 }));  // false  초과 필드도 거부
-console.log(S === Setoid.Struct({ age: 'number', name: 'string' }));          // true   내부 정규화 캐시
+console.log(S.equals({ name: 'A', age: 30 }, { name: 'A', age: 30, x: 1 }));  // false  extra fields are rejected too
+console.log(S === Setoid.Struct({ age: 'number', name: 'string' }));          // true   normalized internally, so it's cached
 
-// 중첩은 팩토리를 겹쳐 쓴다
+// nesting just layers the factory
 const U = Setoid.Struct({ users: Setoid.Array(Setoid.Struct({ name: 'string' })) });
 console.log(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] })); // true
 ```
@@ -855,8 +855,8 @@ breaks for addition is associativity, and its inverse only breaks at infinity
 const { Semigroup, Group } = FunFP;
 
 const S = Semigroup.lookup('number'), G = Group.lookup('number');
-console.log(S.concat(0.1, G.invert(0.1)));            // 0   유한한 수의 역원은 정확하다
-console.log(S.concat(Infinity, G.invert(Infinity)));  // NaN   무한대는 아니다
+console.log(S.concat(0.1, G.invert(0.1)));            // 0   the inverse is exact for finite numbers
+console.log(S.concat(Infinity, G.invert(Infinity)));  // NaN   but not for infinity
 ```
 
 **The law gate cannot catch this — the sample values are all safe.** The number
@@ -889,10 +889,10 @@ this is not a library defect.
 const { Group } = FunFP;
 
 const G = Group.lookup('NumberProductGroup');
-console.log(G.concat(2, G.invert(2)));    // 1     — 성립
-console.log(G.concat(-3, G.invert(-3)));  // 1     — 성립
-console.log(G.concat(49, G.invert(49)));  // 0.9999999999999999   어긋난다
-console.log(G.concat(0, G.invert(0)));    // NaN   — 0 은 역원이 없다
+console.log(G.concat(2, G.invert(2)));    // 1     — holds
+console.log(G.concat(-3, G.invert(-3)));  // 1     — holds
+console.log(G.concat(49, G.invert(49)));  // 0.9999999999999999   breaks
+console.log(G.concat(0, G.invert(0)));    // NaN   — 0 has no inverse
 ```
 
 The addition side does not have this problem **for finite values** — `a + (-a)`
@@ -914,8 +914,8 @@ so it doesn't fall under the group over numbers.
 const { Group } = FunFP;
 
 const G = Group.lookup('NumberSumGroup');
-if (!Number.isNaN(G.concat(Infinity, G.invert(Infinity)))) throw new Error('Infinity 역원이 생겼다');
-console.log(G.concat(Infinity, G.invert(Infinity)));  // NaN — 무한대는 역원이 없다
+if (!Number.isNaN(G.concat(Infinity, G.invert(Infinity)))) throw new Error('Infinity got an inverse');
+console.log(G.concat(Infinity, G.invert(Infinity)));  // NaN — infinity has no inverse
 ```
 
 **If exact division is needed, use a rational or decimal type instead of
@@ -935,9 +935,9 @@ always false), so it falls outside the total order.
 const { Setoid, Ord } = FunFP;
 
 const eq = Setoid.lookup('number'), ord = Ord.lookup('number');
-console.log(eq.equals(2, 2), ord.lte(2, 2));       // true true — 유한한 수는 정상
-if (eq.equals(NaN, NaN)) throw new Error('NaN 이 반사성을 지켰다');
-console.log(eq.equals(NaN, NaN));                   // false — NaN 은 자기와도 같지 않다
+console.log(eq.equals(2, 2), ord.lte(2, 2));       // true true — finite numbers behave normally
+if (eq.equals(NaN, NaN)) throw new Error('NaN kept reflexivity');
+console.log(eq.equals(NaN, NaN));                   // false — NaN is not even equal to itself
 ```
 
 `Object.is(NaN, NaN)` is true, which looks like a fix, but switching to it would
@@ -955,9 +955,9 @@ comonad only holds over NonEmptyArray (a never-empty array).
 const { Comonad } = FunFP;
 
 const C = Comonad.lookup('array');
-console.log(C.extract([1, 2]));            // 1 — 첫 원소
-if (C.extract([]) !== undefined) throw new Error('빈 배열에서 값이 나왔다');
-console.log(C.extract([]));                // undefined — 꺼낼 것이 없다
+console.log(C.extract([1, 2]));            // 1 — the first element
+if (C.extract([]) !== undefined) throw new Error('a value came out of an empty array');
+console.log(C.extract([]));                // undefined — nothing to pull out
 ```
 
 That is why the law gate (`tests/staticland-laws.test.js`)'s `Comonad` check
@@ -979,12 +979,12 @@ T j k) → T i k`, where the first argument (i→j) takes the input first, so
 const { Semigroupoid, compose, pipe } = FunFP;
 
 const A = x => x + 'A', B = x => x + 'B';
-// 이 라이브러리: 우→좌 (fp.compose 와 같은 방향)
-if (Semigroupoid.lookup('function').compose(A, B)('_') !== '_BA') throw new Error('compose 방향이 바뀌었다');
-console.log(Semigroupoid.lookup('function').compose(A, B)('_'));  // '_BA' — B 먼저, 그다음 A
-// Static Land 명세의 방향이 필요하면 pipe 를 쓰십시오 — 그것이 명세의 compose 와 같습니다
-if (pipe(A, B)('_') !== compose(B, A)('_')) throw new Error('pipe ≠ 명세 compose');
-console.log(pipe(A, B)('_'));   // '_AB' — 명세 compose(A, B) 와 같은 방향
+// this library: right-to-left (same direction as fp.compose)
+if (Semigroupoid.lookup('function').compose(A, B)('_') !== '_BA') throw new Error('compose direction flipped');
+console.log(Semigroupoid.lookup('function').compose(A, B)('_'));  // '_BA' — B first, then A
+// if you need the Static Land spec's direction, use pipe — it matches the spec's compose
+if (pipe(A, B)('_') !== compose(B, A)('_')) throw new Error('pipe ≠ spec compose');
+console.log(pipe(A, B)('_'));   // '_AB' — same direction as the spec's compose(A, B)
 ```
 
 **Why the spec was not followed — this is a deliberate convention choice, not a
@@ -1104,17 +1104,17 @@ depth does not accumulate.
 const { ChainRec, Task } = FunFP;
 
 const C = ChainRec.lookup('task');
-let result = '안 열림';
+let result = 'not opened';
 C.chainRec(
     (next, done, v) => v < 50000 ? C.map(next, Task.of(v + 1)) : C.map(done, Task.of(v)),
     0
 ).fork(e => { result = 'err: ' + e; }, v => { result = v; });
-if (result !== 50000) throw new Error('동기 5만 걸음이 안 돌았다: ' + result);
+if (result !== 50000) throw new Error('synchronous 50,000 steps did not complete: ' + result);
 console.log(result);   // 50000
 ```
 
 This example is itself the regression test — revert to the recursive
-implementation and `result` stays `'안 열림'`, throwing right here. The same
+implementation and `result` stays `'not opened'`, throwing right here. The same
 check runs against all four registered instances in
 `tests/staticland-laws.test.js`'s `ChainRec` law too.
 
@@ -1132,12 +1132,12 @@ const { ChainRec, Task } = FunFP;
 const C = ChainRec.lookup('task');
 const log = [];
 C.chainRec((next, done, i) => new Task((_, res) => {
-    log.push('걸음' + i);
+    log.push('step' + i);
     res(i < 1 ? next(i + 1) : done(i));
-    log.push('정리' + i);   // resolve 뒤의 코드 — 옛 구현이라면 맨 끝에 역순으로 왔다
+    log.push('cleanup' + i);   // code after resolve — the old implementation ran this in reverse order, at the very end
 }), 0).fork(() => {}, () => {});
-if (log.join(',') !== '걸음0,정리0,걸음1,정리1') throw new Error('순서가 다르다: ' + log.join(','));
-console.log(log.join(','));   // 걸음0,정리0,걸음1,정리1
+if (log.join(',') !== 'step0,cleanup0,step1,cleanup1') throw new Error('order differs: ' + log.join(','));
+console.log(log.join(','));   // step0,cleanup0,step1,cleanup1
 ```
 
 ### Steps outside spec are rejected (owner's decision, 2026-08-19)
@@ -1183,7 +1183,7 @@ const { ChainRec, Task } = FunFP;
 
 ChainRec.lookup('task')
     .chainRec(() => Task.of({ tag: 'weird', value: 99 }), 0)
-    .fork(e => console.log(e.message), v => console.log('성공해버림', v));
+    .fork(e => console.log(e.message), v => console.log('succeeded unexpectedly', v));
 // ChainRec.chainRec: step must be next(...) or done(...), got tag 'weird'
 ```
 
@@ -1204,9 +1204,9 @@ each alias via `registerAs`.
 ```javascript
 const { Semigroup, Monoid } = FunFP;
 
-// register() 로 들어간 것: 클래스 이름과 소문자 별칭 둘 다 같은 인스턴스를 준다
+// registered via register(): both the class name and the lowercase alias give the same instance
 console.log(Semigroup.lookup('array') === Semigroup.types.ArraySemigroup);   // true
-// registerAs 로 키를 직접 넣은 것: 조립 키 하나만 있다
+// registered via registerAs, key inserted directly: only the one assembled key exists
 console.log(Monoid.lookup('maybe') === Monoid.types['maybe']);   // true
 ```
 
@@ -1290,9 +1290,9 @@ says nothing about the range in between (ES2018–ES2021).
 
 ```
 ES2015 ─── ES2017 ─── ES2018 ─ ES2019 ─ ES2020 ─ ES2021 ─── ES2022
-  │           │          │  └───── 구글이 말이 없는 구간 ──┘      │
-  └─ 명시적으로 된다 ─────┘  ↑ 우리 상한                    파싱 에러 확인됨
-     (async/await 까지)                                  (#private, static 필드)
+  │           │          │  └───── the range Google is silent about ──┘      │
+  └─ explicitly works ─────┘  ↑ our ceiling                    confirmed parse error
+     (up to async/await)                                  (#private, static fields)
 ```
 
 **Not stepping into the range Google is silent about** is the defensible line.
@@ -1308,7 +1308,7 @@ something unverified.
 `??` is not the same as `||` — it lets `0`, `''`, `false` pass through. So
 instead of switching to `||`, only `undefined`/`null` are checked.
 
-```javascript no-run 문법 대조표일 뿐이라 실행할 것이 없다
+```javascript no-run just a syntax comparison table, nothing to run
 a.constructor?.name || 'object'      →  (a.constructor && a.constructor.name) || 'object'
 typeof instance?.type !== 'string'   →  !instance || typeof instance.type !== 'string'
 bucket.get(k) ?? { name: null }      →  let e = bucket.get(k); if (e === undefined || e === null) e = { name: null };

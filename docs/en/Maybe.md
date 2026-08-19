@@ -41,14 +41,14 @@ const getCity = user =>
         )
     );
 
-// 또는 Maybe.pipeK 사용 (더 가독성 좋음)
+// or use Maybe.pipeK (more readable)
 const getCityPipeK = Maybe.pipeK(
     u => u.address ? Maybe.of(u.address) : Maybe.Nothing(),
     a => a.city ? Maybe.of(a.city) : Maybe.Nothing()
 );
 
-// 또는 extra.path 사용
-extra.path('address.city')(user);  // Either 반환
+// or use extra.path
+extra.path('address.city')(user);  // returns an Either
 ```
 
 ## Construction
@@ -57,14 +57,14 @@ extra.path('address.city')(user);  // Either 반환
 import FunFP from 'fun-fp-js';
 const { Maybe } = FunFP;
 
-// 값으로 Just 생성
+// create a Just from a value
 const just = Maybe.of(5);           // Just(5)
 const alsoJust = Maybe.Just(5);     // Just(5)
 
-// Nothing 생성
+// create a Nothing
 const nothing = Maybe.Nothing();    // Nothing
 
-// null/undefined는 자동으로 Nothing (fromNullable 패턴)
+// null/undefined automatically become Nothing (the fromNullable pattern)
 const safe = val => val == null ? Maybe.Nothing() : Maybe.Just(val);
 safe(5);         // Just(5)
 safe(null);      // Nothing
@@ -80,7 +80,7 @@ const { Functor } = FunFP;
 const { map } = Functor.lookup('maybe');
 
 map(x => x * 2, Maybe.of(5));       // Just(10)
-map(x => x * 2, Maybe.Nothing());   // Nothing (함수 실행 안 됨)
+map(x => x * 2, Maybe.Nothing());   // Nothing (the function does not run)
 ```
 
 ### chain — avoid nesting (Monad)
@@ -100,8 +100,8 @@ chain(double, Maybe.Nothing());  // Nothing
 
 ```javascript
 Maybe.fold(
-    () => 'default',        // Nothing일 때
-    value => `Got: ${value}`,  // Just일 때
+    () => 'default',        // when it's Nothing
+    value => `Got: ${value}`,  // when it's Just
     Maybe.of(5)
 );
 // 'Got: 5'
@@ -117,7 +117,7 @@ Maybe.fold(
 ### The getOrElse pattern (built on fold)
 
 ```javascript
-// getOrElse는 fold로 구현
+// getOrElse is implemented with fold
 const getOrElse = (defaultVal, maybe) => 
     Maybe.fold(() => defaultVal, v => v, maybe);
 
@@ -145,7 +145,7 @@ const tail = arr => arr.length > 0 ? Maybe.of(arr.slice(1)) : Maybe.Nothing();
 head([1, 2, 3]);     // Just(1)
 head([]);            // Nothing
 
-// 체이닝
+// chaining
 head([1, 2, 3])
     .chain(x => head([x + 10, x + 20]))
     .map(x => x * 2);
@@ -160,7 +160,7 @@ const prop = key => obj =>
 
 const user = { name: 'Alice', address: { city: 'Seoul' } };
 
-// getOrElse 는 인스턴스 메서드가 아니다 — 위 "getOrElse 패턴" 의 헬퍼를 쓴다
+// getOrElse is not an instance method — use the helper from the "getOrElse pattern" section above
 const getOrElse = (defaultVal, maybe) => Maybe.fold(() => defaultVal, v => v, maybe);
 
 getOrElse('Unknown', prop('address')(user).chain(prop('city')));
@@ -184,7 +184,7 @@ const parseJson = str => {
     }
 };
 
-// getOrElse 는 인스턴스 메서드가 아니다 — 위 "getOrElse 패턴" 의 헬퍼를 쓴다
+// getOrElse is not an instance method — use the helper from the "getOrElse pattern" section above
 const getOrElse = (defaultVal, maybe) => Maybe.fold(() => defaultVal, v => v, maybe);
 
 getOrElse('UNKNOWN',
@@ -207,7 +207,7 @@ const validateLength = min => str =>
 const validatePattern = regex => str =>
     regex.test(str) ? Maybe.of(str) : Maybe.Nothing();
 
-// Maybe.pipeK로 검증 파이프라인 구성
+// build a validation pipeline with Maybe.pipeK
 const validateEmail = Maybe.pipeK(
     validateLength(5),
     validatePattern(/^.+@.+\..+$/)
@@ -231,7 +231,7 @@ validateEmail('');                   // Nothing
 
 ```javascript
 const maybeValue = Maybe.of(42);
-// Nothing에 에러 메시지 추가하고 싶을 때
+// when you want to attach an error message to Nothing
 Maybe.toEither('Value not found', maybeValue);
 
 Maybe.toEither('Not found', Maybe.of(5));    // Right(5)
@@ -262,7 +262,7 @@ Maybe.pipe(
     m => map(u => u.address, m),
     m => map(a => a.city, m)
 );
-// Just('Seoul') 또는 Nothing
+// Just('Seoul') or Nothing
 ```
 
 `Maybe.pipe` sits on top of the general-purpose combinator `pipeWhile` — `pipeWhile(Maybe.isJust)`
@@ -279,25 +279,25 @@ const { pipeWhile } = FunFP;
 
 const capped = pipeWhile(x => x < 100)(
     2,
-    x => x * 10,   // 2 → 20 (20 < 100, 계속)
-    x => x * 10,   // 20 → 200 (200 은 100 을 넘어 여기서 멈춤)
-    x => x + 1     // 건너뜀
+    x => x * 10,   // 2 → 20 (20 < 100, continues)
+    x => x * 10,   // 20 → 200 (200 exceeds 100, stops here)
+    x => x + 1     // skipped
 );
-if (capped !== 200) throw new Error('pipeWhile 이 멈추지 않았다: ' + capped);
+if (capped !== 200) throw new Error('pipeWhile did not stop: ' + capped);
 console.log(capped);   // 200
 
-// Maybe.pipe 와의 관계 — 같은 결과
+// relationship to Maybe.pipe — same result
 const halveEven = m => m.chain(x => (x % 2 === 0 ? Maybe.Just(x / 2) : Maybe.Nothing()));
 const viaPipe = Maybe.pipe(Maybe.of(8), halveEven, halveEven, halveEven);
 const viaWhile = pipeWhile(Maybe.isJust)(Maybe.of(8), halveEven, halveEven, halveEven);
-if (String(viaPipe) !== String(viaWhile)) throw new Error('둘이 어긋났다');
+if (String(viaPipe) !== String(viaWhile)) throw new Error('the two diverged');
 console.log(String(viaPipe));   // Just(1) — 8 → 4 → 2 → 1
 ```
 
 ### Maybe.pipeK — Kleisli composition (for chain)
 
 ```javascript
-// a -> Maybe b 형태의 함수들을 연결
+// chain functions of the form a -> Maybe b
 const getAddress = user => user.address ? Maybe.of(user.address) : Maybe.Nothing();
 const getCity = addr => addr.city ? Maybe.of(addr.city) : Maybe.Nothing();
 
@@ -316,12 +316,12 @@ alone.
 ```javascript
 const { Maybe } = FunFP;
 
-if (String(Maybe.Just(1)) !== 'Just(1)') throw new Error('Just 표기가 다르다');
-if (String(Maybe.Nothing()) !== 'Nothing') throw new Error('Nothing 표기가 다르다');
-if (String(Maybe.Just(Maybe.Just('a'))) !== 'Just(Just("a"))') throw new Error('중첩 표기가 다르다');
-if (JSON.stringify(Maybe.Just(1)) !== '{"value":1,"_typeName":"Maybe"}') throw new Error('JSON 이 달라졌다');
+if (String(Maybe.Just(1)) !== 'Just(1)') throw new Error('Just notation differs');
+if (String(Maybe.Nothing()) !== 'Nothing') throw new Error('Nothing notation differs');
+if (String(Maybe.Just(Maybe.Just('a'))) !== 'Just(Just("a"))') throw new Error('nested notation differs');
+if (JSON.stringify(Maybe.Just(1)) !== '{"value":1,"_typeName":"Maybe"}') throw new Error('JSON changed');
 console.log(`${Maybe.Just([1, 2])}`);   // Just([1,2])
 
-// 안의 값이 던지는 toString 을 가져도 표기는 안전하다
-if (String(Maybe.Just({ toString() { throw new Error('pb'); } })) !== 'Just([unprintable])') throw new Error('표기 보호막이 뚫렸다');
+// notation stays safe even when the inner value's toString throws
+if (String(Maybe.Just({ toString() { throw new Error('pb'); } })) !== 'Just([unprintable])') throw new Error('the notation safeguard was breached');
 ```

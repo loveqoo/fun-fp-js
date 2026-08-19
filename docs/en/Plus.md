@@ -6,7 +6,7 @@ A type class that adds an empty alternative (`zero`) to Alt.
 
 ## Definition
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 class Plus extends Alt {
     constructor(alt, zero, type, registry, ...aliases)
 }
@@ -22,7 +22,7 @@ Plus extends Alt, providing an identity element for the `alt` operation.
 
 ## Laws
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 // right identity
 Alt.alt(x, Plus.zero()) ≡ x
 
@@ -40,7 +40,7 @@ const { Maybe, Alt } = FunFP;
 
 const { alt } = Alt.lookup('maybe');
 
-// Maybe.Nothing()은 zero 역할
+// Maybe.Nothing() serves as zero
 alt(Maybe.Nothing(), Maybe.of(1));  // Just(1)
 alt(Maybe.of(1), Maybe.Nothing());  // Just(1)
 ```
@@ -50,7 +50,7 @@ alt(Maybe.of(1), Maybe.Nothing());  // Just(1)
 ```
 Alt ──> Plus ──> Alternative
          │
-         zero (항등원)
+         zero (identity element)
 ```
 
 ## You get a Monoid for free
@@ -65,7 +65,7 @@ name, for free.** The one exception is when the type already has its own
 const { Plus, Monoid, Maybe } = FunFP;
 
 console.log(Plus.lookup('maybe').alt(Maybe.Just(1), Maybe.Just(2)).value);      // 1
-console.log(Monoid.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1 — 같다
+console.log(Monoid.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value);  // 1 — same
 console.log(Monoid.lookup('maybe').empty().isNothing());                       // true
 ```
 

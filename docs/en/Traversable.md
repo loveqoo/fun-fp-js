@@ -12,7 +12,7 @@ pull that effect out to the outside**.
 For example:
 ```javascript
 [Maybe.of(1), Maybe.of(2), Maybe.of(3)]  // Array of Maybe
-// 를 뒤집어서
+// flips into
 Maybe.of([1, 2, 3])  // Maybe of Array
 ```
 
@@ -24,10 +24,10 @@ Maybe.of([1, 2, 3])  // Maybe of Array
 const users = [1, 2, 3];
 const fetchUser = id => Task.fromPromise(() => fetch(`/api/users/${id}`))();
 
-// map을 쓰면...
+// with map...
 const tasks = users.map(fetchUser);
-// [Task, Task, Task] - 배열 안에 Task들!
-// 이걸 어떻게 하나의 Task로 만들지?
+// [Task, Task, Task] - Tasks inside an array!
+// how do you turn this into a single Task?
 ```
 
 ### The fix: flip it with traverse
@@ -42,28 +42,28 @@ traverse(
     fetchUser,
     users
 );
-// Task([user1, user2, user3]) - 하나의 Task 안에 배열!
+// Task([user1, user2, user3]) - an array inside a single Task!
 ```
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 Traversable.traverse(Applicative, f, t): Applicative (Traversable b)
-// Applicative: 목표 Applicative 타입
-// f: a -> Applicative b (각 요소에 적용할 함수)
-// t: Traversable a (순회할 컨테이너)
+// Applicative: the target Applicative type
+// f: a -> Applicative b (the function applied to each element)
+// t: Traversable a (the container to traverse)
 ```
 
 ## Laws
 
 ### Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { traverse } = Traversable.lookup('array');
 traverse(Identity, Identity.of, t) === Identity.of(t)
 ```
 
 ### Naturality
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { traverse } = Traversable.lookup('array');
 traverse(G, compose(eta, f), t) === eta(traverse(F, f, t))
 ```
@@ -83,7 +83,7 @@ const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
 traverse(Applicative.lookup('maybe'), x => x, maybes);
 // Just([1, 2, 3])
 
-// 하나라도 Nothing이면 전체가 Nothing
+// if even one is Nothing, the whole thing is Nothing
 const hasNothing = [Maybe.of(1), Maybe.Nothing(), Maybe.of(3)];
 traverse(Applicative.lookup('maybe'), x => x, hasNothing);
 // Nothing
@@ -132,10 +132,10 @@ traverse(Applicative.lookup('task'), fetchUser, userIds).fork(
 import FunFP from 'fun-fp-js';
 const { sequence, Maybe, Applicative } = FunFP;
 
-// 이미 Maybe가 담긴 배열을 뒤집기
+// flip an array that already holds Maybes
 const maybes = [Maybe.of(1), Maybe.of(2), Maybe.of(3)];
 
-// sequence 의 첫 인자는 Traversable 인스턴스다
+// sequence's first argument is the Traversable instance
 sequence(Traversable.lookup('array'), Applicative.lookup('maybe'), maybes);
 // Just([1, 2, 3])
 ```
@@ -174,7 +174,7 @@ const dates = ['2023-01-01', '2023-06-15', '2023-12-31'];
 
 const { traverse } = Traversable.lookup('array');
 
-// fold 는 정적 메서드다 — Either.fold(onLeft, onRight, either)
+// fold is a static method — Either.fold(onLeft, onRight, either)
 Either.fold(
     err => console.error('Parse error:', err),
     parsed => console.log('Parsed dates:', parsed),
@@ -198,7 +198,7 @@ const fields = [user.name, user.email, user.phone];
 const result = traverse(Applicative.lookup('maybe'), x => x, fields);
 
 map(([name, email, phone]) => ({ name, email, phone }), result);
-// Nothing (phone이 Nothing이므로)
+// Nothing (because phone is Nothing)
 ```
 
 ## traverse vs map
@@ -212,10 +212,10 @@ map(([name, email, phone]) => ({ name, email, phone }), result);
 ```javascript
 const MaybeApplicative = Applicative.lookup('maybe');
 const { traverse } = Traversable.lookup('array');
-// map: 구조 유지
+// map: keeps the structure
 [1, 2, 3].map(x => x * 2)  // [2, 4, 6]
 
-// traverse: 구조 뒤집기
+// traverse: flips the structure
 traverse(MaybeApplicative, x => Maybe.of(x * 2), [1, 2, 3])
 // Maybe([2, 4, 6])
 ```

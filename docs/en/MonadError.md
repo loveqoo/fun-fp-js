@@ -15,20 +15,20 @@ written once and applied to any type.
 ```javascript
 const { MonadError, Task, Either } = FunFP;
 
-// 같은 retry 를 두 타입에 — 이것이 타입 클래스의 값어치다
+// the same retry, applied to two types — that's what a type class is worth
 const fallbackTo = (ME, backup) => program => ME.handleError(() => backup, program);
 
 const T = MonadError.lookup('task');
-fallbackTo(T, Task.of('예비'))(Task.rejected(new Error('실패')))
+fallbackTo(T, Task.of('backup'))(Task.rejected(new Error('failure')))
     .fork(console.error, v => {
-        if (v !== '예비') throw new Error('복구가 틀렸다');
-        console.log(v);   // 예비
+        if (v !== 'backup') throw new Error('recovery is wrong');
+        console.log(v);   // backup
     });
 
 const E = MonadError.lookup('either');
-const r = fallbackTo(E, Either.of('예비'))(Either.Left('실패'));
-if (r.value !== '예비') throw new Error('복구가 틀렸다');
-console.log(r.value);     // 예비
+const r = fallbackTo(E, Either.of('backup'))(Either.Left('failure'));
+if (r.value !== 'backup') throw new Error('recovery is wrong');
+console.log(r.value);     // backup
 ```
 
 ## Two operations
@@ -37,15 +37,15 @@ console.log(r.value);     // 예비
 const { MonadError, Either } = FunFP;
 const ME = MonadError.lookup('either');
 
-// raiseError — 실패를 만든다 (of 의 실패판)
-console.log(ME.raiseError('문제').isLeft());   // true
+// raiseError — creates a failure (of's failure counterpart)
+console.log(ME.raiseError('problem').isLeft());   // true
 
-// handleError — 실패를 잡는다 (chain 의 실패판). 핸들러는 같은 타입을 돌려준다
-console.log(ME.handleError(e => Either.of('복구:' + e), ME.raiseError('문제')).value);
-// 복구:문제
+// handleError — catches a failure (chain's failure counterpart). The handler returns the same type
+console.log(ME.handleError(e => Either.of('recovered:' + e), ME.raiseError('problem')).value);
+// recovered:problem
 
-// 성공은 건드리지 않는다
-console.log(ME.handleError(e => Either.of('안 됨'), ME.of(7)).value);   // 7
+// success is left untouched
+console.log(ME.handleError(e => Either.of('not used'), ME.of(7)).value);   // 7
 ```
 
 ## Laws

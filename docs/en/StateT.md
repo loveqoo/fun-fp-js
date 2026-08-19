@@ -34,23 +34,23 @@ chain is **stack-safe** no matter how long it gets.
 ### The problem: wiring state and failure together by hand buries the code in plumbing
 
 ```javascript no-run 문제 상황 — 일부러 나쁜 코드
-// 상태를 넘기면서 실패도 다뤄야 한다
+// have to thread state through while also handling failure
 function step1(state) {
     const value = state.count;
-    if (value > 10) return null;              // 실패
+    if (value > 10) return null;              // failure
     return [value * 2, { ...state, count: value + 1 }];
 }
 
 function step2(state) {
     const prev = step1(state);
-    if (prev === null) return null;           // 실패 전파 — 매 단계 반복
+    if (prev === null) return null;           // propagate failure — repeated at every step
     const [v, s] = prev;
     if (v < 0) return null;
     return [v + 1, { ...s, count: s.count + 1 }];
 }
 
-// 단계가 늘어날수록 null 체크와 구조분해가 늘어난다.
-// 진짜 로직은 `value * 2` 한 줄인데 나머지가 전부 배관이다.
+// null checks and destructuring pile up as steps increase.
+// The real logic is one line, `value * 2` — the rest is all plumbing.
 ```
 
 ### The fix: let the type handle state threading and failure propagation
@@ -65,7 +65,7 @@ const step = ST.get
     .chain(v => ST.modify(s => s + 1).chain(() => ST.of(v)));
 
 console.log(JSON.stringify(ST.runState(3, step).value));   // [6, 4]
-console.log(ST.runState(20, step).isNothing());            // true — 즉시 중단
+console.log(ST.runState(20, step).isNothing());            // true — aborts immediately
 ```
 
 Just chain `chain` calls together. State flows automatically, and the moment a
@@ -95,12 +95,12 @@ const { StateT, Maybe } = FunFP;
 const A = StateT('maybe');   // StateT(Maybe)
 const B = StateT(Maybe);     // StateT(M1)
 
-console.log(A === B);                  // false — 다른 클래스
+console.log(A === B);                  // false — different classes
 console.log(A.of(1)._typeName);        // 'StateT(Maybe)'
 console.log(B.of(1)._typeName);        // 'StateT(M1)'
 
 try {
-    A.runState(0, B.of(1));            // 섞으면 거부된다
+    A.runState(0, B.of(1));            // mixing them is rejected
 } catch (e) {
     console.log(e.constructor.name);   // TypeError
 }
@@ -111,7 +111,7 @@ Building it as a string also makes it findable in the type class registry.
 ```javascript
 const { StateT, Functor, Monad } = FunFP;
 
-StateT('maybe');   // 등록을 유발한다
+StateT('maybe');   // triggers registration
 
 console.log(typeof Functor.lookup('statet(maybe)').map);   // 'function'
 console.log(typeof Monad.lookup('statet(maybe)').chain);   // 'function'
@@ -143,10 +143,10 @@ const { StateT, Maybe } = FunFP;
 
 const ST = StateT('maybe');
 
-// of: 그냥 값
+// of: just a plain value
 console.log(JSON.stringify(ST.runState(0, ST.of(42)).value));        // [42, 0]
 
-// lift: Maybe에 담긴 값 — Nothing이면 전체가 Nothing
+// lift: a value wrapped in Maybe — Nothing makes the whole thing Nothing
 console.log(JSON.stringify(ST.runState(0, ST.lift(Maybe.Just(42))).value));  // [42, 0]
 console.log(ST.runState(0, ST.lift(Maybe.Nothing())).isNothing());           // true
 ```
@@ -159,7 +159,7 @@ const { StateT } = FunFP;
 const ST = StateT('maybe');
 
 try {
-    ST.runState(0, ST.of(1).chain(() => 42));   // Transformer가 아닌 값
+    ST.runState(0, ST.of(1).chain(() => 42));   // not a Transformer value
 } catch (e) {
     console.log(e.constructor.name);            // TypeError
 }
@@ -170,8 +170,8 @@ try {
 ```javascript
 const { StateT } = FunFP;
 
-const ST = StateT('maybe');    // 실패할 수 있는 상태 전이
-const STT = StateT('task');    // 비동기 상태 전이
+const ST = StateT('maybe');    // a state transition that can fail
+const STT = StateT('task');    // an asynchronous state transition
 
 console.log(ST.of(1)._typeName);    // 'StateT(Maybe)'
 console.log(STT.of(1)._typeName);   // 'StateT(Task)'
@@ -234,10 +234,10 @@ const { StateT } = FunFP;
 const ST = StateT('maybe');
 const program = ST.get.chain(n => ST.put(n + 1).chain(() => ST.of(n * 10)));
 
-console.log(JSON.stringify(ST.runState(5, program).value));   // [50, 6] — 값과 상태 둘 다
-console.log(JSON.stringify(program.run(5).value));            // [50, 6] — 인스턴스 메서드
-console.log(JSON.stringify(program.eval(5).value));           // 50 — 값만
-console.log(JSON.stringify(program.exec(5).value));           // 6  — 상태만
+console.log(JSON.stringify(ST.runState(5, program).value));   // [50, 6] — both the value and the state
+console.log(JSON.stringify(program.run(5).value));            // [50, 6] — the instance method
+console.log(JSON.stringify(program.eval(5).value));           // 50 — the value only
+console.log(JSON.stringify(program.exec(5).value));           // 6  — the state only
 ```
 
 ## Type checking
@@ -269,16 +269,16 @@ const ST = StateT('maybe');
 
 const take = n => ST.get.chain(stock =>
     stock < n
-        ? ST.lift(Maybe.Nothing())               // 재고 부족 — 여기서 끝
+        ? ST.lift(Maybe.Nothing())               // out of stock — stop here
         : ST.put(stock - n).chain(() => ST.of(n))
 );
 
 const order = take(3).chain(a => take(5).chain(b => ST.of(a + b)));
 
-// 재고 10: 3 + 5 = 8개 출고, 2개 남음
+// stock 10: ships 3 + 5 = 8, 2 remain
 console.log(JSON.stringify(order.run(10).value));   // [8, 2]
 
-// 재고 6: 3개는 되지만 5개에서 실패 — 상태 변화도 남지 않는다
+// stock 6: 3 succeeds but 5 fails — even the state change doesn't survive
 console.log(order.run(6).isNothing());              // true
 ```
 
@@ -304,7 +304,7 @@ const program = fetchAndCount('/a')
     .chain(len1 => fetchAndCount('/b').chain(len2 => ST.of(len1 + len2)));
 
 const [total, calls] = await run(program.run(0));
-console.log('총 길이', total, '/ 호출 횟수', calls);   // 총 길이 20 / 호출 횟수 2
+console.log('total length', total, '/ call count', calls);   // total length 20 / call count 2
 ```
 
 ### 3. Parser state (remaining input as state)
@@ -323,7 +323,7 @@ const item = ST.get.chain(rest =>
 const three = item.chain(a => item.chain(b => item.chain(c => ST.of([a, b, c]))));
 
 console.log(JSON.stringify(three.run('abcd').value));   // [['a','b','c'], 'd']
-console.log(three.run('ab').isNothing());               // true — 입력 부족
+console.log(three.run('ab').isNothing());               // true — not enough input
 ```
 
 ### 4. ID generator

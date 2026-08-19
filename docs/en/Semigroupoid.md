@@ -12,9 +12,9 @@ Semigroupoid is a type that provides a **compose operation**. It is a
 generalization of function composition.
 
 ```javascript
-// 함수 합성
+// function composition
 const compose = (f, g) => x => f(g(x))
-// f ∘ g: 먼저 g를 실행하고 결과를 f에 전달
+// f ∘ g: runs g first, then passes the result to f
 ```
 
 > **Mind the direction** — this `compose` runs right-to-left (the math /
@@ -27,7 +27,7 @@ const compose = (f, g) => x => f(g(x))
 ### Laws
 
 #### Associativity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 compose(f, compose(g, h)) === compose(compose(f, g), h)
 ```
 
@@ -55,20 +55,20 @@ combined(5);  // addOne(double(5)) = addOne(10) = 11
 Category adds an **identity element (`id`)** to Semigroupoid.
 
 ```javascript
-// id: 아무것도 안 하는 함수
+// id: a function that does nothing
 const id = x => x;
 ```
 
 ### Laws
 
 #### Left Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const id = x => x;
 compose(id, f) === f
 ```
 
 #### Right Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 compose(f, id) === f
 ```
 
@@ -80,12 +80,12 @@ const { Category } = FunFP;
 
 const { compose, id } = Category.lookup('function');
 
-// id는 항등원
+// id is the identity element
 id(5);  // 5
 
-// 합성해도 변화 없음
-compose(id, double);  // double과 동일
-compose(double, id);  // double과 동일
+// composing with it changes nothing
+compose(id, double);  // same as double
+compose(double, id);  // same as double
 ```
 
 ## Practical applications

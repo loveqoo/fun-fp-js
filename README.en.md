@@ -34,11 +34,11 @@ const { Validation, Applicative } = fp;
 const A = Applicative.lookup('validation');
 
 const notEmpty = (field, s) => s.length > 0
-    ? Validation.Valid(s) : Validation.Invalid([`${field} 가 비었다`]);
+    ? Validation.Valid(s) : Validation.Invalid([`${field} is empty`]);
 const isEmail = s => s.includes('@')
-    ? Validation.Valid(s) : Validation.Invalid(['이메일 형식이 아니다']);
+    ? Validation.Valid(s) : Validation.Invalid(['not a valid email format']);
 const adult = n => n >= 18
-    ? Validation.Valid(n) : Validation.Invalid([`미성년: ${n}`]);
+    ? Validation.Valid(n) : Validation.Invalid([`underage: ${n}`]);
 
 const mkUser = name => email => age => ({ name, email, age });
 const validate = u =>
@@ -48,7 +48,7 @@ console.log(validate({ name: 'anthony', email: 'a@b.c', age: 40 }).value);
 // { name: 'anthony', email: 'a@b.c', age: 40 }
 
 console.log(validate({ name: '', email: 'nope', age: 12 }).errors);
-// [ 'name 가 비었다', '이메일 형식이 아니다', '미성년: 12' ]   ← 셋 다 모인다
+// [ 'name is empty', 'not a valid email format', 'underage: 12' ]   ← all three collected
 ```
 
 ## Immutable updates on nested data
@@ -62,7 +62,7 @@ const user = { id: 7, address: { city: 'Seoul', zip: '04524' } };
 
 console.log(Optics.view(cityL, user));                        // 'Seoul'
 console.log(Optics.set(cityL, 'Busan', user).address.city);   // 'Busan'
-console.log(user.address.city);                               // 'Seoul'  원본은 그대로
+console.log(user.address.city);                               // 'Seoul'  the original stays unchanged
 ```
 
 ## Lightweight

@@ -7,7 +7,7 @@ parallel-execution patterns.
 
 ## Definition
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 class Alternative extends Applicative {
     constructor(applicative, plus, type, registry, ...aliases)
 }
@@ -26,8 +26,8 @@ Inherits every operation of Alt, Plus, and Applicative:
 
 ## Laws
 
-```javascript no-run 시그니처·의사코드 표기
-// distributivity (왼쪽에서 오른쪽)
+```javascript no-run signature / pseudocode notation
+// distributivity (left to right)
 ap(alt(a, b), c) ≡ alt(ap(a, c), ap(b, c))
 
 // annihilation
@@ -41,10 +41,10 @@ const { Maybe, Alt, Applicative } = FunFP;
 
 const { alt } = Alt.lookup('maybe');
 
-// 첫 번째 성공 값 선택
+// pick the first success value
 const result = alt(Maybe.Nothing(), Maybe.of(42));  // Just(42)
 
-// 모두 실패하면 Nothing
+// Nothing if all fail
 const noResult = alt(Maybe.Nothing(), Maybe.Nothing());  // Nothing
 ```
 

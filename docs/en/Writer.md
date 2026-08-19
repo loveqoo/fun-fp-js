@@ -17,7 +17,7 @@ Writer represents **a pair of a value and an output**.
 ### The problem: computations are hard to trace
 
 ```javascript
-// console.log는 부수 효과 (테스트가 어려움)
+// console.log is a side effect (hard to test)
 const calculate = x => {
     console.log(`Start with ${x}`);
     const step1 = x + 5;
@@ -27,7 +27,7 @@ const calculate = x => {
     return step2;
 };
 
-// 로그를 직접 반환하면 번거로움
+// Returning the log directly is cumbersome
 const calculateWithLog = x => {
     const logs = [];
     logs.push(`Start with ${x}`);
@@ -78,19 +78,19 @@ const [result, logs] = calculate(1).run();
 import FunFP from 'fun-fp-js';
 const { Writer, Monoid } = FunFP;
 
-// of - 값과 빈 출력
+// of - a value with empty output
 const writer = Writer.of(42);
-writer.run();  // [42, []] (기본 Array Monoid)
+writer.run();  // [42, []] (default Array Monoid)
 
-// new Writer - 값, 출력, Monoid 지정
+// new Writer - specify the value, output, and Monoid
 const withLog = new Writer(42, ['log1', 'log2']);
 withLog.run();  // [42, ['log1', 'log2']]
 
-// tell - 출력만 추가 (값은 undefined)
+// tell - appends only the output (value is undefined)
 const logOnly = Writer.tell(['Starting process']);
 logOnly.run();  // [undefined, ['Starting process']]
 
-// 커스텀 Monoid (String)
+// Custom Monoid (String)
 const stringMonoid = Monoid.lookup('string');
 const stringWriter = new Writer('result', 'log entry. ', stringMonoid);
 stringWriter.run();  // ['result', 'log entry. ']
@@ -108,9 +108,9 @@ const { map } = Functor.lookup('writer');
 
 const writer = new Writer(21, ['log']);
 map(x => x * 2, writer).run();
-// [42, ['log']] - 값만 변경, 로그는 그대로
+// [42, ['log']] - only the value changes, the log stays the same
 
-// 또는 Static 메서드
+// Or the Static method
 Writer.map(x => x * 2, writer);
 ```
 
@@ -126,16 +126,16 @@ const writer = new Writer(5, ['start']);
 const addLog = x => new Writer(x * 2, ['doubled']);
 
 chain(addLog, writer).run();
-// [10, ['start', 'doubled']] - 출력이 concat됨!
+// [10, ['start', 'doubled']] - the outputs get concatenated!
 
-// 여러 chain 연결
+// Chaining several times
 Writer.of(1)
     .chain(a => new Writer(a + 2, ['added 2']))
     .chain(b => new Writer(b * 3, ['multiplied by 3']))
     .run();
 // [9, ['added 2', 'multiplied by 3']]
 
-// 또는 Static 메서드
+// Or the Static method
 Writer.chain(addLog, writer);
 ```
 
@@ -153,7 +153,7 @@ const wa = new Writer(21, ['to value']);
 ap(wf, wa).run();
 // [42, ['applying function', 'to value']]
 
-// 또는 Static 메서드
+// Or the Static method
 Writer.ap(wf, wa);
 ```
 
@@ -165,13 +165,13 @@ convention, `exec` returns the by-product (the output).
 ```javascript
 const writer = new Writer(42, ['log1', 'log2']);
 
-// run - [값, 출력] 튜플
+// run - a [value, output] tuple
 writer.run();   // [42, ['log1', 'log2']]
 
-// eval - 값만
+// eval - value only
 writer.eval();  // 42
 
-// exec - 출력만
+// exec - output only
 writer.exec();  // ['log1', 'log2']
 ```
 
@@ -183,7 +183,7 @@ writer.exec();  // ['log1', 'log2']
 Writer.tell(['Starting process']).run();
 // [undefined, ['Starting process']]
 
-// chain으로 출력만 추가
+// Append output only, via chain
 Writer.of(42)
     .chain(x => Writer.tell([`Processing ${x}`]))
     .chain(_ => Writer.of(100))
@@ -197,7 +197,7 @@ Writer.of(42)
 const writer = new Writer(42, ['log1', 'log2']);
 Writer.listen(writer).run();
 // [[42, ['log1', 'log2']], ['log1', 'log2']]
-// 값이 [원래값, 출력]으로 변경됨
+// the value becomes [original value, output]
 ```
 
 ### Writer.listens - transform the output, then fold it into the value
@@ -206,7 +206,7 @@ Writer.listen(writer).run();
 const writer = new Writer(42, ['a', 'b', 'c']);
 Writer.listens(logs => logs.length, writer).run();
 // [[42, 3], ['a', 'b', 'c']]
-// 값이 [원래값, 로그개수]로 변경됨
+// the value becomes [original value, log count]
 ```
 
 ### Writer.pass - transform the output using a function carried in the value
@@ -218,7 +218,7 @@ const writer = new Writer(
 );
 Writer.pass(writer).run();
 // [42, ['HELLO', 'WORLD']]
-// 값의 함수를 출력에 적용
+// applies the value's function to the output
 ```
 
 ### Writer.censor - filter the output
@@ -259,7 +259,7 @@ Writer accumulates output through a Monoid. The default is the Array Monoid.
 const w1 = new Writer(1, ['log1']);
 const w2 = w1.chain(x => new Writer(x + 1, ['log2']));
 w2.run();
-// [2, ['log1', 'log2']] - concat으로 배열 병합
+// [2, ['log1', 'log2']] - arrays merged via concat
 ```
 
 ### The String Monoid
@@ -271,7 +271,7 @@ const stringMonoid = Monoid.lookup('string');
 const w1 = new Writer(1, 'Hello ', stringMonoid);
 const w2 = w1.chain(x => new Writer(x + 1, 'World!', stringMonoid));
 w2.run();
-// [2, 'Hello World!'] - 문자열 연결
+// [2, 'Hello World!'] - string concatenation
 ```
 
 ### The Number Monoid (summing)
@@ -283,7 +283,7 @@ const numberMonoid = Monoid.lookup('number');
 const w1 = new Writer('step1', 10, numberMonoid);
 const w2 = w1.chain(x => new Writer('step2', 25, numberMonoid));
 w2.run();
-// ['step2', 35] - 숫자 합산
+// ['step2', 35] - numbers summed
 ```
 
 ### The registered `writer` instance is Array-Monoid-only — for another Monoid, use `Monad.Writer(m)` {#writer-factory}
@@ -299,19 +299,19 @@ instance per Monoid.
 const { Monoid, Monad, Applicative, Writer } = FunFP;
 const num = Monoid.lookup('number');
 
-// Number Monoid 를 아는 Writer 모나드
+// A Writer monad that knows the Number Monoid
 const W = Monad.Writer(num);
 
-// of 가 그 Monoid 의 empty(0)를 잇는다 — 등록 writer 였다면 [] 를 박아 chain 에서 던졌다
-if (JSON.stringify(W.of(9).run()) !== JSON.stringify([9, 0])) throw new Error('of 가 monoid 를 안 잇는다');
+// of carries that Monoid's empty(0) forward — the registered writer would have forced in [] and thrown in chain
+if (JSON.stringify(W.of(9).run()) !== JSON.stringify([9, 0])) throw new Error('of does not carry the monoid forward');
 console.log(W.of(9).run());   // [9, 0]
 
-// 우항등 법칙 chain(of, w) ≡ w 가 이제 성립한다
+// The right-identity law chain(of, w) ≡ w now holds
 const w = new Writer(7, 3, num);
-if (JSON.stringify(W.chain(W.of, w).run()) !== JSON.stringify([7, 3])) throw new Error('우항등 깨짐');
+if (JSON.stringify(W.chain(W.of, w).run()) !== JSON.stringify([7, 3])) throw new Error('right identity broken');
 console.log(W.chain(W.of, w).run());   // [7, 3]
 
-// 등록된 writer 는 그대로 Array 전용 — 키로도 조회된다
+// The registered writer stays Array-only — also looked up by key
 console.log(Monad.lookup('writer').of(1).run());     // [1, []]
 console.log(Monad.Writer(num) === Monad.lookup('writer(number)'));   // true
 ```
@@ -321,7 +321,7 @@ console.log(Monad.Writer(num) === Monad.lookup('writer(number)'));   // true
 ```javascript
 Writer.isWriter(Writer.of(5));         // true
 Writer.isWriter(new Writer(5, []));    // true
-Writer.isWriter([5, []]);              // false (튜플은 Writer 아님)
+Writer.isWriter([5, []]);              // false (a tuple is not a Writer)
 Writer.isWriter(5);                    // false
 ```
 
@@ -415,7 +415,7 @@ history.forEach(entry => console.log(`  ${entry}`));
 ```javascript
 const { Writer, Monoid } = FunFP;
 
-// 감사 로그 타입
+// Audit log type
 const auditLog = (action, userId, details) => ({
     timestamp: new Date().toISOString(),
     action,
@@ -423,7 +423,7 @@ const auditLog = (action, userId, details) => ({
     details
 });
 
-// Array Monoid로 감사 로그 수집
+// Collect audit logs with the Array Monoid
 const debitAccount = (accountId, amount, userId) =>
     new Writer(
         { accountId, newBalance: 1000 - amount },
@@ -482,7 +482,7 @@ console.log('Log:', log);
 ```javascript
 const { Writer, Monoid } = FunFP;
 
-// 커스텀 Monoid: 메트릭 병합
+// Custom Monoid: merge metrics
 const metricsMonoid = {
     empty: () => ({ totalTime: 0, operations: 0 }),
     concat: (m1, m2) => ({
@@ -554,7 +554,7 @@ const toString = x => new Writer(`Result: ${x}`, ['to string']);
 
 const pipeline = Writer.composeK(toString, double, add5);
 const [value, logs] = pipeline(1).run();
-// value: 'Result: 12' (동일한 결과)
+// value: 'Result: 12' (same result)
 ```
 
 ## Writer.lift

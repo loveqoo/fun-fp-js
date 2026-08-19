@@ -16,22 +16,22 @@ The typical example is Either:
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 Bifunctor.bimap(f, g, a): Bifunctor c d
-// f: a -> c  (Left/첫 번째 값 변환)
-// g: b -> d  (Right/두 번째 값 변환)
+// f: a -> c  (transforms Left / the first value)
+// g: b -> d  (transforms Right / the second value)
 ```
 
 ## Laws
 
 ### Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { bimap } = Bifunctor.lookup('either');
 bimap(x => x, x => x, a) === a
 ```
 
 ### Composition
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { bimap } = Bifunctor.lookup('either');
 bimap(f, g, bimap(h, i, a)) === bimap(x => f(h(x)), x => g(i(x)), a)
 ```
@@ -46,15 +46,15 @@ const { Bifunctor, Either } = FunFP;
 
 const { bimap } = Bifunctor.lookup('either');
 
-// Right 변환
+// transforms Right
 bimap(
-    err => err.toUpperCase(),  // Left용
-    val => val * 2,            // Right용
+    err => err.toUpperCase(),  // for Left
+    val => val * 2,            // for Right
     Either.Right(5)
 );
 // Right(10)
 
-// Left 변환
+// transforms Left
 bimap(
     err => err.toUpperCase(),
     val => val * 2,
@@ -91,7 +91,7 @@ a type problem, it is a **bug**.
 ```javascript
 const { bimap } = Bifunctor.lookup('either');
 const input = '{"value":1}';
-const parseData = raw => raw ? Either.Right(JSON.parse(raw)) : Either.Left('빈 입력');
+const parseData = raw => raw ? Either.Right(JSON.parse(raw)) : Either.Left('empty input');
 const normalizeError = err => ({
     message: err.message || String(err),
     timestamp: Date.now()
@@ -105,8 +105,8 @@ const formatResult = data => ({
 const result = parseData(input);
 
 bimap(normalizeError, formatResult, result);
-// Left면: Left({ message: '...', timestamp: ... })
-// Right면: Right({ data: ..., success: true })
+// if Left: Left({ message: '...', timestamp: ... })
+// if Right: Right({ data: ..., success: true })
 ```
 
 ### Adding context to both sides
@@ -114,7 +114,7 @@ bimap(normalizeError, formatResult, result);
 ```javascript
 const { bimap } = Bifunctor.lookup('either');
 
-// Task 에는 Bifunctor 인스턴스가 없다 — 양쪽 변환은 Either 에서 한다
+// Task has no Bifunctor instance — transforming both sides happens on Either
 const fetchUser = id => id > 0
     ? Either.Right({ id, name: 'Alice' })
     : Either.Left({ code: 'INVALID_ID' });
@@ -135,11 +135,11 @@ addContext('user-service')(fetchUser(1));
 const { bimap } = Bifunctor.lookup('either');
 const { map } = Functor.lookup('either');
 
-// map은 Right(성공)만 변환
+// map transforms only Right (success)
 map(x => x * 2, Either.Right(5));     // Right(10)
-map(x => x * 2, Either.Left('err'));  // Left('err') - 변환 안 됨
+map(x => x * 2, Either.Left('err'));  // Left('err') - not transformed
 
-// bimap은 양쪽 모두 변환
+// bimap transforms both sides
 bimap(e => e.toUpperCase(), x => x * 2, Either.Left('err'));
 // Left('ERR')
 ```

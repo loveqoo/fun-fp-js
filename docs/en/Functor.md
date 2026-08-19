@@ -11,20 +11,20 @@ Functor is a type whose **value inside a container can be transformed**. The con
 The most familiar example is `Array.map`:
 ```javascript
 [1, 2, 3].map(x => x * 2)  // [2, 4, 6]
-// 배열 구조는 유지, 각 요소만 변환
+// the array structure stays the same, only each element is transformed
 ```
 
 ## Laws
 
 ### 1. Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { map } = Functor.lookup('array');
 map(x => x, a) === a
 ```
 Mapping with the identity function gives back the original value.
 
 ### 2. Composition
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { map } = Functor.lookup('array');
 map(x => f(g(x)), a) === map(f, map(g, a))
 ```
@@ -32,7 +32,7 @@ Mapping once with a composed function equals mapping twice, once with each funct
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode
 Functor.map(f, a): Functor a
 ```
 - `f`: the transform function `a -> b`
@@ -70,7 +70,7 @@ map(x => x * 2, just);
 // Just(10)
 
 map(x => x * 2, nothing);
-// Nothing - 변환 시도 안 함
+// Nothing - no transform is attempted
 ```
 
 ### Either
@@ -87,7 +87,7 @@ map(x => x * 2, right);
 // Right(10)
 
 map(x => x * 2, left);
-// Left('error') - 에러는 그대로 유지
+// Left('error') - the error is left untouched
 ```
 
 ### Task
@@ -111,14 +111,14 @@ const user = Maybe.of({ name: 'Alice', address: { city: 'Seoul' } });
 
 const { map } = Functor.lookup('maybe');
 
-// 안전하게 중첩 속성 접근
+// safely access a nested property
 map(u => u.name, user);
 // Just('Alice')
 
 map(u => u.address.city, user);
 // Just('Seoul')
 
-// null이면 안전하게 Nothing
+// safely Nothing when it's null
 const noUser = Maybe.Nothing();
 map(u => u.name, noUser);
 // Nothing
@@ -140,14 +140,14 @@ const result = parseJson(data);
 
 const { map } = Functor.lookup('either');
 
-// 파싱 성공시에만 변환
+// transforms only when parsing succeeds
 map(obj => obj.name, result);
 // Right('Alice')
 ```
 
 ### Asynchronous transformation
 
-```javascript no-run 네트워크 fetch 필요 — 실행 대상 아님
+```javascript no-run requires a network fetch — not meant to run
 const fetchUser = userId => Task.fromPromise(
     () => fetch(`/api/users/${userId}`).then(r => r.json())
 );
@@ -166,7 +166,7 @@ getUserName(1).fork(console.error, console.log);
 ## Visualizing Functor
 
 ```
-Functor는 상자(Box)와 같습니다:
+A Functor is like a Box:
 
 ┌─────────┐                    ┌─────────┐
 │    5    │  map(x => x * 2)   │   10    │
@@ -178,7 +178,7 @@ Functor는 상자(Box)와 같습니다:
 └─────────┘  ───────────────>  └─────────┘
   Nothing                        Nothing
 
-상자를 열지 않고도 내부 값을 변환할 수 있습니다!
+You can transform the value inside without ever opening the box!
 ```
 
 ## Why Functor?

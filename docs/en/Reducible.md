@@ -31,7 +31,7 @@ const nel = NonEmptyList.make(3, 9, 4);
 console.log(R.reduceMap(Semigroup.lookup('first'), x => x, nel));   // 3
 console.log(R.reduceMap(Semigroup.lookup('last'), x => x, nel));    // 4
 
-// 같은 규칙을 foldMap 에 넣으면 거부됩니다 — Monoid 가 아니기 때문입니다
+// feeding the same rule to foldMap is rejected — it is not a Monoid
 try { console.log(foldMap(Foldable.lookup('array'), Semigroup.lookup('first'))); }
 catch (e) { console.log(e.message); }   // foldMap: second argument must be a Monoid
 ```
@@ -52,8 +52,8 @@ const { Reducible, NonEmptyList } = FunFP;
 const R = Reducible.lookup('nonemptylist');
 const nel = NonEmptyList.make(3, 9, 4);
 
-console.log(R.reduceLeft((a, b) => a + b, nel));      // 16   초기값 없음
-console.log(R.reduce((a, b) => a + b, 100, nel));     // 116  상속받은 Foldable
+console.log(R.reduceLeft((a, b) => a + b, nel));      // 16   no initial value
+console.log(R.reduce((a, b) => a + b, 100, nel));     // 116  the inherited Foldable
 ```
 
 `reduceMap` also accepts a Monoid, because a Monoid is a Semigroup.
@@ -122,11 +122,11 @@ const R = Reducible.lookup('nonemptylist');
 const nel = NonEmptyList.make(3, 9, 4);
 const elems = R.reduce((acc, x) => acc.concat([x]), [], nel);
 
-// 원소 보존 — 두 경로가 같은 목록을 낸다
+// element preservation — both paths produce the same list
 console.log(JSON.stringify(R.reduceMap(Semigroup.lookup('array'), x => [x], nel)));  // [3,9,4]
 console.log(JSON.stringify(elems));                                                  // [3,9,4]
 
-// reduceLeft 정합 — 비가환 연산이라 방향이 틀리면 값이 갈린다
+// reduceLeft consistency — the operation is non-commutative, so a wrong direction gives a different value
 const f = (a, b) => a * 10 + b;
 console.log(R.reduceLeft(f, nel));                    // 394
 console.log(elems.slice(1).reduce(f, elems[0]));      // 394

@@ -6,7 +6,7 @@ A type class that adds an identity function (`id`) to Semigroupoid.
 
 ## Definition
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 class Category extends Semigroupoid {
     constructor(semigroupoid, id, type, registry, ...aliases)
 }
@@ -21,7 +21,7 @@ class Category extends Semigroupoid {
 
 ## Laws
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 // right identity
 compose(f, id()) ≡ f
 
@@ -34,19 +34,19 @@ compose(id(), f) ≡ f
 ```javascript
 const { Category, Semigroupoid } = FunFP;
 
-// Semigroupoid: 함수 합성
+// Semigroupoid: function composition
 const funcSemi = new Semigroupoid((f, g) => x => f(g(x)), 'function');
 
-// Category: 함수 합성 + 항등 함수
+// Category: function composition + identity function
 const funcCategory = new Category(funcSemi, () => x => x, 'function');
 
 const double = x => x * 2;
 const addOne = x => x + 1;
 
-// compose는 오른쪽에서 왼쪽
+// compose runs right to left
 funcCategory.compose(double, addOne)(5);  // 12 (5 + 1 = 6, 6 * 2 = 12)
 
-// id는 항등 함수
+// id is the identity function
 funcCategory.compose(double, funcCategory.id())(5);  // 10
 funcCategory.compose(funcCategory.id(), double)(5);  // 10
 ```

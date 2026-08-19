@@ -24,7 +24,7 @@ view(userCity, user);              // 'Seoul'
 set(userCity, 'Busan', user);      // { name, address: { city: 'Busan', country: 'KR' } }
 over(userCity, s => s.toUpperCase(), user);
 
-// 원본은 그대로다
+// the original stays unchanged
 console.log(user.address.city);    // 'Seoul'
 ```
 
@@ -54,7 +54,7 @@ The deeper the nesting, the more the spreads nest inside each other, and you
 have to check by eye whether you missed a layer.
 
 ```javascript no-run 문제 상황 — 일부러 나쁜 코드
-// 도시 이름 하나 바꾸려고 세 층을 다시 조립해야 한다
+// to change one city name, you rebuild all three layers
 const updated = {
     ...user,
     address: {
@@ -66,7 +66,7 @@ const updated = {
     }
 };
 
-// 읽기도 방어 코드가 필요하다
+// reading needs defensive code too
 const cityName = user && user.address && user.address.city
     ? user.address.city.name
     : undefined;
@@ -141,7 +141,7 @@ const original = { name: 'A', age: 30 };
 const updated = set(nameLens, 'B', original);
 
 console.log(updated.name);   // 'B'
-console.log(original.name);  // 'A' — 원본 불변
+console.log(original.name);  // 'A' — the original is unchanged
 ```
 
 ### over - transforming the current value with a function
@@ -175,12 +175,12 @@ const addressLens = Lens(u => u.address, (a, u) => ({ ...u, address: a }));
 const cityLens = Lens(a => a.city, (c, a) => ({ ...a, city: c }));
 const zipLens = Lens(c => c.zip, (z, c) => ({ ...c, zip: z }));
 
-// 3단계 중첩도 가변 인자로 한 번에
+// even 3 levels of nesting go in one call, via variadic arguments
 const userZip = compose(addressLens, cityLens, zipLens);
 
 const user = { address: { city: { name: 'Seoul', zip: '04524' } } };
 view(userZip, user);              // '04524'
-set(userZip, '06236', user);      // 깊은 곳만 바뀐 새 구조
+set(userZip, '06236', user);      // a new structure with only the deep part changed
 ```
 
 ## Lens laws
@@ -194,13 +194,13 @@ const { Lens, view, set } = FunFP.Optics;
 const nameLens = Lens(p => p.name, (v, p) => ({ ...p, name: v }));
 const s = { name: 'A', age: 30 };
 
-// 1. get-set: 읽은 값을 그대로 다시 쓰면 원본과 같다
+// 1. get-set: writing back the value you just read gives the original
 console.log(JSON.stringify(set(nameLens, view(nameLens, s), s)) === JSON.stringify(s));
 
-// 2. set-get: 쓴 값을 읽으면 쓴 값이 나온다
+// 2. set-get: reading after a write gives back what was written
 console.log(view(nameLens, set(nameLens, 'B', s)) === 'B');
 
-// 3. set-set: 연달아 쓰면 마지막 것만 남는다
+// 3. set-set: writing twice in a row leaves only the last one
 console.log(
     JSON.stringify(set(nameLens, 'C', set(nameLens, 'B', s))) ===
     JSON.stringify(set(nameLens, 'C', s))
@@ -244,8 +244,8 @@ const defaults = {
 const production = over(serverPort, p => p + 1000, defaults);
 
 console.log(production.server.port);   // 9080
-console.log(production.server.host);   // 'localhost' — 유지
-console.log(defaults.server.port);     // 8080 — 원본 불변
+console.log(production.server.host);   // 'localhost' — unchanged
+console.log(defaults.server.port);     // 8080 — the original is unchanged
 ```
 
 ### 2. Changing just one item in a list
@@ -273,8 +273,8 @@ const secondName = compose(atLens(1), nameLens);
 console.log(view(secondName, users));            // 'Kim'
 const renamed = set(secondName, 'Park', users);
 console.log(renamed[1].name);                    // 'Park'
-console.log(users[1].name);                      // 'Kim' — 원본 불변
-console.log(renamed[0] === users[0]);            // true — 안 바뀐 항목은 참조 공유
+console.log(users[1].name);                      // 'Kim' — the original is unchanged
+console.log(renamed[0] === users[0]);            // true — an unchanged item shares its reference
 ```
 
 The last line matters — items that didn't change **keep the same
@@ -292,7 +292,7 @@ const profileLens = Lens(u => u.profile, (v, u) => ({ ...u, profile: v }));
 const tagsLens = Lens(p => p.tags, (v, p) => ({ ...p, tags: v }));
 const userTags = compose(profileLens, tagsLens);
 
-// 갱신 로직 자체를 값으로
+// turn the update logic itself into a value
 const addTag = tag => user => over(userTags, tags => [...tags, tag], user);
 const removeTag = tag => user => over(userTags, tags => tags.filter(t => t !== tag), user);
 
@@ -301,7 +301,7 @@ const user = { name: 'A', profile: { tags: ['js'], bio: '' } };
 const tagged = addTag('fp')(user);
 console.log(tagged.profile.tags);           // ['js', 'fp']
 console.log(removeTag('js')(tagged).profile.tags);  // ['fp']
-console.log(user.profile.tags);             // ['js'] — 원본 불변
+console.log(user.profile.tags);             // ['js'] — the original is unchanged
 ```
 
 ### 4. Chaining several updates through a pipe

@@ -27,13 +27,13 @@ Maps, strings, and generators are all included.
 ### Problem: chaining array methods allocates an array at every step
 
 ```javascript no-run 문제 상황 — 일부러 나쁜 코드
-// 각 단계가 새 배열을 할당한다 — 100만 개면 중간 배열도 100만 개씩
+// every stage allocates a new array — a million elements means a million-sized intermediate array at each step
 const result = hugeArray
-    .map(x => x * 2)        // 새 배열 1
-    .filter(x => x > 10)    // 새 배열 2
-    .slice(0, 3);           // 새 배열 3 — 앞의 두 단계는 전부 다 돌고 나서야 잘린다
+    .map(x => x * 2)        // new array 1
+    .filter(x => x > 10)    // new array 2
+    .slice(0, 3);           // new array 3 — the cut only happens after both earlier stages finish entirely
 
-// 그리고 변환 로직을 따로 떼어 재사용할 수 없다
+// and there's no way to pull the transformation logic out for reuse
 ```
 
 Even though `slice(0, 3)` is last, `map` and `filter` still process **every element**
@@ -46,14 +46,14 @@ const { transducer, compose } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-// 변환 단계만 조립 — 아직 아무 데이터도 없다
+// assembling just the transformation stages — no data yet
 const xf = compose(
     transducer.map(x => x * 2),
     transducer.filter(x => x > 10),
     transducer.take(3)
 );
 
-// 이제 한 번 순회한다. 중간 배열 없음, take(3)에서 즉시 중단.
+// now it traverses once. No intermediate array, and it stops immediately at take(3).
 console.log(transducer.transduce(xf, push, [], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
 // [12, 14, 16]
 ```
@@ -73,7 +73,7 @@ const double = transducer.map(x => x * 2);
 const evens = transducer.filter(x => x % 2 === 0);
 const firstThree = transducer.take(3);
 
-// 셋 다 함수다 — 아직 실행된 것은 없다
+// all three are functions — nothing has run yet
 console.log(typeof double, typeof evens, typeof firstThree);
 // function function function
 ```
@@ -103,7 +103,7 @@ const { transducer } = FunFP;
 
 const sum = (acc, x) => acc + x;
 
-// 두 배한 값들의 합 — 중간 배열을 전혀 만들지 않는다
+// the sum of the doubled values — no intermediate array is created at all
 console.log(transducer.transduce(transducer.map(x => x * 2), sum, 0, [1, 2, 3, 4]));
 // 20
 ```
@@ -119,16 +119,16 @@ const { transducer, compose } = FunFP;
 
 const xf = compose(transducer.map(x => x * 2), transducer.take(2));
 
-// 배열 그릇 — push 리듀서가 유도된다
+// array vessel — the push reducer is derived
 console.log(transducer.into([], xf, [1, 2, 3, 4]));   // [2, 4]
 
-// 문자열 그릇 — 이어붙이기
+// string vessel — concatenation
 console.log(transducer.into('', transducer.map(s => s.toUpperCase()), 'abc'));   // 'ABC'
 
-// Set 그릇 — add (중복은 Set 규칙대로 합쳐진다)
+// Set vessel — add (duplicates merge according to Set's rules)
 console.log([...transducer.into(new Set(), transducer.map(x => x % 3), [1, 2, 4, 5])]);   // [1, 2]
 
-// Map·객체 그릇 — 원소가 [키, 값] 쌍이어야 한다
+// Map/object vessel — elements must be [key, value] pairs
 console.log(transducer.into({}, transducer.map(x => [x, x * 10]), [1, 2]));   // { '1': 10, '2': 20 }
 ```
 
@@ -139,10 +139,10 @@ vessel's contents and looks only at its type, so it differs from this one.
 ```javascript
 const { transducer } = FunFP;
 
-const seed = ['씨앗'];
+const seed = ['start'];
 const result = transducer.into(seed, transducer.map(x => x + 1), [1, 2]);
-console.log(result);   // ['씨앗', 2, 3] — 내용 보존
-console.log(seed);     // ['씨앗'] — 원본 불변
+console.log(result);   // ['start', 2, 3] — contents preserved
+console.log(seed);     // ['start'] — the original is unchanged
 ```
 
 Supported vessels are arrays, strings, Sets, Maps, and plain objects; passing any other
@@ -154,7 +154,7 @@ const { transducer } = FunFP;
 
 [() => transducer.into(42, transducer.map(x => x), []),
  () => transducer.into({}, transducer.map(x => x), [1])].forEach(bad => {
-    try { bad(); console.log('통과하면 안 됨'); }
+    try { bad(); console.log('should not pass'); }
     catch (e) { console.log(e.message.slice(0, 26)); }
 });
 // transducer.into: vessel mu
@@ -193,7 +193,7 @@ const { transducer } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-// 원소가 n개보다 적으면 있는 만큼만
+// if there are fewer than n elements, just as many as there are
 console.log(transducer.transduce(transducer.take(10), push, [], [1, 2, 3]));
 // [1, 2, 3]
 ```
@@ -211,7 +211,7 @@ const xf = r => counted(transducer.take(2)(r));
 
 transducer.transduce(xf, push, [], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-console.log('건드린 원소 수:', touched);  // 건드린 원소 수: 2   10개가 아니다
+console.log('elements touched:', touched);  // elements touched: 2   not 10
 ```
 
 `take` accepts positive integers only.
@@ -222,7 +222,7 @@ const { transducer } = FunFP;
 [0, -1, 1.5, '3'].forEach(bad => {
     try {
         transducer.take(bad);
-        console.log('통과하면 안 됨:', bad);
+        console.log('should not pass:', bad);
     } catch (e) {
         console.log(`take(${JSON.stringify(bad)}) → ${e.constructor.name}`);
     }
@@ -242,21 +242,21 @@ const { transducer, compose } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-// 데이터 흐름: filter 먼저 → 그다음 map
+// data flow: filter first → then map
 const filterThenMap = compose(
     transducer.filter(x => x % 2 === 0),
     transducer.map(x => x * 2)
 );
 console.log(transducer.transduce(filterThenMap, push, [], [1, 2, 3, 4, 5]));
-// [4, 8]   — [2,4]로 걸러진 뒤 두 배
+// [4, 8]   — filtered to [2, 4], then doubled
 
-// 순서를 뒤집으면 결과가 달라진다: map 먼저 → 그다음 filter
+// reversing the order changes the result: map first → then filter
 const mapThenFilter = compose(
     transducer.map(x => x * 2),
     transducer.filter(x => x % 2 === 0)
 );
 console.log(transducer.transduce(mapThenFilter, push, [], [1, 2, 3, 4, 5]));
-// [2, 4, 6, 8, 10]   — 전부 두 배 되어 모두 짝수
+// [2, 4, 6, 8, 10]   — everything doubled, so all even
 ```
 
 ## Caution: take is stateful
@@ -270,15 +270,15 @@ const { transducer } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-// 안전: 적용되지 않은 transducer는 재사용 가능
+// safe: an unapplied transducer can be reused
 const t = transducer.take(2);
 console.log(transducer.transduce(t, push, [], [1, 2, 3, 4, 5]));  // [1, 2]
-console.log(transducer.transduce(t, push, [], [1, 2, 3, 4, 5]));  // [1, 2] — 정상
+console.log(transducer.transduce(t, push, [], [1, 2, 3, 4, 5]));  // [1, 2] — as expected
 
-// 위험: 미리 적용해두면 카운터가 공유된다
+// dangerous: pre-applying shares the counter
 const applied = transducer.take(2)(push);
 console.log(transducer.transduce(() => applied, push, [], [1, 2, 3]));  // [1, 2]
-console.log(transducer.transduce(() => applied, push, [], [1, 2, 3]));  // [] — 소진됨
+console.log(transducer.transduce(() => applied, push, [], [1, 2, 3]));  // [] — exhausted
 ```
 
 **Rule of thumb**: keep transducers unapplied, and leave the applying to `transduce`.
@@ -326,7 +326,7 @@ const firstTwoErrors = compose(
 );
 
 console.log(transducer.transduce(firstTwoErrors, push, [], logs));
-// ['disk full', 'timeout'] — 'refused'까지 가지 않고 멈춘다
+// ['disk full', 'timeout'] — stops before reaching 'refused'
 ```
 
 ### 2. Using it as-is on non-array data
@@ -360,12 +360,12 @@ short.
 ```javascript
 const { transducer } = FunFP;
 
-// Set과 문자열에도 그대로
+// works the same on a Set and a string
 const push = (acc, x) => [...acc, x];
 const upper = transducer.map(s => s.toUpperCase());
 
 console.log(transducer.transduce(upper, push, [], new Set(['a', 'b', 'a'])));
-// ['A', 'B'] — Set이라 중복 제거는 이미 되어 있다
+// ['A', 'B'] — being a Set, duplicates are already removed
 
 console.log(transducer.transduce(upper, (acc, c) => acc + c, '', 'hello'));
 // 'HELLO'
@@ -380,7 +380,7 @@ const { transducer, compose } = FunFP;
 
 const push = (acc, x) => [...acc, x];
 
-// 재사용할 조각들
+// pieces to reuse
 const activeOnly = transducer.filter(u => u.active);
 const toName = transducer.map(u => u.name);
 const adultsOnly = transducer.filter(u => u.age >= 18);
@@ -396,7 +396,7 @@ const activeAdultNames = compose(activeOnly, adultsOnly, toName);
 console.log(transducer.transduce(activeAdultNames, push, [], users));
 // ['A', 'D']
 
-// 같은 조각으로 다른 파이프라인
+// a different pipeline from the same pieces
 const activeNames = compose(activeOnly, toName);
 console.log(transducer.transduce(activeNames, push, [], users));
 // ['A', 'B', 'D']
@@ -421,13 +421,13 @@ const paidWithTax = compose(
     transducer.map(o => Math.round(o.price * 1.1))
 );
 
-// 합계 — 중간 배열 없음
+// total — no intermediate array
 const total = transducer.transduce(paidWithTax, (acc, x) => acc + x, 0, orders);
-console.log('합계:', total);
+console.log('total:', total);
 
-// 같은 파이프라인, 다른 리듀서 — 최댓값
+// same pipeline, different reducer — max
 const max = transducer.transduce(paidWithTax, (acc, x) => Math.max(acc, x), 0, orders);
-console.log('최댓값:', max);
+console.log('max:', max);
 ```
 
 ## Related type classes

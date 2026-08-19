@@ -25,9 +25,9 @@ const { map } = Functor.lookup('maybe');
 const getUser = id => Maybe.of({ id, name: 'Alice', addressId: 1 });
 const getAddress = addrId => Maybe.of({ id: addrId, city: 'Seoul' });
 
-// map만 사용하면 중첩됨!
+// using map alone nests it!
 const result = map(user => getAddress(user.addressId), getUser(1));
-// Maybe(Maybe({ city: 'Seoul' }))  ← 이중 중첩!
+// Maybe(Maybe({ city: 'Seoul' }))  ← doubly nested!
 ```
 
 ### The fix: flatten it with chain
@@ -39,9 +39,9 @@ const { Chain } = FunFP;
 const { chain } = Chain.lookup('maybe');
 
 const result = chain(user => getAddress(user.addressId), getUser(1));
-// Maybe({ city: 'Seoul' })  ← 깔끔!
+// Maybe({ city: 'Seoul' })  ← clean!
 
-// 또는 pipeK 사용
+// or use pipeK
 const getUserAddress = Maybe.pipeK(getUser, user => getAddress(user.addressId));
 getUserAddress(1);  // Maybe({ city: 'Seoul' })
 ```
@@ -49,21 +49,21 @@ getUserAddress(1);  // Maybe({ city: 'Seoul' })
 ## Laws
 
 ### 1. Left Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { chain } = Chain.lookup('maybe');
 chain(f, of(a)) === f(a)
 ```
 Wrapping a value with `of` and chaining it equals just calling the function.
 
 ### 2. Right Identity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { chain } = Chain.lookup('maybe');
 chain(of, m) === m
 ```
 Chaining `of` onto a monad equals the original monad.
 
 ### 3. Associativity
-```javascript no-run 대수 법칙 — 자유변수 표기
+```javascript no-run algebraic law — free-variable notation
 const { chain } = Chain.lookup('maybe');
 chain(g, chain(f, m)) === chain(x => chain(g, f(x)), m)
 ```
@@ -71,9 +71,9 @@ Changing the grouping of `chain` calls does not change the result.
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
-Monad.lookup(a): Monad a              // 값을 모나드에 넣기 (Applicative에서 상속)
-Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
+```javascript no-run signature / pseudocode
+Monad.lookup(a): Monad a              // puts a value into the monad (inherited from Applicative)
+Monad.chain(f, m): Monad b        // applies the transform function, then flattens
                                   // f: a -> Monad b
 ```
 
@@ -95,14 +95,14 @@ const db = {
 const getUser = id => db.users[id] ? Maybe.of(db.users[id]) : Maybe.Nothing();
 const getTeam = id => db.teams[id] ? Maybe.of(db.teams[id]) : Maybe.Nothing();
 
-// Static Land 방식
+// the Static Land way
 const teamName = map(
     team => team.name,
     chain(user => getTeam(user.teamId), getUser(1))
 );
 // Just('Dev Team')
 
-// 또는 pipeK 사용 (더 가독성 좋음)
+// or use pipeK (more readable)
 const getTeamName = Maybe.pipeK(
     getUser,
     user => getTeam(user.teamId)
@@ -127,7 +127,7 @@ const validatePositive = n =>
 const validateMax = max => n =>
     n <= max ? Either.Right(n) : Either.Left(`Must be ≤ ${max}`);
 
-// pipeK로 검증 파이프라인
+// a validation pipeline with pipeK
 const validate = Either.pipeK(
     parseNumber,
     validatePositive,
@@ -155,7 +155,7 @@ const fetchPosts = userId => Task.fromPromise(() =>
     fetch(`/api/users/${userId}/posts`).then(r => r.json())
 )();
 
-// Static Land 방식
+// the Static Land way
 const getUserPosts = userId =>
     chain(
         user => map(posts => ({ user, posts }), fetchPosts(user.id)),
@@ -171,7 +171,7 @@ getUserPosts(1).fork(
 ## Visualizing Monad
 
 ```
-chain은 중첩을 펴줍니다:
+chain flattens the nesting:
 
 ┌─────────────────┐              ┌─────────┐
 │ ┌─────────────┐ │   chain(f)   │         │
@@ -194,10 +194,10 @@ const maybe = Maybe.of(42);
 const { map } = Functor.lookup('maybe');
 const { chain } = Chain.lookup('maybe');
 
-// map: 항상 성공하는 단순 변환
+// map: a simple transform that always succeeds
 map(x => x + 1, maybe);
 
-// chain: 실패할 수 있는 연산
+// chain: an operation that may fail
 chain(x => x > 0 ? Maybe.of(x) : Maybe.Nothing(), maybe);
 ```
 
@@ -217,7 +217,7 @@ const parse = str => {
 const double = n => Maybe.of(n * 2);
 const asString = n => Maybe.of(`Result: ${n}`);
 
-// pipeK: 좌 → 우 (왼쪽부터 읽기)
+// pipeK: left → right (read left to right)
 const pipeline = Maybe.pipeK(parse, double, asString);
 
 pipeline('5');     // Just('Result: 10')
@@ -235,7 +235,7 @@ const double = n => Maybe.of(n * 2);
 const asString = n => Maybe.of(`Result: ${n}`);
 const { Maybe } = FunFP;
 
-// composeK: 우 → 좌 (수학적 합성 순서)
+// composeK: right → left (mathematical composition order)
 const pipeline = Maybe.composeK(asString, double, parse);
 
 pipeline('5');     // Just('Result: 10')
@@ -270,14 +270,14 @@ const validatePositive = n =>
 
 const double = n => Either.Right(n * 2);
 
-// pipeK: 읽기 쉬운 순서
+// pipeK: an easy-to-read order
 const validateAndDouble = Either.pipeK(
     parseNumber,
     validatePositive,
     double
 );
 
-// composeK: 수학적 순서 (역순으로 작성)
+// composeK: mathematical order (written in reverse)
 const validateAndDouble2 = Either.composeK(
     double,
     validatePositive,
@@ -285,7 +285,7 @@ const validateAndDouble2 = Either.composeK(
 );
 
 validateAndDouble('5');    // Right(10)
-validateAndDouble2('5');   // Right(10) - 동일한 결과
+validateAndDouble2('5');   // Right(10) - the same result
 ```
 
 ### Supported types
@@ -300,7 +300,7 @@ Every Monad type supports both `pipeK` and `composeK`:
 - **Free**: DSL composition
 
 ```javascript
-// Task 예시
+// Task example
 const { Task } = FunFP;
 
 const fetchUser = id => Task.fromPromise(() =>
@@ -313,7 +313,7 @@ const fetchPosts = user => Task.fromPromise(() =>
 
 const formatData = posts => Task.of({ count: posts.length, posts });
 
-// pipeK로 비동기 파이프라인
+// an async pipeline with pipeK
 const getUserData = Task.pipeK(fetchUser, fetchPosts, formatData);
 
 getUserData(1).fork(console.error, console.log);

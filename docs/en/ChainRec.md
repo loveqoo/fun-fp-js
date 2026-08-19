@@ -13,11 +13,11 @@ prevents this with a trampolining technique.
 
 ## Interface
 
-```javascript no-run 시그니처·의사코드 표기
+```javascript no-run signature / pseudocode notation
 ChainRec.chainRec(f, initial): Monad a
 // f: (next, done, value) -> Monad (Either next done)
-// next: value -> { tag: 'next', value }  (계속)
-// done: value -> { tag: 'done', value }  (종료)
+// next: value -> { tag: 'next', value }  (continue)
+// done: value -> { tag: 'done', value }  (finish)
 ```
 
 ## Usage examples
@@ -30,7 +30,7 @@ const { ChainRec, Either } = FunFP;
 
 const { chainRec } = ChainRec.lookup('either');
 
-// 1부터 n까지 합
+// sum from 1 to n
 const sumTo = n => chainRec(
     (next, done, { sum, i }) =>
         i > n
@@ -40,13 +40,13 @@ const sumTo = n => chainRec(
 );
 
 sumTo(10);  // Right(55)
-sumTo(1000000);  // 스택 오버플로 없이 동작!
+sumTo(1000000);  // works without a stack overflow!
 ```
 
 ### Large-scale iteration
 
-```javascript no-run 문제 상황 — 일부러 스택 오버플로
-// 일반 재귀 - 스택 오버플로!
+```javascript no-run problem case — deliberate stack overflow
+// ordinary recursion - stack overflow!
 const countNormal = n => n === 0 ? 0 : 1 + countNormal(n - 1);
 countNormal(100000);  // RangeError: Maximum call stack size exceeded
 
@@ -104,7 +104,7 @@ const processLines = (lines) => chainRec(
         const [line, ...rest] = remaining;
         const processed = parseLine(line);
         return processed.isLeft()
-            ? processed  // 에러 시 즉시 종료
+            ? processed  // exit immediately on error
             : Either.Right(next({
                 remaining: rest,
                 results: [...results, processed.value]
