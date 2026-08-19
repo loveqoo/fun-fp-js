@@ -32,7 +32,7 @@ console.log(NonEmptyList.fromArray([]).isNothing());    // true
 항등원이 있을 수 없는 `first`(앞의 것 남기기)·`last`(뒤의 것 남기기) Semigroup 은
 `foldMap` 에 들어가지 못합니다. NonEmptyList 는 head 가 씨앗이 되므로 **Semigroup
 만으로** 접습니다 — 그 문이 `reduceMap`(변환하고 결합)과 `reduceLeft`(초기값 없이
-왼쪽부터)입니다. 이 접기의 소유자는 **Reducible** 타입 클래스입니다
+왼쪽부터)입니다. 이 접기의 소유자는 **[Reducible](./Reducible.md)** 타입 클래스입니다
 (`Reducible.lookup('nonemptylist')` — Identity 와 같은 계약을 나눠 갖습니다).
 아래의 `NonEmptyList.reduceLeft/reduceMap` 정적 문은 그 인스턴스로 가는 위임입니다.
 

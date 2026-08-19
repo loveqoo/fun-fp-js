@@ -87,6 +87,7 @@ console.log(thrown);   // 'TypeError'
 
 - [Traversable](./Traversable.md) - 효과 순회 (traverse)
 - [Foldable](./Foldable.md) - 축소 (reduce)
+- [Reducible](./Reducible.md) - 빈 경우 없는 축소 (reduceLeft/reduceMap, **명세 밖**)
 - [Filterable](./Filterable.md) - 필터링
 
 ### 5단계: 함수 합성
@@ -199,7 +200,7 @@ Strong + Choice ─────> Wander          wander
 | Plus          | zero            | 빈 대안               |
 | Alternative   | ap + alt + zero | Applicative + Plus |
 | Foldable      | reduce          | 축소                 |
-| Reducible     | reduceLeft + reduceMap | 빈 경우 없는 접기 (명세 밖) |
+| [Reducible](./Reducible.md) | reduceLeft + reduceMap | 빈 경우 없는 접기 (명세 밖) |
 | Traversable   | traverse        | 효과 순회              |
 | Filterable    | filter          | 걸러내기               |
 | Semigroupoid  | compose         | 함수 합성              |
@@ -277,7 +278,7 @@ console.log(A.all('array').arrayMonoid.empty());  // []   ← Array 는 원래�
 const { Semigroup, Maybe } = FunFP;
 
 const inner = Semigroup.lookup('maybe(number)');          // 명확한 키로 정확히 하나
-console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just(3)
+console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _typeName: 'Maybe' }
 ```
 
 ### 레지스트리 키 — 매개변수화된 것들
