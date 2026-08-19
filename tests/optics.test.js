@@ -603,4 +603,24 @@ test('prop - 접근자 속성도 접근자로 남는다', () => {
     assertEquals(out.double, 10, '접근자가 새 값을 안 본다');
 });
 
+// 10차 감사 [1] — 9차에서 심볼·숨은 속성을 살리려고 서술자를 통째로 옮겼더니
+// configurable:false 까지 옮겨져, **동결 객체의 기존 키를 갱신할 수 없게** 됐다.
+// 복제는 데이터를 옮기는 것이지 원본의 자물쇠를 옮기는 것이 아니다.
+test('prop - 동결 객체도 갱신할 수 있다 (원본은 그대로)', () => {
+    const frozen = Object.freeze({ a: 1, b: 2 });
+    const out = set(prop('a'), 9, frozen);
+    assertEquals(out.a, 9);
+    assertEquals(out.b, 2);
+    assertEquals(frozen.a, 1, '원본이 변했다');
+    assert(!Object.isFrozen(out), '결과까지 동결돼 이후 갱신이 막힌다');
+});
+
+test('prop - 봉인·비쓰기 속성도 갱신할 수 있다', () => {
+    const sealed = {};
+    Object.defineProperty(sealed, 'a', { value: 1, enumerable: true, writable: false, configurable: false });
+    const out = set(prop('a'), 7, sealed);
+    assertEquals(out.a, 7);
+    assertEquals(sealed.a, 1, '원본이 변했다');
+});
+
 console.log('\n✅ Optics tests completed');

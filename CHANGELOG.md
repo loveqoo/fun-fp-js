@@ -16,6 +16,14 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 - `transducer.transduce` 가 4단 커링에서 **4인자 단일 호출**로 바뀌었습니다:
   `transduce(변환기, 리듀서, 초기값, 컬렉션)` — 라이브러리의 다른 문과 같은 비커리드.
 
+- **객체 복제가 동결 객체를 갱신 못 하던 것을 고쳤습니다.** 서술자를 통째로 옮기면서
+  `configurable: false` 까지 옮겨져, `Object.freeze` 한 객체를 `Optics.prop` 이나
+  `transducer.into` 로 갱신하면 `Cannot redefine property` 로 죽었습니다. 복제는 데이터를
+  옮기는 일이지 원본의 자물쇠를 물려주는 일이 아닙니다 — 열거 여부와 접근자 여부는 그대로,
+  쓰기·재정의 제한은 안 옮깁니다.
+- **`Free` 재진입 가드가 thenable 을 Promise 로 동화해서 돌려줍니다.** 전에는 thenable 을
+  그대로 돌려줘서, 호출자가 다시 기다릴 때 `then` 이 **한 번 더 불렸습니다** — 부수 효과가
+  두 번 실행됐습니다.
 - **객체 복제가 심볼·숨은 속성을 잃던 것을 고쳤습니다.** `Optics.prop` 의 `set` 과
   `transducer.into` 의 그릇 복제가 열거 가능한 문자열 키만 옮겨, 심볼 속성과
   non-enumerable 속성이 조용히 사라졌습니다. `prop` 은 읽은 값을 그대로 다시 넣어도

@@ -659,8 +659,29 @@ testAsync('8차-4: 그 thenable 이 정착하면 가드가 풀려 다시 부를 
     let calls = 0;
     const guarded = Free.runSync(x => x)(() => { calls++; return thenable; });
     guarded();
+    // Promise 로 동화하므로 thenable 의 then 은 마이크로태스크에서 불린다 — settle 이 그때 잡힌다.
+    await null; await null;
     settle();
     await null; await null; await null;
     guarded();
     assertEquals(calls, 2, '가드가 안 풀려 두 번째 호출이 재진입으로 샜다');
+});
+
+// 10차 감사 [2] — 8차에서 최소 thenable 을 살리려고 then(정리, 정리) 를 걸고 **같은 thenable 을
+// 그대로 돌려줬다.** 그러면 소비자가 다시 await 할 때 then 이 한 번 더 불려 부수 효과가 두 번
+// 실행된다. Promise 로 동화해서 돌려주면 then 은 한 번만 불린다.
+testAsync('10차-2: thenable 의 then 은 한 번만 불린다', async () => {
+    let thens = 0;
+    const thenable = { then(resolve) { thens++; resolve('ok'); } };
+    const guarded = Free.runSync(x => x)(() => Free.of(thenable));
+    const out = guarded();
+    assertEquals(await out, 'ok');
+    assertEquals(thens, 1, `then 이 ${thens}번 불렸다 — 부수 효과가 그만큼 반복된다`);
+});
+
+testAsync('10차-2: 거부하는 thenable 은 거부로 전해진다', async () => {
+    const thenable = { then(_res, rej) { rej(new Error('thenable 거부')); } };
+    const guarded = Free.runSync(x => x)(() => Free.of(thenable));
+    const e = await guarded().then(() => null, err => err);
+    assert(e !== null && e.message === 'thenable 거부', '거부가 안 전해졌다');
 });

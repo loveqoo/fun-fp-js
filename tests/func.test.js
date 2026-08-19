@@ -682,3 +682,12 @@ test('9차-4: into 가 그릇의 own __proto__ 를 프로토타입으로 둔갑�
     assert(Object.getPrototypeOf(out) === Object.prototype, '프로토타입이 바뀌었다');
     assert(out.hacked === undefined, 'hacked 가 프로토타입을 타고 보인다');
 });
+
+// 10차 감사 [1] — into 도 같은 자리. 동결 그릇의 기존 키를 갱신하지 못했다.
+test('10차-1: transducer.into 가 동결 그릇의 기존 키를 갱신한다', () => {
+    const frozen = Object.freeze({ a: 1, keep: 2 });
+    const out = transducer.into(frozen, transducer.map(x => x), [['a', 9]]);
+    assertEquals(out.a, 9);
+    assertEquals(out.keep, 2);
+    assertEquals(frozen.a, 1, '원본이 변했다');
+});
