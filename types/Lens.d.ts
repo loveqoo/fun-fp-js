@@ -73,6 +73,10 @@ declare function traversed<K extends keyof TraversableInstances>(
     key: K
 ): Traversal<any, any>;
 
+// The Lens onto one property. Accepts an array index too, and the copy keeps the
+// container's own shape (arrays stay arrays, symbols and non-enumerable props survive).
+declare function prop<S, A>(key: string | number): Lens<S, A>;
+
 // ── Reading ──────────────────────────────────────────────────────────
 
 // View through a Lens or Iso — exactly one target.
@@ -130,6 +134,7 @@ export declare const Optics: {
     readonly Lens: typeof Lens;
     readonly Prism: typeof Prism;
     readonly traversed: typeof traversed;
+    readonly prop: typeof prop;
     readonly compose: typeof composeOptics;
     readonly view: typeof view;
     readonly preview: typeof preview;

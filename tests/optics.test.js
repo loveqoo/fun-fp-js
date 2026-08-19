@@ -575,4 +575,32 @@ test('prop - 원본의 own __proto__ 도 복제에서 프로토타입으로 둔�
     assertEquals(out.a, 2);
 });
 
+// 9차 감사 [2] — 오늘 아침 __proto__ 를 막으려고 복제를 Object.assign 에서 Object.keys 순회로
+// 바꿨는데, Object.keys 는 **열거 가능한 문자열 키만** 본다. 옛 코드가 보존하던 심볼까지 잃었다.
+// 렌즈의 Get-Put 이 깨진다 — 읽은 값을 그대로 넣어도 원본이 안 나온다.
+test('prop - 복제가 심볼·숨은 속성까지 보존한다 (Get-Put)', () => {
+    const meta = Symbol('meta');
+    const input = { a: 1 };
+    input[meta] = 2;
+    Object.defineProperty(input, 'hidden', { value: 3, enumerable: false });
+
+    const lens = prop('a');
+    const out = set(lens, view(lens, input), input);
+
+    assertEquals(out.a, 1);
+    assertEquals(out[meta], 2, '심볼 속성이 사라졌다');
+    assertEquals(out.hidden, 3, '숨은 속성이 사라졌다');
+    assertEquals(Object.prototype.propertyIsEnumerable.call(out, 'hidden'), false, '숨은 속성이 드러났다');
+    assert(out !== input, '원본을 그대로 돌려줬다');
+    assertEquals(input.a, 1, '원본이 변했다');
+});
+
+test('prop - 접근자 속성도 접근자로 남는다', () => {
+    const input = { a: 1, get double() { return this.a * 2; } };
+    const out = set(prop('a'), 5, input);
+    const d = Object.getOwnPropertyDescriptor(out, 'double');
+    assert(d !== undefined && typeof d.get === 'function', '접근자가 값으로 굳었다');
+    assertEquals(out.double, 10, '접근자가 새 값을 안 본다');
+});
+
 console.log('\n✅ Optics tests completed');

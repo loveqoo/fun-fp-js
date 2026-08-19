@@ -16,6 +16,15 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 - `transducer.transduce` 가 4단 커링에서 **4인자 단일 호출**로 바뀌었습니다:
   `transduce(변환기, 리듀서, 초기값, 컬렉션)` — 라이브러리의 다른 문과 같은 비커리드.
 
+- **객체 복제가 심볼·숨은 속성을 잃던 것을 고쳤습니다.** `Optics.prop` 의 `set` 과
+  `transducer.into` 의 그릇 복제가 열거 가능한 문자열 키만 옮겨, 심볼 속성과
+  non-enumerable 속성이 조용히 사라졌습니다. `prop` 은 읽은 값을 그대로 다시 넣어도
+  원본이 안 나왔습니다(렌즈 Get-Put 위반). 이제 속성 서술자를 통째로 옮깁니다 —
+  접근자도 접근자로 남고, own `__proto__` 가 프로토타입으로 둔갑하지도 않습니다.
+- **`Task.filter` 의 술어가 던지면 거부로 도착합니다.** 원본 Task 가 비동기로 정착하면
+  술어는 `Task` 생성자의 `try` 밖에서 돌아, 예외가 `uncaughtException` 으로 새고 그
+  Task 는 **영영 안 열렸습니다**(무음 정지).
+- `Optics.prop` 이 TypeScript 선언에 없어 타입으로는 못 쓰던 것을 고쳤습니다.
 - **`ChainRec` 이 규격 밖 걸음을 거부합니다.** 걸음은 주어진 `next`/`done` 으로 만들어야
   하고, 그 밖의 값은 `ChainRec.chainRec: step must be next(...) or done(...)` 로 거부합니다.
   전에는 **종료로 읽었고**, 그래서 콜백의 오타가 조용히 성공이 됐습니다 — `done` 을 깜빡한

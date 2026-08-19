@@ -15,6 +15,7 @@
 // 담기지 않는다. 의도는 `CLAUDE.md` 「Traps」에, 부활 차단은 여기에 있다.
 import fp from '../index.js';
 import { test, assertEquals, assert, assertThrows, logSection } from './utils.js';
+import { readFileSync } from 'node:fs';
 
 const TYPE_CLASSES = [
     'Setoid', 'Ord', 'Semigroup', 'Monoid', 'Group', 'Semigroupoid', 'Category',
@@ -240,4 +241,12 @@ test('lookup - 프로토타입 구성원은 등록 인스턴스가 아니다', (
         assertThrows(() => fp.Functor.lookup(key), 'lookup 이 프로토타입 구성원을 돌려줬다: ' + key);
     }
     assertThrows(() => fp.Setoid.Maybe('__proto__'), '팩토리가 프로토타입 키로 인스턴스를 만들었다');
+});
+
+// 9차 감사 [3] — Optics.prop 이 런타임에는 있는데 타입 선언에 없었다. TypeScript 사용자는
+// 못 쓴다. 선언 파일을 사람이 손으로 유지하므로, 빠뜨렸는지를 게이트가 본다.
+test('9차-3: Optics 의 런타임 키가 전부 타입 선언에 있다', () => {
+    const declared = readFileSync(new URL('../types/Lens.d.ts', import.meta.url), 'utf8');
+    const missing = Object.keys(fp.Optics).filter(k => declared.indexOf(`readonly ${k}:`) === -1);
+    assertEquals(missing, [], `타입 선언에 없는 Optics 키: ${missing.join(', ')}`);
 });

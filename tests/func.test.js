@@ -657,3 +657,28 @@ test('transducer.into - 그릇의 own __proto__ 데이터도 복제에서 보존
     assertEquals(out.k, 7);
     assertEquals(Object.prototype.hasOwnProperty.call(vessel, '__proto__'), true);   // 원본 불변
 });
+
+// 9차 감사 [4] — into 의 그릇 복제도 Object.keys 라 심볼·숨은 속성을 잃었다.
+// 문서가 약속한 "그릇 내용 보존"을 어긴다. Optics.prop 과 같은 뿌리이고 같은 수법으로 고친다.
+test('9차-4: transducer.into 가 그릇의 심볼·숨은 속성을 보존한다', () => {
+    const sym = Symbol('s');
+    const vessel = { plain: 3 };
+    vessel[sym] = 2;
+    Object.defineProperty(vessel, 'hidden', { value: 1, enumerable: false });
+
+    const out = transducer.into(vessel, transducer.map(x => x), [['k', 9]]);
+
+    assertEquals(out.plain, 3);
+    assertEquals(out.k, 9);
+    assertEquals(out[sym], 2, '심볼 속성이 사라졌다');
+    assertEquals(out.hidden, 1, '숨은 속성이 사라졌다');
+    assertEquals(Object.getOwnPropertyNames(vessel).indexOf('k'), -1, '원본이 변했다');
+});
+
+test('9차-4: into 가 그릇의 own __proto__ 를 프로토타입으로 둔갑시키지 않는다 (5차 수리 유지)', () => {
+    const vessel = {};
+    Object.defineProperty(vessel, '__proto__', { value: { hacked: 1 }, enumerable: true, configurable: true, writable: true });
+    const out = transducer.into(vessel, transducer.map(x => x), []);
+    assert(Object.getPrototypeOf(out) === Object.prototype, '프로토타입이 바뀌었다');
+    assert(out.hacked === undefined, 'hacked 가 프로토타입을 타고 보인다');
+});

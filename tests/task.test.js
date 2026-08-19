@@ -1,6 +1,6 @@
 // Task Operations Tests
 import fp from '../index.js';
-import { test, assertEquals, testAsync, logSection } from './utils.js';
+import { test, assert, assertEquals, testAsync, logSection } from './utils.js';
 
 const { Task, Either } = fp;
 
@@ -422,3 +422,26 @@ testAsync('fromPromise - then 만 가진 thenable 을 정상 동화한다', asyn
 });
 
 console.log('\n✅ Task tests completed');
+
+// 9차 감사 [1] — 원본 Task 가 비동기로 정착하면 술어는 Task 생성자의 try 밖에서 돈다.
+// 그래서 예외가 reject 로 안 가고 uncaughtException 으로 새며, 결과 Task 는 영영 안 열렸다
+// (무음 정지). 같은 파일의 TaskFunctor 는 이미 감싸고 있었다 — filter 만 빠져 있었다.
+testAsync('9차-1: 비동기 Task 의 filter 술어가 던지면 거부로 도착한다', async () => {
+    const source = new Task((_, resolve) => Promise.resolve().then(() => resolve(1)));
+    const e = await new Promise(res => Task.filter(() => { throw new Error('술어가 터짐'); }, source)
+        .fork(res, () => res(null)));
+    assert(e !== null, 'Task 가 영영 안 열렸다 (무음 정지)');
+    assertEquals(e.message, '술어가 터짐');
+});
+
+testAsync('9차-1: 동기 Task 에서도 같다', async () => {
+    const e = await new Promise(res => Task.filter(() => { throw new Error('동기도 터짐'); }, Task.of(1))
+        .fork(res, () => res(null)));
+    assert(e !== null, '동기 경로가 안 열렸다');
+    assertEquals(e.message, '동기도 터짐');
+});
+
+testAsync('9차-1: 술어가 거짓이면 그대로 값으로 거부한다 (기존 계약)', async () => {
+    const e = await new Promise(res => Task.filter(x => x > 5, Task.of(1)).fork(res, () => res(null)));
+    assertEquals(e, 1);
+});
