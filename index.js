@@ -1009,6 +1009,32 @@ class FunctionProfunctor extends Profunctor {
     }
 }
 modules.push(FunctionProfunctor);
+// (a ->) 의 Apply — 같은 입력을 양쪽에 먹인다. docs/internals.md#function-monad
+class FunctionApply extends Apply {
+    constructor() {
+        super(Functor.types.FunctionFunctor, (ff, fa) => x => ff(x)(fa(x)), 'function', Apply.types, 'function');
+    }
+}
+modules.push(FunctionApply);
+class FunctionApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.FunctionApply, constant, 'function', Applicative.types, 'function');
+    }
+}
+modules.push(FunctionApplicative);
+// chain 은 환경을 두 번 먹인다 — 문헌이 Reader 라 부르는 그것이다. docs/internals.md#function-monad
+class FunctionChain extends Chain {
+    constructor() {
+        super(Apply.types.FunctionApply, (f, g) => x => f(g(x))(x), 'function', Chain.types, 'function');
+    }
+}
+modules.push(FunctionChain);
+class FunctionMonad extends Monad {
+    constructor() {
+        super(Applicative.types.FunctionApplicative, Chain.types.FunctionChain, 'function', Monad.types, 'function');
+    }
+}
+modules.push(FunctionMonad);
 /* Boolean */
 class BooleanSetoid extends Setoid {
     constructor() {

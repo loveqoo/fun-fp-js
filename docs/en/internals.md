@@ -1011,6 +1011,89 @@ Every other type-class method (`map`, `ap`, `chain`, `reduce`, `bimap`,
 `traverse`, …) has argument order matching the spec — `compose`'s direction is
 the only deviation.
 
+## Functions are monads without being wrapped {#function-monad}
+
+The `'function'` key carries `Apply`, `Applicative`, `Chain` and `Monad`.
+A **bare function is used as-is**, with no wrapper around it.
+
+This is possible because of Static Land. Fantasy Land requires the value itself to
+carry the methods, so a bare function cannot be a monad unless you patch
+`Function.prototype` — which is why a wrapping type is **mandatory** there. Static
+Land puts the methods on the module rather than on the value, so that constraint is
+gone. This is exactly what the spec lists as its own advantage: "modules that work
+with built-in types as values".
+
+Read a function as **something that takes an environment and produces a value**.
+`chain` does one thing: it **feeds the same environment to both steps**.
+
+```javascript
+const { Monad } = FunFP;
+const M = Monad.lookup('function');
+const env = { host: 'example.com', port: 8080 };
+
+console.log(M.chain(host => e => host + ':' + e.port, e => e.host)(env));  // example.com:8080
+console.log(M.of(7)('the environment is ignored'));  // 7   of builds a constant function
+console.log(M.map(n => n * 2, e => e.port)(env));    // 16160   map is post-composition
+console.log(M.ap(e => n => n + e.port, e => 10)(env));  // 8090   ap feeds both sides the same env
+```
+
+The literature calls this structure the **Reader monad**. So `Chain.lookup('function')`
+and `Chain.lookup('reader')` are **two names for the same thing** — and the values match.
+
+```javascript
+const { Monad, Reader } = FunFP;
+const M = Monad.lookup('function');
+const env = { host: 'example.com', port: 8080 };
+
+const bare = M.chain(host => e => host + ':' + e.port, e => e.host);
+const wrapped = Reader.asks(e => e.host).chain(host => Reader.asks(e => host + ':' + e.port));
+
+console.log(bare(env) === wrapped.run(env));   // true   same value
+```
+
+### So why does `Reader` still exist? {#why-reader-stays}
+
+**Only a wrapped value can carry a transformer.** A bare function has no marker saying
+"this is a Reader", so there is nowhere for `ReaderT` to attach. Only the side that
+carries the marker can be stacked with another monad.
+
+```javascript
+const { ReaderT } = FunFP;
+const RT = ReaderT('maybe');
+const p = RT.asks(e => e.host).chain(h => RT.of(h.toUpperCase()));
+
+console.log(String(RT.runReaderT({ host: 'example.com' }, p)));  // Just("EXAMPLE.COM")
+```
+
+The rule for choosing is simple. **A bare function** when one environment is all you
+need; **`Reader`/`ReaderT`** when it has to stack with another effect. The two cannot be
+mixed — the wrapped instances only accept wrapped values.
+
+```javascript
+const { Chain, Monad } = FunFP;
+const bare = Monad.lookup('function').chain(h => e => h + e.port, e => e.host);
+
+try { Chain.lookup('reader').chain(h => h, bare); }
+catch (e) { console.log(e.message); }  // Chain.chain: arguments must be (function, Reader)
+```
+
+### The law gate had a blind spot
+
+`tests/staticland-laws.test.js` builds its Kleisli arrows with `of`. That is enough for
+every other type, but **for the function monad `of` yields a constant function that
+ignores the environment.** An arrow that never looks at the environment cannot tell you
+which environment was passed.
+
+With that in place, mutating `chain` from `f(g(x))(x)` to `f(g(x))(g(x))` left **both
+associativity and left identity green** (measured 2026-08-23). Associativity cannot catch
+it in principle — the mutated form is associative too. Left identity missed it because the
+arrow was constant.
+
+So a `KLEISLI_FNS` table now hands the function type **arrows that do read the
+environment**. With those in place, **left identity catches** that same mutation.
+
+---
+
 ## `Either`/`Task` are not `Filterable` {#filterable}
 
 Static Land's `Filterable` requires three rules.

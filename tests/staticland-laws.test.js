@@ -402,12 +402,19 @@ const OF_BY_LABEL = {
 };
 
 const OF = {
+    function: x => () => x,
     Identity: x => fp.Applicative.lookup('identity').of(x),
     Object: x => ({ value: x }), Array: x => [x], Maybe: x => Just(x), Either: x => Right(x),
     NonEmptyList: x => fp.NonEmptyList.of(x),
     Task: x => fp.Task.of(x), Validation: x => fp.Validation.Valid(x), Reader: x => fp.Reader.of(x),
     Writer: x => fp.Writer.of(x), State: x => fp.State.of(x), Free: x => fp.Free.of(x),
 };
+// Chain·Monad 법칙이 쓰는 Kleisli 화살표. of 로 만들면 환경을 무시하는 상수가 되어, 함수
+// 모나드에서 "어느 환경이 넘어가는가" 를 못 가린다 — 결합법칙은 양쪽이 똑같이 무너지고
+// 좌항등은 양쪽이 똑같이 상수가 되어 둘 다 초록이 난다(2026-08-23 실측: 환경 뒤바꾸기
+// 뮤테이션 `f(g(x))(x)` → `f(g(x))(g(x))` 가 안 잡혔다). 환경을 보는 화살표가 필요한
+// 타입만 여기에 적는다. docs/internals.md#function-monad
+const KLEISLI_FNS = { function: [x => e => x + e, x => e => x * e] };
 const DEGENERATE = {
     Array: [], Maybe: Nothing(), Either: Left('e'), Task: fp.Task.rejected('boom'),
     Validation: fp.Validation.Invalid(['e'], fp.Monoid.lookup('array')),
@@ -660,7 +667,8 @@ const CLASS_LAWS = {
     },
     Chain: (M, obs) => {
         const xs = FUNCTOR_SAMPLES[M.type], of = OF[M.type]; if (!xs || !of) return null;
-        const fs = [x => of(fnA(x)), x => of(fnB(x)), ...(DEGENERATE[M.type] ? [() => DEGENERATE[M.type]] : [])];
+        const fs = KLEISLI_FNS[M.type]
+            || [x => of(fnA(x)), x => of(fnB(x)), ...(DEGENERATE[M.type] ? [() => DEGENERATE[M.type]] : [])];
         const bad = [];
         for (const u of xs) for (const ff of fs) for (const gg of fs)
             same(obs, M.chain(gg, M.chain(ff, u)), M.chain(x => M.chain(gg, ff(x)), u)) || bad.push('결합 깨짐');
@@ -721,7 +729,7 @@ const CLASS_LAWS = {
     },
     Monad: (M, obs) => {
         const xs = FUNCTOR_SAMPLES[M.type]; if (!xs) return null;
-        const ff = x => M.of(fnA(x));
+        const ff = KLEISLI_FNS[M.type] ? KLEISLI_FNS[M.type][0] : x => M.of(fnA(x));
         const bad = [];
         same(obs, M.chain(ff, M.of(1)), ff(1)) || bad.push('좌항등 깨짐');
         for (const u of xs) same(obs, M.chain(M.of, u), u) || bad.push('우항등 깨짐');
@@ -816,7 +824,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 101, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 105, '법칙을 돌린 인스턴스 수가 달라졌다');
     assertEquals(instancesOf('Reducible').length, 2, 'Reducible 인스턴스 수가 달라졌다');
     // MonadError 는 클래스별로도 잠근다 — 합계 하나로는 인스턴스 교체가 숨는다(5차 리뷰 Minor 8).
     assertEquals(instancesOf('MonadError').length, 2, 'MonadError 인스턴스 수가 달라졌다');

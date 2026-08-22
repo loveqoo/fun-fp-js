@@ -46,6 +46,45 @@
 
 ---
 
+## ✅ 닫힘 — 함수 타입에 Apply·Applicative·Chain·Monad 등록 (2026-08-23)
+
+계획서: [`plan/260823-function-monad.md`](./plan/260823-function-monad.md). 소유자 「좋습니다」 승인 후 구현.
+**dist 재빌드·커밋·푸시는 안 했다 — 소유자 요청 대기.**
+
+- **원인** — fun-fp-book 세션이 「함수에 `chain` 을 달았으면 그게 Reader 였을 텐데 왜 별도
+  타입인가」를 물었고, 저장소 전체(`.dev`·`docs`·`CLAUDE.md`·`CHANGELOG.md`·커밋 309개)에
+  **결정 기록이 0건**이었다. 연대기상 갈림길이었던 적도 없다 — `Reader` 2026-01-25,
+  `FunctionFunctor` 는 7개월 뒤 명세 게이트 ③의 짝으로 사후 생성.
+- **해결책** — `Reader` 는 그대로 두고 `'function'` 키에 네 인스턴스를 더한다(Haskell 방향).
+  cats 식 Kleisli 통합은 권하지 않는다 — `Id[A]=A` 는 고차 타입이 있어야 성립한다.
+- **완료조건** — 계획서 7절. 요지는 셋: `npm test` 전량 통과(`algebra-type` 148→152,
+  `staticland-laws` `checked` 101→105) · **뮤테이션 넷을 전부 잡는다** ·
+  `docs/internals.md#function-monad` 와 영어판 짝.
+- **⚠️ 선행 발견** — `Chain` 법칙이 함수 타입에서 **눈멀어 있다.** 스크래치패드 복사본 실측:
+  환경 뒤바꾸기 뮤테이션(`f(g(x))(x)` → `f(g(x))(g(x))`)이 **안 잡혔다.** 원인은
+  `staticland-laws.test.js:662` 의 Kleisli 화살표가 `of` 로 만들어져 전부 환경을 무시하는
+  상수 함수라는 것. 등록만 하면 초록이 나지만 **그 초록은 아무것도 안 본다.**
+  게이트 보수를 같은 회차에 하기를 권한다.
+- **곁가지(별건)** — `ReaderT('identity')` 가 `Monad.lookup: unsupported key identity` 로 막힌다.
+  Monad 등록은 아홉이고 `Identity` 는 `Applicative` 까지만 있다. **결함인지 의도인지 확인 안 함.**
+- **검증 (2026-08-23)** — `index.js` 에 네 클래스(`FunctionApply`/`FunctionApplicative`/
+  `FunctionChain`/`FunctionMonad`), `Monad.lookup('function')` 이 `chain: a:1`, `of: 7`,
+  `ap: 8090`, `map: 16160` 을 낸다. `node tests/run.js` → **50 passed, 1 failed** —
+  실패 하나는 dist 동기 검사뿐이고 빌드는 승인 대기라 그대로 둔다. typecheck 통과.
+  잠금 갱신: `algebra-type` 148 → **152**, `staticland-laws` `checked` 101 → **105**.
+  `npm run baseline` 원소 단위 대조: **추가 16개(넷과 그 별칭·역인덱스), 사라진 것 0개.**
+  문서 예제 936 → **944개**, 대조 줄 842 → **849줄**.
+- **뮤테이션 (2026-08-23)** — 넷을 심어 넷 다 잡혔다(기준선 `staticland-laws` ❌ 0개).
+  ① `f(g(x))(x)` → `f(g(x))(g(x))` **좌항등 깨짐** ② `ap` 가 둘째 인자 무시 **합성·준동형 깨짐**
+  ③ `of` 가 `constant` → `identity` **잡힘** ④ `chain` 이 둘째 적용 누락 **좌항등 깨짐**.
+- **게이트 보수 — ①이 처음엔 안 잡혔다.** 계획서 5절의 초안(`Chain` 법칙만 고치기)으로는
+  **부족했다**: `Chain` 결합법칙은 원리상 못 잡는다(뒤바뀐 것도 결합적이다). `Monad` 좌항등이
+  잡아야 하는데 그 화살표도 `of` 로 만든 상수였다. **두 법칙 다** 환경을 보는 화살표를 쓰게
+  고쳤다 — `staticland-laws.test.js` 의 `KLEISLI_FNS` 표.
+- **참고** — Static Land 「Difference from Fantasy Land」 · cats `catsStdMonadForFunction1` ·
+  cats `type Reader[A, B] = Kleisli[Id, A, B]` ·
+  [`docs/internals.md#function-monad`](./../docs/internals.md#function-monad)
+
 ## ✅ 닫힘 — index.js 주석 B안: 앵커 없는 다줄 블록 (2026-08-19)
 
 - **경위** — 소유자가 다음 회차 순서를 정했다(2026-08-19): **B안 → Reducible 문서 →

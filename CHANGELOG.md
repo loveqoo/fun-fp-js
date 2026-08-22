@@ -51,6 +51,14 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 
 ### 새 기능
 
+- **함수 타입이 모나드가 됐습니다** — `'function'` 키에 `Apply`·`Applicative`·`Chain`·`Monad`
+  넷이 등록됩니다. 맨 함수를 감싸지 않고 `Monad.lookup('function').chain(...)` 으로 씁니다.
+  문헌이 **Reader 모나드**라 부르는 그것이며, `Reader` 로 감싼 것과 값이 같습니다.
+  감싼 `Reader` 는 그대로 남습니다 — `ReaderT` 는 표식을 지고 있는 쪽에만 붙습니다.
+  Static Land 가 "modules that work with built-in types as values" 를 자기 장점으로 적어 둔
+  자리이고, Haskell·cats 도 함수의 모나드 인스턴스를 갖고 있습니다.
+  [`docs/internals.md#function-monad`](./docs/internals.md#function-monad)
+
 - **`Free.api(...이름)`** — 어휘만 선언하면 명령 함수와 해석기 문이 나옵니다. Free 를
   몰라도 프로그램/실행 분리를 씁니다. (처음 `Free.dsl` 로 나왔다가 곧바로 개명 —
   에러 문안 접두도 `Free.api:` 입니다.)

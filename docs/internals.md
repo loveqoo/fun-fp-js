@@ -898,6 +898,83 @@ console.log(pipe(A, B)('_'));   // '_AB' — 명세 compose(A, B) 와 같은 방
 그 외 모든 타입클래스 메서드(`map`·`ap`·`chain`·`reduce`·`bimap`·`traverse` …)의 인자
 순서는 명세와 일치합니다 — 이탈은 `compose` 방향 하나뿐입니다.
 
+## 함수는 감싸지 않아도 모나드다 {#function-monad}
+
+`'function'` 키에는 `Apply`·`Applicative`·`Chain`·`Monad` 가 등록돼 있습니다.
+**맨 함수를 감싸지 않고 그대로** 씁니다.
+
+이게 가능한 것은 Static Land 라서입니다. fantasy-land 는 값이 메서드를 지녀야 하므로
+`Function.prototype` 을 건드리지 않는 한 함수를 모나드로 만들 수 없고, 그래서 감싸는 타입이
+**필수**입니다. Static Land 는 메서드를 값이 아니라 모듈에 두므로 그 제약이 없습니다 —
+명세가 자기 장점으로 적어 둔 "modules that work with built-in types as values" 가 이것입니다.
+
+함수 하나를 **환경을 받아 값을 내는 것**으로 봅니다. `chain` 이 하는 일은 하나뿐입니다:
+**같은 환경을 두 단계 모두에 먹입니다.**
+
+```javascript
+const { Monad } = FunFP;
+const M = Monad.lookup('function');
+const env = { host: 'example.com', port: 8080 };
+
+console.log(M.chain(host => e => host + ':' + e.port, e => e.host)(env));  // example.com:8080
+console.log(M.of(7)('환경은 무시된다'));            // 7   of 는 환경을 안 보는 상수 함수를 만든다
+console.log(M.map(n => n * 2, e => e.port)(env));   // 16160   map 은 후합성이다
+console.log(M.ap(e => n => n + e.port, e => 10)(env));  // 8090   ap 도 양쪽에 같은 환경을 먹인다
+```
+
+문헌은 이 구조를 **Reader 모나드**라고 부릅니다. 그러니 `Chain.lookup('function')` 과
+`Chain.lookup('reader')` 는 **같은 것에 붙은 두 이름**입니다 — 값도 같습니다.
+
+```javascript
+const { Monad, Reader } = FunFP;
+const M = Monad.lookup('function');
+const env = { host: 'example.com', port: 8080 };
+
+const bare = M.chain(host => e => host + ':' + e.port, e => e.host);
+const wrapped = Reader.asks(e => e.host).chain(host => Reader.asks(e => host + ':' + e.port));
+
+console.log(bare(env) === wrapped.run(env));   // true   같은 값이다
+```
+
+### 그러면 `Reader` 는 왜 남아 있나 {#why-reader-stays}
+
+**감싸야만 트랜스포머를 붙일 수 있습니다.** 맨 함수에는 "이건 Reader 다" 라는 표시가 없어서
+`ReaderT` 를 얹을 자리가 없습니다. 표시를 지고 있는 쪽만 다른 모나드와 겹칠 수 있습니다.
+
+```javascript
+const { ReaderT } = FunFP;
+const RT = ReaderT('maybe');
+const p = RT.asks(e => e.host).chain(h => RT.of(h.toUpperCase()));
+
+console.log(String(RT.runReaderT({ host: 'example.com' }, p)));  // Just("EXAMPLE.COM")
+```
+
+그래서 고르는 법은 간단합니다. **환경 하나로 끝나면 맨 함수**를, **다른 효과와 겹쳐야 하면
+`Reader`/`ReaderT`** 를 씁니다. 섞어 쓸 수는 없습니다 — 감싼 쪽 인스턴스는 감싼 값만 받습니다.
+
+```javascript
+const { Chain, Monad } = FunFP;
+const bare = Monad.lookup('function').chain(h => e => h + e.port, e => e.host);
+
+try { Chain.lookup('reader').chain(h => h, bare); }
+catch (e) { console.log(e.message); }  // Chain.chain: arguments must be (function, Reader)
+```
+
+### 법칙 게이트에 눈먼 자리가 있었다
+
+`tests/staticland-laws.test.js` 는 Kleisli 화살표를 `of` 로 만듭니다. 다른 타입에서는 그것으로
+충분한데, **함수 모나드에서는 `of` 가 환경을 무시하는 상수 함수를 냅니다.** 환경을 안 보는
+화살표로는 "어느 환경이 넘어가는가" 를 가릴 수 없습니다.
+
+그 상태에서 `chain` 을 `f(g(x))(x)` 에서 `f(g(x))(g(x))` 로 바꾸는 뮤테이션을 심었더니
+**결합법칙과 좌항등이 둘 다 초록이었습니다**(2026-08-23 실측). 결합법칙은 원리상 못 잡습니다 —
+바뀐 것도 결합적이기 때문입니다. 좌항등이 못 잡은 것은 화살표가 상수여서였습니다.
+
+그래서 `KLEISLI_FNS` 표를 두어 함수 타입에만 **환경을 보는 화살표**를 줍니다. 그 뒤 같은
+뮤테이션은 **좌항등이 잡습니다.**
+
+---
+
 ## `Either`·`Task` 는 `Filterable` 이 아니다 {#filterable}
 
 Static Land 의 `Filterable` 은 규칙 셋을 요구합니다.
