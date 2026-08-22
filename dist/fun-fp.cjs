@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: edd3b20a8da772f13a621f546a30fa909d97bc7f
- * Built: 2026-08-19T15:11:15.430Z
+ * Commit: c1ae2cb73ea0aa7221f090b5b93f02502d27f27f
+ * Built: 2026-08-22T16:41:05.978Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -1032,6 +1032,32 @@ class FunctionProfunctor extends Profunctor {
     }
 }
 modules.push(FunctionProfunctor);
+// (a ->) 의 Apply — 같은 입력을 양쪽에 먹인다. docs/internals.md#function-monad
+class FunctionApply extends Apply {
+    constructor() {
+        super(Functor.types.FunctionFunctor, (ff, fa) => x => ff(x)(fa(x)), 'function', Apply.types, 'function');
+    }
+}
+modules.push(FunctionApply);
+class FunctionApplicative extends Applicative {
+    constructor() {
+        super(Apply.types.FunctionApply, constant, 'function', Applicative.types, 'function');
+    }
+}
+modules.push(FunctionApplicative);
+// chain 은 환경을 두 번 먹인다 — 문헌이 Reader 라 부르는 그것이다. docs/internals.md#function-monad
+class FunctionChain extends Chain {
+    constructor() {
+        super(Apply.types.FunctionApply, (f, g) => x => f(g(x))(x), 'function', Chain.types, 'function');
+    }
+}
+modules.push(FunctionChain);
+class FunctionMonad extends Monad {
+    constructor() {
+        super(Applicative.types.FunctionApplicative, Chain.types.FunctionChain, 'function', Monad.types, 'function');
+    }
+}
+modules.push(FunctionMonad);
 /* Boolean */
 class BooleanSetoid extends Setoid {
     constructor() {
