@@ -1094,6 +1094,114 @@ environment**. With those in place, **left identity catches** that same mutation
 
 ---
 
+## Three ways to supply the subject last — `composeK` / `Reader` / `ReaderT` {#defer-subject}
+
+All three **compose the operations first and supply the subject last.** What differs is what each
+one buys and what it costs.
+
+### Starting point — repeated `chain` is arrow composition
+
+Chaining twice equals composing the arrows first and chaining once.
+**This is the monad associativity law** — the `Chain` law in `tests/staticland-laws.test.js` is that
+exact equation.
+
+```javascript
+const { Monad, Maybe } = FunFP;
+const M = Monad.lookup('maybe');
+const f1 = n => n > 0 ? Maybe.Just(n * 2) : Maybe.Nothing();
+const f2 = n => n < 100 ? Maybe.Just('v' + n) : Maybe.Nothing();
+
+console.log(String(M.chain(f2, M.chain(f1, Maybe.Just(5)))));        // Just("v10")
+console.log(String(M.chain(Maybe.composeK(f2, f1), Maybe.Just(5)))); // Just("v10")   composed first
+console.log(String(Maybe.pipeK(f1, f2)(5)));                         // Just("v10")   applied to a bare value
+```
+
+The composed thing is a **function** of shape `value -> Maybe`. `Reader`'s carrier is
+`environment -> value`, so the shapes match — wrapping it is enough to make it run.
+
+```javascript
+const { Reader, Maybe } = FunFP;
+console.log(String(Reader.asks(Maybe.pipeK(n => Maybe.Just(n * 2))).run(5)));  // Just(10)
+```
+
+### `composeK` — what you supply last is **material**
+
+Each step receives **only the previous step's output**. The original is gone once the first step
+consumes it.
+
+```javascript
+const { Maybe } = FunFP;
+const arrow = Maybe.pipeK(n => Maybe.Just(n * 2), n => Maybe.Just('original not visible: ' + n));
+console.log(String(arrow(5)));   // Just("original not visible: 10")
+```
+
+### `Reader` — what you supply last is **context**
+
+`ask` reads it back at any step, and `local` hands a changed one to what is below.
+`composeK` has no such door.
+
+```javascript
+const { Reader, Monad, Maybe } = FunFP;
+const M = Monad.lookup('maybe');
+const lift = f => mm => Reader.of(M.chain(f, mm));
+
+const usesOriginal = Reader.ask
+    .chain(lift(n => Maybe.Just(n * 2)))
+    .chain(result => Reader.ask.map(original =>
+        M.chain(a => M.chain(b => Maybe.Just(a + '/' + b), original), result)));
+console.log(String(usesOriginal.run(Maybe.Just(5))));   // Just("10/5")   computed 10 and original 5
+
+const changed = Reader.local(mm => M.chain(n => Maybe.Just(n + 100), mm),
+    Reader.ask.chain(lift(n => Maybe.Just(n * 2))));
+console.log(String(changed.run(Maybe.Just(5))));        // Just(210)   105 doubled
+```
+
+**The cost is `lift`.** `Reader`'s `chain` does not know the value inside is a `Maybe`, so every step
+has to unwrap by hand. Skip it and the result is silently wrong — nothing throws.
+
+```javascript
+const { Reader, Maybe } = FunFP;
+const find = Reader.asks(c => c.present ? Maybe.Just(c.value) : Maybe.Nothing());
+console.log(String(find.chain(m => Reader.of(m * 2)).run({ present: true, value: 5 })));  // NaN   multiplied the Maybe itself
+```
+
+### `ReaderT` — `chain` does that unwrapping for you
+
+The same three steps written both ways give the same results; the only difference is whether `lift`
+appears **three times or zero**.
+
+```javascript
+const { Reader, ReaderT, Monad, Maybe } = FunFP;
+const M = Monad.lookup('maybe');
+const lift = f => mm => Reader.of(M.chain(f, mm));
+const R = Reader.ask
+    .chain(lift(n => Maybe.Just(n * 2)))
+    .chain(lift(n => n < 100 ? Maybe.Just(n) : Maybe.Nothing()))
+    .chain(lift(n => Maybe.Just('v' + n)));
+console.log(String(R.run(Maybe.Just(5))));     // Just("v10")
+console.log(String(R.run(Maybe.Just(200))));   // Nothing
+
+const RT = ReaderT('maybe');
+const T = RT.ask.chain(n => RT.of(n * 2))
+    .chain(n => n < 100 ? RT.of(n) : RT.lift(Maybe.Nothing()))
+    .chain(n => RT.of('v' + n));
+console.log(String(RT.runReaderT(5, T)));      // Just("v10")
+console.log(String(RT.runReaderT(200, T)));    // Nothing
+```
+
+### Choosing
+
+| | Supplied last | Original mid-pipeline | Unwrapping | Wrapping layers |
+| --- | --- | --- | --- | --- |
+| `composeK` / `pipeK` | a bare value | **not visible** | none needed | 0 |
+| `Reader` | context | `ask`, `local` | **by hand, every step** | 1 |
+| `ReaderT` | context | `ask`, `local` | done by `chain` | 2 |
+
+Each tier buys one thing the tier below cannot do, and pays one wrapping layer for it.
+**A tier you do not need is pure cost.**
+
+---
+
 ## `Either`/`Task` are not `Filterable` {#filterable}
 
 Static Land's `Filterable` requires three rules.

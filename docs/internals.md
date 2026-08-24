@@ -975,6 +975,108 @@ catch (e) { console.log(e.message); }  // Chain.chain: arguments must be (functi
 
 ---
 
+## 주어를 마지막에 주는 세 가지 — `composeK` / `Reader` / `ReaderT` {#defer-subject}
+
+셋 다 **연산을 먼저 합쳐 두고 주어를 마지막에 줍니다.** 무엇을 사고 무엇을 치르는지가 다릅니다.
+
+### 출발점 — `chain` 반복은 화살표 합성과 같다
+
+`chain` 을 두 번 하는 것과, 화살표를 미리 합쳐 한 번 `chain` 하는 것은 같습니다.
+**이것이 모나드 결합법칙입니다** — `tests/staticland-laws.test.js` 의 `Chain` 법칙이 바로 이 식입니다.
+
+```javascript
+const { Monad, Maybe } = FunFP;
+const M = Monad.lookup('maybe');
+const f1 = n => n > 0 ? Maybe.Just(n * 2) : Maybe.Nothing();
+const f2 = n => n < 100 ? Maybe.Just('v' + n) : Maybe.Nothing();
+
+console.log(String(M.chain(f2, M.chain(f1, Maybe.Just(5)))));        // Just("v10")
+console.log(String(M.chain(Maybe.composeK(f2, f1), Maybe.Just(5)))); // Just("v10")   미리 합쳐 한 번
+console.log(String(Maybe.pipeK(f1, f2)(5)));                         // Just("v10")   맨 값에 바로
+```
+
+합쳐 놓은 것의 몸은 `값 -> Maybe` 인 **함수**입니다. `Reader` 의 몸이 `환경 -> 값` 이므로 같은 모양이고,
+그래서 감싸기만 해도 그대로 돕니다.
+
+```javascript
+const { Reader, Maybe } = FunFP;
+console.log(String(Reader.asks(Maybe.pipeK(n => Maybe.Just(n * 2))).run(5)));  // Just(10)
+```
+
+### `composeK` — 마지막에 준 것은 **재료**다
+
+각 단계에는 **앞 단계의 출력만** 옵니다. 원본은 첫 단계가 쓰고 나면 사라집니다.
+
+```javascript
+const { Maybe } = FunFP;
+const 화살표 = Maybe.pipeK(n => Maybe.Just(n * 2), n => Maybe.Just('원본은 안 보임: ' + n));
+console.log(String(화살표(5)));   // Just("원본은 안 보임: 10")
+```
+
+### `Reader` — 마지막에 준 것은 **문맥**이다
+
+`ask` 로 아무 단계에서나 다시 읽고, `local` 로 바꿔서 하위에 넘깁니다. `composeK` 에는 이 문이 없습니다.
+
+```javascript
+const { Reader, Monad, Maybe } = FunFP;
+const M = Monad.lookup('maybe');
+const 올림 = f => mm => Reader.of(M.chain(f, mm));
+
+const 원본도쓰기 = Reader.ask
+    .chain(올림(n => Maybe.Just(n * 2)))
+    .chain(결과 => Reader.ask.map(원본 =>
+        M.chain(a => M.chain(b => Maybe.Just(a + '/' + b), 원본), 결과)));
+console.log(String(원본도쓰기.run(Maybe.Just(5))));   // Just("10/5")   계산값 10 과 원본 5 를 함께
+
+const 바꿔서 = Reader.local(mm => M.chain(n => Maybe.Just(n + 100), mm),
+    Reader.ask.chain(올림(n => Maybe.Just(n * 2))));
+console.log(String(바꿔서.run(Maybe.Just(5))));       // Just(210)   105 를 두 배
+```
+
+**대가는 `올림` 입니다.** `Reader` 의 `chain` 은 안쪽이 `Maybe` 인 줄 모르므로, 단계마다 껍질을 직접
+벗겨야 합니다. 안 벗기면 던지지도 않고 조용히 틀립니다.
+
+```javascript
+const { Reader, Maybe } = FunFP;
+const 찾기 = Reader.asks(c => c.있음 ? Maybe.Just(c.값) : Maybe.Nothing());
+console.log(String(찾기.chain(m => Reader.of(m * 2)).run({ 있음: true, 값: 5 })));  // NaN   Maybe 를 그대로 곱했다
+```
+
+### `ReaderT` — 그 벗기기를 `chain` 이 대신한다
+
+같은 3단계를 두 방식으로 쓰면 결과는 같고, `올림` 이 **세 번 나오느냐 0번이냐**만 다릅니다.
+
+```javascript
+const { Reader, ReaderT, Monad, Maybe } = FunFP;
+const M = Monad.lookup('maybe');
+const 올림 = f => mm => Reader.of(M.chain(f, mm));
+const R = Reader.ask
+    .chain(올림(n => Maybe.Just(n * 2)))
+    .chain(올림(n => n < 100 ? Maybe.Just(n) : Maybe.Nothing()))
+    .chain(올림(n => Maybe.Just('v' + n)));
+console.log(String(R.run(Maybe.Just(5))));     // Just("v10")
+console.log(String(R.run(Maybe.Just(200))));   // Nothing
+
+const RT = ReaderT('maybe');
+const T = RT.ask.chain(n => RT.of(n * 2))
+    .chain(n => n < 100 ? RT.of(n) : RT.lift(Maybe.Nothing()))
+    .chain(n => RT.of('v' + n));
+console.log(String(RT.runReaderT(5, T)));      // Just("v10")
+console.log(String(RT.runReaderT(200, T)));    // Nothing
+```
+
+### 고르는 기준
+
+| | 마지막에 주는 것 | 중간에서 원본을 | 껍질 벗기기 | 감싸는 겹 |
+| --- | --- | --- | --- | --- |
+| `composeK` / `pipeK` | 맨 값 | **못 본다** | 필요 없음 | 0 |
+| `Reader` | 문맥 | `ask`·`local` | **단계마다 직접** | 1 |
+| `ReaderT` | 문맥 | `ask`·`local` | `chain` 이 대신 | 2 |
+
+각 층은 앞 층이 못 하는 것 하나씩을 사고, 겹 하나씩을 치릅니다. **필요 없는 층을 쓰면 그 겹은 그냥 비용입니다.**
+
+---
+
 ## `Either`·`Task` 는 `Filterable` 이 아니다 {#filterable}
 
 Static Land 의 `Filterable` 은 규칙 셋을 요구합니다.
