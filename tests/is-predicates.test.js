@@ -36,6 +36,13 @@ for (const [name, isX, real] of CASES) {
         assertEquals(isX(Object.create(real)), true, '상속 심볼');
         // Symbol.for 전역 명부의 성질상, 심볼을 직접 단 외부 객체는 통과한다 — 문서화된 현행 동작
         assertEquals(isX({ [symbolOf(name)]: true }), true, '심볼을 단 외부 객체');
+        // 던지는 getter — 예외는 삼키지 않고 그대로 전파한다. 공용 몸을 try/catch 로 감싸
+        // false 를 내는 회귀가 여기 걸린다(코덱스 6차가 그 변이로 표 전체 초록을 실증했다).
+        const 던지는 = {};
+        Object.defineProperty(던지는, symbolOf(name), { get() { throw new Error('boom:' + name); } });
+        let thrown = '';
+        try { isX(던지는); } catch (e) { thrown = e.message; }
+        assertEquals(thrown, 'boom:' + name, '던지는 getter 의 예외가 전파된다');
     });
 }
 
