@@ -68,9 +68,14 @@ identity 전부 누출). 소유자 제안 「공통 함수 하나로 검사」 �
   ① 성능 영수증에서 chainRec 언급 제거(그 경로는 검사를 안 지나 증거가 아님 — 한·영)
   ③ 트랜스포머 × 실제 identity 회귀 게이트 신설(identity.test.js — RT/ST/ET 실행값 고정,
   기존 트랜스포머 테스트 4종은 파일 내부 가짜 Identity 를 쓰므로 이 통합은 여기서만 지킨다).
-- **ChainRec 상속 chain 의 이중 반환 검사 (열림, 낭비)** — ChainRec 이 이미 감싼 chain 을
-  다시 Chain 생성자에 넣어 결과 검사가 2회 돈다(코덱스 8차 실측: type 읽기 2→4회). 기능
-  결함 아님. 고치려면 래퍼 구조를 건드려야 해 별건 — 판단 필요해지면 이 항목에서.
+- **✅ ChainRec 이중 검사 → 전수 수리로 확장 (2026-08-28 닫힘)** — 재 보니 같은 병이
+  **일곱 자리**였다: ChainRec.chain ×2, ChainRec.ap ×3, Chain.ap ×2, Comonad.map ×3,
+  Comonad.extend ×2, Extend.map ×2, Traversable.map ×2. 원인은 하나 — 부모의 이미 포장된
+  메서드를 생성자가 재포장. 해독제 `unwrapIfSameType` 은 집에 있었고(Apply·Applicative·
+  Monad 는 사용 중) 다섯 생성자(Chain·ChainRec·Extend·Comonad·Traversable)만 빠져 있었다.
+  소유자 확인("검사 종류는 안 없어지고 횟수만 준다") 후 다섯 곳에 한 줄씩. **검증**: 재측정
+  전 경로 2(1회), `tests/wrap-count.test.js` 신설(16경로 고정 — unwrap 제거 뮤테이션 3종
+  전부 빨강), 전체 53/54+typecheck(남은 빨강 dist 뿐), baseline 차이 0행.
 
 ## ✅ 닫힘 — identity 를 Chain·Monad 로 올린다 (2026-08-28)
 

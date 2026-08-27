@@ -803,6 +803,7 @@ class Chain extends Apply {
     constructor(apply, chain, type, registry, ...aliases) {
         checkAndSet('Chain.super')(apply);
         super(apply, apply.ap, type);
+        unwrapIfSameType(this, apply, 'ap');
         checkAndSet('Chain')(this, apply, chain);
         registry && register(registry, this, ...aliases);
     }
@@ -813,6 +814,7 @@ class ChainRec extends Chain {
     constructor(chain, chainRec, type, registry, ...aliases) {
         checkAndSet('ChainRec.super')(chain);
         super(chain, chain.chain, type);
+        unwrapIfSameType(this, chain, 'ap', 'chain');
         checkAndSet('ChainRec')(this, chain, chainRec);
         registry && register(registry, this, ...aliases);
     }
@@ -866,6 +868,7 @@ class Extend extends Functor {
     constructor(functor, extend, type, registry, ...aliases) {
         checkAndSet('Extend.super')(functor);
         super(functor.map, type);
+        unwrapIfSameType(this, functor, 'map');
         checkAndSet('Extend')(this, functor, extend);
         registry && register(registry, this, ...aliases);
     }
@@ -876,6 +879,7 @@ class Comonad extends Extend {
     constructor(extend, extract, type, registry, ...aliases) {
         checkAndSet('Comonad.super')(extend);
         super(extend, extend.extend, type);
+        unwrapIfSameType(this, extend, 'map', 'extend');
         checkAndSet('Comonad')(this, extend, extract);
         registry && register(registry, this, ...aliases);
     }
@@ -886,6 +890,7 @@ class Traversable extends Functor {
     constructor(functor, foldable, traverse, type, registry, ...aliases) {
         checkAndSet('Traversable.super')(functor, foldable);
         super(functor.map, type);
+        unwrapIfSameType(this, functor, 'map');
         this.reduce = foldable.reduce;
         checkAndSet('Traversable')(this, functor, foldable, traverse);
         registry && register(registry, this, ...aliases);
