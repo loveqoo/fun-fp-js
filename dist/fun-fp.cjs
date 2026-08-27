@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 9bed83289c59d9a086d21a76f88aa71547bb6830
- * Built: 2026-08-27T14:37:30.554Z
+ * Commit: 42b8cf418c764bb8e98e2d02d92d884f2705f81b
+ * Built: 2026-08-27T16:02:00.181Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -253,6 +253,8 @@ const setTapErrorHandler = (handler) => {
     config.tapErrorHandler = handler;
 };
 // 'any' 에 "match any" 라고 쓰면 원인을 가린다 — 남는 실패 이유는 "두 인자가 다른 타입" 뿐이다. docs/internals.md#any
+// 콜백의 반환이 캐리어인지 — 문지기가 못 보는 유일한 방향이라 범인 자리에서 잡는다. docs/internals.md#chain-return
+const checkReturn = (label, type) => r => types.check(r, type) ? r : raise(new TypeError(`${label}: callback must return ${type}, got ${types.of(r)}`));
 const binaryTypeError = (label, type) => new TypeError(
     type === 'any'
         ? `${label}: arguments must be the same type`
@@ -479,7 +481,10 @@ const checkAndSet = (config => {
             strict: (instance, apply, chain) => {
                 if (chain) {
                     typeof chain !== 'function' && raise(new TypeError('Chain.chain: chain must be a function'));
-                    instance.chain = (f, a) => (types.isFunction(f) && types.check(a, instance.type)) ? chain(f, a) : raise(new TypeError(`Chain.chain: arguments must be (function, ${instance.type})`));
+                    instance.chain = (f, a) => {
+                        (types.isFunction(f) && types.check(a, instance.type)) || raise(new TypeError(`Chain.chain: arguments must be (function, ${instance.type})`));
+                        return checkReturn('Chain.chain', instance.type)(chain(f, a));
+                    };
                 }
             },
             loose: (instance, apply, chain) => { if (chain) instance.chain = (f, a) => chain(f, a); }
@@ -1300,6 +1305,7 @@ const normalizeTypeClassKey = (TypeClass, symbol, label) => x => {
 class Identity {
     constructor(value) { this.value = value; this._typeName = 'Identity'; }
     map(f) { return Functor.lookup('identity').map(f, this); }
+    chain(f) { return Chain.lookup('identity').chain(f, this); }
     extend(f) { return Extend.lookup('identity').extend(f, this); }
     extract() { return Comonad.lookup('identity').extract(this); }
 }
@@ -1340,6 +1346,19 @@ class IdentityComonad extends Comonad {
     }
 }
 modules.push(IdentityComonad);
+// chain 은 껍질을 벗겨 f 에 준다 — 트랜스포머의 안쪽 모나드로 쓰일 수 있는 마지막 계단. docs/internals.md#identity-const
+class IdentityChain extends Chain {
+    constructor() {
+        super(Apply.types.IdentityApply, (f, m) => f(m.value), 'Identity', Chain.types, 'identity');
+    }
+}
+modules.push(IdentityChain);
+class IdentityMonad extends Monad {
+    constructor() {
+        super(Applicative.types.IdentityApplicative, Chain.types.IdentityChain, 'Identity', Monad.types, 'identity');
+    }
+}
+modules.push(IdentityMonad);
 class IdentityFoldable extends Foldable {
     constructor() {
         super((f, init, id) => f(init, id.value), 'Identity', Foldable.types, 'identity');
