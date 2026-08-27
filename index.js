@@ -157,15 +157,10 @@ const once = f => {
 };
 const converge = (f, ...branches) => (...args) => types.checkFunction(f, 'converge')(...branches.map((branch, i) => types.checkFunction(branch, `converge:${i}`)(...args)));
 // 정수·유한을 입구에서 본다 — 안 보면 NaN 은 [], 1.5 는 [0], '3' 은 [0,1,2], Infinity 는 RangeError 로 갈린다(6차 감사 12).
-// 객체 복제의 유일한 문 — 서술자를 통째로 옮긴다. Object.keys 는 열거 가능한 문자열 키만 보고,
-// Object.assign 은 own __proto__ 를 프로토타입으로 둔갑시킨다. 둘 다 실제로 결함이 됐다(6차 1·9차 2).
-// 서술자를 옮기되 **자물쇠는 안 옮긴다** — configurable:false 까지 옮기면 동결 객체의 기존 키를
-// 갱신할 수 없다(10차 감사 1). 복제는 데이터를 옮기는 일이지 원본의 쓰기 제한을 물려주는 일이 아니다.
-// 열거 여부와 접근자 여부는 데이터의 모양이므로 그대로 둔다.
+// 객체 복제의 유일한 문 — 서술자로 옮기되 자물쇠는 안 옮긴다. docs/internals.md#copy-own
 const copyOwn = source => {
     const from = Object.getOwnPropertyDescriptors(source);
-    // 서술자를 모으는 그릇도 프로토타입 없는 객체다 — `to['__proto__'] = …` 는 키를 만드는 대신
-    // 그릇의 프로토타입을 바꾼다. 같은 함정에 두 번 빠졌다(4차-1·5차·여기).
+    // 그릇도 null-프로토타입 — own __proto__ 함정의 세 번째 자리. docs/internals.md#copy-own
     const to = Object.create(null);
     for (const key of Reflect.ownKeys(from)) {
         const d = from[key];
@@ -945,9 +940,7 @@ withTypeRegistry(Chain);
 withTypeRegistry(ChainRec);
 ChainRec.next = value => ({ tag: 'next', value });
 ChainRec.done = value => ({ tag: 'done', value });
-// 걸음은 next 나 done 이어야 한다 — 그 밖의 값을 종료로 읽으면 콜백의 오타가 조용히 성공이
-// 된다(맨 값 42 는 결과가 null 이 되고, 'nxt' 오타는 계속해야 할 것이 끝난다). 이 라이브러리는
-// 같은 상황(콜백이 규격 밖 값을 냄)을 다른 여섯 곳에서 전부 거부한다. docs/internals.md#chainrec-stack
+// 걸음은 next/done 뿐 — 규격 밖 값을 종료로 읽으면 오타가 조용히 성공이 된다. docs/internals.md#chainrec-stack
 // 모듈 사설이다 — ChainRec 의 정적 표면을 늘리지 않는다(baseline 격자가 그것을 본다).
 const describeStep = step => step === null ? 'got null'
     : step === undefined ? 'got undefined'
@@ -1144,8 +1137,7 @@ class DefaultSetoid extends Setoid {
     constructor() { super(Setoid.op, 'any', Setoid.types, 'default'); }
 }
 modules.push(DefaultSetoid);
-// 확실히 비교되는 것만 답한다(소유자, 2026-08-19) — 객체끼리 `<=` 는 둘 다 "[object Object]" 로
-// 강제 변환돼 서로 다른 값이 양방향으로 참이 되고, 짝 Setoid(===)와 어긋난다. docs/internals.md#any
+// 확실히 비교되는 것만 답한다(소유자 결정) — 객체 `<=` 는 강제 변환으로 양방향 참이 된다. docs/internals.md#any
 const ORDERABLE = ['number', 'string', 'boolean', 'bigint'];
 const defaultLte = (a, b) => ORDERABLE.indexOf(typeof a) === -1
     ? raise(new TypeError(`Ord.lte: default Ord compares number, string, boolean, and bigint only, got ${typeof a}`))
@@ -2440,8 +2432,7 @@ class Store {
 }
 Store.prototype[Symbols.Store] = true;
 Store.isStore = hasSymbol(Symbols.Store);
-// 반복 extend 는 조회를 겹겹이 감싸 지수 폭발한다 — 세대마다 이걸로 감싼다. docs/internals.md#store-perf
-// keyOf 는 필수다 — 기본 직렬화는 어떤 것이든 위치를 합치거나(NaN/null) 캐시를 무력화한다(객체).
+// 반복 extend 의 지수 폭발을 세대마다 감싼다 — keyOf 필수(옳은 기본 키가 없다). docs/internals.md#store-perf
 Store.memo = (store, keyOf) => {
     Store.isStore(store) || raise(new TypeError('Store.memo: first argument must be a Store'));
     types.checkFunction(keyOf, 'Store.memo');
@@ -2560,8 +2551,7 @@ const { transducer } = (() => {
         if (typeof vessel === 'string') return transduce(transducer, (acc, v) => acc + v, vessel, collection);
         if (vessel instanceof Set) return transduce(transducer, (acc, v) => acc.add(v), new Set(vessel), collection);
         if (vessel instanceof Map) return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return acc.set(k, val); }, new Map(vessel), collection);
-        // 그릇 복제는 copyOwn 하나로 — 서술자를 통째로 옮겨야 심볼·숨은 속성이 안 사라지고(9차 감사 4),
-        // own __proto__ 가 프로토타입으로 둔갑하지도 않는다(5차 감사).
+        // 그릇 복제는 copyOwn 하나로. docs/internals.md#copy-own
         if (types.isPlainObject(vessel)) {
             const seed = copyOwn(vessel);
             return transduce(transducer, (acc, v) => { const [k, val] = intoPair(v); return putOwn(acc, k, val); }, seed, collection);
@@ -2946,12 +2936,12 @@ load(...modules);
 // transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
 const { Optics } = (() => {
     // Optic s a = P => P a a -> P s s — 주입하는 P 가 연산을 정한다(함수=over·Forget=view·Tagged=review). docs/internals.md#optics
-    // ── 주입하는 P 셋 — 사설 딕셔너리가 아니라 등록 인스턴스다(게이트가 본다). docs/internals.md#optics ──
+    // ── 주입하는 P 셋 — 사설 딕셔너리가 아니라 등록 인스턴스다(게이트가 본다). ──
     const functionProfunctor = Wander.types.FunctionWander;
     const forgetProfunctor = monoid => Wander.Forget(monoid);
-    // Tagged 는 Choice 일 뿐이다 — first/wander 의 부재가 "Lens/Traversal 은 review 할 수 없다" 를 말한다. docs/internals.md#optics
+    // Tagged 는 Choice 일 뿐이다 — first/wander 의 부재가 "Lens/Traversal 은 review 할 수 없다" 를 말한다.
     const taggedProfunctor = Choice.types.TaggedChoice;
-    // 등록 인스턴스는 깨끗하게 두고, review 경로에서만 그 부재를 사용자 언어로 옮긴다. docs/internals.md#optics
+    // 등록 인스턴스는 깨끗하게 두고, review 경로에서만 그 부재를 사용자 언어로 옮긴다.
     const taggedForReview = Object.assign(Object.create(taggedProfunctor), {
         first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
         wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
@@ -2986,9 +2976,7 @@ const { Optics } = (() => {
     const prop = key => {
         (typeof key === 'string' || typeof key === 'number')
             || raise(new TypeError('Optics.prop: key must be a string or number'));
-        // 복제도 대입도 defineProperty 로 — `=` 와 Object.assign 은 __proto__ 를 프로토타입으로
-        // 둔갑시킨다(6차 감사 1). 복제는 **서술자 전부**를 옮긴다 — Object.keys 로 하면 심볼과
-        // 숨은 속성을 잃어 읽은 값을 그대로 넣어도 원본이 안 나온다(9차 감사 2).
+        // 복제도 대입도 defineProperty 로 — copyOwn/putOwn 만 쓴다. docs/internals.md#copy-own
         return Lens(o => o[key], (v, o) => putOwn(
             Array.isArray(o) ? o.slice() : copyOwn(o),
             key, v
@@ -3335,8 +3323,7 @@ const liftHandlerResult = r => {
 /* ═══════════════════════════════════════════════════════════════
    Actor — 가벼운 메시지 큐 + 순차 처리
    ═══════════════════════════════════════════════════════════════ */
-// 타이머가 있으면 타이머로, 없으면 경계 검사로 — GAS 에는 setTimeout 이 없다(실측·1차 자료).
-// 경계 검사는 이 라이브러리의 협조적 취소(Free.api start/cancel)와 같은 의미론이다. docs/Actor.md
+// 타이머 있으면 타이머로, 없으면(GAS 실측) 경계 검사로 — 협조적 취소와 같은 의미론. docs/Actor.md
 const hasTimer = typeof setTimeout === 'function';
 const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
     if (typeof handle !== 'function') raise(new TypeError('Actor: handle must be a function'));

@@ -1144,6 +1144,44 @@ catch (e) { console.log(e.message); }   // 'Chain.chain: callback must return Ma
 
 ---
 
+## 객체 복제의 유일한 문 — `copyOwn` 은 서술자로 옮기고 자물쇠는 안 옮긴다 {#copy-own}
+
+`Optics.prop` 의 갱신과 `transducer.into` 의 그릇 복제는 모듈 사설 `copyOwn` 하나를
+지납니다. 소박한 방법들이 전부 실제 결함이 됐기 때문입니다(감사 4차-1·5차·6차 1·9차 2·4·10차 1).
+
+- **`Object.keys` / `Object.assign` 으로 베끼면** 심볼 키와 열거 안 되는 속성을 잃습니다 —
+  읽은 값을 그대로 넣어도 원본이 안 나옵니다. 그리고 own `__proto__` 키를 만나면 키를
+  베끼는 대신 **결과의 프로토타입을 바꿔** 버립니다.
+- **서술자를 통째로 옮기면** 위 둘은 해결되지만 `configurable: false` 까지 따라와서,
+  동결된 객체를 한 번 복제한 뒤에는 갱신할 수 없게 됩니다.
+
+그래서 `copyOwn` 은 **서술자 전부를 옮기되, 데이터의 모양(열거 여부·접근자 여부)만 보존하고
+쓰기·재정의 제한은 새로 엽니다** — 복제는 데이터를 옮기는 일이지 원본의 자물쇠를 물려주는
+일이 아닙니다. 서술자를 모으는 그릇 자체도 `Object.create(null)` 입니다 — `to['__proto__'] = …`
+가 키를 만드는 대신 그릇의 프로토타입을 바꾸는 같은 함정에 두 번 빠진 뒤의 결론입니다.
+
+전부 공개 문으로 관측됩니다.
+
+```javascript
+const { Optics } = FunFP;
+const { prop, set } = Optics;
+
+// 동결된 객체도 갱신된다 — 자물쇠를 안 물려받았다는 증거
+console.log(JSON.stringify(set(prop('a'), 9, Object.freeze({ a: 1, b: 2 }))));  // {"a":9,"b":2}
+
+// 심볼 키가 살아남는다 — Object.keys 복제였다면 사라졌다
+const tag = Symbol.for('tag');
+console.log(set(prop('a'), 9, { a: 1, [tag]: 'kept' })[tag]);  // kept
+
+// own __proto__ 는 데이터로 남고, 프로토타입 오염이 없다
+const risky = JSON.parse('{"__proto__": {"x": 1}, "a": 1}');
+const out = set(prop('a'), 9, risky);
+console.log(JSON.stringify(Object.getOwnPropertyDescriptor(out, '__proto__').value));  // {"x":1}
+console.log(out.x === undefined);  // true   프로토타입은 안 바뀌었다
+```
+
+---
+
 ## `Either`·`Task` 는 `Filterable` 이 아니다 {#filterable}
 
 Static Land 의 `Filterable` 은 규칙 셋을 요구합니다.

@@ -1275,6 +1275,46 @@ do not pass through this check, so they are not part of the receipt).
 
 ---
 
+## The single door for object cloning — `copyOwn` moves descriptors but not the locks {#copy-own}
+
+Updates in `Optics.prop` and vessel cloning in `transducer.into` both pass through one
+module-private `copyOwn`, because every naive approach became a real defect
+(audits 4-1, 5, 6-1, 9-2, 9-4, 10-1).
+
+- **Copying with `Object.keys` / `Object.assign`** loses symbol keys and non-enumerable
+  properties — writing back what you read does not reproduce the original. And on an own
+  `__proto__` key it **mutates the result's prototype** instead of copying the key.
+- **Moving whole descriptors** fixes both, but drags `configurable: false` along — clone a
+  frozen object once and it can never be updated again.
+
+So `copyOwn` **moves all descriptors but preserves only the shape of the data (enumerability,
+accessor-ness) and reopens the write/redefine locks** — cloning moves data; it does not inherit
+the original's padlocks. The container that collects the descriptors is itself
+`Object.create(null)` — the conclusion after falling twice into the same trap where
+`to['__proto__'] = …` changes the container's prototype instead of creating a key.
+
+All of it is observable through public doors.
+
+```javascript
+const { Optics } = FunFP;
+const { prop, set } = Optics;
+
+// a frozen object still updates — proof the locks were not inherited
+console.log(JSON.stringify(set(prop('a'), 9, Object.freeze({ a: 1, b: 2 }))));  // {"a":9,"b":2}
+
+// a symbol key survives — an Object.keys clone would have dropped it
+const tag = Symbol.for('tag');
+console.log(set(prop('a'), 9, { a: 1, [tag]: 'kept' })[tag]);  // kept
+
+// an own __proto__ stays data, and the prototype is not polluted
+const risky = JSON.parse('{"__proto__": {"x": 1}, "a": 1}');
+const out = set(prop('a'), 9, risky);
+console.log(JSON.stringify(Object.getOwnPropertyDescriptor(out, '__proto__').value));  // {"x":1}
+console.log(out.x === undefined);  // true   the prototype did not change
+```
+
+---
+
 ## `Either`/`Task` are not `Filterable` {#filterable}
 
 Static Land's `Filterable` requires three rules.
