@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 5b3bcd82c09fd94bac9ac91cfdd26792fc9da56e
- * Built: 2026-08-27T16:19:11.102Z
+ * Commit: 230a144f5e7505d51174398d9718f794b6a47079
+ * Built: 2026-08-27T16:43:01.862Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -19,9 +19,7 @@ const polyfills = {
             : entries => entries.reduce((obj, [k, v]) => (Object.defineProperty(obj, k, {
                 value: v, writable: true, enumerable: true, configurable: true
             }), obj), {}),
-        filter: (pred, obj) => polyfills.object.fromEntries(
-            Object.entries(obj).filter(([k, v]) => pred(v, k))
-        )
+        filter: (pred, obj) => polyfills.object.fromEntries(Object.entries(obj).filter(([k, v]) => pred(v, k)))
     }
 };
 const Symbols = {
@@ -140,10 +138,7 @@ const compose = (...fs) => pipe(...fs.slice().reverse());
 // predicate 가 참인 동안만 잇는 pipe — 값이 안 바뀌면 predicate 도 안 바뀌므로 사실상 멈춘다.
 const pipeWhile = predicate => {
     types.checkFunction(predicate, 'pipeWhile');
-    return (value, ...fns) => fns.reduce(
-        (acc, fn) => predicate(acc) ? types.checkFunction(fn, 'pipeWhile')(acc) : acc,
-        value
-    );
+    return (value, ...fns) => fns.reduce((acc, fn) => predicate(acc) ? types.checkFunction(fn, 'pipeWhile')(acc) : acc, value);
 };
 // 꺼내는 수단을 새로 쓰지 않고 조합자로 세운다 — apply(identity) 가 첫 인자, flip 을 씌우면 마지막 인자다.
 const fst = apply(identity);
@@ -228,9 +223,7 @@ const load = (...modules) => {
     }
 };
 const modules = [];
-const DEV = typeof process !== 'undefined' && process.env
-    ? process.env.NODE_ENV !== 'production'
-    : true;
+const DEV = typeof process !== 'undefined' && process.env ? process.env.NODE_ENV !== 'production' : true;
 const config = { strictMode: DEV, tapErrorHandler: emptyFunc };
 const setStrictMode = (val) => { config.strictMode = !!val; };
 const setTapErrorHandler = (handler) => {
@@ -241,9 +234,7 @@ const setTapErrorHandler = (handler) => {
 // 콜백의 반환이 캐리어인지 — 문지기가 못 보는 유일한 방향이라 범인 자리에서 잡는다. docs/internals.md#chain-return
 const checkReturn = (label, type) => r => types.check(r, type) ? r : raise(new TypeError(`${label}: callback must return ${type}, got ${types.of(r)}`));
 const binaryTypeError = (label, type) => new TypeError(
-    type === 'any'
-        ? `${label}: arguments must be the same type`
-        : `${label}: arguments must be the same type and match ${type}`
+    type === 'any' ? `${label}: arguments must be the same type` : `${label}: arguments must be the same type and match ${type}`
 );
 // 단항 연산용 — type 이 'any' 면 짝이 없어 검사가 남지 않고, 메시지가 그 사실을 숨기지 않는다. docs/internals.md#any
 const unaryTypeError = (label, type) => new TypeError(`${label}: argument must match ${type}`);
@@ -906,7 +897,6 @@ class Traversable extends Functor {
     traverse() { raise(new Error('Traversable: traverse is not implemented')); }
 }
 Traversable.prototype[Symbols.Traversable] = true;
-
 // 정적 조회는 lookup 이다. of 는 값 주입 전용 — docs/README.md 「lookup 과 of」
 const withTypeRegistry = TypeClass => {
     TypeClass.types = {};
@@ -936,13 +926,10 @@ Algebra.all = key => {
     }
     return result;
 };
-
 Setoid.op = (a, b) => a === b;
 withTypeRegistry(Setoid);
-
 Ord.op = (a, b) => a <= b;
 withTypeRegistry(Ord);
-
 withTypeRegistry(Semigroup);
 withTypeRegistry(Monoid);
 withTypeRegistry(Group);
@@ -984,7 +971,6 @@ withTypeRegistry(Reducible);
 withTypeRegistry(Extend);
 withTypeRegistry(Comonad);
 withTypeRegistry(Traversable);
-
 /* Function */
 class FunctionSemigroup extends Semigroup {
     constructor() {
@@ -993,259 +979,177 @@ class FunctionSemigroup extends Semigroup {
 }
 modules.push(FunctionSemigroup);
 class FunctionMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.FunctionSemigroup, () => identity, 'function', Monoid.types, 'function');
-    }
+    constructor() { super(Semigroup.types.FunctionSemigroup, () => identity, 'function', Monoid.types, 'function'); }
 }
 modules.push(FunctionMonoid);
 class FunctionSemigroupoid extends Semigroupoid {
-    constructor() {
-        super(compose2, 'function', Semigroupoid.types, 'function');
-    }
+    constructor() { super(compose2, 'function', Semigroupoid.types, 'function'); }
 }
 modules.push(FunctionSemigroupoid);
 class FunctionCategory extends Category {
-    constructor() {
-        super(Semigroupoid.types.FunctionSemigroupoid, identity, 'function', Category.types, 'function');
-    }
+    constructor() { super(Semigroupoid.types.FunctionSemigroupoid, identity, 'function', Category.types, 'function'); }
 }
 modules.push(FunctionCategory);
 class PredicateContravariant extends Contravariant {
-    constructor() {
-        super((f, pred) => compose2(pred, f), 'function', Contravariant.types, 'predicate');
-    }
+    constructor() { super((f, pred) => compose2(pred, f), 'function', Contravariant.types, 'predicate'); }
 }
 modules.push(PredicateContravariant);
 // 입력을 고정한 (a ->) 의 Functor. map 은 후합성이다 — compose2 와 같은 연산.
 class FunctionFunctor extends Functor {
-    constructor() {
-        super(compose2, 'function', Functor.types, 'function');
-    }
+    constructor() { super(compose2, 'function', Functor.types, 'function'); }
 }
 modules.push(FunctionFunctor);
 class FunctionProfunctor extends Profunctor {
-    constructor() {
-        super((f, g, fn) => compose(g, fn, f), 'function', Profunctor.types, 'function');
-    }
+    constructor() { super((f, g, fn) => compose(g, fn, f), 'function', Profunctor.types, 'function'); }
 }
 modules.push(FunctionProfunctor);
 // (a ->) 의 Apply — 같은 입력을 양쪽에 먹인다. docs/internals.md#function-monad
 class FunctionApply extends Apply {
-    constructor() {
-        super(Functor.types.FunctionFunctor, (ff, fa) => x => ff(x)(fa(x)), 'function', Apply.types, 'function');
-    }
+    constructor() { super(Functor.types.FunctionFunctor, (ff, fa) => x => ff(x)(fa(x)), 'function', Apply.types, 'function'); }
 }
 modules.push(FunctionApply);
 class FunctionApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.FunctionApply, constant, 'function', Applicative.types, 'function');
-    }
+    constructor() { super(Apply.types.FunctionApply, constant, 'function', Applicative.types, 'function'); }
 }
 modules.push(FunctionApplicative);
 // chain 은 환경을 두 번 먹인다 — 문헌이 Reader 라 부르는 그것이다. docs/internals.md#function-monad
 class FunctionChain extends Chain {
-    constructor() {
-        super(Apply.types.FunctionApply, (f, g) => x => f(g(x))(x), 'function', Chain.types, 'function');
-    }
+    constructor() { super(Apply.types.FunctionApply, (f, g) => x => f(g(x))(x), 'function', Chain.types, 'function'); }
 }
 modules.push(FunctionChain);
 class FunctionMonad extends Monad {
-    constructor() {
-        super(Applicative.types.FunctionApplicative, Chain.types.FunctionChain, 'function', Monad.types, 'function');
-    }
+    constructor() { super(Applicative.types.FunctionApplicative, Chain.types.FunctionChain, 'function', Monad.types, 'function'); }
 }
 modules.push(FunctionMonad);
 /* Boolean */
 class BooleanSetoid extends Setoid {
-    constructor() {
-        super(Setoid.op, 'boolean', Setoid.types, 'boolean');
-    }
+    constructor() { super(Setoid.op, 'boolean', Setoid.types, 'boolean'); }
 }
 modules.push(BooleanSetoid);
 class BooleanAllSemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x && y, 'boolean', Semigroup.types, 'boolean');
-    }
+    constructor() { super((x, y) => x && y, 'boolean', Semigroup.types, 'boolean'); }
 }
 modules.push(BooleanAllSemigroup);
 class BooleanAnySemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x || y, 'boolean', Semigroup.types);
-    }
+    constructor() { super((x, y) => x || y, 'boolean', Semigroup.types); }
 }
 modules.push(BooleanAnySemigroup);
 class BooleanXorSemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x !== y, 'boolean', Semigroup.types);
-    }
+    constructor() { super((x, y) => x !== y, 'boolean', Semigroup.types); }
 }
 modules.push(BooleanXorSemigroup);
 class BooleanAllMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.BooleanAllSemigroup, () => true, 'boolean', Monoid.types, 'boolean');
-    }
+    constructor() { super(Semigroup.types.BooleanAllSemigroup, () => true, 'boolean', Monoid.types, 'boolean'); }
 }
 modules.push(BooleanAllMonoid);
 class BooleanAnyMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.BooleanAnySemigroup, () => false, 'boolean', Monoid.types);
-    }
+    constructor() { super(Semigroup.types.BooleanAnySemigroup, () => false, 'boolean', Monoid.types); }
 }
 modules.push(BooleanAnyMonoid);
 class BooleanXorMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.BooleanXorSemigroup, () => false, 'boolean', Monoid.types);
-    }
+    constructor() { super(Semigroup.types.BooleanXorSemigroup, () => false, 'boolean', Monoid.types); }
 }
 modules.push(BooleanXorMonoid);
 class BooleanXorGroup extends Group {
-    constructor() {
-        super(Monoid.types.BooleanXorMonoid, identity, 'boolean', Group.types);
-    }
+    constructor() { super(Monoid.types.BooleanXorMonoid, identity, 'boolean', Group.types); }
 }
 modules.push(BooleanXorGroup);
 /* Number */
 class NumberSetoid extends Setoid {
-    constructor() {
-        super(Setoid.op, 'number', Setoid.types, 'number');
-    }
+    constructor() { super(Setoid.op, 'number', Setoid.types, 'number'); }
 }
 modules.push(NumberSetoid);
 class NumberOrd extends Ord {
-    constructor() {
-        super(Setoid.types.NumberSetoid, Ord.op, 'number', Ord.types, 'number');
-    }
+    constructor() { super(Setoid.types.NumberSetoid, Ord.op, 'number', Ord.types, 'number'); }
 }
 modules.push(NumberOrd);
 class NumberSumSemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x + y, 'number', Semigroup.types, 'number');
-    }
+    constructor() { super((x, y) => x + y, 'number', Semigroup.types, 'number'); }
 }
 modules.push(NumberSumSemigroup);
 class NumberProductSemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x * y, 'number', Semigroup.types);
-    }
+    constructor() { super((x, y) => x * y, 'number', Semigroup.types); }
 }
 modules.push(NumberProductSemigroup);
 class NumberMaxSemigroup extends Semigroup {
-    constructor() {
-        super(Math.max, 'number', Semigroup.types);
-    }
+    constructor() { super(Math.max, 'number', Semigroup.types); }
 }
 modules.push(NumberMaxSemigroup);
 class NumberMinSemigroup extends Semigroup {
-    constructor() {
-        super(Math.min, 'number', Semigroup.types);
-    }
+    constructor() { super(Math.min, 'number', Semigroup.types); }
 }
 modules.push(NumberMinSemigroup);
 class NumberSumMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.NumberSumSemigroup, () => 0, 'number', Monoid.types, 'number');
-    }
+    constructor() { super(Semigroup.types.NumberSumSemigroup, () => 0, 'number', Monoid.types, 'number'); }
 }
 modules.push(NumberSumMonoid);
 class NumberProductMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.NumberProductSemigroup, () => 1, 'number', Monoid.types);
-    }
+    constructor() { super(Semigroup.types.NumberProductSemigroup, () => 1, 'number', Monoid.types); }
 }
 modules.push(NumberProductMonoid);
 class NumberMaxMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.NumberMaxSemigroup, () => -Infinity, 'number', Monoid.types);
-    }
+    constructor() { super(Semigroup.types.NumberMaxSemigroup, () => -Infinity, 'number', Monoid.types); }
 }
 modules.push(NumberMaxMonoid);
 class NumberMinMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.NumberMinSemigroup, () => Infinity, 'number', Monoid.types);
-    }
+    constructor() { super(Semigroup.types.NumberMinSemigroup, () => Infinity, 'number', Monoid.types); }
 }
 modules.push(NumberMinMonoid);
 class NumberSumGroup extends Group {
-    constructor() {
-        super(Monoid.types.NumberSumMonoid, x => -x, 'number', Group.types, 'number');
-    }
+    constructor() { super(Monoid.types.NumberSumMonoid, x => -x, 'number', Group.types, 'number'); }
 }
 modules.push(NumberSumGroup);
 class NumberProductGroup extends Group {
-    constructor() {
-        super(Monoid.types.NumberProductMonoid, x => 1 / x, 'number', Group.types);
-    }
+    constructor() { super(Monoid.types.NumberProductMonoid, x => 1 / x, 'number', Group.types); }
 }
 modules.push(NumberProductGroup);
 /* String */
 class StringSetoid extends Setoid {
-    constructor() {
-        super(Setoid.op, 'string', Setoid.types, 'string');
-    }
+    constructor() { super(Setoid.op, 'string', Setoid.types, 'string'); }
 }
 modules.push(StringSetoid);
 class StringOrd extends Ord {
-    constructor() {
-        super(Setoid.types.StringSetoid, Ord.op, 'string', Ord.types, 'string');
-    }
+    constructor() { super(Setoid.types.StringSetoid, Ord.op, 'string', Ord.types, 'string'); }
 }
 modules.push(StringOrd);
 // 길이·로케일 순서는 글자 동등과 다른 동치를 낳고, 그 동치가 곧 짝 Setoid 다 — docs/internals.md#ord-setoid
 class StringLengthSetoid extends Setoid {
-    constructor() {
-        super((x, y) => x.length === y.length, 'string', Setoid.types);
-    }
+    constructor() { super((x, y) => x.length === y.length, 'string', Setoid.types); }
 }
 modules.push(StringLengthSetoid);
 class StringLengthOrd extends Ord {
-    constructor() {
-        super(Setoid.types.StringLengthSetoid, (x, y) => x.length <= y.length, 'string', Ord.types);
-    }
+    constructor() { super(Setoid.types.StringLengthSetoid, (x, y) => x.length <= y.length, 'string', Ord.types); }
 }
 modules.push(StringLengthOrd);
 class StringLocaleSetoid extends Setoid {
-    constructor() {
-        super((x, y) => x.localeCompare(y) === 0, 'string', Setoid.types);
-    }
+    constructor() { super((x, y) => x.localeCompare(y) === 0, 'string', Setoid.types); }
 }
 modules.push(StringLocaleSetoid);
 class StringLocaleOrd extends Ord {
-    constructor() {
-        super(Setoid.types.StringLocaleSetoid, (x, y) => x.localeCompare(y) <= 0, 'string', Ord.types);
-    }
+    constructor() { super(Setoid.types.StringLocaleSetoid, (x, y) => x.localeCompare(y) <= 0, 'string', Ord.types); }
 }
 modules.push(StringLocaleOrd);
 class StringSemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x + y, 'string', Semigroup.types, 'string');
-    }
+    constructor() { super((x, y) => x + y, 'string', Semigroup.types, 'string'); }
 }
 modules.push(StringSemigroup);
 class StringMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.StringSemigroup, () => '', 'string', Monoid.types, 'string');
-    }
+    constructor() { super(Semigroup.types.StringSemigroup, () => '', 'string', Monoid.types, 'string'); }
 }
 modules.push(StringMonoid);
 /* Polymorphic — 값 타입을 보지 않는 인스턴스 ('any') */
 // Monoid 가 아니다(항등원 없음). Maybe 로 감쌀 때 갈리는 두 길: docs/internals.md#any
 class FirstSemigroup extends Semigroup {
-    constructor() {
-        super(identity, 'any', Semigroup.types, 'first');
-    }
+    constructor() { super(identity, 'any', Semigroup.types, 'first'); }
 }
 modules.push(FirstSemigroup);
 class LastSemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => y, 'any', Semigroup.types, 'last');
-    }
+    constructor() { super((x, y) => y, 'any', Semigroup.types, 'last'); }
 }
 modules.push(LastSemigroup);
 // lookup('default') 의 실체. 값 타입은 안 보지만 인자끼리 같은 타입이어야 한다 — 'any' 의 뜻 그대로다.
 class DefaultSetoid extends Setoid {
-    constructor() {
-        super(Setoid.op, 'any', Setoid.types, 'default');
-    }
+    constructor() { super(Setoid.op, 'any', Setoid.types, 'default'); }
 }
 modules.push(DefaultSetoid);
 // 확실히 비교되는 것만 답한다(소유자, 2026-08-19) — 객체끼리 `<=` 는 둘 다 "[object Object]" 로
@@ -1255,22 +1159,16 @@ const defaultLte = (a, b) => ORDERABLE.indexOf(typeof a) === -1
     ? raise(new TypeError(`Ord.lte: default Ord compares number, string, boolean, and bigint only, got ${typeof a}`))
     : Ord.op(a, b);
 class DefaultOrd extends Ord {
-    constructor() {
-        super(Setoid.types.DefaultSetoid, defaultLte, 'any', Ord.types, 'default');
-    }
+    constructor() { super(Setoid.types.DefaultSetoid, defaultLte, 'any', Ord.types, 'default'); }
 }
 modules.push(DefaultOrd);
 /* Object */
 class ObjectFilterable extends Filterable {
-    constructor() {
-        super((pred, obj) => polyfills.object.filter(pred, obj), 'Object', Filterable.types, 'object');
-    }
+    constructor() { super((pred, obj) => polyfills.object.filter(pred, obj), 'Object', Filterable.types, 'object'); }
 }
 modules.push(ObjectFilterable);
 class ObjectFoldable extends Foldable {
-    constructor() {
-        super((f, init, obj) => Object.values(obj).reduce(f, init), 'Object', Foldable.types, 'object');
-    }
+    constructor() { super((f, init, obj) => Object.values(obj).reduce(f, init), 'Object', Foldable.types, 'object'); }
 }
 modules.push(ObjectFoldable);
 // 키 문자열이든 인스턴스든 { key, instance } 로 정규화한다 — key 가 null 이면 "레지스트리 대신 인스턴스로 캐시" 신호다.
@@ -1305,54 +1203,39 @@ Identity.of = value => new Identity(value);
 Identity.isIdentity = hasSymbol(Symbols.Identity);
 const identityOf = Identity.of;
 class IdentityFunctor extends Functor {
-    constructor() {
-        super((f, x) => identityOf(f(x.value)), 'Identity', Functor.types, 'identity');
-    }
+    constructor() { super((f, x) => identityOf(f(x.value)), 'Identity', Functor.types, 'identity'); }
 }
 modules.push(IdentityFunctor);
 class IdentityApply extends Apply {
     constructor() {
-        super(Functor.types.IdentityFunctor,
-              (ff, fa) => identityOf(ff.value(fa.value)), 'Identity', Apply.types, 'identity');
+        super(Functor.types.IdentityFunctor, (ff, fa) => identityOf(ff.value(fa.value)), 'Identity', Apply.types, 'identity');
     }
 }
 modules.push(IdentityApply);
 class IdentityApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.IdentityApply, identityOf, 'Identity', Applicative.types, 'identity');
-    }
+    constructor() { super(Apply.types.IdentityApply, identityOf, 'Identity', Applicative.types, 'identity'); }
 }
 modules.push(IdentityApplicative);
 // Optics 가 캐리어에서 값을 꺼낼 때 `.value` 를 직접 읽고 있었다 — 꺼내는 것의 이름은 extract 다.
 class IdentityExtend extends Extend {
-    constructor() {
-        super(Functor.types.IdentityFunctor, (f, w) => identityOf(f(w)), 'Identity', Extend.types, 'identity');
-    }
+    constructor() { super(Functor.types.IdentityFunctor, (f, w) => identityOf(f(w)), 'Identity', Extend.types, 'identity'); }
 }
 modules.push(IdentityExtend);
 class IdentityComonad extends Comonad {
-    constructor() {
-        super(Extend.types.IdentityExtend, w => w.value, 'Identity', Comonad.types, 'identity');
-    }
+    constructor() { super(Extend.types.IdentityExtend, w => w.value, 'Identity', Comonad.types, 'identity'); }
 }
 modules.push(IdentityComonad);
 // chain 은 껍질을 벗겨 f 에 준다 — 트랜스포머의 안쪽 모나드로 쓰일 수 있는 마지막 계단. docs/internals.md#identity-const
 class IdentityChain extends Chain {
-    constructor() {
-        super(Apply.types.IdentityApply, (f, m) => f(m.value), 'Identity', Chain.types, 'identity');
-    }
+    constructor() { super(Apply.types.IdentityApply, (f, m) => f(m.value), 'Identity', Chain.types, 'identity'); }
 }
 modules.push(IdentityChain);
 class IdentityMonad extends Monad {
-    constructor() {
-        super(Applicative.types.IdentityApplicative, Chain.types.IdentityChain, 'Identity', Monad.types, 'identity');
-    }
+    constructor() { super(Applicative.types.IdentityApplicative, Chain.types.IdentityChain, 'Identity', Monad.types, 'identity'); }
 }
 modules.push(IdentityMonad);
 class IdentityFoldable extends Foldable {
-    constructor() {
-        super((f, init, id) => f(init, id.value), 'Identity', Foldable.types, 'identity');
-    }
+    constructor() { super((f, init, id) => f(init, id.value), 'Identity', Foldable.types, 'identity'); }
 }
 modules.push(IdentityFoldable);
 class IdentityReducible extends Reducible {
@@ -1398,27 +1281,19 @@ Applicative.Const._keyCache = new Map();
 Applicative.Const._instanceCache = new WeakMap();
 /* Array */
 class ArraySemigroup extends Semigroup {
-    constructor() {
-        super((x, y) => x.concat(y), 'Array', Semigroup.types, 'array');
-    }
+    constructor() { super((x, y) => x.concat(y), 'Array', Semigroup.types, 'array'); }
 }
 modules.push(ArraySemigroup);
 class ArrayMonoid extends Monoid {
-    constructor() {
-        super(Semigroup.types.ArraySemigroup, () => [], 'Array', Monoid.types, 'array');
-    }
+    constructor() { super(Semigroup.types.ArraySemigroup, () => [], 'Array', Monoid.types, 'array'); }
 }
 modules.push(ArrayMonoid);
 class ArrayFilterable extends Filterable {
-    constructor() {
-        super((pred, arr) => arr.filter(pred), 'Array', Filterable.types, 'array');
-    }
+    constructor() { super((pred, arr) => arr.filter(pred), 'Array', Filterable.types, 'array'); }
 }
 modules.push(ArrayFilterable);
 class ArrayFunctor extends Functor {
-    constructor() {
-        super((f, arr) => arr.map(f), 'Array', Functor.types, 'array');
-    }
+    constructor() { super((f, arr) => arr.map(f), 'Array', Functor.types, 'array'); }
 }
 modules.push(ArrayFunctor);
 // 튜플은 JS 타입이 아니다 — .type 은 'Array' 로 두고 길이를 여기서 본다(느슨한 모드에서도 산다). docs/Bifunctor.md
@@ -1439,33 +1314,23 @@ class ArrayApply extends Apply {
 }
 modules.push(ArrayApply);
 class ArrayApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.ArrayApply, x => [x], 'Array', Applicative.types, 'array');
-    }
+    constructor() { super(Apply.types.ArrayApply, x => [x], 'Array', Applicative.types, 'array'); }
 }
 modules.push(ArrayApplicative);
 class ArrayAlt extends Alt {
-    constructor() {
-        super(Functor.types.ArrayFunctor, (a, b) => a.concat(b), 'Array', Alt.types, 'array');
-    }
+    constructor() { super(Functor.types.ArrayFunctor, (a, b) => a.concat(b), 'Array', Alt.types, 'array'); }
 }
 modules.push(ArrayAlt);
 class ArrayPlus extends Plus {
-    constructor() {
-        super(Alt.types.ArrayAlt, () => [], 'Array', Plus.types, 'array');
-    }
+    constructor() { super(Alt.types.ArrayAlt, () => [], 'Array', Plus.types, 'array'); }
 }
 modules.push(ArrayPlus);
 class ArrayAlternative extends Alternative {
-    constructor() {
-        super(Applicative.types.ArrayApplicative, Plus.types.ArrayPlus, 'Array', Alternative.types, 'array');
-    }
+    constructor() { super(Applicative.types.ArrayApplicative, Plus.types.ArrayPlus, 'Array', Alternative.types, 'array'); }
 }
 modules.push(ArrayAlternative);
 class ArrayChain extends Chain {
-    constructor() {
-        super(Apply.types.ArrayApply, polyfills.array.flatMap, 'Array', Chain.types, 'array');
-    }
+    constructor() { super(Apply.types.ArrayApply, polyfills.array.flatMap, 'Array', Chain.types, 'array'); }
 }
 modules.push(ArrayChain);
 class ArrayChainRec extends ChainRec {
@@ -1487,15 +1352,11 @@ class ArrayChainRec extends ChainRec {
 }
 modules.push(ArrayChainRec);
 class ArrayMonad extends Monad {
-    constructor() {
-        super(Applicative.types.ArrayApplicative, Chain.types.ArrayChain, 'Array', Monad.types, 'array');
-    }
+    constructor() { super(Applicative.types.ArrayApplicative, Chain.types.ArrayChain, 'Array', Monad.types, 'array'); }
 }
 modules.push(ArrayMonad);
 class ArrayFoldable extends Foldable {
-    constructor() {
-        super((f, init, arr) => arr.reduce(f, init), 'Array', Foldable.types, 'array');
-    }
+    constructor() { super((f, init, arr) => arr.reduce(f, init), 'Array', Foldable.types, 'array'); }
 }
 modules.push(ArrayFoldable);
 class ArrayExtend extends Extend {
@@ -1507,9 +1368,7 @@ class ArrayExtend extends Extend {
 }
 modules.push(ArrayExtend);
 class ArrayComonad extends Comonad {
-    constructor() {
-        super(Extend.types.ArrayExtend, fst, 'Array', Comonad.types, 'array');
-    }
+    constructor() { super(Extend.types.ArrayExtend, fst, 'Array', Comonad.types, 'array'); }
 }
 modules.push(ArrayComonad);
 class ArrayTraversable extends Traversable {
@@ -1535,9 +1394,7 @@ class ArrayTraversable extends Traversable {
 modules.push(ArrayTraversable);
 /* Date */
 class DateSetoid extends Setoid {
-    constructor() {
-        super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'Date', Setoid.types, 'date');
-    }
+    constructor() { super((x, y) => types.dateCheckAndGet(x).getTime() === types.dateCheckAndGet(y).getTime(), 'Date', Setoid.types, 'date'); }
 }
 modules.push(DateSetoid);
 class DateOrd extends Ord {
@@ -1563,18 +1420,14 @@ class Maybe {
     isNothing() { return false; }
 }
 class Just extends Maybe {
-    constructor(value) {
-        super(); this.value = value; this._typeName = 'Maybe';
-    }
+    constructor(value) { super(); this.value = value; this._typeName = 'Maybe'; }
     isJust() { return true; }
     map(f) { return Functor.lookup('maybe').map(f, this); }
     chain(f) { return Chain.lookup('maybe').chain(f, this); }
     toString() { return `Just(${showValue(this.value)})`; }
 }
 class Nothing extends Maybe {
-    constructor() {
-        super(); this._typeName = 'Maybe';
-    }
+    constructor() { super(); this._typeName = 'Maybe'; }
     isNothing() { return true; }
     map(f) { return Functor.lookup('maybe').map(f, this); }
     chain(f) { return Chain.lookup('maybe').chain(f, this); }
@@ -1601,27 +1454,19 @@ const kleisliCompose = chainOf => {
     };
 };
 class MaybeSemigroupoid extends Semigroupoid {
-    constructor() {
-        super(kleisliCompose(() => Chain.types.MaybeChain), 'function', Semigroupoid.types, 'maybe');
-    }
+    constructor() { super(kleisliCompose(() => Chain.types.MaybeChain), 'function', Semigroupoid.types, 'maybe'); }
 }
 modules.push(MaybeSemigroupoid);
 class MaybeCategory extends Category {
-    constructor() {
-        super(Semigroupoid.types.MaybeSemigroupoid, Maybe.Just, 'function', Category.types, 'maybe');
-    }
+    constructor() { super(Semigroupoid.types.MaybeSemigroupoid, Maybe.Just, 'function', Category.types, 'maybe'); }
 }
 modules.push(MaybeCategory);
 class MaybeFilterable extends Filterable {
-    constructor() {
-        super((pred, m) => m.isJust() && pred(m.value) ? m : Maybe.Nothing(), 'Maybe', Filterable.types, 'maybe');
-    }
+    constructor() { super((pred, m) => m.isJust() && pred(m.value) ? m : Maybe.Nothing(), 'Maybe', Filterable.types, 'maybe'); }
 }
 modules.push(MaybeFilterable);
 class MaybeFunctor extends Functor {
-    constructor() {
-        super((f, m) => m.isJust() ? Maybe.Just(f(m.value)) : m, 'Maybe', Functor.types, 'maybe');
-    }
+    constructor() { super((f, m) => m.isJust() ? Maybe.Just(f(m.value)) : m, 'Maybe', Functor.types, 'maybe'); }
 }
 modules.push(MaybeFunctor);
 class MaybeApply extends Apply {
@@ -1633,33 +1478,23 @@ class MaybeApply extends Apply {
 }
 modules.push(MaybeApply);
 class MaybeApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.MaybeApply, Maybe.Just, 'Maybe', Applicative.types, 'maybe');
-    }
+    constructor() { super(Apply.types.MaybeApply, Maybe.Just, 'Maybe', Applicative.types, 'maybe'); }
 }
 modules.push(MaybeApplicative);
 class MaybeAlt extends Alt {
-    constructor() {
-        super(Functor.types.MaybeFunctor, (a, b) => a.isNothing() ? b : a, 'Maybe', Alt.types, 'maybe');
-    }
+    constructor() { super(Functor.types.MaybeFunctor, (a, b) => a.isNothing() ? b : a, 'Maybe', Alt.types, 'maybe'); }
 }
 modules.push(MaybeAlt);
 class MaybePlus extends Plus {
-    constructor() {
-        super(Alt.types.MaybeAlt, Maybe.Nothing, 'Maybe', Plus.types, 'maybe');
-    }
+    constructor() { super(Alt.types.MaybeAlt, Maybe.Nothing, 'Maybe', Plus.types, 'maybe'); }
 }
 modules.push(MaybePlus);
 class MaybeAlternative extends Alternative {
-    constructor() {
-        super(Applicative.types.MaybeApplicative, Plus.types.MaybePlus, 'Maybe', Alternative.types, 'maybe');
-    }
+    constructor() { super(Applicative.types.MaybeApplicative, Plus.types.MaybePlus, 'Maybe', Alternative.types, 'maybe'); }
 }
 modules.push(MaybeAlternative);
 class MaybeChain extends Chain {
-    constructor() {
-        super(Apply.types.MaybeApply, (f, m) => m.isJust() ? f(m.value) : m, 'Maybe', Chain.types, 'maybe');
-    }
+    constructor() { super(Apply.types.MaybeApply, (f, m) => m.isJust() ? f(m.value) : m, 'Maybe', Chain.types, 'maybe'); }
 }
 modules.push(MaybeChain);
 class MaybeChainRec extends ChainRec {
@@ -1675,15 +1510,11 @@ class MaybeChainRec extends ChainRec {
 }
 modules.push(MaybeChainRec);
 class MaybeMonad extends Monad {
-    constructor() {
-        super(Applicative.types.MaybeApplicative, Chain.types.MaybeChain, 'Maybe', Monad.types, 'maybe');
-    }
+    constructor() { super(Applicative.types.MaybeApplicative, Chain.types.MaybeChain, 'Maybe', Monad.types, 'maybe'); }
 }
 modules.push(MaybeMonad);
 class MaybeFoldable extends Foldable {
-    constructor() {
-        super((f, init, m) => m.isJust() ? f(init, m.value) : init, 'Maybe', Foldable.types, 'maybe');
-    }
+    constructor() { super((f, init, m) => m.isJust() ? f(init, m.value) : init, 'Maybe', Foldable.types, 'maybe'); }
 }
 modules.push(MaybeFoldable);
 class MaybeTraversable extends Traversable {
@@ -1731,9 +1562,7 @@ class EitherSemigroupoid extends Semigroupoid {
 }
 modules.push(EitherSemigroupoid);
 class EitherCategory extends Category {
-    constructor() {
-        super(Semigroupoid.types.EitherSemigroupoid, Either.Right, 'function', Category.types, 'either');
-    }
+    constructor() { super(Semigroupoid.types.EitherSemigroupoid, Either.Right, 'function', Category.types, 'either'); }
 }
 modules.push(EitherCategory);
 // Filterable 로 등록하지 않는다 — 소멸·항등 법칙을 동시에 만족할 수 없다. docs/internals.md#filterable
@@ -1742,9 +1571,7 @@ const eitherFilter = (pred, e, onFalse = identity) =>
         ? (e.isLeft() ? e : (pred(e.value) ? e : Either.Left(onFalse(e.value))))
         : raise(new TypeError('Either.filter: arguments must be (function, Either)'));
 class EitherFunctor extends Functor {
-    constructor() {
-        super((f, e) => e.isRight() ? Either.Right(f(e.value)) : e, 'Either', Functor.types, 'either');
-    }
+    constructor() { super((f, e) => e.isRight() ? Either.Right(f(e.value)) : e, 'Either', Functor.types, 'either'); }
 }
 modules.push(EitherFunctor);
 class EitherBifunctor extends Bifunctor {
@@ -1763,21 +1590,15 @@ class EitherApply extends Apply {
 }
 modules.push(EitherApply);
 class EitherApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.EitherApply, Either.Right, 'Either', Applicative.types, 'either');
-    }
+    constructor() { super(Apply.types.EitherApply, Either.Right, 'Either', Applicative.types, 'either'); }
 }
 modules.push(EitherApplicative);
 class EitherAlt extends Alt {
-    constructor() {
-        super(Functor.types.EitherFunctor, (a, b) => a.isLeft() ? b : a, 'Either', Alt.types, 'either');
-    }
+    constructor() { super(Functor.types.EitherFunctor, (a, b) => a.isLeft() ? b : a, 'Either', Alt.types, 'either'); }
 }
 modules.push(EitherAlt);
 class EitherChain extends Chain {
-    constructor() {
-        super(Apply.types.EitherApply, (f, e) => e.isRight() ? f(e.value) : e, 'Either', Chain.types, 'either');
-    }
+    constructor() { super(Apply.types.EitherApply, (f, e) => e.isRight() ? f(e.value) : e, 'Either', Chain.types, 'either'); }
 }
 modules.push(EitherChain);
 class EitherChainRec extends ChainRec {
@@ -1793,9 +1614,7 @@ class EitherChainRec extends ChainRec {
 }
 modules.push(EitherChainRec);
 class EitherMonad extends Monad {
-    constructor() {
-        super(Applicative.types.EitherApplicative, Chain.types.EitherChain, 'Either', Monad.types, 'either');
-    }
+    constructor() { super(Applicative.types.EitherApplicative, Chain.types.EitherChain, 'Either', Monad.types, 'either'); }
 }
 modules.push(EitherMonad);
 class EitherMonadError extends MonadError {
@@ -1814,9 +1633,7 @@ class EitherMonadError extends MonadError {
 }
 modules.push(EitherMonadError);
 class EitherFoldable extends Foldable {
-    constructor() {
-        super((f, init, e) => e.isRight() ? f(init, e.value) : init, 'Either', Foldable.types, 'either');
-    }
+    constructor() { super((f, init, e) => e.isRight() ? f(init, e.value) : init, 'Either', Foldable.types, 'either'); }
 }
 modules.push(EitherFoldable);
 class EitherTraversable extends Traversable {
@@ -2071,15 +1888,11 @@ Task.catchError = (handler, task) => new Task((reject, resolve) => {
     );
 });
 class TaskSemigroupoid extends Semigroupoid {
-    constructor() {
-        super(kleisliCompose(() => Chain.types.TaskChain), 'function', Semigroupoid.types, 'task');
-    }
+    constructor() { super(kleisliCompose(() => Chain.types.TaskChain), 'function', Semigroupoid.types, 'task'); }
 }
 modules.push(TaskSemigroupoid);
 class TaskCategory extends Category {
-    constructor() {
-        super(Semigroupoid.types.TaskSemigroupoid, Task.of, 'function', Category.types, 'task');
-    }
+    constructor() { super(Semigroupoid.types.TaskSemigroupoid, Task.of, 'function', Category.types, 'task'); }
 }
 modules.push(TaskCategory);
 // Either 와 같은 이유로 Filterable 이 아니다 — 정규 빈 상자가 없다. docs/internals.md#filterable
@@ -2122,9 +1935,7 @@ class TaskApply extends Apply {
 }
 modules.push(TaskApply);
 class TaskApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.TaskApply, Task.of, 'Task', Applicative.types, 'task');
-    }
+    constructor() { super(Apply.types.TaskApply, Task.of, 'Task', Applicative.types, 'task'); }
 }
 modules.push(TaskApplicative);
 class TaskAlt extends Alt {
@@ -2187,9 +1998,7 @@ class TaskChainRec extends ChainRec {
 }
 modules.push(TaskChainRec);
 class TaskMonad extends Monad {
-    constructor() {
-        super(Applicative.types.TaskApplicative, Chain.types.TaskChain, 'Task', Monad.types, 'task');
-    }
+    constructor() { super(Applicative.types.TaskApplicative, Chain.types.TaskChain, 'Task', Monad.types, 'task'); }
 }
 modules.push(TaskMonad);
 class TaskMonadError extends MonadError {
@@ -2283,17 +2092,11 @@ class ValidationApply extends Apply {
 }
 modules.push(ValidationApply);
 class ValidationApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.ValidationApply, Validation.Valid,
-            'Validation', Applicative.types, 'validation');
-    }
+    constructor() { super(Apply.types.ValidationApply, Validation.Valid, 'Validation', Applicative.types, 'validation'); }
 }
 modules.push(ValidationApplicative);
 class ValidationFoldable extends Foldable {
-    constructor() {
-        super((f, init, v) => v.isValid() ? f(init, v.value) : init,
-            'Validation', Foldable.types, 'validation');
-    }
+    constructor() { super((f, init, v) => v.isValid() ? f(init, v.value) : init, 'Validation', Foldable.types, 'validation'); }
 }
 modules.push(ValidationFoldable);
 /* NonEmptyList */
@@ -2318,10 +2121,7 @@ NonEmptyList.isNonEmptyList = hasSymbol(Symbols.NonEmptyList);
 NonEmptyList.reduceLeft = (f, nel) => Reducible.types.NonEmptyListReducible.reduceLeft(f, nel);
 NonEmptyList.reduceMap = (semigroup, f, nel) => Reducible.types.NonEmptyListReducible.reduceMap(semigroup, f, nel);
 class NonEmptyListFunctor extends Functor {
-    constructor() {
-        super((f, w) => new NonEmptyList(f(w.head), w.tail.map(f)),
-            'NonEmptyList', Functor.types, 'nonEmptyList');
-    }
+    constructor() { super((f, w) => new NonEmptyList(f(w.head), w.tail.map(f)), 'NonEmptyList', Functor.types, 'nonEmptyList'); }
 }
 modules.push(NonEmptyListFunctor);
 class NonEmptyListApply extends Apply {
@@ -2335,10 +2135,7 @@ class NonEmptyListApply extends Apply {
 }
 modules.push(NonEmptyListApply);
 class NonEmptyListApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.NonEmptyListApply, x => NonEmptyList.of(x),
-            'NonEmptyList', Applicative.types, 'nonEmptyList');
-    }
+    constructor() { super(Apply.types.NonEmptyListApply, x => NonEmptyList.of(x), 'NonEmptyList', Applicative.types, 'nonEmptyList'); }
 }
 modules.push(NonEmptyListApplicative);
 class NonEmptyListChain extends Chain {
@@ -2371,10 +2168,7 @@ class NonEmptyListChainRec extends ChainRec {
 }
 modules.push(NonEmptyListChainRec);
 class NonEmptyListMonad extends Monad {
-    constructor() {
-        super(Applicative.types.NonEmptyListApplicative, Chain.types.NonEmptyListChain,
-            'NonEmptyList', Monad.types, 'nonEmptyList');
-    }
+    constructor() { super(Applicative.types.NonEmptyListApplicative, Chain.types.NonEmptyListChain, 'NonEmptyList', Monad.types, 'nonEmptyList'); }
 }
 modules.push(NonEmptyListMonad);
 class NonEmptyListSemigroup extends Semigroup {
@@ -2394,10 +2188,7 @@ class NonEmptyListAlt extends Alt {
 }
 modules.push(NonEmptyListAlt);
 class NonEmptyListFoldable extends Foldable {
-    constructor() {
-        super((f, init, w) => w.toArray().reduce(f, init),
-            'NonEmptyList', Foldable.types, 'nonEmptyList');
-    }
+    constructor() { super((f, init, w) => w.toArray().reduce(f, init), 'NonEmptyList', Foldable.types, 'nonEmptyList'); }
 }
 modules.push(NonEmptyListFoldable);
 class NonEmptyListReducible extends Reducible {
@@ -2466,9 +2257,7 @@ Reader.ask = new Reader(identity);
 Reader.asks = f => new Reader(f);
 Reader.local = (f, reader) => new Reader(env => reader.run(f(env)));
 class ReaderFunctor extends Functor {
-    constructor() {
-        super((f, r) => new Reader(env => f(r.run(env))), 'Reader', Functor.types, 'reader');
-    }
+    constructor() { super((f, r) => new Reader(env => f(r.run(env))), 'Reader', Functor.types, 'reader'); }
 }
 modules.push(ReaderFunctor);
 class ReaderApply extends Apply {
@@ -2480,9 +2269,7 @@ class ReaderApply extends Apply {
 }
 modules.push(ReaderApply);
 class ReaderApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.ReaderApply, Reader.of, 'Reader', Applicative.types, 'reader');
-    }
+    constructor() { super(Apply.types.ReaderApply, Reader.of, 'Reader', Applicative.types, 'reader'); }
 }
 modules.push(ReaderApplicative);
 class ReaderChain extends Chain {
@@ -2494,9 +2281,7 @@ class ReaderChain extends Chain {
 }
 modules.push(ReaderChain);
 class ReaderMonad extends Monad {
-    constructor() {
-        super(Applicative.types.ReaderApplicative, Chain.types.ReaderChain, 'Reader', Monad.types, 'reader');
-    }
+    constructor() { super(Applicative.types.ReaderApplicative, Chain.types.ReaderChain, 'Reader', Monad.types, 'reader'); }
 }
 modules.push(ReaderMonad);
 /* Writer */
@@ -2525,9 +2310,7 @@ Writer.pass = w => {
 };
 Writer.censor = (f, w) => new Writer(w.value, f(w.output), w.monoid);
 class WriterFunctor extends Functor {
-    constructor() {
-        super((f, w) => new Writer(f(w.value), w.output, w.monoid), 'Writer', Functor.types, 'writer');
-    }
+    constructor() { super((f, w) => new Writer(f(w.value), w.output, w.monoid), 'Writer', Functor.types, 'writer'); }
 }
 modules.push(WriterFunctor);
 class WriterApply extends Apply {
@@ -2541,9 +2324,7 @@ class WriterApply extends Apply {
 }
 modules.push(WriterApply);
 class WriterApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.WriterApply, Writer.of, 'Writer', Applicative.types, 'writer');
-    }
+    constructor() { super(Apply.types.WriterApply, Writer.of, 'Writer', Applicative.types, 'writer'); }
 }
 modules.push(WriterApplicative);
 class WriterChain extends Chain {
@@ -2559,9 +2340,7 @@ class WriterChain extends Chain {
 }
 modules.push(WriterChain);
 class WriterMonad extends Monad {
-    constructor() {
-        super(Applicative.types.WriterApplicative, Chain.types.WriterChain, 'Writer', Monad.types, 'writer');
-    }
+    constructor() { super(Applicative.types.WriterApplicative, Chain.types.WriterChain, 'Writer', Monad.types, 'writer'); }
 }
 modules.push(WriterMonad);
 // 등록본의 of 는 array monoid 를 박으므로 monoid 마다 하나씩 만든다 — 의존하는 것은 of 뿐이다. docs/internals.md#writer-factory-internals
@@ -2632,9 +2411,7 @@ class StateApply extends Apply {
 }
 modules.push(StateApply);
 class StateApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.StateApply, State.of, 'State', Applicative.types, 'state');
-    }
+    constructor() { super(Apply.types.StateApply, State.of, 'State', Applicative.types, 'state'); }
 }
 modules.push(StateApplicative);
 class StateChain extends Chain {
@@ -2649,9 +2426,7 @@ class StateChain extends Chain {
 }
 modules.push(StateChain);
 class StateMonad extends Monad {
-    constructor() {
-        super(Applicative.types.StateApplicative, Chain.types.StateChain, 'State', Monad.types, 'state');
-    }
+    constructor() { super(Applicative.types.StateApplicative, Chain.types.StateChain, 'State', Monad.types, 'state'); }
 }
 modules.push(StateMonad);
 /* Store */
@@ -2687,9 +2462,7 @@ Store.memo = (store, keyOf) => {
 };
 // map 은 조회 뒤에 f 를 합성한다 — 초점은 그대로
 class StoreFunctor extends Functor {
-    constructor() {
-        super((f, w) => new Store(s => f(w._lookup(s)), w._index), 'Store', Functor.types, 'store');
-    }
+    constructor() { super((f, w) => new Store(s => f(w._lookup(s)), w._index), 'Store', Functor.types, 'store'); }
 }
 modules.push(StoreFunctor);
 // extend 는 모든 위치에서 국소 규칙 f 를 본 새 Store — 국소 규칙이 전역 갱신이 되는 자리
@@ -2702,9 +2475,7 @@ class StoreExtend extends Extend {
 }
 modules.push(StoreExtend);
 class StoreComonad extends Comonad {
-    constructor() {
-        super(Extend.types.StoreExtend, w => w._lookup(w._index), 'Store', Comonad.types, 'store');
-    }
+    constructor() { super(Extend.types.StoreExtend, w => w._lookup(w._index), 'Store', Comonad.types, 'store'); }
 }
 modules.push(StoreComonad);
 /* Utilities */
@@ -2771,10 +2542,7 @@ Either.pipe = (e, ...fns) => {
 };
 const { transducer } = (() => {
     class Reduced {
-        constructor(value) {
-            this.value = value;
-            this[Symbols.Reduced] = true;
-        }
+        constructor(value) { this.value = value; this[Symbols.Reduced] = true; }
         static of(value) { return new Reduced(value); }
         static isReduced(value) { return value != null && value[Symbols.Reduced] === true; }
     }
@@ -2835,9 +2603,7 @@ const { transducer } = (() => {
 })();
 const { Free, trampoline } = (() => {
     // 러너 셋의 **입구**만 검사한다 — 러너가 마지막에 평범한 값을 내는 것은 문서화된 정상 계약이다(6차 감사 10).
-    const checkProgram = (label, program) => Free.isFree(program)
-        ? program
-        : raise(new TypeError(`Free.${label}: program must be a Free value`));
+    const checkProgram = (label, program) => Free.isFree(program) ? program : raise(new TypeError(`Free.${label}: program must be a Free value`));
     const reentrantGuard = (runner, f, onReentry = f) => {
         let active = false;
         return (...args) => {
@@ -2873,17 +2639,13 @@ const { Free, trampoline } = (() => {
         static isFree(x) { return Free.isPure(x) || Free.isImpure(x); }
         static liftF(command) {
             command[Symbols.Functor] || raise(new Error('Free.liftF: expected a functor'));
-            return Free.isFree(command)
-                ? command
-                : Free.impure(command.map(Free.pure));
+            return Free.isFree(command) ? command : Free.impure(command.map(Free.pure));
         }
         static *runGenerator(runner, program) {
             let step = program;
             while (Free.isImpure(step)) {
                 step = yield runner(step.functor);
-                if (Free.isPure(step) && Free.isFree(step.value)) {
-                    step = step.value;
-                }
+                if (Free.isPure(step) && Free.isFree(step.value)) { step = step.value; }
             }
             return Free.isPure(step) ? step.value : step;
         }
@@ -2892,9 +2654,7 @@ const { Free, trampoline } = (() => {
                 const execute = program => {
                     const gen = Free.runGenerator(runner, program);
                     let result = gen.next();
-                    while (!result.done) {
-                        result = gen.next(result.value);
-                    }
+                    while (!result.done) { result = gen.next(result.value); }
                     return result.value;
                 };
                 return typeof target === 'function' ? reentrantGuard(execute, target) : execute(checkProgram('runSync', target));
@@ -2906,9 +2666,7 @@ const { Free, trampoline } = (() => {
                     checkProgram('runAsync', program);
                     const gen = Free.runGenerator(runner, program);
                     let result = gen.next();
-                    while (!result.done) {
-                        result = gen.next(await result.value);
-                    }
+                    while (!result.done) { result = gen.next(await result.value); }
                     return result.value;
                 };
                 return typeof target === 'function' ? reentrantGuard(execute, target) : execute(target);
@@ -2921,11 +2679,8 @@ const { Free, trampoline } = (() => {
                 const step = free => {
                     try {
                         if (Free.isPure(free)) return resolve(free.value);
-                        if (Free.isImpure(free)) {
-                            runner(free.functor).fork(reject, step);
-                        } else {
-                            reject(new Error('runWithTask: unknown Free type'));
-                        }
+                        if (Free.isImpure(free)) { runner(free.functor).fork(reject, step); } 
+                        else { reject(new Error('runWithTask: unknown Free type')); }
                     } catch (e) { reject(e); }
                 };
                 step(program);
@@ -3099,9 +2854,7 @@ class FreeApply extends Apply {
 }
 modules.push(FreeApply);
 class FreeApplicative extends Applicative {
-    constructor() {
-        super(Apply.types.FreeApply, Free.pure, 'Free', Applicative.types, 'free');
-    }
+    constructor() { super(Apply.types.FreeApply, Free.pure, 'Free', Applicative.types, 'free'); }
 }
 modules.push(FreeApplicative);
 class FreeChain extends Chain {
@@ -3117,9 +2870,7 @@ class FreeChain extends Chain {
 }
 modules.push(FreeChain);
 class FreeMonad extends Monad {
-    constructor() {
-        super(Applicative.types.FreeApplicative, Chain.types.FreeChain, 'Free', Monad.types, 'free');
-    }
+    constructor() { super(Applicative.types.FreeApplicative, Chain.types.FreeChain, 'Free', Monad.types, 'free'); }
 }
 modules.push(FreeMonad);
 /* Profunctor 확장 인스턴스 — optics 가 주입하는 세 P. docs/internals.md#optics */
@@ -3156,9 +2907,7 @@ modules.push(FunctionWander);
 // Tagged: p a b = b. 입력을 무시해 review 만 쓴다 — first/wander 의 부재가 곧 타입 안전성이다. docs/internals.md#optics
 const taggedProfunctorBase = new Profunctor((_f, g, p) => g(p), 'any');
 class TaggedChoice extends Choice {
-    constructor() {
-        super(taggedProfunctorBase, Either.Left, Either.Right, 'any', Choice.types, 'tagged');
-    }
+    constructor() { super(taggedProfunctorBase, Either.Left, Either.Right, 'any', Choice.types, 'tagged'); }
 }
 modules.push(TaggedChoice);
 // Forget<r>: p a b = a -> r. monoid 마다 다른 팩토리이고, 담는 모양이 있으니 클래스다. docs/internals.md#forget-newtype
@@ -3200,14 +2949,11 @@ Wander.Forget = monoid => {
 };
 Wander.Forget._keyCache = new Map();
 Wander.Forget._instanceCache = new WeakMap();
-
 load(...modules);
-
 /* Optics */
 // transducer 와 같은 모양으로 IIFE 안에 가둔다 — 모듈 객체 하나만 밖으로 낸다.
 const { Optics } = (() => {
     // Optic s a = P => P a a -> P s s — 주입하는 P 가 연산을 정한다(함수=over·Forget=view·Tagged=review). docs/internals.md#optics
-
     // ── 주입하는 P 셋 — 사설 딕셔너리가 아니라 등록 인스턴스다(게이트가 본다). docs/internals.md#optics ──
     const functionProfunctor = Wander.types.FunctionWander;
     const forgetProfunctor = monoid => Wander.Forget(monoid);
@@ -3218,7 +2964,6 @@ const { Optics } = (() => {
         first: () => raise(new TypeError('review: argument must be a Prism (a Lens cannot be reviewed)')),
         wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
     });
-
     // ── optic 생성자 ───────────────────────────────────────────────────
     // Iso 는 dimap 만 써서 모든 연산에 통한다(계층 최상단) — docs/internals.md#optics
     const Iso = (to, from) => {
@@ -3331,27 +3076,18 @@ const { Optics } = (() => {
    - load() 이후에 위치: Monad.lookup(), Functor.lookup() 등이 로드된 상태 필요
    - 타입 클래스 인스턴스를 동적 생성하여 레지스트리에 등록
    ═══════════════════════════════════════════════════════════════ */
-
 const normalizeMonad = M => {
     if (typeof M === 'string') return Monad.lookup(M);
     if (!M || typeof M.of !== 'function' || typeof M.chain !== 'function' || typeof M.map !== 'function') {
-        raise(new TypeError(
-            'normalizeMonad: M must be a static-land style object with of(a), map(f, ma), chain(f, ma)'
-        ));
+        raise(new TypeError('normalizeMonad: M must be a static-land style object with of(a), map(f, ma), chain(f, ma)'));
     }
     return M;
 };
-
 const { GetF, PutF, ModifyF, LiftF, ThrowF, CatchF, AskF, LocalF, TellF, applyMapChain } = Free;
-
 // 네 트랜스포머 lift 의 공용 몸 — 안쪽 모나드 값을 LiftF 명령으로 얹는다
 const liftInto = Cls => ma => new Cls(Free.liftF(new LiftF(ma, identity)));
-
 // _mapChain + cont를 해석하는 공통 헬퍼
-const liftCont = f => f._mapChain
-    ? a => applyMapChain(f._mapChain, f.cont(a))
-    : f.cont;
-
+const liftCont = f => f._mapChain ? a => applyMapChain(f._mapChain, f.cont(a)) : f.cont;
 // 5단 동적 등록 — registry=null 키 오염 방지·nominal typing·XT.of 선완성 전제. docs/internals.md#transformer-register
 const registerTransformerTypeClasses = (XT, typeName, alias) => {
     // 같은 alias 를 다른 트랜스포머가 덮으면 먼저 만든 쪽 인스턴스가 통째로 죽는다 — 거부한다.
@@ -3389,18 +3125,15 @@ const registerTransformerTypeClasses = (XT, typeName, alias) => {
     XT.pipeK = (...fns) => pipeK(tMonad)(fns);
     XT.composeK = (...fns) => composeK(tMonad)(fns);
 };
-
 // 자동 alias 는 실행 순서에 따라 달라진다 — M 은 문자열로. docs/internals.md#transformer-register
 let _transformerAutoId = 0;
 const resolveMonadType = (M, nm) => nm.type || (typeof M === 'string' ? M : `M${++_transformerAutoId}`);
-
 /* ── StateT ── */
 const StateT = (M) => {
     const nm = normalizeMonad(M);
     if (StateT._cache.has(nm)) return StateT._cache.get(nm);
     const typeName = `StateT(${resolveMonadType(M, nm)})`;
     const alias = typeName.toLowerCase();
-
     class ST {
         constructor(program) { this._program = program; this._typeName = typeName; }
         run(s) {
@@ -3424,7 +3157,6 @@ const StateT = (M) => {
     ST.modify = f => new ST(Free.liftF(new ModifyF(f, undefined)));
     ST.gets = f => new ST(Free.liftF(new GetF(f)));
     ST.lift = liftInto(ST);
-
     ST.runState = (initial, st) => {
         if (!(st instanceof ST)) raise(new TypeError(`${typeName}.runState: second argument must be a ${typeName} instance`));
         const go = (s, free) => {
@@ -3441,13 +3173,11 @@ const StateT = (M) => {
         };
         return go(initial, st._program);
     };
-
     registerTransformerTypeClasses(ST, typeName, alias);
     StateT._cache.set(nm, ST);
     return ST;
 };
 StateT._cache = new Map();
-
 /* ── EitherT ── */
 const EitherT = (M) => {
     const nm = normalizeMonad(M);
@@ -3476,7 +3206,6 @@ const EitherT = (M) => {
     };
     ET.lift = liftInto(ET);
     ET.fromEither = either => Either.fold(ET.throwError, ET.of, either);
-
     ET.runEitherT = (et) => {
         if (!(et instanceof ET)) raise(new TypeError(`${typeName}.runEitherT: argument must be a ${typeName} instance`));
         const go = (free) => {
@@ -3500,13 +3229,11 @@ const EitherT = (M) => {
         };
         return go(et._program);
     };
-
     registerTransformerTypeClasses(ET, typeName, alias);
     EitherT._cache.set(nm, ET);
     return ET;
 };
 EitherT._cache = new Map();
-
 /* ── ReaderT ── */
 const ReaderT = (M) => {
     const nm = normalizeMonad(M);
@@ -3532,7 +3259,6 @@ const ReaderT = (M) => {
         return new RT(Free.liftF(new LocalF(f, rt._program)));
     };
     RT.lift = liftInto(RT);
-
     RT.runReaderT = (env, rt) => {
         if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.runReaderT: second argument must be a ${typeName} instance`));
         const go = (e, free) => {
@@ -3551,7 +3277,6 @@ const ReaderT = (M) => {
         };
         return go(env, rt._program);
     };
-
     registerTransformerTypeClasses(RT, typeName, alias);
     ReaderT._cache.set(nm, RT);
     return RT;
@@ -3573,12 +3298,9 @@ const WriterT = (M, writerMonoid) => {
     const wtKey = writerMonoid[Symbols.Monoid] === true ? normalizeWriterTMonoid(writerMonoid).key : null;
     const mt = writerMonoid.type;
     // 등록 키가 .type 의 소문자와 같으면 기존 표기(.type)를 유지한다 — 문서·별칭 불변.
-    const monoidId = wtKey !== null
-        ? (mt && wtKey === String(mt).toLowerCase() ? mt : wtKey)
-        : (mt ? `${mt}#${++_transformerAutoId}` : `monoid${++_transformerAutoId}`);
+    const monoidId = wtKey !== null ? (mt && wtKey === String(mt).toLowerCase() ? mt : wtKey) : (mt ? `${mt}#${++_transformerAutoId}` : `monoid${++_transformerAutoId}`);
     const typeName = `WriterT(${mType},${monoidId})`;
     const alias = typeName.toLowerCase();
-
     class WT {
         constructor(program) { this._program = program; this._typeName = typeName; }
         run() {
@@ -3591,7 +3313,6 @@ const WriterT = (M, writerMonoid) => {
     WT.of = x => new WT(Free.pure(x));
     WT.tell = output => new WT(Free.liftF(new TellF(output, undefined)));
     WT.lift = liftInto(WT);
-
     WT.runWriterT = (wt) => {
         if (!(wt instanceof WT)) raise(new TypeError(`${typeName}.runWriterT: argument must be a ${typeName} instance`));
         const go = (log, free) => {
@@ -3606,13 +3327,11 @@ const WriterT = (M, writerMonoid) => {
         };
         return go(writerMonoid.empty(), wt._program);
     };
-
     registerTransformerTypeClasses(WT, typeName, alias);
     WriterT._cache.get(nm).set(writerMonoid, WT);
     return WT;
 };
 WriterT._cache = new Map();
-
 // 핸들러가 낸 것을 Task 로 들어올린다(Task 는 그대로·thenable 은 동화·값은 of) — Actor 와 해석기의 공용 몸. docs/Actor.md
 const liftHandlerResult = r => {
     if (Task.isTask(r)) return r;
@@ -3621,11 +3340,9 @@ const liftHandlerResult = r => {
     }
     return Task.of(r);
 };
-
 /* ═══════════════════════════════════════════════════════════════
    Actor — 가벼운 메시지 큐 + 순차 처리
    ═══════════════════════════════════════════════════════════════ */
-
 // 타이머가 있으면 타이머로, 없으면 경계 검사로 — GAS 에는 setTimeout 이 없다(실측·1차 자료).
 // 경계 검사는 이 라이브러리의 협조적 취소(Free.api start/cancel)와 같은 의미론이다. docs/Actor.md
 const hasTimer = typeof setTimeout === 'function';
@@ -3639,7 +3356,6 @@ const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
     const subscribers = [];
     let inflight = null;
     const timers = [];   // 이긴 뒤 남은 마감 타이머를 걷는다 — 안 걷으면 프로세스가 그만큼 더 산다.
-
     const notify = (result, newState) => {
         // 사본을 돈다 — 통지 중 해지가 원본을 줄이면 뒤의 구독자를 건너뛴다(6차 감사 11).
         // 다만 해지는 즉시 발효한다: 사본에 있어도 그 사이 빠졌으면 안 부른다.
@@ -3650,14 +3366,12 @@ const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
             catch (e) { runCatch(config.tapErrorHandler, emptyFunc)(e); }
         }
     };
-
     // 타이머 없는 환경(GAS)의 몫 — 다음 경계에서 마감을 확인한다. 타이머가 있으면 이미 발동했다.
     // 이미 정착한 것을 다시 만료시키려 해도 once 가 막으므로 여기서 상태를 따로 안 본다.
     const expireIfDue = () => {
         if (inflight === null || timeout === Infinity) return;
         if (Date.now() - inflight.startedAt >= timeout) inflight.expire();
     };
-
     // 마감을 Task 로 세운다 — 그러면 「먼저 정착한 쪽이 이긴다」는 Task.race 가 진다.
     // 타이머가 없는 환경(GAS)에서는 이 Task 를 만들 수 없어 경계 검사가 대신한다.
     const deadline = ms => new Task(reject => {
@@ -3668,7 +3382,6 @@ const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
         }, ms);
         timers.push(timer);
     });
-
     const process = () => {
         if (processing || queue.length === 0) return;
         processing = true;
@@ -3714,7 +3427,6 @@ const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
             onError(e);
         }
     };
-
     return {
         send: msg => new Task((reject, resolve) => {
             expireIfDue();                            // 타이머 없는 환경의 경계 — 새 메시지가 곧 경계다
@@ -3732,12 +3444,10 @@ const Actor = ({ init, handle, notifyInOrder = true, timeout = 1000 }) => {
         getState: () => state,
     };
 };
-
 /* ═══════════════════════════════════════════════════════════════
    Static Methods (Eta Reduced)
    - load() 이후에 정의해야 TypeClass.lookup()가 정상 작동
    ═══════════════════════════════════════════════════════════════ */
-
 // Functor
 Maybe.map = Functor.lookup('maybe').map;
 Either.map = Functor.lookup('either').map;
@@ -3746,7 +3456,6 @@ Reader.map = Functor.lookup('reader').map;
 Writer.map = Functor.lookup('writer').map;
 State.map = Functor.lookup('state').map;
 Free.map = Functor.lookup('free').map;
-
 // Apply
 Maybe.ap = Apply.lookup('maybe').ap;
 Either.ap = Apply.lookup('either').ap;
@@ -3755,7 +3464,6 @@ Reader.ap = Apply.lookup('reader').ap;
 Writer.ap = Apply.lookup('writer').ap;
 State.ap = Apply.lookup('state').ap;
 Free.ap = Apply.lookup('free').ap;
-
 // Chain
 Maybe.chain = Chain.lookup('maybe').chain;
 Either.chain = Chain.lookup('either').chain;
@@ -3764,38 +3472,29 @@ Reader.chain = Chain.lookup('reader').chain;
 Writer.chain = Chain.lookup('writer').chain;
 State.chain = Chain.lookup('state').chain;
 Free.chain = Chain.lookup('free').chain;
-
 // Alt
 Maybe.alt = Alt.lookup('maybe').alt;
 Either.alt = Alt.lookup('either').alt;
 Task.alt = Alt.lookup('task').alt;
-
 // Plus
 Maybe.zero = () => Plus.lookup('maybe').zero();
-
 // Filterable
 Maybe.filter = Filterable.lookup('maybe').filter;
 Task.filter = taskFilter;
-
 // Foldable (3+ args - no eta reduction)
 Maybe.reduce = (f, init, m) => Foldable.lookup('maybe').reduce(f, init, m);
 Either.reduce = (f, init, e) => Foldable.lookup('either').reduce(f, init, e);
-
 // Traversable (3+ args - no eta reduction)
 Maybe.traverse = (applicative, f, m) => Traversable.lookup('maybe').traverse(applicative, f, m);
 Either.traverse = (applicative, f, e) => Traversable.lookup('either').traverse(applicative, f, e);
-
 // Bifunctor (3 args - no eta reduction)
 Either.bimap = (f, g, e) => Bifunctor.lookup('either').bimap(f, g, e);
-
 // Either/Task 는 Filterable 이 아니라 평범한 함수다 — 위 정의 참조
 Either.filter = eitherFilter;
-
 // ChainRec
 Maybe.chainRec = ChainRec.lookup('maybe').chainRec;
 Either.chainRec = ChainRec.lookup('either').chainRec;
 Task.chainRec = ChainRec.lookup('task').chainRec;
-
 // pipeK (현재 API 유지 - variadic)
 Maybe.pipeK = (...fns) => pipeK(Monad.lookup('maybe'))(fns);
 Either.pipeK = (...fns) => pipeK(Monad.lookup('either'))(fns);
@@ -3804,7 +3503,6 @@ Reader.pipeK = (...fns) => pipeK(Monad.lookup('reader'))(fns);
 Writer.pipeK = (...fns) => pipeK(Monad.lookup('writer'))(fns);
 State.pipeK = (...fns) => pipeK(Monad.lookup('state'))(fns);
 Free.pipeK = (...fns) => pipeK(Monad.lookup('free'))(fns);
-
 // composeK (현재 API 유지 - variadic)
 Maybe.composeK = (...fns) => composeK(Monad.lookup('maybe'))(fns);
 Either.composeK = (...fns) => composeK(Monad.lookup('either'))(fns);
@@ -3813,7 +3511,6 @@ Reader.composeK = (...fns) => composeK(Monad.lookup('reader'))(fns);
 Writer.composeK = (...fns) => composeK(Monad.lookup('writer'))(fns);
 State.composeK = (...fns) => composeK(Monad.lookup('state'))(fns);
 Free.composeK = (...fns) => composeK(Monad.lookup('free'))(fns);
-
 /* Free.api — 어휘만 선언하고 해석기는 몇 벌이든 별도로 단다. 사용자는 함자를 모른다. */
 // 연속은 함수 목록이다 — 클로저 중첩이면 깊은 map 사슬에서 스택이 넘친다. docs/Free.md
 /* 연속은 cons 리스트({ f, prev }) — map 마다 앞에 한 노드, 복사 없음. 형태는 미문서 내부다. */
@@ -3919,18 +3616,15 @@ Free.interpreters = (...its) => {
     interpreterRegistry.set(router, tables);
     return router;
 };
-
 // lift (eta reduced)
 Reader.lift = lift(Applicative.lookup('reader'));
 Writer.lift = lift(Applicative.lookup('writer'));
 State.lift = lift(Applicative.lookup('state'));
 Free.lift = lift(Applicative.lookup('free'));
-
 // lift (with error handling - cannot eta reduce)
 Maybe.lift = f => runCatch(lift(Applicative.lookup('maybe'))(f), Maybe.Nothing);
 Either.lift = f => runCatch(lift(Applicative.lookup('either'))(f), Either.Left);
 Task.lift = f => runCatch(lift(Applicative.lookup('task'))(f), Task.rejected);
-
 const extra = (() => {
     // 자기 소유 프로퍼티만 본다 — 상속된 toString·constructor 를 "찾음" 으로 처리하면 안 된다.
     const own = (obj, key) => (obj != null && Object.prototype.hasOwnProperty.call(obj, key)) ? obj[key] : null;
@@ -3942,7 +3636,6 @@ const extra = (() => {
         (match, keyStr) => Either.fold(_ => match, identity, path(keyStr)(data)));
     return { path, template };
 })();
-
 export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
