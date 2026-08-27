@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: c1ae2cb73ea0aa7221f090b5b93f02502d27f27f
- * Built: 2026-08-22T16:41:05.978Z
+ * Commit: 2c0ba416c1a39a4b831d9c0c80e9c45a4afc499c
+ * Built: 2026-08-27T14:29:54.132Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -68,7 +68,8 @@ const Symbols = {
     NonEmptyList: Symbol.for('fun-fp-js/NonEmptyList'),
     Reader: Symbol.for('fun-fp-js/Reader'),
     Writer: Symbol.for('fun-fp-js/Writer'),
-    State: Symbol.for('fun-fp-js/State')
+    State: Symbol.for('fun-fp-js/State'),
+    Store: Symbol.for('fun-fp-js/Store')
 };
 const types = {
     of: a => {
@@ -108,6 +109,7 @@ const runCatch = (f, onError = emptyFunc) => (...args) => {
     catch (e) { return onError(e); }
 };
 const constant = x => () => x;
+const hasSymbol = sym => x => x != null && x[sym] === true; // isX 서술어 열 곳의 공용 몸 — 심볼은 위조를 가른다
 const tuple = (...args) => args;
 const unapply2 = f => (a, b) => types.checkFunction(f, 'unapply2')(a, b);
 const curry2 = f => a => b => types.checkFunction(f, 'curry2')(a, b);
@@ -1289,7 +1291,7 @@ class Identity {
 Identity.prototype[Symbols.Identity] = true;
 Identity.of = value => new Identity(value);
 // 문자열은 베낄 수 있지만 심볼은 이 표에서만 온다 — isIdentity 는 위조를 가른다.
-Identity.isIdentity = x => x != null && x[Symbols.Identity] === true;
+Identity.isIdentity = hasSymbol(Symbols.Identity);
 const identityOf = Identity.of;
 class IdentityFunctor extends Functor {
     constructor() {
@@ -1559,7 +1561,7 @@ Nothing.prototype[Symbols.Maybe] = true;
 Maybe.Just = x => new Just(x);
 Maybe.Nothing = () => new Nothing();
 Maybe.of = x => new Just(x);
-Maybe.isMaybe = x => x != null && x[Symbols.Maybe] === true;
+Maybe.isMaybe = hasSymbol(Symbols.Maybe);
 Maybe.isJust = x => Maybe.isMaybe(x) && x.isJust();
 Maybe.isNothing = x => Maybe.isMaybe(x) && x.isNothing();
 Maybe.fromNullable = x => x == null ? new Nothing() : new Just(x);
@@ -1692,7 +1694,7 @@ Right.prototype[Symbols.Either] = true;
 Either.Left = x => new Left(x);
 Either.Right = x => new Right(x);
 Either.of = x => new Right(x);
-Either.isEither = x => x != null && x[Symbols.Either] === true;
+Either.isEither = hasSymbol(Symbols.Either);
 Either.isLeft = x => Either.isEither(x) && x.isLeft();
 Either.isRight = x => Either.isEither(x) && x.isRight();
 Either.fromNullable = x => x == null ? Either.Left(null) : Either.Right(x);
@@ -1987,7 +1989,7 @@ const createSettledGuard = () => {
 };
 Task.of = x => new Task((_, resolve) => resolve(x));
 Task.rejected = x => new Task((reject, _) => reject(x));
-Task.isTask = x => x != null && x[Symbols.Task] === true;
+Task.isTask = hasSymbol(Symbols.Task);
 Task.fold = (onRejected, onResolved, task) => task.fork(onRejected, onResolved);
 Task.fromPromise = promiseFn => (...args) => new Task((reject, resolve) => {
     try {
@@ -2200,7 +2202,7 @@ Invalid.prototype[Symbols.Validation] = true;
 Validation.Valid = x => new Valid(x);
 Validation.Invalid = (errors, monoid) => new Invalid(errors, monoid);
 Validation.of = x => new Valid(x);
-Validation.isValidation = x => x != null && x[Symbols.Validation] === true;
+Validation.isValidation = hasSymbol(Symbols.Validation);
 Validation.isValid = x => Validation.isValidation(x) && x.isValid();
 Validation.isInvalid = x => Validation.isValidation(x) && x.isInvalid();
 Validation.fromEither = (e, monoid) => Either.fold(v => Validation.Invalid(v, monoid), Validation.Valid, e);
@@ -2287,7 +2289,7 @@ NonEmptyList.make = (head, ...rest) => new NonEmptyList(head, rest);
 NonEmptyList.fromArray = xs => (Array.isArray(xs) && xs.length > 0)
     ? Maybe.Just(new NonEmptyList(xs[0], xs.slice(1)))
     : Maybe.Nothing();
-NonEmptyList.isNonEmptyList = x => x != null && x[Symbols.NonEmptyList] === true;
+NonEmptyList.isNonEmptyList = hasSymbol(Symbols.NonEmptyList);
 // 위임 — 접기의 소유자는 Reducible 인스턴스다(검증·문안 포함). docs/NonEmptyList.md
 NonEmptyList.reduceLeft = (f, nel) => Reducible.types.NonEmptyListReducible.reduceLeft(f, nel);
 NonEmptyList.reduceMap = (semigroup, f, nel) => Reducible.types.NonEmptyListReducible.reduceMap(semigroup, f, nel);
@@ -2435,7 +2437,7 @@ class Reader {
 }
 Reader.prototype[Symbols.Reader] = true;
 Reader.of = x => new Reader(_ => x);
-Reader.isReader = x => x != null && x[Symbols.Reader] === true;
+Reader.isReader = hasSymbol(Symbols.Reader);
 Reader.ask = new Reader(identity);
 Reader.asks = f => new Reader(f);
 Reader.local = (f, reader) => new Reader(env => reader.run(f(env)));
@@ -2489,7 +2491,7 @@ class Writer {
 }
 Writer.prototype[Symbols.Writer] = true;
 Writer.of = (x, monoid = Monoid.lookup('array')) => new Writer(x, monoid.empty(), monoid);
-Writer.isWriter = x => x != null && x[Symbols.Writer] === true;
+Writer.isWriter = hasSymbol(Symbols.Writer);
 Writer.tell = (output, monoid = Monoid.lookup('array')) => new Writer(undefined, output, monoid);
 Writer.listen = w => new Writer([w.value, w.output], w.output, w.monoid);
 Writer.listens = (f, w) => new Writer([w.value, f(w.output)], w.output, w.monoid);
@@ -2579,7 +2581,7 @@ class State {
 }
 State.prototype[Symbols.State] = true;
 State.of = x => new State(s => [x, s]);
-State.isState = x => x != null && x[Symbols.State] === true;
+State.isState = hasSymbol(Symbols.State);
 State.get = new State(s => [s, s]);
 State.put = s => new State(_ => [undefined, s]);
 State.modify = f => new State(s => [undefined, f(s)]);
@@ -2628,6 +2630,59 @@ class StateMonad extends Monad {
     }
 }
 modules.push(StateMonad);
+/* Store */
+class Store {
+    constructor(lookup, index) {
+        types.checkFunction(lookup, 'Store');
+        this._lookup = lookup;
+        this._index = index;
+        this._typeName = 'Store';
+    }
+    get index() { return this._index; }
+    extract() { return this._lookup(this._index); }
+    peek(s) { return this._lookup(s); }
+    seek(s) { return new Store(this._lookup, s); }
+    // f: s -> Array<s> — 초점 주변 여러 위치를 한 번에 읽는다
+    experiment(f) { return f(this._index).map(this._lookup); }
+    map(f) { return Functor.lookup('store').map(f, this); }
+    extend(f) { return Extend.lookup('store').extend(f, this); }
+}
+Store.prototype[Symbols.Store] = true;
+Store.isStore = hasSymbol(Symbols.Store);
+// 반복 extend 는 조회를 겹겹이 감싸 지수 폭발한다 — 세대마다 이걸로 감싼다. docs/internals.md#store-perf
+// keyOf 는 필수다 — 기본 직렬화는 어떤 것이든 위치를 합치거나(NaN/null) 캐시를 무력화한다(객체).
+Store.memo = (store, keyOf) => {
+    Store.isStore(store) || raise(new TypeError('Store.memo: first argument must be a Store'));
+    types.checkFunction(keyOf, 'Store.memo');
+    const cache = new Map();
+    return new Store(s => {
+        const k = keyOf(s);
+        if (!cache.has(k)) cache.set(k, store._lookup(s));
+        return cache.get(k);
+    }, store._index);
+};
+// map 은 조회 뒤에 f 를 합성한다 — 초점은 그대로
+class StoreFunctor extends Functor {
+    constructor() {
+        super((f, w) => new Store(s => f(w._lookup(s)), w._index), 'Store', Functor.types, 'store');
+    }
+}
+modules.push(StoreFunctor);
+// extend 는 모든 위치에서 국소 규칙 f 를 본 새 Store — 국소 규칙이 전역 갱신이 되는 자리
+class StoreExtend extends Extend {
+    constructor() {
+        super(Functor.types.StoreFunctor,
+            (f, w) => new Store(s => f(new Store(w._lookup, s)), w._index),
+            'Store', Extend.types, 'store');
+    }
+}
+modules.push(StoreExtend);
+class StoreComonad extends Comonad {
+    constructor() {
+        super(Extend.types.StoreExtend, w => w._lookup(w._index), 'Store', Comonad.types, 'store');
+    }
+}
+modules.push(StoreComonad);
 /* Utilities */
 const sequence = (traversable, applicative, u) => {
     if (!traversable || typeof traversable.traverse !== 'function') {
@@ -3265,6 +3320,9 @@ const normalizeMonad = M => {
 
 const { GetF, PutF, ModifyF, LiftF, ThrowF, CatchF, AskF, LocalF, TellF, applyMapChain } = Free;
 
+// 네 트랜스포머 lift 의 공용 몸 — 안쪽 모나드 값을 LiftF 명령으로 얹는다
+const liftInto = Cls => ma => new Cls(Free.liftF(new LiftF(ma, identity)));
+
 // _mapChain + cont를 해석하는 공통 헬퍼
 const liftCont = f => f._mapChain
     ? a => applyMapChain(f._mapChain, f.cont(a))
@@ -3341,7 +3399,7 @@ const StateT = (M) => {
     ST.put = s => new ST(Free.liftF(new PutF(s, undefined)));
     ST.modify = f => new ST(Free.liftF(new ModifyF(f, undefined)));
     ST.gets = f => new ST(Free.liftF(new GetF(f)));
-    ST.lift = ma => new ST(Free.liftF(new LiftF(ma, identity)));
+    ST.lift = liftInto(ST);
 
     ST.runState = (initial, st) => {
         if (!(st instanceof ST)) raise(new TypeError(`${typeName}.runState: second argument must be a ${typeName} instance`));
@@ -3392,7 +3450,7 @@ const EitherT = (M) => {
             return result._program;
         })));
     };
-    ET.lift = ma => new ET(Free.liftF(new LiftF(ma, identity)));
+    ET.lift = liftInto(ET);
     ET.fromEither = either => Either.fold(ET.throwError, ET.of, either);
 
     ET.runEitherT = (et) => {
@@ -3449,7 +3507,7 @@ const ReaderT = (M) => {
         if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.local: second argument must be a ${typeName} instance`));
         return new RT(Free.liftF(new LocalF(f, rt._program)));
     };
-    RT.lift = ma => new RT(Free.liftF(new LiftF(ma, identity)));
+    RT.lift = liftInto(RT);
 
     RT.runReaderT = (env, rt) => {
         if (!(rt instanceof RT)) raise(new TypeError(`${typeName}.runReaderT: second argument must be a ${typeName} instance`));
@@ -3508,7 +3566,7 @@ const WriterT = (M, writerMonoid) => {
     }
     WT.of = x => new WT(Free.pure(x));
     WT.tell = output => new WT(Free.liftF(new TellF(output, undefined)));
-    WT.lift = ma => new WT(Free.liftF(new LiftF(ma, identity)));
+    WT.lift = liftInto(WT);
 
     WT.runWriterT = (wt) => {
         if (!(wt instanceof WT)) raise(new TypeError(`${typeName}.runWriterT: argument must be a ${typeName} instance`));
@@ -3865,7 +3923,7 @@ export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable, Reducible,
-    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State,
+    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State, Store,
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
