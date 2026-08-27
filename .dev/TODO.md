@@ -63,6 +63,10 @@
   — 규칙의 일이 지배해 실사용에선 묻힌다. 얻는 것: 논리 한 몸 + 뮤테이션 감시 강화
   (인스턴스 몸을 망가뜨리면 이제 메서드 경로 테스트까지 빨강 — 실측 ❌ 5, 전에는 반쪽).
   `npm run baseline` 차이 0행. 53/53 + typecheck.
+- **코덱스 5차 리뷰 (`task-mtbmop73`): 조건부 → 충족 후 push** — 재귀 없음·정상 경로 동일·
+  dist 일치 확인. 지적 하나는 **의도된 강화로 수용**: 위임을 거치며 strict 타입 검사가 붙어,
+  위조 입력(빌린 객체·_typeName 변조)이 전에는 값을 받았는데 이제 TypeError 로 거부된다 —
+  map·extend 는 이미 그랬으므로 세 메서드의 예외 동작이 이제야 일치한다.
 - **기각 셋** — Task 두 람다(앞머리만 같음) · `into` 두 누적자(해체까지만 같음) ·
   `composeK` vs Kleisli Semigroupoid(능력이 다름 — 가변·임의 모나드 vs 등록 셋의 이항).
 - **검증 (2026-08-27)** — `node tests/run.js` 51 passed/1 failed(dist 동기뿐)+typecheck.

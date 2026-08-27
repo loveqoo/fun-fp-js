@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.1.0
- * Commit: 2c0ba416c1a39a4b831d9c0c80e9c45a4afc499c
- * Built: 2026-08-27T14:29:54.132Z
+ * Commit: 9bed83289c59d9a086d21a76f88aa71547bb6830
+ * Built: 2026-08-27T14:37:30.554Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -2654,7 +2654,7 @@ class Store {
         this._typeName = 'Store';
     }
     get index() { return this._index; }
-    extract() { return this._lookup(this._index); }
+    extract() { return Comonad.lookup('store').extract(this); }
     peek(s) { return this._lookup(s); }
     seek(s) { return new Store(this._lookup, s); }
     // f: s -> Array<s> — 초점 주변 여러 위치를 한 번에 읽는다
