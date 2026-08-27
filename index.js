@@ -2631,7 +2631,7 @@ class Store {
         this._typeName = 'Store';
     }
     get index() { return this._index; }
-    extract() { return this._lookup(this._index); }
+    extract() { return Comonad.lookup('store').extract(this); }
     peek(s) { return this._lookup(s); }
     seek(s) { return new Store(this._lookup, s); }
     // f: s -> Array<s> — 초점 주변 여러 위치를 한 번에 읽는다

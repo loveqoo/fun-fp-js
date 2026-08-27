@@ -57,9 +57,12 @@
   예외로 남김.
 - **발견 ③ (완료)** — 트랜스포머 넷의 `lift` 가 클래스명만 다르고 동일. → `liftInto`
   (index.js:3316) 하나로 통일, `XT.lift = liftInto(XT)`.
-- **발견 ② (대기)** — `Store.extract` 가 위임 관례(Identity 꼴) 이탈 + 같은 논리가
-  `StoreComonad` 에 중복. extract 는 라이프 게임의 최난 경로라 **조회 비용 실측 후 논의**하기로
-  (소유자, 2026-08-27).
+- **발견 ② (완료, 2026-08-27)** — `Store.extract` 를 Identity 꼴 위임으로 복귀
+  (`Comonad.lookup('store').extract(this)`). **실측 후 소유자 「가」 결정**: 맨 호출 1천만 번
+  3.8ms → 49ms(약 13배, 호출당 ~5ns)이지만 라이프 게임 20×20 10세대는 4.4 → 4.6ms(**약 5%**)
+  — 규칙의 일이 지배해 실사용에선 묻힌다. 얻는 것: 논리 한 몸 + 뮤테이션 감시 강화
+  (인스턴스 몸을 망가뜨리면 이제 메서드 경로 테스트까지 빨강 — 실측 ❌ 5, 전에는 반쪽).
+  `npm run baseline` 차이 0행. 53/53 + typecheck.
 - **기각 셋** — Task 두 람다(앞머리만 같음) · `into` 두 누적자(해체까지만 같음) ·
   `composeK` vs Kleisli Semigroupoid(능력이 다름 — 가변·임의 모나드 vs 등록 셋의 이항).
 - **검증 (2026-08-27)** — `node tests/run.js` 51 passed/1 failed(dist 동기뿐)+typecheck.
