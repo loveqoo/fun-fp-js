@@ -82,8 +82,10 @@ console.log(thrown);   // 'TypeError'
 ### 3단계: 변환과 합성
 
 - [Functor](./Functor.md) - 값 변환 (map)
-- [Applicative](./Applicative.md) - 여러 값에 함수 적용 (ap)
-- [Monad](./Monad.md) - 순차 실행 (chain)
+- [Apply](./Apply.md) - 상자 속 함수를 상자 속 값에 (ap)
+- [Applicative](./Applicative.md) - 여러 값에 함수 적용 (ap + of)
+- [Chain](./Chain.md) - 앞 결과로 다음 상자를 (chain)
+- [Monad](./Monad.md) - 순차 실행 (chain + of)
 - [MonadError](./MonadError.md) - 실패를 일급으로 (raiseError/handleError, **명세 밖**)
 
 ### 4단계: 고급 패턴
@@ -143,6 +145,56 @@ console.log(thrown);   // 'TypeError'
 | `composeK` | `(Monad, Foldable?) -> [a -> M b] -> a -> M b`   | Kleisli 합성 (우→좌) |
 | `foldMap`  | `(Foldable, Monoid) -> (a -> b) -> F a -> b`     | 매핑 후 Monoid로 축소  |
 
+
+## 조합자 명부 {#combinators}
+
+타입 클래스와 무관하게 쓰는 최상위 함수 전부입니다. 표기: `f`·`g` 는 함수, `x` 는 값.
+
+| 함수 | 하는 일 | 예 |
+| --- | --- | --- |
+| `identity(x)` | 그대로 돌려준다 | `identity(3)` → `3` |
+| `constant(x)` | 무엇을 받든 `x` 를 내는 함수 | `constant(3)()` → `3` |
+| `compose(...fs)(x)` | 우→좌 합성 | `compose(f, g)(x)` = `f(g(x))` |
+| `pipe(...fs)(x)` | 좌→우 합성 | `pipe(f, g)(x)` = `g(f(x))` |
+| `compose2(f, g)` / `pipe2(f, g)` | 딱 둘만 잇는 판 | `pipe2(f, g)(x)` = `g(f(x))` |
+| `pipeFrom(x)(...fs)` | 값을 먼저 주는 pipe | `pipeFrom(5)(f, g)` = `pipe(f, g)(5)` |
+| `pipeWhile(판별자)(...fs)(x)` | 판별자가 참인 동안만 잇는다 | [소개](../README.md) |
+| `tap(f)(x)` | `f(x)` 를 부수 효과로 부르고 `x` 를 돌려준다 | 로깅 사이 끼우기 |
+| `also(f)(x)` | `tap` 과 같되 예외를 삼키지 않는다 | |
+| `once(f)` | 첫 호출만 실행, 이후는 첫 결과 재사용 | 초기화 한 번 |
+| `partial(f, ...앞인자)` | 앞 인자를 미리 박는다 | `partial(add3, 1, 2)(3)` → `6` |
+| `curry(f)` / `curry2(f)` | 다인자를 한 인자씩 받게 | `curry2(add)(1)(2)` → `3` |
+| `uncurry(f)` / `uncurry2(f)` | 커링을 다인자로 되돌린다 | `uncurry(a => b => a+b)(1, 2)` → `3` |
+| `flip(f)` / `flip2(f)` | 인자 순서를 뒤집는다 | `flip2(sub)(3, 10)` → `7` |
+| `flipCurried(f)` / `flipCurried2(f)` | 커링된 함수의 인자 순서를 뒤집는다 | |
+| `apply(f)(args배열)` | 배열을 인자들로 펼쳐 적용 | `apply(add2)([1, 2])` → `3` |
+| `unapply(f)` / `unapply2(f)` | `apply` 의 반대 — 인자들을 배열로 모아 `f` 에 | |
+| `tuple(...xs)` | 인자들을 배열로 | `tuple(1, 2)` → `[1, 2]` |
+| `fst(쌍)` / `snd(쌍)` | 2-튜플의 첫째/둘째 | `fst([1, 2])` → `1` |
+| `predicate(f)` / `predicateN(f)` | 결과를 불리언으로 강제, 던지면 `false` | 안전한 판별자 |
+| `negate(f)` / `negateN(f)` | 판별자 부정 | `negate(isBig)(5)` |
+| `converge(f, ...가지)` | 같은 인자를 가지들에 주고 결과를 `f` 로 | |
+| `range(n)` | `[0 … n-1]` | `range(3)` → `[0, 1, 2]` |
+| `rangeBy(start, end)` | `[start … end-1]` | `rangeBy(1, 4)` → `[1, 2, 3]` |
+| `runCatch(f, onError?)` | 던지면 `onError` 결과로 | `try` 의 함수판 |
+| `useOrLift(검사)(들기)(x)` | 검사를 통과하면 그대로, 아니면 들어 올린다 | 정규화 |
+| `trampoline(program)` | Free 프로그램을 스택 없이 실행 | [Free](./Free.md) |
+| `transducer` | 변환 파이프라인 모듈 | [Transducer](./Transducer.md) |
+| `setStrictMode(불리언)` | 타입 검사 모드 — **인스턴스 생성 시점에 박힌다** | [internals](./internals.md#chain-return) |
+| `setTapErrorHandler(f)` | `tap` 이 삼킨 예외의 수신자 지정 | |
+
+```javascript
+import FunFP from 'fun-fp-js';
+const { pipeFrom, once, partial, rangeBy, fst, runCatch } = FunFP;
+
+console.log(pipeFrom(5)(x => x + 1, x => x * 2));   // 12
+let n = 0; const init = once(() => ++n);
+console.log(init(), init(), n);                     // 1 1 1   한 번만 실행된다
+console.log(partial((a, b, c) => a + b + c, 1, 2)(3));   // 6
+console.log(rangeBy(2, 5));                         // [ 2, 3, 4 ]
+console.log(fst([1, 2]));                           // 1
+console.log(runCatch(() => { throw new Error('x'); }, () => 'fallback')());   // fallback
+```
 
 ## 타입 클래스 의존성 그래프
 
@@ -217,7 +269,7 @@ Strong + Choice ─────> Wander          wander
 
 |             | 무엇을 하나                | 어디에 있나                                               |
 | ----------- | --------------------- | ---------------------------------------------------- |
-| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 26개 (`Functor`, `Monoid`, …)                   |
+| `lookup(키)` | **레지스트리에서 인스턴스를 꺼낸다** | 타입클래스 29개 (`Functor`, `Monoid`, …)                   |
 | `of(값)`     | **값을 컨테이너에 넣는다**      | 데이터 타입 9개 (`Maybe`, `Either`, …)와 `Applicative` 인스턴스 |
 
 
@@ -300,16 +352,17 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | `statet(<M>)` 등    | Transformer                                              | `statet(maybe)`, `eithert(task)`         | [StateT](./StateT.md)           |
 
 
-`identity` 도 일곱 곳(`Functor`/`Apply`/`Applicative`/`Extend`/`Comonad`/`Foldable`/
-`Reducible`)에 등록돼 있습니다. `traverse` 에 넘겨 "그냥 매핑" 으로 쓰는 것이 기본
-용도입니다([Applicative](./Applicative.md)).
+`identity` 도 아홉 곳(`Functor`/`Apply`/`Applicative`/`Chain`/`Monad`/`Extend`/`Comonad`/
+`Foldable`/`Reducible`)에 등록돼 있습니다. `traverse` 에 넘겨 "그냥 매핑" 으로 쓰거나
+([Applicative](./Applicative.md)), 트랜스포머의 안쪽 모나드로 넣습니다 —
+`ReaderT('identity')` 는 맨 `Reader` 와 같은 값을 냅니다.
 
 ### 데이터 타입
 
 
 | 타입                            | 주요 용도                | 핵심 특징                                                      |
 | ----------------------------- | -------------------- | ---------------------------------------------------------- |
-| Identity                      | 효과 없는 래퍼             | `traverse` 에 넘겨 "그냥 매핑" 으로 쓴다                              |
+| [Identity](./Identity.md)     | 효과 없는 래퍼             | `traverse` 의 "그냥 매핑" · 트랜스포머의 안쪽 모나드                    |
 | Maybe                         | null 안전 처리           | Just / Nothing                                             |
 | Either                        | 에러 처리 (fail-fast)    | Right / Left                                               |
 | Validation                    | 병렬 검증 (에러 누적)        | Valid / Invalid (Monoid)                                   |

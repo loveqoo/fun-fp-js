@@ -29,7 +29,7 @@ This is where `ap` comes in.
 
 ```javascript no-run signature / pseudocode
 Apply.ap(mf, mv): Apply b   // mf: Apply (a -> b), mv: Apply a
-Applicative.lookup(a): Applicative a  // wraps a value in an Applicative
+Applicative.lookup(key): Applicative instance   // wrapping a value is that instance's of
 ```
 
 ## Laws

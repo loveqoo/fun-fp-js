@@ -43,7 +43,8 @@ extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 
 ## 예시
 
-등록된 인스턴스가 둘 있습니다 — `identity` 와 `array`. `lookup` 으로 꺼냅니다.
+등록된 인스턴스가 넷 있습니다 — `identity`·`array`·`nonemptylist`·`store`. `lookup` 으로 꺼냅니다.
+컨테이너가 아닌 인스턴스는 `store` 가 처음입니다([Store](./Store.md)).
 
 ```javascript
 const { Comonad, Identity } = FunFP;

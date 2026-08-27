@@ -44,8 +44,8 @@ extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 
 ## Example
 
-There are two registered instances — `identity` and `array`. Pull them out
-with `lookup`.
+There are four registered instances — `identity`, `array`, `nonemptylist` and `store`.
+Pull them out with `lookup`. `store` is the first that is not a container ([Store](./Store.md)).
 
 ```javascript
 const { Comonad, Identity } = FunFP;

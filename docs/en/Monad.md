@@ -72,7 +72,7 @@ Changing the grouping of `chain` calls does not change the result.
 ## Interface
 
 ```javascript no-run signature / pseudocode
-Monad.lookup(a): Monad a              // puts a value into the monad (inherited from Applicative)
+Monad.lookup(key): Monad instance       // putting a value in is that instance's of (inherited from Applicative)
 Monad.chain(f, m): Monad b        // applies the transform function, then flattens
                                   // f: a -> Monad b
 ```

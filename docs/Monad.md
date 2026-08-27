@@ -72,7 +72,7 @@ chain 순서를 바꿔도 결과가 같음
 ## 인터페이스
 
 ```javascript no-run 시그니처·의사코드 표기
-Monad.lookup(a): Monad a              // 값을 모나드에 넣기 (Applicative에서 상속)
+Monad.lookup(키): Monad 인스턴스        // 값을 넣는 것은 그 인스턴스의 of (Applicative 상속)
 Monad.chain(f, m): Monad b        // 변환 함수 적용 후 평탄화
                                   // f: a -> Monad b
 ```

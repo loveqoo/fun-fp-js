@@ -29,7 +29,7 @@ map(add, Maybe.Just(5))  // Maybe.Just(b => 5 + b) - 부분 적용된 함수가 
 
 ```javascript no-run 시그니처·의사코드 표기
 Apply.ap(mf, mv): Apply b   // mf: Apply (a -> b), mv: Apply a
-Applicative.lookup(a): Applicative a  // 값을 Applicative로 감싸기
+Applicative.lookup(키): Applicative 인스턴스   // 값을 감싸는 것은 그 인스턴스의 of
 ```
 
 ## 법칙

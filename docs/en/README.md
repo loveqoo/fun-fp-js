@@ -67,6 +67,7 @@ console.log(thrown);   // 'TypeError'
 - [Reader](./Reader.md) - environment-based computation (dependency injection)
 - [Writer](./Writer.md) - output tracking (logging)
 - [State](./State.md) - state transformation
+- [Store](./Store.md) - position-based lookup (the dual of State, a Comonad)
 
 #### Advanced
 
@@ -82,7 +83,9 @@ console.log(thrown);   // 'TypeError'
 ### Stage 3: transformation and composition
 
 - [Functor](./Functor.md) - transforming values (map)
-- [Applicative](./Applicative.md) - applying a function across several values (ap)
+- [Apply](./Apply.md) - a boxed function applied to a boxed value (ap)
+- [Applicative](./Applicative.md) - applying a function across several values (ap + of)
+- [Chain](./Chain.md) - the next box from the previous result (chain)
 - [Monad](./Monad.md) - sequential execution (chain)
 - [MonadError](./MonadError.md) - failure as a first-class citizen (raiseError/handleError, **outside the spec**)
 
@@ -143,6 +146,57 @@ Higher-order functions built by combining type classes:
 | `composeK` | `(Monad, Foldable?) -> [a -> M b] -> a -> M b`       | Kleisli composition (right to left)   |
 | `foldMap`  | `(Foldable, Monoid) -> (a -> b) -> F a -> b`         | Map, then reduce with a Monoid        |
 
+
+## Combinator roster {#combinators}
+
+Every top-level function that works independently of the type classes. Notation: `f`, `g` are
+functions, `x` is a value.
+
+| Function | What it does | Example |
+| --- | --- | --- |
+| `identity(x)` | returns it unchanged | `identity(3)` → `3` |
+| `constant(x)` | a function that returns `x` no matter what | `constant(3)()` → `3` |
+| `compose(...fs)(x)` | right-to-left composition | `compose(f, g)(x)` = `f(g(x))` |
+| `pipe(...fs)(x)` | left-to-right composition | `pipe(f, g)(x)` = `g(f(x))` |
+| `compose2(f, g)` / `pipe2(f, g)` | the exactly-two versions | `pipe2(f, g)(x)` = `g(f(x))` |
+| `pipeFrom(x)(...fs)` | pipe with the value first | `pipeFrom(5)(f, g)` = `pipe(f, g)(5)` |
+| `pipeWhile(pred)(...fs)(x)` | pipes only while the predicate holds | [intro](../../README.en.md) |
+| `tap(f)(x)` | calls `f(x)` for its side effect, returns `x` | logging in between |
+| `also(f)(x)` | like `tap` but does not swallow exceptions | |
+| `once(f)` | runs on the first call only; later calls reuse the first result | one-time init |
+| `partial(f, ...front)` | pre-fills leading arguments | `partial(add3, 1, 2)(3)` → `6` |
+| `curry(f)` / `curry2(f)` | one argument at a time | `curry2(add)(1)(2)` → `3` |
+| `uncurry(f)` / `uncurry2(f)` | undoes currying | `uncurry(a => b => a+b)(1, 2)` → `3` |
+| `flip(f)` / `flip2(f)` | reverses argument order | `flip2(sub)(3, 10)` → `7` |
+| `flipCurried(f)` / `flipCurried2(f)` | reverses a curried function's argument order | |
+| `apply(f)(argsArray)` | spreads an array into arguments | `apply(add2)([1, 2])` → `3` |
+| `unapply(f)` / `unapply2(f)` | the reverse of `apply` — collects arguments into an array | |
+| `tuple(...xs)` | arguments into an array | `tuple(1, 2)` → `[1, 2]` |
+| `fst(pair)` / `snd(pair)` | first/second of a 2-tuple | `fst([1, 2])` → `1` |
+| `predicate(f)` / `predicateN(f)` | forces a boolean result; a throw becomes `false` | safe predicates |
+| `negate(f)` / `negateN(f)` | negates a predicate | `negate(isBig)(5)` |
+| `converge(f, ...branches)` | feeds the same arguments to the branches, then `f` | |
+| `range(n)` | `[0 … n-1]` | `range(3)` → `[0, 1, 2]` |
+| `rangeBy(start, end)` | `[start … end-1]` | `rangeBy(1, 4)` → `[1, 2, 3]` |
+| `runCatch(f, onError?)` | a throw becomes `onError`'s result | `try` as a function |
+| `useOrLift(check)(lift)(x)` | passes it through if the check holds, lifts it otherwise | normalization |
+| `trampoline(program)` | runs a Free program without a stack | [Free](./Free.md) |
+| `transducer` | the transformation-pipeline module | [Transducer](./Transducer.md) |
+| `setStrictMode(bool)` | the type-check mode — **fixed at instance-construction time** | [internals](./internals.md#chain-return) |
+| `setTapErrorHandler(f)` | receiver for exceptions `tap` swallowed | |
+
+```javascript
+import FunFP from 'fun-fp-js';
+const { pipeFrom, once, partial, rangeBy, fst, runCatch } = FunFP;
+
+console.log(pipeFrom(5)(x => x + 1, x => x * 2));   // 12
+let n = 0; const init = once(() => ++n);
+console.log(init(), init(), n);                     // 1 1 1   runs only once
+console.log(partial((a, b, c) => a + b + c, 1, 2)(3));   // 6
+console.log(rangeBy(2, 5));                         // [ 2, 3, 4 ]
+console.log(fst([1, 2]));                           // 1
+console.log(runCatch(() => { throw new Error('x'); }, () => 'fallback')());   // fallback
+```
 
 ## Type class dependency graph
 
@@ -217,7 +271,7 @@ explicitly, and which optic each one produces is covered in [Optics](./Optics.md
 
 |              | What it does                          | Where it lives                                              |
 | ------------ | -------------------------------------- | ------------------------------------------------------------ |
-| `lookup(key)` | **pulls an instance from the registry** | The 26 type classes (`Functor`, `Monoid`, …)                 |
+| `lookup(key)` | **pulls an instance from the registry** | The 29 type classes (`Functor`, `Monoid`, …)                 |
 | `of(value)`   | **puts a value into a container**       | The 9 data types (`Maybe`, `Either`, …) and `Applicative` instances |
 
 
@@ -302,16 +356,17 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | `statet(<M>)` etc.    | Transformer                                                    | `statet(maybe)`, `eithert(task)`           | [StateT](./StateT.md)             |
 
 
-`identity` is also registered in seven places (`Functor`/`Apply`/`Applicative`/`Extend`/`Comonad`/
-`Foldable`/`Reducible`). Passing it to `traverse` for "just mapping" is its main use
-([Applicative](./Applicative.md)).
+`identity` is also registered in nine places (`Functor`/`Apply`/`Applicative`/`Chain`/`Monad`/
+`Extend`/`Comonad`/`Foldable`/`Reducible`). Pass it to `traverse` for "just mapping"
+([Applicative](./Applicative.md)), or use it as a transformer's inner monad —
+`ReaderT('identity')` produces the same value as a bare `Reader`.
 
 ### Data types
 
 
 | Type                            | Main use                          | Key traits                                                              |
 | -------------------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
-| Identity                         | An effect-free wrapper                | Pass it to `traverse` for "just mapping"                                   |
+| [Identity](./Identity.md)        | An effect-free wrapper                | `traverse`'s "just mapping" · a transformer's inner monad                  |
 | Maybe                             | Null-safe handling                    | Just / Nothing                                                              |
 | Either                            | Error handling (fail-fast)            | Right / Left                                                                |
 | Validation                        | Parallel validation (error accumulation) | Valid / Invalid (Monoid)                                                    |
@@ -319,6 +374,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | Reader                            | Dependency injection                   | Propagating an environment                                                  |
 | Writer                            | Logging / output tracking              | A value + output (Monoid)                                                   |
 | State                             | State transformation                   | Threading state                                                             |
+| [Store](./Store.md)             | Position-based lookup, local→global extension | A (lookup, focus) pair — the dual of State, a Comonad                     |
 | Free                              | Separating program from execution, stack-safe recursion | Pure / Impure — [Free.api](./Free.md#api) lets you use Free without knowing it |
 | [Optics](./Optics.md)            | Partial access and update              | The `Optics` module — Lens/Prism/Traversal, `compose`, `foldMapOf`          |
 | [Lens](./Lens.md)                | Immutable updates on nested data       | A getter/setter pair, targets exactly one value                            |
