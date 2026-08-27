@@ -830,7 +830,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 107, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 109, '법칙을 돌린 인스턴스 수가 달라졌다');
     assertEquals(instancesOf('Reducible').length, 2, 'Reducible 인스턴스 수가 달라졌다');
     // MonadError 는 클래스별로도 잠근다 — 합계 하나로는 인스턴스 교체가 숨는다(5차 리뷰 Minor 8).
     assertEquals(instancesOf('MonadError').length, 2, 'MonadError 인스턴스 수가 달라졌다');

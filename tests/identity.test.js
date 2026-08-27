@@ -39,13 +39,15 @@ test('isIdentity 는 심볼을 본다 — 문자열은 못 속인다', () => {
     assert(!Identity.isIdentity(5), '원시값');
 });
 
-test('레지스트리의 일곱 인스턴스가 이 클래스의 값을 낸다', () => {
+test('레지스트리의 아홉 인스턴스가 이 클래스의 값을 낸다', () => {
     const of = fp.Applicative.lookup('identity').of;
     assertEquals(of(1).constructor.name, 'Identity', 'Applicative.of');
     assertEquals(fp.Functor.lookup('identity').map(x => x, of(1)).constructor.name, 'Identity');
     assertEquals(fp.Apply.lookup('identity').ap(of(x => x + 1), of(1)).value, 2);
     assertEquals(fp.Extend.lookup('identity').extend(w => w.value, of(1)).constructor.name, 'Identity');
     assertEquals(fp.Comonad.lookup('identity').extract(of(7)), 7);
+    assertEquals(fp.Chain.lookup('identity').chain(x => of(x + 1), of(1)).value, 2);
+    assertEquals(fp.Monad.lookup('identity').chain(x => of(x * 2), fp.Monad.lookup('identity').of(3)).value, 6);
 });
 
 // optics 의 over 가 Identity 를 지난다 — 클래스로 바뀐 뒤에도 도는지 본다.
@@ -56,3 +58,18 @@ test('optics 가 그대로 돈다', () => {
 });
 
 console.log('\n✅ Identity tests completed\n');
+
+// 승격의 존재 이유 — 실제 등록 identity 가 트랜스포머의 안쪽 모나드로 돈다(코덱스 7차 결함 2).
+// 트랜스포머 테스트 4종은 파일 내부 가짜 Identity 를 쓰므로, 이 통합은 여기서만 지킨다.
+test('트랜스포머의 안쪽 모나드로 identity 가 돈다', () => {
+    const RT = fp.ReaderT('identity');
+    const r = RT.runReaderT({ h: 'a' }, RT.asks(e => e.h).chain(h => RT.of(h + '!')));
+    assertEquals(r.constructor.name, 'Identity');
+    assertEquals(r.value, 'a!');
+    const ST = fp.StateT('identity');
+    const st = ST.runState(10, ST.get.chain(v => ST.put(v + 1).chain(() => ST.of(v))));
+    assertEquals(JSON.stringify(st.value), '[10,11]');
+    const ET = fp.EitherT('identity');
+    const et = ET.runEitherT(ET.of(7).chain(x => ET.of(x * 2)));
+    assertEquals(et.value.value, 14);
+});

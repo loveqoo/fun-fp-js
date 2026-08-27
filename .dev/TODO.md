@@ -46,6 +46,51 @@
 
 ---
 
+## ✅ 닫힘 — chain 콜백 반환 검사 (2026-08-28)
+
+코덱스 7차가 identity 승격을 보다가 찾은 **라이브러리 전체의 기존 구멍** — strict 래퍼가
+인자만 검사하고 반환은 안 봐서, `map` 쓸 자리에 `chain` 을 쓰면 ① 에러가 다음 걸음의 옳은
+코드를 탓하고 ② 파이프라인 끝에서는 맨 값이 조용히 샜다(전 타입 실측: maybe·either·reader·
+identity 전부 누출). 소유자 제안 「공통 함수 하나로 검사」 → 실측(오탐 0, 비용 측정 한계
+아래) 후 승인.
+
+- **해결책** — 공용 `checkReturn`(index.js, 문지기 도우미들 옆) + Chain strict 래퍼에서
+  반환 검사. Monad 는 chain 을 물려받아 자동 적용. 느슨한 모드/게으른 타입은 경계
+  (모드는 생성 시점에 박힘 — 기존 의미론).
+- **검증 (2026-08-28)** — 범인 자리 메시지 `callback must return Maybe, got number` 고정
+  (strictmode.test 3건 신설), 검사 제거 뮤테이션 ❌2→복구 0. 전체 게이트 오탐 0
+  (52/53+typecheck, 남은 빨강 dist 뿐). 성능: chain 100만 10.3↔10.2ms, chainRec 5만
+  1.7↔1.7ms(오차 안). internals #chain-return 한·영 + CHANGELOG.
+- **경계(문서화)** — 게으른 타입(Task·Reader·State·Free)의 콜백은 chain 시점에 안 불려
+  검사 대상이 없다. 잡는 것은 즉시 계산 타입의 콜백 실수 — 배우는 사람의 자리.
+- **코덱스 8차 리뷰 (`task-mtbphdef`): PASS** — 7차 반례 전부 범인 자리 차단 확인, 오탐 0,
+  'any'·strict/loose·트랜스포머·d.ts 전부 OK. 부속 지적 둘을 소유자 승인으로 처리:
+  ① 성능 영수증에서 chainRec 언급 제거(그 경로는 검사를 안 지나 증거가 아님 — 한·영)
+  ③ 트랜스포머 × 실제 identity 회귀 게이트 신설(identity.test.js — RT/ST/ET 실행값 고정,
+  기존 트랜스포머 테스트 4종은 파일 내부 가짜 Identity 를 쓰므로 이 통합은 여기서만 지킨다).
+- **ChainRec 상속 chain 의 이중 반환 검사 (열림, 낭비)** — ChainRec 이 이미 감싼 chain 을
+  다시 Chain 생성자에 넣어 결과 검사가 2회 돈다(코덱스 8차 실측: type 읽기 2→4회). 기능
+  결함 아님. 고치려면 래퍼 구조를 건드려야 해 별건 — 판단 필요해지면 이 항목에서.
+
+## ✅ 닫힘 — identity 를 Chain·Monad 로 올린다 (2026-08-28)
+
+Store 회차의 곁가지("ReaderT('identity') 가 막힌다, 결함인지 의도인지 확인 안 함")를 판단.
+**발견 → 선택지 셋 → 소유자 「가」(온전히 올림).**
+
+- **원인** — Identity 는 일곱 인스턴스(Applicative 까지 + Extend/Comonad/Foldable/Reducible)
+  인데 Chain·Monad 만 없었다. 안 올린 이유 기록 0건 — internals 의 정체성("traverse 에
+  넘기는 Applicative")에 Monad 가 필요 없어 안 올라간 것으로 판정. 선례 만장일치
+  (Haskell·cats·fp-ts 모두 Identity 는 Monad; cats 는 그 위에 Reader 를 정의).
+- **해결책** — `IdentityChain`((f,m) => f(m.value))·`IdentityMonad` + 클래스 `chain` 위임
+  메서드. 트랜스포머의 안쪽 모나드 자리가 열린다.
+- **검증 (2026-08-28)** — `ReaderT('identity')` 가 맨 Reader 와 같은 값(Identity 한 겹),
+  `StateT('identity')` → `[10,11]`, 메서드 chain → 21. 잠금 155→**157**, 107→**109**,
+  identity.test 「일곱」→「아홉」+ 두 줄. 뮤테이션 둘 다 잡힘(① f 무시 → Monad 좌항등,
+  ② 이중 감쌈 → 법칙+identity.test). baseline 원소 대조 **추가 8, 사라짐 0**.
+  52/53 + typecheck(남은 빨강은 dist 동기 — 빌드 대기). internals 한·영 절 보완, CHANGELOG.
+- **참고** — [`plan/260827-store-comonad.md`](./plan/260827-store-comonad.md) 곁가지 절 ·
+  [`docs/internals.md#identity-const`](./../docs/internals.md#identity-const)
+
 ## ✅ 닫힘 — 중복 구현 점검과 공통화 ①③ (2026-08-27)
 
 소유자 요청 「이미 구현된 것을 다시 구현한 부분이 있는지 점검」. 26-08-15 합성 감사 이후

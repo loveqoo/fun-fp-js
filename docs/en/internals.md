@@ -267,6 +267,11 @@ name is just `Monoid`, so it creates `Monoid.types['Monoid']` and **different
 | `identity` | carries the value through unchanged | turns `traverse` into "plain mapping" — `over` in optics |
 | `const(<monoid>)` | drops the value and only accumulates via the monoid | turns `traverse` into "folding" — `preview` in optics |
 
+`identity` now goes all the way up to `Chain` and `Monad` (2026-08-28) — so it can sit in a
+transformer's inner-monad slot, and `ReaderT('identity')` produces the same value as a bare
+`Reader`, wrapped in one layer of Identity. That is the very equation cats uses as the
+definition of `Reader`.
+
 **Having an object shape and having type `Object` are different statements.**
 Each of these has its own type — `Identity` and `Const(<monoid key>)`. The
 carrier announces its own identity.
@@ -1240,6 +1245,33 @@ gets its first value pinned (Codex round-3 counterexample: `() => ++n` reads `1 
 value** — that boundary belongs to whoever supplies `keyOf`. `tests/store.test.js` locks
 observational equality, the reduced call count, the `NaN`/`null` distinction (reproducing the
 Codex counterexample), and the rejection of a missing `keyOf`.
+
+---
+
+## `chain` also checks what the callback returns — the one direction the gatekeeper cannot see {#chain-return}
+
+Every strict-wrapper check happens **at the door** (incoming arguments). A leaked value is
+usually caught by the next operation's door, but two spots were uncovered — the error blamed
+**the correct code one step later, not the culprit**, and a leak at the **very end** of a
+pipeline was never caught (Codex round-7 counterexample, 2026-08-28). Using `chain` where `map`
+belongs is the mistake learners make most.
+
+So the `chain` wrapper alone also checks the return (`checkReturn` — one shared spot).
+
+```javascript
+const { Chain, Maybe } = FunFP;
+const { chain } = Chain.lookup('maybe');
+
+try { chain(x => x + 1, Maybe.Just(10)); }   // chain where map belongs — the callback returns a bare value
+catch (e) { console.log(e.message); }   // 'Chain.chain: callback must return Maybe, got number'
+```
+
+**Boundary — this check cannot catch a lazy type's callback.** `Task`, `Reader`, `State` and
+`Free` produce their carrier immediately at `chain` time and run the callback later at
+`run`/`fork`, so there is no return to inspect yet. What this catches is a callback mistake in
+the eager types (`Maybe`, `Either`, `Identity`, `Array`, `NonEmptyList`, functions). The cost
+measured below the noise floor (1M chains within jitter, 2026-08-28 — chainRec's internal steps
+do not pass through this check, so they are not part of the receipt).
 
 ---
 

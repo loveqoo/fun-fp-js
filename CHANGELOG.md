@@ -51,6 +51,17 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 
 ### 새 기능
 
+- **`chain` 이 콜백의 반환까지 검사합니다(strict)** — `map` 쓸 자리에 `chain` 을 쓰면
+  이제 다음 걸음이 아니라 **실수한 그 자리에서** `callback must return <타입>, got <실제>` 로
+  던집니다. 파이프라인 끝의 조용한 누출도 같은 문에서 잡힙니다. 게으른 타입(Task 등)의
+  콜백은 이 검사의 경계 밖입니다 —
+  [`docs/internals.md#chain-return`](./docs/internals.md#chain-return).
+
+- **`identity` 가 `Chain`·`Monad` 까지 올라갑니다** — Applicative 에서 멈춰 있던 두 계단을
+  채워, 트랜스포머의 안쪽 모나드 자리에 넣을 수 있습니다. `ReaderT('identity')` 는 맨
+  `Reader` 와 같은 값을 Identity 한 겹에 싸서 냅니다 — cats 가 `Reader` 의 정의로 쓰는
+  등식. `Identity` 클래스에 `chain` 위임 메서드도 함께 둡니다.
+
 - **`Store` 코모나드** — State 의 쌍대. `(조회: S -> A, 초점: S)` 둘로 이뤄지고,
   `extract`/`peek`/`seek`/`experiment`/`map`/`extend` 여섯 문을 둡니다. `extend` 는
   한 위치만 보는 국소 규칙을 판 전체의 갱신으로 넓힙니다(라이프 게임이 대표 사례 —

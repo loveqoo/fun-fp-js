@@ -14,6 +14,7 @@ export declare class Identity<A> {
     readonly _typeName: "Identity";
     private constructor(value: A);
     map<B>(f: (a: A) => B): Identity<B>;
+    chain<B>(f: (a: A) => Identity<B>): Identity<B>;
     extend<B>(f: (w: Identity<A>) => B): Identity<B>;
     extract(): A;
     /** 생성자는 비공개다 — 값을 넣는 문은 이것뿐이다. */

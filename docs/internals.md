@@ -240,6 +240,10 @@ console.log(Plus.lookup('maybe').zero().isNothing());           // true  같은 
 | `identity` | 값을 그대로 나른다 | `traverse` 를 "그냥 매핑" 으로 — optics 의 `over` |
 | `const(<monoid>)` | 값을 버리고 monoid 로만 모은다 | `traverse` 를 "접기" 로 — optics 의 `preview` |
 
+`identity` 는 이제 `Chain`·`Monad` 까지 올라가 있습니다(2026-08-28) — 그래서 트랜스포머의
+안쪽 모나드 자리에 넣을 수 있고, `ReaderT('identity')` 는 맨 `Reader` 와 같은 값을
+Identity 한 겹에 싸서 냅니다. cats 가 `Reader` 의 정의로 쓰는 그 등식입니다.
+
 **모양이 객체인 것과 타입이 `Object` 인 것은 다른 말입니다.** 둘은 각자 자기 타입을 가집니다 —
 `Identity` 와 `Const(<모노이드키>)` 입니다. 캐리어가 스스로를 밝힙니다.
 
@@ -1111,6 +1115,32 @@ console.log(String(RT.runReaderT(200, T)));    // Nothing
 하는 일이므로, 그런 조회는 애초에 memo 의 대상이 아닙니다. **키가 겹치면 뒤에 읽은 위치가 앞의 값을 받습니다** — 그 경계는
 `keyOf` 를 준 쪽에 있습니다. `tests/store.test.js` 가 관측 동등성·호출 횟수 감소·
 `NaN`/`null` 구분(코덱스 반례의 재현)·`keyOf` 누락 거부를 잠급니다.
+
+---
+
+## `chain` 은 콜백의 반환까지 검사한다 — 문지기가 못 보는 유일한 방향 {#chain-return}
+
+strict 래퍼의 검사는 전부 **문에서**(들어오는 인자) 이뤄집니다. 샌 값은 대개 다음 연산의
+문이 잡아 주지만, 두 자리가 비어 있었습니다 — 에러가 **범인이 아니라 다음 걸음의 옳은
+코드**를 탓했고, 파이프라인 **맨 끝**의 누출은 아무도 못 잡았습니다(코덱스 7차 반례,
+2026-08-28). `map` 쓸 자리에 `chain` 을 쓰는, 배우는 사람이 가장 흔히 틀리는 자리입니다.
+
+그래서 `chain` 래퍼만 반환도 검사합니다(`checkReturn` — 공용 한 곳).
+
+```javascript
+const { Chain, Maybe } = FunFP;
+const { chain } = Chain.lookup('maybe');
+
+try { chain(x => x + 1, Maybe.Just(10)); }   // map 쓸 자리에 chain — 콜백이 맨 값을 낸다
+catch (e) { console.log(e.message); }   // 'Chain.chain: callback must return Maybe, got number'
+```
+
+**경계 — 게으른 타입의 콜백은 이 검사가 못 잡습니다.** `Task`·`Reader`·`State`·`Free` 는
+`chain` 시점에 캐리어를 즉시 내놓고 콜백은 나중에 `run`/`fork` 때 실행되므로, 검사할 반환이
+그 시점에 없습니다. 이 검사가 잡는 것은 즉시 계산 타입(`Maybe`·`Either`·`Identity`·`Array`·
+`NonEmptyList`·함수)의 콜백 실수입니다. 비용은 실측으로 측정 한계 아래였습니다
+(chain 100만 번이 오차 안, 2026-08-28 — chainRec 내부 걸음은 이 검사를 지나지 않는 경로라
+영수증에 넣지 않는다).
 
 ---
 
