@@ -51,6 +51,14 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일이 �
 
 ### 새 기능
 
+- **`Store` 코모나드** — State 의 쌍대. `(조회: S -> A, 초점: S)` 둘로 이뤄지고,
+  `extract`/`peek`/`seek`/`experiment`/`map`/`extend` 여섯 문을 둡니다. `extend` 는
+  한 위치만 보는 국소 규칙을 판 전체의 갱신으로 넓힙니다(라이프 게임이 대표 사례 —
+  [`docs/Store.md`](./docs/Store.md)). 반복 `extend` 의 지수 폭발은 옵트인 `Store.memo(store, keyOf)` 로
+  잡습니다 — `keyOf` 는 필수이며(옳은 기본 키가 없음을 코덱스 리뷰가 실측), 캐시를 본체에 숨기지 않은 이유와 함께
+  [`docs/internals.md#store-perf`](./docs/internals.md#store-perf).
+  `Functor`/`Extend`/`Comonad` 레지스트리에 `store` 키로 등록됩니다.
+
 - **함수 타입이 모나드가 됐습니다** — `'function'` 키에 `Apply`·`Applicative`·`Chain`·`Monad`
   넷이 등록됩니다. 맨 함수를 감싸지 않고 `Monad.lookup('function').chain(...)` 으로 씁니다.
   문헌이 **Reader 모나드**라 부르는 그것이며, `Reader` 로 감싼 것과 값이 같습니다.

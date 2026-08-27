@@ -46,6 +46,79 @@
 
 ---
 
+## ✅ 닫힘 — 중복 구현 점검과 공통화 ①③ (2026-08-27)
+
+소유자 요청 「이미 구현된 것을 다시 구현한 부분이 있는지 점검」. 26-08-15 합성 감사 이후
+들어온 코드가 대상. **발견 셋, 기각 셋, 공통화 둘 완료. ②는 논의 대기.**
+
+- **발견 ① (완료)** — `isX` 서술어 열 곳(Identity·Maybe·Either·Task·Validation·NEL·Reader·
+  Writer·State·Store)이 글자까지 같은 몸. → `hasSymbol`(index.js:104) 하나로 통일,
+  `X.isX = hasSymbol(Symbols.X)`. `Free.isFree` 는 다른 몸(Pure/Impure 합성 판별)이라 정당한
+  예외로 남김.
+- **발견 ③ (완료)** — 트랜스포머 넷의 `lift` 가 클래스명만 다르고 동일. → `liftInto`
+  (index.js:3316) 하나로 통일, `XT.lift = liftInto(XT)`.
+- **발견 ② (대기)** — `Store.extract` 가 위임 관례(Identity 꼴) 이탈 + 같은 논리가
+  `StoreComonad` 에 중복. extract 는 라이프 게임의 최난 경로라 **조회 비용 실측 후 논의**하기로
+  (소유자, 2026-08-27).
+- **기각 셋** — Task 두 람다(앞머리만 같음) · `into` 두 누적자(해체까지만 같음) ·
+  `composeK` vs Kleisli Semigroupoid(능력이 다름 — 가변·임의 모나드 vs 등록 셋의 이항).
+- **검증 (2026-08-27)** — `node tests/run.js` 51 passed/1 failed(dist 동기뿐)+typecheck.
+  뮤테이션 둘 다 잡힘: ① `hasSymbol` 이 심볼 안 봄 → **failed 1→16**, ③ `liftInto` 가 명령
+  대신 맨값 → **트랜스포머 4종 테스트 ❌ 0→21**. `npm run baseline` 격자 ≠행이 Store 회차
+  저장본과 **완전 일치** — 공통화의 관측 차이 0.
+- **경위 메모** — ③ 뮤테이션 검증 중 2분 시간 초과가 뮤테이션 상태를 남겼고, 병렬로 띄운
+  기준선 측정과 겹쳐 첫 수치가 엉켰다. 깨끗한 상태를 확정하고 순차 재측정으로 결론.
+  뮤테이션 심기와 다른 측정을 한 메시지에 병렬로 띄우지 말 것.
+- **코덱스 4차 리뷰 (2026-08-27, `task-mtbm1dju`)** — 두 공통화 **승인**. HEAD 아홉 구현과
+  문자 단위 동일 + 열 타입 경계 입력 일치 + 네 lift 의 값·내부 구조 일치를 코덱스가 독립
+  확인. `Free.isFree` 예외도 반례(Free 심볼만 단 가짜)로 옳다고 판정. 잔여 지적 하나 —
+  「열 서술어의 공통 경계를 고정한 표 테스트가 없다」.
+- **표 테스트 (2026-08-27, 소유자 승인)** — `tests/is-predicates.test.js` 신설: 열 타입 ×
+  경계 9종(진짜/null/undefined/원시/문자열 위조/심볼값 1/심볼값 false/상속 심볼/외부 객체)
+  + 교차 판정 10×9 + Free 예외 고정. 뮤테이션 3계열 전부 잡힘(실측): 심볼값 1 통과 ❌10 ·
+  own 만 봄 ❌10 · 심볼 안 봄 ❌11. 코덱스가 손으로 잰 경계가 게이트로 옮겨졌다.
+
+## ✅ 닫힘 — Store 코모나드 (2026-08-27)
+
+계획서: [`plan/260827-store-comonad.md`](./plan/260827-store-comonad.md). 소유자 플랜 승인 후 구현.
+**dist 재빌드·커밋·푸시는 안 했다 — 소유자 요청 대기.**
+
+- **원인** — 소유자 관찰(2026-08-25) 「Store가 없더라?」. 모나드 셋(Reader·Writer·State)의
+  쌍대 코모나드가 전무했다. 글라이더 실험으로 실물을 확인한 뒤 소유자가 결정.
+- **해결책** — 캐리어 `Store(lookup, index)` + 문 여섯(extract/peek/seek/experiment/map/extend)
+  + 옵트인 `Store.memo` + 인스턴스 셋(`store` 키). 범위는 Store 하나 — Env·Traced 제외.
+- **완료조건** — ① `npm test` 전량(잠금 155/14/107) ② 뮤테이션 넷 전부 잡힘 ③ baseline
+  원소 대조 추가만 ④ docs 한·영 짝 + internals 성능 절.
+- **검증 (2026-08-27)** — `node tests/run.js` → **51 passed, 1 failed** (실패는 dist 동기뿐,
+  빌드 대기라 의도된 상태. store.test.js 포함 52파일). typecheck 통과.
+  뮤테이션 4종 전부 잡힘: ① extend 초점 고정 → **좌항등** (결합법칙은 초록 — 원리상 못
+  잡음을 실측, 함수 모나드 chain 때와 동형) ② extract 위치 0 고정 → **좌항등** ③ map 조회
+  위치 고정 → **Functor 항등** ④ memo 가 값 바꿈 → **store.test.js 3건**.
+  `npm run baseline` 원소 대조: **추가 15개(인스턴스 셋·키·최상위 이름), 사라진 것 0.**
+  문서 예제 950 → **966개**(Store 한·영 + internals 성능 절 한·영), 대조 줄 868 → **902줄**.
+- **계획에 없던 걸림 둘(다음 데이터 타입 추가 시 명단)** — `tests/algebra-type.test.js` 의
+  `BY_PREFIX`/`SAMPLE` 표, `build-types.js` 의 d.ts 명단. 함수 모나드 때는 새 최상위 이름이
+  없어 안 걸렸던 게이트다.
+- **코덱스 적대 리뷰 후속 (2026-08-27)** — 리뷰가 결함 1건을 실측: `Store.memo` 기본 키
+  `JSON.stringify` 가 `NaN`/`null` 을 `"null"` 하나로 합쳐 **조회 순서에 따라 값이 달라졌고**,
+  순환 객체는 던졌다. 게이트는 숫자 위치만 봐서 블라인드였다. 소유자 결정: **기본값 제거,
+  `keyOf` 필수**(위임) — 항등 기본은 원시값에선 옳지만 객체 위치에서 캐시를 조용히 무력화
+  (memo 의 대표 사례가 그 경우)하므로 옳은 기본이 없다. 수리 검증: `keyOf` 누락 거부 +
+  항등 keyOf 의 NaN/null 구분(코덱스 반례 재현) 테스트 신설, **옛 기본값을 도로 심으면
+  거부 테스트가 빨강**(실측), 뮤테이션 ④ 재확인 4건 빨강. 문서 한·영("관측은 그대로" 보증을
+  "키가 위치를 가르는 한"으로 강등 + 키 충돌 책임 명시)·d.ts(`keyOf` 필수)·CHANGELOG 갱신.
+  `node tests/run.js` → 51 passed / 1 failed(dist 동기뿐), typecheck 통과. store.test.js 15건.
+- **코덱스 재리뷰 2·3차 (2026-08-27)** — 2차(`task-mtb11mfe`): PARTIALLY RESOLVED — 잔여
+  지적 「항등 키도 +0/-0 을 합친다(Map SameValueZero), 문서가 '숫자는 항등이면 충분' 과장」.
+  → 문서 4곳에 경계 명시 + `+0/-0` 표본 테스트(합쳐짐/가름 양쪽 고정, store.test.js 16건).
+  3차(`task-mtbdje24`): 코드 무혐의 + +0/-0 해소 판정, **새 지적 셋 전부 문장 과장** —
+  ① 「memo 는 관측 불변」에 조회 안정 조건 누락(반례 `() => ++n`: 원본 1 2, memo 1 1)
+  ② 「반복 extend 는 지수」에 다중 위치 조회 조건 누락(단일 조회 규칙은 선형 — 20회에 21조회)
+  ③ d.ts 주석이 둘을 반복. → 문서 6곳(한·영)과 d.ts 주석에 성립 조건을 넣어 강등.
+  세 회차의 공통 교훈: **보증은 성립 조건(위임 경계·조회 안정·조회 분기)까지 함께 적는다.**
+- **참고** — Haskell `Control.Comonad.Store` · cats `RepresentableStore` · fp-ts `Store.ts` ·
+  [`docs/Store.md`](./../docs/Store.md) · [`docs/internals.md#store-perf`](./../docs/internals.md#store-perf)
+
 ## ✅ 닫힘 — 함수 타입에 Apply·Applicative·Chain·Monad 등록 (2026-08-23)
 
 계획서: [`plan/260823-function-monad.md`](./plan/260823-function-monad.md). 소유자 「좋습니다」 승인 후 구현.

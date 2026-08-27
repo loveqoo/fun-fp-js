@@ -38,6 +38,7 @@ export const TYPE_FILES = [
     'data/Reader.d.ts',
     'data/Writer.d.ts',
     'data/State.d.ts',
+    'data/Store.d.ts',
     'data/Free.d.ts',
     'data/builtins.d.ts',
     'data/transformers/StateT.d.ts',

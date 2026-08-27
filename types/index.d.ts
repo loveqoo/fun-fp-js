@@ -43,6 +43,7 @@ export * from "./data/NonEmptyList";
 export * from "./data/Reader";
 export * from "./data/Writer";
 export * from "./data/State";
+export * from "./data/Store";
 export * from "./data/Free";
 
 // ── Monad transformers ───────────────────────────────────────────────
@@ -99,6 +100,7 @@ import type { NonEmptyList } from "./data/NonEmptyList";
 import type { Reader } from "./data/Reader";
 import type { Writer } from "./data/Writer";
 import type { State } from "./data/State";
+import type { Store } from "./data/Store";
 import type { StateT } from "./data/transformers/StateT";
 import type { EitherT } from "./data/transformers/EitherT";
 import type { ReaderT } from "./data/transformers/ReaderT";
@@ -191,6 +193,7 @@ declare const fp: {
     readonly Reader: typeof Reader;
     readonly Writer: typeof Writer;
     readonly State: typeof State;
+    readonly Store: typeof Store;
 
     readonly StateT: typeof StateT;
     readonly EitherT: typeof EitherT;

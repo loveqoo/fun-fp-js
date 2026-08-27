@@ -212,6 +212,8 @@ const OBSERVE = {
     Writer: v => v.run(),
     State: v => STATES.map(st => v.run(st)),
     Free: v => v.value,
+    // index 를 반드시 넣는다 — 빼면 초점만 바꾸는 결함(seek 계열)이 관측 밖이다.
+    Store: w => [w.index].concat([0, 1, 2, 3].map(sp => w.peek(sp))),
 };
 // 표본은 **그 타입의 갈림길을 담아야** 한다 — Nothing/Just, Left/Right, 성공/실패처럼.
 const FUNCTOR_SAMPLES = {
@@ -230,6 +232,8 @@ const FUNCTOR_SAMPLES = {
     Writer: [fp.Writer.of(1), fp.Writer.tell(['w'])],
     State: [fp.State.of(1), fp.State.get, fp.State.modify(n => n + 1)],
     Free: [fp.Free.of(1), fp.Free.of(7)],
+    // 표본의 index 가 서로 달라야 한다 — 같으면 초점을 무시하는 결함이 안 보인다.
+    Store: [new fp.Store(x => x * 10, 1), new fp.Store(x => x + 100, 3)],
 };
 const REGISTERED_FUNCTORS = instancesOf('Functor');
 
@@ -365,7 +369,7 @@ test('Functor — 등록된 13개 전부에 항등·합성이 돈다', () => {
         }
     }
     assertEquals(report(broken), '', 'Functor 법칙');
-    assertEquals(checked, 13, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
+    assertEquals(checked, 14, '법칙을 돌린 Functor 인스턴스 수가 달라졌다');
 });
 
 test('Functor — 표본이 공허하지 않다 (map 이 인자를 무시하면 잡힌다)', () => {
@@ -775,7 +779,8 @@ const CLASS_LAWS = {
     Extend: (E, obs) => {
         const xs = FUNCTOR_SAMPLES[E.type]; if (!xs) return null;
         // 내용을 읽는 캐리어별 열기 — Array 그대로, NEL 은 toArray. 안 열면 상수 함수가 되어 검사가 공허하다.
-        const open = w => (Array.isArray(w) ? w : fp.NonEmptyList.isNonEmptyList(w) ? w.toArray() : null);
+        const open = w => (Array.isArray(w) ? w : fp.NonEmptyList.isNonEmptyList(w) ? w.toArray()
+            : fp.Store.isStore(w) ? [w.extract(), w.peek(w.index + 1)] : null);  // 초점값 + 이웃 — 위치 의존이라야 초점 결함이 보인다
         const ff = w => { const a = open(w); return a === null ? 0 : a.length; };
         const gg = w => { const a = open(w); return a === null || a[0] === undefined || a[0] === null ? 0 : a[0]; };
         const bad = [];
@@ -788,7 +793,8 @@ const CLASS_LAWS = {
         const raw = FUNCTOR_SAMPLES[C.type];
         const xs = (raw === undefined || raw === null ? [] : raw).filter(v => !Array.isArray(v) || v.length > 0);
         if (!xs.length) return null;
-        const ff = w => (Array.isArray(w) ? w.length : fp.NonEmptyList.isNonEmptyList(w) ? w.toArray().length : 0);
+        const ff = w => (Array.isArray(w) ? w.length : fp.NonEmptyList.isNonEmptyList(w) ? w.toArray().length
+            : fp.Store.isStore(w) ? w.extract() : 0);  // 초점을 읽어야 우항등이 extract 결함을 가른다
         const bad = [];
         for (const w of xs) {
             same(obs, C.extend(C.extract, w), w) || bad.push('좌항등 깨짐');
@@ -824,7 +830,7 @@ test('나머지 타입 클래스 — 등록된 인스턴스 전부에 명세 법
     }
     assertEquals(uncovered.join(' | '), '', '표본이나 여는 법이 없어 검사하지 못한 인스턴스');
     assertEquals(report(broken), '', '명세 법칙을 어긴 인스턴스');
-    assertEquals(checked, 105, '법칙을 돌린 인스턴스 수가 달라졌다');
+    assertEquals(checked, 107, '법칙을 돌린 인스턴스 수가 달라졌다');
     assertEquals(instancesOf('Reducible').length, 2, 'Reducible 인스턴스 수가 달라졌다');
     // MonadError 는 클래스별로도 잠근다 — 합계 하나로는 인스턴스 교체가 숨는다(5차 리뷰 Minor 8).
     assertEquals(instancesOf('MonadError').length, 2, 'MonadError 인스턴스 수가 달라졌다');

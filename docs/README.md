@@ -66,6 +66,7 @@ console.log(thrown);   // 'TypeError'
 - [Reader](./Reader.md) - 환경 기반 계산 (의존성 주입)
 - [Writer](./Writer.md) - 출력 추적 (로깅)
 - [State](./State.md) - 상태 변환
+- [Store](./Store.md) - 위치 기반 조회 (State 의 쌍대, Comonad)
 
 #### 고급
 
@@ -316,6 +317,7 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | Reader                        | 의존성 주입               | 환경 전파                                                      |
 | Writer                        | 로깅/출력 추적             | 값 + 출력 (Monoid)                                            |
 | State                         | 상태 변환                | 상태 스레딩                                                     |
+| [Store](./Store.md)           | 위치 기반 조회, 국소→전역 확장  | (조회, 초점) 쌍 — State 의 쌍대, Comonad                          |
 | Free                          | 프로그램/실행 분리, 스택 안전 재귀 | Pure / Impure — [Free.api](./Free.md#api) 로 Free 를 몰라도 쓴다  |
 | [Optics](./Optics.md)         | 부분 접근·갱신             | `Optics` 모듈 — Lens/Prism/Traversal, `compose`, `foldMapOf` |
 | [Lens](./Lens.md)             | 중첩 불변 갱신             | getter + setter 쌍, 대상 정확히 1개                               |

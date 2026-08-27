@@ -60,7 +60,8 @@ const Symbols = {
     NonEmptyList: Symbol.for('fun-fp-js/NonEmptyList'),
     Reader: Symbol.for('fun-fp-js/Reader'),
     Writer: Symbol.for('fun-fp-js/Writer'),
-    State: Symbol.for('fun-fp-js/State')
+    State: Symbol.for('fun-fp-js/State'),
+    Store: Symbol.for('fun-fp-js/Store')
 };
 const types = {
     of: a => {
@@ -2620,6 +2621,59 @@ class StateMonad extends Monad {
     }
 }
 modules.push(StateMonad);
+/* Store */
+class Store {
+    constructor(lookup, index) {
+        types.checkFunction(lookup, 'Store');
+        this._lookup = lookup;
+        this._index = index;
+        this._typeName = 'Store';
+    }
+    get index() { return this._index; }
+    extract() { return this._lookup(this._index); }
+    peek(s) { return this._lookup(s); }
+    seek(s) { return new Store(this._lookup, s); }
+    // f: s -> Array<s> — 초점 주변 여러 위치를 한 번에 읽는다
+    experiment(f) { return f(this._index).map(this._lookup); }
+    map(f) { return Functor.lookup('store').map(f, this); }
+    extend(f) { return Extend.lookup('store').extend(f, this); }
+}
+Store.prototype[Symbols.Store] = true;
+Store.isStore = x => x != null && x[Symbols.Store] === true;
+// 반복 extend 는 조회를 겹겹이 감싸 지수 폭발한다 — 세대마다 이걸로 감싼다. docs/internals.md#store-perf
+// keyOf 는 필수다 — 기본 직렬화는 어떤 것이든 위치를 합치거나(NaN/null) 캐시를 무력화한다(객체).
+Store.memo = (store, keyOf) => {
+    Store.isStore(store) || raise(new TypeError('Store.memo: first argument must be a Store'));
+    types.checkFunction(keyOf, 'Store.memo');
+    const cache = new Map();
+    return new Store(s => {
+        const k = keyOf(s);
+        if (!cache.has(k)) cache.set(k, store._lookup(s));
+        return cache.get(k);
+    }, store._index);
+};
+// map 은 조회 뒤에 f 를 합성한다 — 초점은 그대로
+class StoreFunctor extends Functor {
+    constructor() {
+        super((f, w) => new Store(s => f(w._lookup(s)), w._index), 'Store', Functor.types, 'store');
+    }
+}
+modules.push(StoreFunctor);
+// extend 는 모든 위치에서 국소 규칙 f 를 본 새 Store — 국소 규칙이 전역 갱신이 되는 자리
+class StoreExtend extends Extend {
+    constructor() {
+        super(Functor.types.StoreFunctor,
+            (f, w) => new Store(s => f(new Store(w._lookup, s)), w._index),
+            'Store', Extend.types, 'store');
+    }
+}
+modules.push(StoreExtend);
+class StoreComonad extends Comonad {
+    constructor() {
+        super(Extend.types.StoreExtend, w => w._lookup(w._index), 'Store', Comonad.types, 'store');
+    }
+}
+modules.push(StoreComonad);
 /* Utilities */
 const sequence = (traversable, applicative, u) => {
     if (!traversable || typeof traversable.traverse !== 'function') {
@@ -3857,7 +3911,7 @@ export default {
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable, Reducible,
-    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State,
+    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State, Store,
     StateT, EitherT, ReaderT, WriterT, Actor,
     Optics,
     identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,

@@ -1202,6 +1202,47 @@ Each tier buys one thing the tier below cannot do, and pays one wrapping layer f
 
 ---
 
+## `Store.extend` computes nothing — which is why `memo` lives outside {#store-perf}
+
+The whole body of `extend` is this one line.
+
+```javascript no-run source excerpt
+(f, w) => new Store(s => f(new Store(w._lookup, s)), w._index)
+```
+
+**It wraps the lookup in one more layer and computes no position at all.** Values are computed
+at read time. So **when the rule reads several positions** (Life reads eight neighbours per
+cell), across generations one read becomes a full recomputation of every previous generation,
+and the cost is exponential in the generation count — measured with the Game of Life
+(2026-08-27): past 4 generations without `memo` the slowdown is plainly visible. A rule that
+reads only one position stacks layers but stays linear (Codex round-3 measurement: 20 extends,
+21 lookups).
+
+That the fix is a cache was never in question. Two things were decided (owner's decisions,
+2026-08-27) — **where the cache lives** (not hidden inside `extend` but behind a separate door,
+`Store.memo`), and **who builds the cache key** (`keyOf` is required — there is no default at all).
+
+- **The core stays pure.** A hidden `Map` inside `extend` makes the same expression cost
+  differently on the first and second call, with no door to observe that state — and a one-shot
+  `extend` that needs no cache still pays for one.
+- **Every default key is wrong somewhere.** The first implementation defaulted to
+  `JSON.stringify`, and the adversarial Codex review (2026-08-27) measured a counterexample —
+  `NaN` and `null` both collapse to `"null"`, so **the result depends on read order**, and
+  circular objects throw. Even an identity default merges `+0`/`-0` under the Map's
+  SameValueZero (measured by the Codex re-review), and it silently defeats the cache for
+  object positions like coordinate arrays — which is memo's flagship case. With no correct default, the default was removed: the caller states `s => s` for
+  numbers and strings, or a serializer for objects.
+
+**As long as keys separate positions and the lookup returns the same value for the same
+position**, `memo` does not change observation — focus untouched. A lookup with side effects
+gets its first value pinned (Codex round-3 counterexample: `() => ++n` reads `1 2` raw but
+`1 1` memoized) — that is what a cache does, so such a lookup is not a memo candidate at all. **If two positions share a key, the later read receives the earlier
+value** — that boundary belongs to whoever supplies `keyOf`. `tests/store.test.js` locks
+observational equality, the reduced call count, the `NaN`/`null` distinction (reproducing the
+Codex counterexample), and the rejection of a missing `keyOf`.
+
+---
+
 ## `Either`/`Task` are not `Filterable` {#filterable}
 
 Static Land's `Filterable` requires three rules.
