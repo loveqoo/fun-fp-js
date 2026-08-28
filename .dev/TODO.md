@@ -46,6 +46,19 @@
 
 ---
 
+## ⬜ 열림 — provenance 발행 체계 (2026-08-28 등록)
+
+- **원인** — 0.2.x 는 로컬에서 발행했다. npm 의 서명된 출처 증명(provenance)은 CI(OIDC)에서
+  `npm publish --provenance` 로 발행해야 붙는다. Socket.dev 실측(0.2.1, 발행 7시간):
+  Vulnerability·Quality·License **100**, Maintenance 86, **Supply Chain 78** — 감점 축은
+  코드가 아니라 이력·증명. provenance 가 우리 손으로 당길 수 있는 유일한 항목.
+- **해결책(안)** — GitHub Actions 워크플로: `v*` 태그 푸시 → 전체 테스트 → `npm publish
+  --provenance`. npm 쪽은 Trusted Publisher(OIDC) 등록 또는 granular 토큰. 부수 실익:
+  발행 때마다 브라우저 로그인 미로(패스키·사파리 문제, 0.2.0 때 실측)를 안 거친다.
+- **완료조건** — 다음 발행 버전의 npm 페이지에 provenance 배지가 보이고, 태그 푸시만으로
+  발행이 끝난다.
+- **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
+
 ## ✅ 닫힘 — 0.2.1 발행 (2026-08-28)
 
 0.2.0 꾸러미의 README 가 "아직 npm 에 발행하지 않았습니다"라고 말하던 자기모순의 수리.
