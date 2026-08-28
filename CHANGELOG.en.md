@@ -14,21 +14,21 @@ Currently empty.
 
 ## 0.2.2 — 2026-08-28
 
-- **The README is now English-first.** `README.md` is the English page, and the Korean page is
+- The README is now English-first. `README.md` is the English page, and the Korean page is
   one click away at `README.ko.md`. This lowers the entry barrier on the npm front page. Korean
   remains the canonical language for the docs (the pairing convention and gates under `docs/`
   are unchanged); only the root ordering changed.
-- **The interpreter door moves out of the api: `api.interpreter(h)` → `Free.interpreter(api, h)`.**
+- The interpreter door moves out of the api: `api.interpreter(h)` → `Free.interpreter(api, h)`.
   The api object now carries user vocabulary only. The `'interpreter'` reserved word is gone,
   so any domain word can be a command name. (A design flaw the owner spotted during an external
   review discussion: user vocabulary and a library door were sharing one namespace.) The new
   door sits next to `Free.interpreters` (the combining one).
-- **`import { Maybe } from 'fun-fp-js'` now works.** The runtime used to expose only a default
+- `import { Maybe } from 'fun-fp-js'` now works. The runtime used to expose only a default
   export while the type declarations promised named exports, so TypeScript accepted the import
   and the runtime died with a `SyntaxError` (external review finding, reproduced). The runtime
   now provides named exports with the same roster. The default export is unchanged, so existing
   code is unaffected.
-- **The shipped type declarations compile under consumer configs without `skipLibCheck`.** Our
+- The shipped type declarations compile under consumer configs without `skipLibCheck`. Our
   own check never compiled the d.ts bundle, so latent errors had piled up (TS2395 ×138 among
   four kinds). Fixed: export mismatches in declaration merging, interfaces closed with `};`,
   `this` inside an object literal type, and a duplicate re-export. A consumer-view gate
@@ -96,25 +96,25 @@ ES2018); development and tests need Node 20.
   throws `callback must return <type>, got <actual>` at the site of the mistake. Lazy types'
   callbacks (Task and friends) are outside this boundary.
   [`docs/en/internals.md#chain-return`](./docs/en/internals.md#chain-return)
-- `Free.api(...names)` — declare a vocabulary and you get command functions and an interpreter
+- `Free.api(...names)`: declare a vocabulary and you get command functions and an interpreter
   door.
-- `Free.interpreters(...interpreters)` — combines the interpreters of several apis into one.
+- `Free.interpreters(...interpreters)`: combines the interpreters of several apis into one.
   Commands route by their origin mark, so name overlaps need no coordination.
-- `interpreter.start(program)` — a `{ promise, cancel }` handle. `cancel()` is cooperative and
+- `interpreter.start(program)`: a `{ promise, cancel }` handle. `cancel()` is cooperative and
   takes effect at the next command boundary; a cancelled run arrives as a rejection marked
   `cancelled === true`.
-- `NonEmptyList` — a list that cannot be empty. `extract` always has a value, and
+- `NonEmptyList`: a list that cannot be empty. `extract` always has a value, and
   `reduceLeft`/`reduceMap` fold with only a Semigroup. 13 instances. Monoid, Plus, Alternative,
   and Filterable are deliberately absent (each would mean "an empty list").
-- `Reducible` — folding with no empty case (outside the spec, extends Foldable). NonEmptyList
+- `Reducible`: folding with no empty case (outside the spec, extends Foldable). NonEmptyList
   and Identity are instances. [`docs/en/Reducible.md`](./docs/en/Reducible.md)
-- `MonadError` — failure as a first-class value (outside the spec). `raiseError`/`handleError`,
+- `MonadError`: failure as a first-class value (outside the spec). `raiseError`/`handleError`,
   registered for Task and Either.
 - `Actor`'s `handle` also accepts a Promise (value, Promise, or Task).
-- `transducer.into(vessel, transducer, input)` — derives the reducer from the vessel type
+- `transducer.into(vessel, transducer, input)`: derives the reducer from the vessel type
   (array, string, Set, Map, or object). Vessel contents preserved, input untouched.
-- `fp.pipeWhile(predicate)` — a pipe that continues only while the predicate holds.
-- `Applicative.Writer(monoid)` / `Monad.Writer(monoid)` — Writer over any monoid.
+- `fp.pipeWhile(predicate)`: a pipe that continues only while the predicate holds.
+- `Applicative.Writer(monoid)` / `Monad.Writer(monoid)`: Writer over any monoid.
 - The dist header gained `Version:`, `Changelog:`, and `Commit:` lines.
 
 ### Fixed
@@ -160,7 +160,7 @@ transformers built on them.
 | Test files | 44 |
 
 Doc examples are executed by the tests. At `0.1.0` the gate only executed them without
-comparing `// expected` values — value comparison arrived in `0.2.0`.
+comparing `// expected` values; value comparison arrived in `0.2.0`.
 
 ### Distribution
 
