@@ -158,7 +158,7 @@ console.log(thrown);   // 'TypeError'
 | `pipe(...fs)(x)` | 좌→우 합성 | `pipe(f, g)(x)` = `g(f(x))` |
 | `compose2(f, g)` / `pipe2(f, g)` | 딱 둘만 잇는 판 | `pipe2(f, g)(x)` = `g(f(x))` |
 | `pipeFrom(x)(...fs)` | 값을 먼저 주는 pipe | `pipeFrom(5)(f, g)` = `pipe(f, g)(5)` |
-| `pipeWhile(판별자)(...fs)(x)` | 판별자가 참인 동안만 잇는다 | [소개](../README.md) |
+| `pipeWhile(판별자)(...fs)(x)` | 판별자가 참인 동안만 잇는다 | [소개](../README.ko.md) |
 | `tap(f)(x)` | `f(x)` 를 부수 효과로 부르고 `x` 를 돌려준다 | 로깅 사이 끼우기 |
 | `also(f)(x)` | `tap` 과 같되 예외를 삼키지 않는다 | |
 | `once(f)` | 첫 호출만 실행, 이후는 첫 결과 재사용 | 초기화 한 번 |

@@ -45,7 +45,7 @@ const files = [
         ? readdirSync(enDir).filter(n => n.endsWith('.md')).sort()
             .map(n => ({ label: `docs/en/${n}`, path: join(enDir, n) }))
         : []),
-    { label: 'README.en.md', path: join(rootDir, 'README.en.md') },
+    { label: 'README.ko.md', path: join(rootDir, 'README.ko.md') },
 ];
 
 logSection('Docs links');

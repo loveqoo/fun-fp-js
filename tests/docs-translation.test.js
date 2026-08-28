@@ -12,7 +12,7 @@
 // 어긋나면 번역이 예제를 빠뜨렸거나 실행 대상에서 몰래 뺐다는 뜻이다.
 // 두 문서의 **논리가 갈라지는 것**은 이제 기계가 못 잡는다 — 사람이 볼 몫이다.
 //
-// 짝은 규약으로 정한다: README.md ↔ README.en.md, docs/X.md ↔ docs/en/X.md.
+// 짝은 규약으로 정한다: README.ko.md ↔ README.md(영어 우선, 소유자 결정 2026-08-28), docs/X.md ↔ docs/en/X.md.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ const FENCE = /^```([^\n]*)\n([\s\S]*?)^```/gm;
 const fencesOf = source => allMatches(FENCE, source).map(([, info, code]) => ({ info: info.trim(), code }));
 
 const pairs = [
-    { ko: join(rootDir, 'README.md'), en: join(rootDir, 'README.en.md'), label: 'README.md' },
+    { ko: join(rootDir, 'README.ko.md'), en: join(rootDir, 'README.md'), label: 'README.md' },
     ...(existsSync(enDir)
         ? readdirSync(enDir).filter(n => n.endsWith('.md')).sort()
             .map(n => ({ ko: join(docsDir, n), en: join(enDir, n), label: `docs/${n}` }))
@@ -68,5 +68,5 @@ console.log(`\n번역 짝 ${pairs.filter(p => existsSync(p.en)).length}쌍 대�
 // 짝이 0쌍이면 이 파일은 아무것도 안 보고 초록이 된다. 번역을 시작한 뒤로는 그것이 사고다.
 test('번역 짝이 하나라도 있다', () => {
     const found = pairs.filter(p => existsSync(p.en)).length;
-    if (found === 0) throw new Error('영어판을 하나도 못 찾았다 — 짝 규약(README.en.md · docs/en/X.md)을 확인하라');
+    if (found === 0) throw new Error('영어판을 하나도 못 찾았다 — 짝 규약(루트 README 쌍 · docs/en/X.md)을 확인하라');
 });

@@ -12,7 +12,7 @@ import { test, assertEquals, logSection } from './utils.js';
 
 logSection('Docs coverage');
 
-const docs = ['README.md', ...readdirSync('docs').filter(f => f.endsWith('.md')).map(f => 'docs/' + f)]
+const docs = ['README.ko.md', ...readdirSync('docs').filter(f => f.endsWith('.md')).map(f => 'docs/' + f)]
     .map(f => readFileSync(f, 'utf8')).join('\n');
 
 test('공개 이름 전부가 한국어 문서 어딘가에 언급된다', () => {
@@ -21,7 +21,7 @@ test('공개 이름 전부가 한국어 문서 어딘가에 언급된다', () =>
 });
 
 // 영어판도 같은 기준 — 정본에만 적고 번역을 잊는 회귀가 여기 걸린다.
-const enDocs = ['README.en.md', ...readdirSync('docs/en').filter(f => f.endsWith('.md')).map(f => 'docs/en/' + f)]
+const enDocs = ['README.md', ...readdirSync('docs/en').filter(f => f.endsWith('.md')).map(f => 'docs/en/' + f)]
     .map(f => readFileSync(f, 'utf8')).join('\n');
 
 test('공개 이름 전부가 영어 문서 어딘가에 언급된다', () => {

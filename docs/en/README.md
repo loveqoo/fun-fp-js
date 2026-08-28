@@ -160,7 +160,7 @@ functions, `x` is a value.
 | `pipe(...fs)(x)` | left-to-right composition | `pipe(f, g)(x)` = `g(f(x))` |
 | `compose2(f, g)` / `pipe2(f, g)` | the exactly-two versions | `pipe2(f, g)(x)` = `g(f(x))` |
 | `pipeFrom(x)(...fs)` | pipe with the value first | `pipeFrom(5)(f, g)` = `pipe(f, g)(5)` |
-| `pipeWhile(pred)(...fs)(x)` | pipes only while the predicate holds | [intro](../../README.en.md) |
+| `pipeWhile(pred)(...fs)(x)` | pipes only while the predicate holds | [intro](../../README.md) |
 | `tap(f)(x)` | calls `f(x)` for its side effect, returns `x` | logging in between |
 | `also(f)(x)` | like `tap` but does not swallow exceptions | |
 | `once(f)` | runs on the first call only; later calls reuse the first result | one-time init |

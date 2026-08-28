@@ -106,8 +106,8 @@ const enDir = join(docsDir, 'en');
 // 두 문서의 코드가 더는 같지 않다 — 그러면 "정본과 글자가 같다"는 보증이 사라지므로,
 // 그 자리를 "영어판도 스스로 돌고 제 값을 낸다"로 메운다(소유자 결정, 2026-08-19).
 const docs = [
+    { label: 'README.ko.md', path: join(rootDir, 'README.ko.md') },
     { label: 'README.md', path: join(rootDir, 'README.md') },
-    { label: 'README.en.md', path: join(rootDir, 'README.en.md') },
     ...readdirSync(docsDir).filter(n => n.endsWith('.md')).sort()
         .map(n => ({ label: `docs/${n}`, path: join(docsDir, n) })),
     ...(existsSync(enDir)
