@@ -59,6 +59,31 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ✅ 닫힘 — 영어 문서 전면 윤문 + 소비자 표면 수리, 0.2.2 준비 (2026-08-28)
+
+**윤문(소유자 지시: humanizer 스킬 + 병렬 서브에이전트)** — 영어 문서 48개를 7개 Sonnet
+에이전트가 humanizer 스킬(위키백과 「Signs of AI writing」 기반)로 처리. 35개 수정, 13개는
+이미 깨끗. 지배적 티는 대시(—) 남용 약 300곳(internals 190). 덤: Lens.md 중복 문장 조각
+수리. 에이전트 자기 보고를 믿지 않고 전역 재검증 — 35개 파일의 코드 블록·제목·링크가
+HEAD 와 바이트 동일(위반 0), 잔여 대시 전수 조사(정당한 예외 4 + 누락 2 는 직접 수리).
+
+**소비자 표면 수리(ChatGPT 외부 리뷰 → 전건 실측 검증 후 소유자 승인)** —
+- 지적 1 확인: `import { Maybe }` 가 TS 통과·런타임 SyntaxError(설치본 재현). **덤 발견**:
+  번들 d.ts 가 nodenext 소비자 설정에서 TS2395 ×138 + 3계열 잠복 오류 — 근원은 우리
+  tsconfig 의 skipLibCheck(d.ts 자체를 검사한 적 없음) + 번들 컴파일 게이트 부재.
+- 수리: ① index.js 에 default 와 같은 명단의 named export(92개, default 유지) + build.js
+  가 UMD 경로에서 그 문을 걷어냄 ② build-types 가 declare module 을 풀 때 최상위 선언에
+  export 접두(TS2395 소멸) ③ types 소스의 잠복 셋 — 인터페이스 닫는 `};` 4곳,
+  객체 리터럴 타입 안의 this(IdentityCarrier 로 분리), 중복 재수출 제거.
+- **게이트 신설 `tests/consumer.test.js`**: named/default 명단·동일 몸 대조, named import
+  실행, 번들 d.ts 의 nodenext(strict, skipLibCheck 없음) 컴파일. 뮤테이션 둘 다 빨강
+  (named 제거 / export 접두 제거). es-ceiling 이 이 테스트의 동적 import() 를 잡아
+  자식 프로세스 방식으로 교정(게이트가 게이트를 지킴).
+- 지적 2(ArrayComonad)는 기존 결정·문서화 확인(internals#array-comonad, NEL 이 그 보완)
+  으로 보류. 지적 3(README lawful)은 한·영 첫 문단을 「캐리어가 허용하는 범위」로 좁힘.
+
+**0.2.2 준비 완료** — 버전·CHANGELOG·재빌드(헤더 0.2.2), 56/56 + typecheck. 발행 대기.
+
 ## ✅ 닫힘 — 0.2.1 발행 (2026-08-28)
 
 0.2.0 꾸러미의 README 가 "아직 npm 에 발행하지 않았습니다"라고 말하던 자기모순의 수리.
