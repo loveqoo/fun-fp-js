@@ -46,3 +46,11 @@ export declare const Store: {
         keyOf: (s: S) => unknown
     ) => Store<S, A>;
 };
+
+// ─── Runtime-dispatch registrations ──────────────────────────────────
+// Runtime: StoreFunctor / StoreExtend / StoreComonad (키 'store').
+declare module "../TypeClasses" {
+    interface FunctorInstances { readonly store: StoreTypeLambda }
+    interface ExtendInstances  { readonly store: StoreTypeLambda }
+    interface ComonadInstances { readonly store: StoreTypeLambda }
+}

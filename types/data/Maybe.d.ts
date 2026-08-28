@@ -231,3 +231,14 @@ declare module "../TypeClasses" {
     interface TraversableInstances { readonly maybe: MaybeTypeLambda }
     interface FilterableInstances  { readonly maybe: MaybeTypeLambda }
 }
+
+// ─── Kleisli (Semigroupoid / Category 'maybe') ───────────────────────
+// a => Maybe<b> 의 합성. 인스턴스의 .type 은 'function' 이라 Algebra.all('maybe')
+// 에는 나타나지 않는다(CLAUDE.md Traps). compose(bc, ab) = a => Maybe<c>.
+export interface MaybeKleisliTypeLambda extends TypeLambda {
+    readonly type: (a: this["In"]) => Maybe<this["Target"]>;
+}
+declare module "../TypeClasses" {
+    interface SemigroupoidInstances { readonly maybe: MaybeKleisliTypeLambda }
+    interface CategoryInstances     { readonly maybe: MaybeKleisliTypeLambda }
+}

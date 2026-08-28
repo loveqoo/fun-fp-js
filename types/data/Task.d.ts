@@ -169,3 +169,13 @@ declare module "../TypeClasses" {
     interface MonadInstances       { readonly task: TaskTypeLambda }
     interface MonadErrorInstances  { readonly task: TaskTypeLambda }
 }
+
+// ─── Kleisli (Semigroupoid / Category 'task') ────────────────────────
+// a => Task<b> 의 합성.
+export interface TaskKleisliTypeLambda extends TypeLambda {
+    readonly type: (a: this["In"]) => Task<this["Target"]>;
+}
+declare module "../TypeClasses" {
+    interface SemigroupoidInstances { readonly task: TaskKleisliTypeLambda }
+    interface CategoryInstances     { readonly task: TaskKleisliTypeLambda }
+}

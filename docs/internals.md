@@ -396,9 +396,9 @@ Optic s a = P => P a a -> P s s
 
 | 주입하는 P | 나오는 연산 | 필요한 메서드 |
 | --- | --- | --- |
-| 함수 | `over` / `set` | `dimap` `first` `left` `wander` |
+| 함수 | `over` / `set` | `promap` `first` `left` `wander` |
 | `Forget<r>` | `view` / `preview` / `toList` / `foldMapOf` | 같음 (monoid 로 누적) |
-| `Tagged` | `review` | `dimap` `left` 만 |
+| `Tagged` | `review` | `promap` `left` 만 |
 
 **`Tagged` 에 `first` 와 `wander` 가 없다는 사실이 타입 안전성을 대신합니다** — Lens 나
 Traversal 에 `review` 를 쓰면 그 자리에서 `TypeError` 가 납니다.
@@ -449,7 +449,7 @@ catch (e) { console.log('review on a Lens throws'); }
 
 ### `Iso` 가 optic 계층의 최상단인 이유
 
-`Iso` 는 **`dimap` 만 씁니다.** 세 `P` 가 모두 `dimap` 을 가지므로 **모든 연산에서 동작합니다** —
+`Iso` 는 **`promap` 만 씁니다.** 세 `P` 가 모두 `promap` 을 가지므로 **모든 연산에서 동작합니다** —
 Lens 이자 Prism 이라 `view` 도 `review` 도 됩니다.
 
 ```javascript
@@ -1561,11 +1561,13 @@ Monad 가 아니다. 핸들러 반환 검증의 시점은 타입을 따른다 �
 게을러서 fork 시점(기존 Task.catchError 문안 유지). 2026-08-18.
 
 타입 선언의 한계(2026-08-28): `MonadError` 는 클래스 수준 제네릭이라, 인스턴스별
-에러 채널이 어느 슬롯인지 선언이 모른다. 그래서 `raiseError('boom')` 는 대입 대상
-같은 문맥이 있으면 슬롯이 추론되고, 없으면 `unknown` 으로 남는다 — 예전에는 `never`
-로 남아 하위 사용을 조용히 삼켰고, `handleError` 는 실제 값(`Either<string, number>`)
-자체를 거부했다. 키별 완전 타이핑(등록 키마다 에러 채널을 아는 선언)은 별건 후보로
-남겨 두었다.
+에러 채널이 어느 슬롯인지 선언이 모른다. 지금 선언은 두 가지로 좁혔다 — 에러
+채널은 `raiseError` 의 인자 타입을 따르고(`raiseError('boom')` 이 `Either<number,
+string>` 에 대입되면 거부된다 — 등록된 either·task 둘 다 그 슬롯이 에러 채널이라
+성립한다), 값 슬롯은 문맥이 있으면 추론되고 없으면 `unknown` 으로 남는다. 예전에는
+둘 다 `never` 로 남아 하위 사용을 조용히 삼켰고, `handleError` 는 실제 값
+(`Either<string, number>`) 자체를 거부했다. 키별 완전 타이핑(등록 키마다 에러
+채널을 아는 선언)은 별건 후보로 남겨 두었다.
 
 ## Reducible — 빈 경우가 없는 접기의 클래스 {#reducible}
 

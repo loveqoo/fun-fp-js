@@ -19,6 +19,12 @@
 
 import type { Maybe } from "./data/Maybe";
 import type { TraversableInstances, Monoid } from "./TypeClasses";
+import type { TaggedTypeLambda } from "./TypeLambdas";
+
+// TaggedChoice(review 전용, 키 'tagged')의 등록 — 람다는 TypeLambdas.d.ts 소유.
+declare module "./TypeClasses" {
+    interface ChoiceInstances { readonly tagged: TaggedTypeLambda }
+}
 
 /**
  * A Profunctor dictionary. Which one you inject decides the operation:

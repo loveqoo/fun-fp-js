@@ -59,6 +59,76 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ⬜ 열림 — optic 종류 구분(phantom brand): 재리뷰 3차 5번 (2026-08-28 분리)
+
+- **원인** — Lens/Prism/Iso/Traversal 이 전부 같은 구조 타입(`Optic<S, A>`)이라
+  `Optics.review(lens, 1)` 이 TS 를 통과하고 런타임이 던진다(c5 실측, 런타임 문안
+  `review: argument must be a Prism (a Lens cannot be reviewed)`).
+- **해결책(안)** — phantom brand 로 optic 종류를 타입에서 구분. 생성자 반환 타입과
+  `Optics.compose` 의 종류 합성 규칙(Lens∘Prism=Traversal 등)까지 번지는 설계 작업이라
+  별도 회차로 분리(소유자 동의 2026-08-28).
+- **완료조건** — `// @ts-expect-error Optics.review(lens, v)` 픽스처가 성립하고, 기존
+  optics 사용 픽스처가 전부 초록.
+
+## ✅ 닫힘 — 외부 재리뷰 3차: 1~4 + 경미 2 수리 (2026-08-28)
+
+리뷰어 번호 그대로. **전건 실측 확정** — 재현 픽스처는 스크래치패드 `rev3/`(c1~c5).
+전부 `types/` 선언 수리, 런타임 무변경. 소유자 승인: 범위 1~4+경미(5는 위로 분리),
+생성자는 선언 추가, 게이트는 정방향만.
+
+- **검증(닫으며 기록)** — 수리 전 빨강: 런타임 유효 lookup 6종 TS2345(c1),
+  identity `.map` TS2339(c2), 틀린 에러 채널 대입이 통과(c3 — 런타임 값 `Left("boom")`
+  대비 unsound), `new Semigroup/Monoid` TS2351(c4). 수리 후: 레지스트리 전수 픽스처
+  29클래스·141키 + Kleisli 합성 + 유령 키 `@ts-expect-error` 컴파일 통과, c2·c4 초록,
+  c3 는 게이트 형태(양성 + `@ts-expect-error`)로 초록. 게이트 뮤테이션 4건 — ①번들에서
+  ChainInstances identity 삭제 → TS2345 빨강 ②IdentityTypeLambda 캐리어 되돌림 →
+  TS2526 빨강 ③Monoid 생성자 삭제 → TS2351 빨강 ④raiseError 채널 연결 해제 → TS2578
+  빨강 — 전부 잡힘. 전체 56/56 + typecheck 초록(내부 타입 테스트의 유령 키 사용 1곳을
+  `predicate` 로 교정).
+- **수리 내역** — 신규 등록 26키 + 키 교정 1(Contravariant function→predicate),
+  새 람다 5(Object·Tuple·Tagged·Kleisli 3), IdentityTypeLambda → `Identity<Target>`
+  (IdentityCarrier 제거 — ObjectTypeLambda 가 같은 TS2526 함정을 밟아 ObjectCarrier
+  분리로 재학습), `raiseError<E>(e: E)` 채널 연결, 생성자 선언 8(Setoid·Semigroup·
+  Monoid·Group·Semigroupoid·Category·Functor·Apply — 문서 26곳 근거), index.d.ts
+  머리말 갱신(경미 A), docs 산문 dimap→promap 14곳(경미 B — 위임 문장은 사실대로
+  재서술). CHANGELOG 한·영 0.2.2 절 반영.
+- **남긴 것** — 역방향 유령 키 전수 대조(트랜스포머 키가 팩토리 실행 후에만 생기는
+  문제)는 게이트 신설 시 설계안 보고 후 진행하기로 함. 키별 MonadError 완전 타이핑은
+  기존 별건 후보 유지.
+
+### (원 기록) 실측 판정 5 + 경미 2
+
+- **1 (확정+확대) — 런타임 레지스트리 ↔ TS `*Instances` 불일치.** 전수 대조 실측:
+  누락 = Functor·Apply·Applicative `function`(Functor 는 `store` 도), Chain·Monad
+  `function`·`identity`, Extend·Comonad `identity`·`store`, Bifunctor `tuple`, Choice
+  `tagged`, Filterable·Foldable `object`, Semigroupoid·Category `either`·`maybe`·`task`,
+  Setoid·Ord `date`·`default`. **역방향 결함 1**: Contravariant 의 TS 키는 `function`
+  인데 런타임 키는 `predicate` — TS 는 통과시키고 런타임이 `unsupported key` 로 던진다
+  (c1 실측). 게이트 후보: 런타임 키 전수를 lookup 하는 픽스처 + keyof 상호 대입 대조
+  (단, 트랜스포머 키는 팩토리 실행 후에만 런타임에 나타남 — 설계 필요).
+- **2 (확정) — IdentityTypeLambda 가 캐리어 모양으로 축소.** `Applicative.lookup('identity')
+  .of(1).map(...)` → TS2339 `map does not exist on IdentityCarrier<number>`(c2). 런타임은
+  진짜 `Identity` 인스턴스(instanceof 확인, map 동작). 수리안: `type` 을
+  `Identity<this["Target"]>` 로 — TS2526 회피는 이름 붙은 제네릭 참조라 유지된다(검증 필요).
+- **3 (확정) — raiseError 의 e 와 에러 슬롯 미연결.** `const x: E<number, string> =
+  raiseError('boom')` 이 TS 통과(c3), 런타임 값은 `Left("boom")` — 에러 채널이 string 인데
+  타입은 number 라 unsound. 수리안: `raiseError<E, ...>(e: E): Kind<F, In, E, Out1, A>`
+  (등록 인스턴스 either·task 둘 다 에러 채널이 Out2 슬롯).
+- **4 (확정) — 타입 클래스 생성자가 TS 에서 막힘.** `new Semigroup(...)`/`new Monoid(...)`
+  → TS2351(c4). 런타임은 동작하고 문서가 사용자 예제로 가르친다(ko·en 합계 26곳 실측).
+  의도된 은닉인지 선언 누락인지 소유자 판정 필요 — 문서와 충돌하므로 생성자 선언 추가를
+  권고.
+- **5 (확정) — review 의 Lens 거부가 타입에서 안 걸림.** `Optics.review(lens, 1)` 이 TS
+  통과(c5), 런타임은 `review: argument must be a Prism` 으로 던진다. 네 optic 이 같은
+  구조 타입이라 구조적 타이핑이 구분 못 함. 수리안: phantom brand — 생성자·compose 반환
+  타입까지 번지는 설계 작업이라 별도 회차 권고.
+- **경미 A (확정)** — types/index.d.ts 머리말이 "pure ESM 에서는 named value import 가 안
+  될 수 있다" 라고 아직 말함 — 0.2.2 에서 named export 공식 지원으로 낡음.
+- **경미 B (기록됨)** — docs 산문의 dimap 오기(Optics.md 5·internals.md 3, 영어판 동수)
+  는 직전 회차 덤 발견으로 이미 기록.
+- **완료조건** — 승인된 항목별로: 수리 전 빨강 픽스처 → 수리 후 초록, 전체 테스트 +
+  typecheck 초록, 게이트 신설 시 뮤테이션 확인.
+
 ## ✅ 닫힘 — 타입 선언 5건 수리 + 표면 전수 게이트 (2026-08-28)
 
 외부 재리뷰(ChatGPT) 후보 5 + 경미 1 을 **전부 실측 확정**했다. 소유자 승인(우선순위 1→5),

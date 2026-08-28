@@ -597,27 +597,27 @@ The four optics differ in which method of `P` they use.
 
 | optic | method used |
 | --- | --- |
-| `Iso` | `dimap` only |
+| `Iso` | `promap` only |
 | `Lens` | `first` (product) |
 | `Prism` | `left` (sum) |
 | `Traversal` | `wander` (traversal) |
 
 **`Tagged` has neither `first` nor `wander`**, and that alone is the
 constraint behind "Lens and Traversal can't be `review`ed." Conversely,
-**`Iso` uses only `dimap`, so it works with every `P`**: being both a Lens
+**`Iso` uses only `promap`, so it works with every `P`**: being both a Lens
 and a Prism, both `view` and `review` work on it. It demands the least, which
 is why it sits at the top of the optics hierarchy.
 
 `wander` delegates to `traverse` in the
-[Traversable](./Traversable.md) registry, and `dimap` delegates to `promap`
-in the [Profunctor](./Profunctor.md) registry.
+[Traversable](./Traversable.md) registry, and `promap` comes straight from
+the instance in the [Profunctor](./Profunctor.md) registry.
 
 ## Related type classes
 
 - [Lens](./Lens.md) - covers Lens alone, in depth. Includes 3 laws and
   practical examples.
 - [Profunctor](./Profunctor.md) - this is exactly the `P` an optic takes. It
-  uses a dictionary equipped with `dimap` plus `first` (product), `left`
+  uses a dictionary equipped with `promap` plus `first` (product), `left`
   (sum), and `wander` (traversal).
 - [Traversable](./Traversable.md) - `wander` delegates to this registry's
   `traverse`. The internal Applicative (Identity/Const) is used only for

@@ -74,13 +74,14 @@ export interface Chain<F extends TypeLambda> extends Apply<F> {
 export interface Monad<F extends TypeLambda> extends Applicative<F>, Chain<F> {}
 
 // ─── MonadError (명세 밖 — 실패를 일급으로) ─────────────────────────
-// 한계: 클래스 수준 제네릭은 인스턴스별 에러 채널 슬롯을 모른다. 대입 대상 등 문맥이
-// 있으면 슬롯이 추론되고, 없으면 raiseError 는 unknown 으로 남는다(never 오염 아님 —
-// 명시 지정으로 좁혀라). 키별 완전 타이핑은 docs/internals.md#monaderror 참조.
+// 한계: 클래스 수준 제네릭은 인스턴스별 에러 채널 슬롯을 모른다. raiseError 의 에러
+// 채널(Out2)은 인자 타입을 따르고(등록된 either·task 둘 다 그 슬롯이 에러 채널이다),
+// 값 슬롯은 문맥이 있으면 추론, 없으면 unknown 으로 남는다(never 오염 아님 — 명시
+// 지정으로 좁혀라). 키별 완전 타이핑은 docs/internals.md#monaderror 참조.
 export interface MonadError<F extends TypeLambda> extends Monad<F> {
-    raiseError<A = unknown, In = unknown, Out2 = unknown, Out1 = unknown>(
-        e: unknown
-    ): Kind<F, In, Out2, Out1, A>;
+    raiseError<E, A = unknown, In = unknown, Out1 = unknown>(
+        e: E
+    ): Kind<F, In, E, Out1, A>;
     handleError<In, Out2, Out1, A>(
         f: (e: unknown) => Kind<F, In, Out2, Out1, A>,
         fa: Kind<F, In, Out2, Out1, A>
@@ -354,12 +355,23 @@ export interface GroupInstances {}
 // and the `of` on an Applicative *instance*).
 
 export declare const Functor: {
+    // 직접 생성도 공개 API 다(docs/internals.md 의 new Functor 예제). 즉석 모양은
+    // TypeLambda 가 없으므로 느슨하게 — 정밀한 F 가 필요하면 타입 인자로 지정하라.
+    new <F extends TypeLambda = TypeLambda>(
+        map: (f: (a: any) => any, fa: any) => any,
+        type: string
+    ): Functor<F>;
     readonly lookup: <K extends keyof FunctorInstances>(
         name: K
     ) => Functor<FunctorInstances[K]>;
 };
 
 export declare const Apply: {
+    new <F extends TypeLambda = TypeLambda>(
+        functor: Functor<F>,
+        ap: (ff: any, fa: any) => any,
+        type: string
+    ): Apply<F>;
     readonly lookup: <K extends keyof ApplyInstances>(
         name: K
     ) => Apply<ApplyInstances[K]>;
@@ -505,12 +517,21 @@ export declare const Comonad: {
 };
 
 export declare const Semigroupoid: {
+    new <F extends TypeLambda = TypeLambda>(
+        compose: (bc: any, ab: any) => any,
+        type: string
+    ): Semigroupoid<F>;
     readonly lookup: <K extends keyof SemigroupoidInstances>(
         name: K
     ) => Semigroupoid<SemigroupoidInstances[K]>;
 };
 
 export declare const Category: {
+    new <F extends TypeLambda = TypeLambda>(
+        semigroupoid: Semigroupoid<F>,
+        id: () => any,
+        type: string
+    ): Category<F>;
     readonly lookup: <K extends keyof CategoryInstances>(
         name: K
     ) => Category<CategoryInstances[K]>;
@@ -523,6 +544,9 @@ export declare const Category: {
 // 여기 붙인다 — 인스턴스를 돌려주는 것은 전부 타입 클래스 쪽에 산다(lookup 과 같은 자리).
 
 export interface SetoidStatic {
+    // 런타임 클래스는 직접 생성이 공개 API 다(docs/Setoid.md 의 new Setoid 예제).
+    // registry 인자(내부 등록용)는 선언에서 뺀다 — 등록은 라이브러리 몫이다.
+    new <A>(equals: (a: A, b: A) => boolean, type: string): Setoid<A>;
     readonly lookup: <K extends keyof SetoidInstances>(
         name: K
     ) => Setoid<SetoidInstances[K]>;
@@ -558,6 +582,7 @@ export interface OrdStatic {
 export declare const Ord: OrdStatic;
 
 export interface SemigroupStatic {
+    new <A>(concat: (a: A, b: A) => A, type: string): Semigroup<A>;
     readonly lookup: <K extends keyof SemigroupInstances>(
         name: K
     ) => Semigroup<SemigroupInstances[K]>;
@@ -565,6 +590,7 @@ export interface SemigroupStatic {
 export declare const Semigroup: SemigroupStatic;
 
 export interface MonoidStatic {
+    new <A>(semigroup: Semigroup<A>, empty: () => A, type: string): Monoid<A>;
     readonly lookup: <K extends keyof MonoidInstances>(
         name: K
     ) => Monoid<MonoidInstances[K]>;
@@ -572,6 +598,7 @@ export interface MonoidStatic {
 export declare const Monoid: MonoidStatic;
 
 export declare const Group: {
+    new <A>(monoid: Monoid<A>, invert: (a: A) => A, type: string): Group<A>;
     readonly lookup: <K extends keyof GroupInstances>(
         name: K
     ) => Group<GroupInstances[K]>;

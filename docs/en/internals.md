@@ -444,9 +444,9 @@ reading, writing, and reconstruction all at once.
 
 | Injected P | Resulting operation | Methods required |
 | --- | --- | --- |
-| a function | `over` / `set` | `dimap` `first` `left` `wander` |
+| a function | `over` / `set` | `promap` `first` `left` `wander` |
 | `Forget<r>` | `view` / `preview` / `toList` / `foldMapOf` | same (accumulated via a monoid) |
-| `Tagged` | `review` | `dimap` `left` only |
+| `Tagged` | `review` | `promap` `left` only |
 
 The fact that `Tagged` has no `first` and no `wander` stands in for type
 safety: using `review` on a Lens or a Traversal throws a `TypeError` right
@@ -500,7 +500,7 @@ that's why there is a separate `Optics.compose`.
 
 ### Why `Iso` sits at the top of the optic hierarchy
 
-`Iso` uses only `dimap`. All three `P`s have `dimap`, so it works with
+`Iso` uses only `promap`. All three `P`s have `promap`, so it works with
 every operation: it is both a Lens and a Prism, so both `view` and `review`
 work on it.
 
@@ -1751,12 +1751,15 @@ lazily at fork time for Task (keeping Task.catchError's existing contract).
 
 A limit of the type declaration (2026-08-28): `MonadError` is generic at the
 class level, so the declaration does not know which slot holds a given
-instance's error channel. `raiseError('boom')` therefore infers its slots from
-context (such as an assignment target) and falls back to `unknown` without one.
-It used to fall back to `never`, which silently swallowed downstream use, and
-`handleError` rejected real values (`Either<string, number>`) outright. Full
-per-key typing (a declaration that knows each registered key's error channel)
-remains a separate candidate.
+instance's error channel. The current declaration narrows this in two ways:
+the error channel follows `raiseError`'s argument type (assigning
+`raiseError('boom')` to `Either<number, string>` is rejected; this holds
+because both registered instances, either and task, keep their error channel
+in that slot), and the value slot infers from context, falling back to
+`unknown` without one. Both used to fall back to `never`, which silently
+swallowed downstream use, and `handleError` rejected real values
+(`Either<string, number>`) outright. Full per-key typing (a declaration that
+knows each registered key's error channel) remains a separate candidate.
 
 ## Reducible — the class for folds with no empty case {#reducible}
 

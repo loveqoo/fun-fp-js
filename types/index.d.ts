@@ -8,15 +8,12 @@
  *        import fp from 'fun-fp-js';
  *        const m = fp.Maybe.Just(42);
  *
- *  2. Named type-only imports — for types that don't exist at runtime
- *     as standalone symbols:
+ *  2. Named imports — the runtime provides named exports with the same
+ *     roster as the default export (since 0.2.2), so both value and
+ *     type-only forms work:
  *
- *        import type { Maybe, Either, TypeLambda, Kind } from 'fun-fp-js';
- *
- *     Named *value* imports (e.g. `import { Maybe } from 'fun-fp-js'`)
- *     work under CommonJS/UMD interop but may not resolve in pure ESM
- *     environments where the runtime only exposes a default export.
- *     Use the default form there.
+ *        import { Maybe, pipe } from 'fun-fp-js';
+ *        import type { TypeLambda, Kind } from 'fun-fp-js';
  *
  * Builtin module augmentations (Array / Function on type-class registries
  * and concrete-type instance maps) are pulled in via the import below so

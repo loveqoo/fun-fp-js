@@ -574,22 +574,22 @@ Optic s a = P => P a a -> P s s
 
 | optic | 쓰는 메서드 |
 | --- | --- |
-| `Iso` | `dimap`만 |
+| `Iso` | `promap`만 |
 | `Lens` | `first` (곱) |
 | `Prism` | `left` (합) |
 | `Traversal` | `wander` (순회) |
 
 **`Tagged`에는 `first`와 `wander`가 없고**, 그것이 곧 "Lens와 Traversal은 `review`할 수
-없다"는 제약입니다. 반대로 **`Iso`는 `dimap`만 쓰므로 모든 `P`에서 동작합니다** — Lens이자
+없다"는 제약입니다. 반대로 **`Iso`는 `promap`만 쓰므로 모든 `P`에서 동작합니다** — Lens이자
 Prism이라 `view`도 `review`도 됩니다. 요구하는 것이 가장 적어 optic 계층의 최상단입니다.
 
-`wander`는 [Traversable](./Traversable.md) 레지스트리의 `traverse`에, `dimap`은
-[Profunctor](./Profunctor.md) 레지스트리의 `promap`에 위임합니다.
+`wander`는 [Traversable](./Traversable.md) 레지스트리의 `traverse`에 위임하고,
+`promap`은 [Profunctor](./Profunctor.md) 레지스트리의 인스턴스가 직접 제공합니다.
 
 ## 관련 타입 클래스
 
 - [Lens](./Lens.md) - Lens 하나만 자세히 다룹니다. 법칙 3개와 실용 예시 포함.
-- [Profunctor](./Profunctor.md) - optic이 받는 `P`가 바로 이것입니다. `dimap`에 더해
+- [Profunctor](./Profunctor.md) - optic이 받는 `P`가 바로 이것입니다. `promap`에 더해
   `first`(곱) · `left`(합) · `wander`(순회)를 갖춘 딕셔너리를 씁니다.
 - [Traversable](./Traversable.md) - `wander`가 이 레지스트리의 `traverse`에 위임합니다.
   내부 Applicative(Identity/Const)는 그 호출에만 쓰입니다.

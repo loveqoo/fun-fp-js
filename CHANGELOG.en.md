@@ -28,6 +28,18 @@ Currently empty.
   and the runtime died with a `SyntaxError` (external review finding, reproduced). The runtime
   now provides named exports with the same roster. The default export is unchanged, so existing
   code is unaffected.
+- A further pass removed the drift between the type declarations and the runtime
+  registry (third external re-review, each finding verified by measurement). 26 keys
+  that exist at runtime but were missing from the TS registries are now registered
+  (the function monad set, identity's Chain/Monad/Extend/Comonad, Store, the tuple
+  Bifunctor, object Filterable/Foldable, the tagged Choice, date/default Setoid/Ord,
+  and the three Kleisli compositions), and one ghost key that existed only in TS is
+  fixed (Contravariant's `function`; the runtime key is `predicate`). The identity
+  instance's return type no longer narrows to `{ value }`, which lost the `map`
+  surface; it is the real `Identity` again. `raiseError`'s error channel now follows
+  its argument type, so assigning to the wrong channel is rejected at compile time.
+  The eight direct constructions the docs teach (`new Semigroup(...)` and friends)
+  are declared. A registry-parity gate now compiles every runtime lookup key.
 - Five type declarations now match runtime facts (external re-review findings, each
   verified by measurement). New `fst`/`snd` declarations and value declarations for
   `Strong`/`Choice`/`Wander` (previously types only), plus six names including `Identity`

@@ -100,7 +100,8 @@ const s1: ChainRecStep<number, never> = ChainRec.next(42);
 const s2: ChainRecStep<never, string> = ChainRec.done("ok");
 
 // ── 5. Contravariant on Function (varies In slot) ────────────────────
-const cF = Contravariant.lookup("function");
+// 런타임 키는 'predicate' 다 — 'function' 은 TS 에만 있던 유령 키였다(재리뷰 3차 1번).
+const cF = Contravariant.lookup("predicate");
 type _5a = Expect<Equals<typeof cF, Contravariant<FunctionTypeLambda>>>;
 // A predicate on number, contramapped to a predicate on string-length
 declare const isPositive: (n: number) => boolean;

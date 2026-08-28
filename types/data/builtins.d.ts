@@ -10,6 +10,8 @@
 import type {
     ArrayTypeLambda,
     FunctionTypeLambda,
+    ObjectTypeLambda,
+    TupleTypeLambda,
 } from "../TypeLambdas";
 import type { Maybe } from "./Maybe";
 import type { IdentityTypeLambda } from "../TypeLambdas";
@@ -37,17 +39,33 @@ declare module "../TypeClasses" {
 }
 
 // ─── Function (HKT registrations) ────────────────────────────────────
-// Runtime: PredicateContravariant (contramap) + FunctionProfunctor (promap) +
-// FunctionSemigroupoid (compose) + FunctionCategory (id) + the optics trio
-// FunctionStrong/FunctionChoice/FunctionWander (first/left/wander).
+// Runtime: PredicateContravariant (contramap, 키는 'predicate') +
+// FunctionProfunctor (promap) + FunctionSemigroupoid (compose) +
+// FunctionCategory (id) + the optics trio FunctionStrong/FunctionChoice/
+// FunctionWander (first/left/wander) + 함수 모나드 셋(Functor…Monad — Reader
+// 와 같은 값을 바깥 포장 없이 쓴다. docs/internals.md#function-monad).
 declare module "../TypeClasses" {
-    interface ContravariantInstances { readonly function: FunctionTypeLambda }
+    interface FunctorInstances       { readonly function: FunctionTypeLambda }
+    interface ApplyInstances         { readonly function: FunctionTypeLambda }
+    interface ApplicativeInstances   { readonly function: FunctionTypeLambda }
+    interface ChainInstances         { readonly function: FunctionTypeLambda }
+    interface MonadInstances         { readonly function: FunctionTypeLambda }
+    interface ContravariantInstances { readonly predicate: FunctionTypeLambda }
     interface ProfunctorInstances    { readonly function: FunctionTypeLambda }
     interface StrongInstances        { readonly function: FunctionTypeLambda }
     interface ChoiceInstances        { readonly function: FunctionTypeLambda }
     interface WanderInstances        { readonly function: FunctionTypeLambda }
     interface SemigroupoidInstances  { readonly function: FunctionTypeLambda }
     interface CategoryInstances      { readonly function: FunctionTypeLambda }
+}
+
+// ─── Object / Tuple (HKT registrations) ──────────────────────────────
+// Runtime: ObjectFilterable(자기 소유 키만)·ObjectFoldable(값 접기),
+// TupleBifunctor(bimap 이 [첫째, 둘째] 를 함께 변환 — 실측 ['a',3] → ['a!',6]).
+declare module "../TypeClasses" {
+    interface FilterableInstances { readonly object: ObjectTypeLambda }
+    interface FoldableInstances   { readonly object: ObjectTypeLambda }
+    interface BifunctorInstances  { readonly tuple: TupleTypeLambda }
 }
 
 // ─── Concrete-type instance registrations ────────────────────────────
@@ -77,10 +95,15 @@ declare module "../TypeClasses" {
         readonly boolean: boolean;
         readonly number: number;
         readonly string: string;
+        readonly date: Date;
+        // default 는 원시값 전용이다 — 객체는 문자열로 뭉개져 거부한다(0.2.0 변경 기록).
+        readonly default: number | string | boolean | bigint;
     }
     interface OrdInstances {
         readonly number: number;
         readonly string: string;
+        readonly date: Date;
+        readonly default: number | string | boolean | bigint;
     }
     interface SemigroupInstances {
         readonly boolean: boolean;
@@ -117,4 +140,10 @@ declare module "../TypeClasses" {
     interface FoldableInstances     { readonly identity: IdentityTypeLambda }
     interface ReducibleInstances    { readonly identity: IdentityTypeLambda }
     interface ApplicativeInstances  { readonly identity: IdentityTypeLambda }
+    // identity 는 Chain/Monad 까지 오른다(트랜스포머의 안쪽 모나드 자격) —
+    // Extend/Comonad 는 값 하나짜리 컨테이너의 자명한 코모나드.
+    interface ChainInstances        { readonly identity: IdentityTypeLambda }
+    interface MonadInstances        { readonly identity: IdentityTypeLambda }
+    interface ExtendInstances       { readonly identity: IdentityTypeLambda }
+    interface ComonadInstances      { readonly identity: IdentityTypeLambda }
 }

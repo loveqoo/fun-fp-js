@@ -253,3 +253,13 @@ declare module "../TypeClasses" {
     interface TraversableInstances { readonly either: EitherTypeLambda }
     interface BifunctorInstances   { readonly either: EitherTypeLambda }
 }
+
+// ─── Kleisli (Semigroupoid / Category 'either') ──────────────────────
+// a => Either<e, b> 의 합성 — 에러 채널은 Out2 슬롯 그대로.
+export interface EitherKleisliTypeLambda extends TypeLambda {
+    readonly type: (a: this["In"]) => Either<this["Out2"], this["Target"]>;
+}
+declare module "../TypeClasses" {
+    interface SemigroupoidInstances { readonly either: EitherKleisliTypeLambda }
+    interface CategoryInstances     { readonly either: EitherKleisliTypeLambda }
+}
