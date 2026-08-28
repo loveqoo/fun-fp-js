@@ -76,6 +76,9 @@ import type {
     Bifunctor,
     Contravariant,
     Profunctor,
+    Strong,
+    Choice,
+    Wander,
     Apply,
     Applicative,
     Alt,
@@ -91,6 +94,7 @@ import type {
     Comonad,
     Traversable,
 } from "./TypeClasses";
+import type { Identity } from "./data/Identity";
 import type { Maybe } from "./data/Maybe";
 import type { Either } from "./data/Either";
 import type { Task } from "./data/Task";
@@ -119,6 +123,8 @@ import type {
     runCatch,
     constant,
     tuple,
+    fst,
+    snd,
     apply,
     unapply,
     unapply2,
@@ -169,6 +175,9 @@ declare const fp: {
     readonly Bifunctor: typeof Bifunctor;
     readonly Contravariant: typeof Contravariant;
     readonly Profunctor: typeof Profunctor;
+    readonly Strong: typeof Strong;
+    readonly Choice: typeof Choice;
+    readonly Wander: typeof Wander;
     readonly Apply: typeof Apply;
     readonly Applicative: typeof Applicative;
     readonly Alt: typeof Alt;
@@ -184,6 +193,7 @@ declare const fp: {
     readonly Comonad: typeof Comonad;
     readonly Traversable: typeof Traversable;
 
+    readonly Identity: typeof Identity;
     readonly Maybe: typeof Maybe;
     readonly Either: typeof Either;
     readonly Task: typeof Task;
@@ -215,6 +225,8 @@ declare const fp: {
     readonly runCatch: typeof runCatch;
     readonly constant: typeof constant;
     readonly tuple: typeof tuple;
+    readonly fst: typeof fst;
+    readonly snd: typeof snd;
     readonly apply: typeof apply;
     readonly unapply: typeof unapply;
     readonly unapply2: typeof unapply2;

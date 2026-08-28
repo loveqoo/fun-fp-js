@@ -144,7 +144,7 @@ What holds true at the current state:
 | Type classes | 29 (24 from Static Land + 5 outside the spec) |
 | Registered instances | 157 (sum of distinct instances per type class) |
 | Executed doc examples | 992 (968 of those lines are checked against a value) |
-| Test files | 55 |
+| Test files | 56 |
 | Package | 0.65MB, all four of ESM, CJS, min, and TypeScript declarations |
 
 ## License

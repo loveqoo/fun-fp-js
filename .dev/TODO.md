@@ -59,10 +59,25 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
-## ⬜ 열림 — 타입 선언 5건 수리 + 표면 전수 게이트 (2026-08-28 승인, 착수 전)
+## ✅ 닫힘 — 타입 선언 5건 수리 + 표면 전수 게이트 (2026-08-28)
 
 외부 재리뷰(ChatGPT) 후보 5 + 경미 1 을 **전부 실측 확정**했다. 소유자 승인(우선순위 1→5),
 컴팩션 후 착수. 전부 `types/` 선언 수리 — 런타임 무변경.
+
+- **검증(2026-08-28, 닫으며 기록)** — 수리 전 빨강 영수증: 기본형 6건 TS2339/TS2551,
+  named `fst`/`snd` TS2614 ×2 + `Strong`/`Choice`/`Wander` TS2693 ×3, traverse 3인자 호출
+  TS2554(Expected 1, got 3), `handleError` 에 `Either<string, number>` 전달 TS2322(never),
+  `raiseError` 무문맥 추론 `Either<never, never>`. 수리 후: 네 픽스처 전부 컴파일 통과,
+  무문맥 추론은 `Either<unknown, unknown>`(반쪽 수리 목표). 게이트 뮤테이션 2건 —
+  dist d.ts 에서 fst 선언 삭제 → 빨강(TS2614), left 방향 되돌리기 → 빨강(TS2322) — 둘 다
+  잡힘, 복원 후 재빌드 diff 는 Built 타임스탬프뿐. 전체 56/56 + typecheck 초록.
+- **부속 판정 2건(승인 범위 안 해석)** — ① Static 값 선언은 lookup 문이라 키가 필요:
+  런타임 실측(`Strong/Choice/Wander.lookup('function')` 실존) 근거로 builtins.d.ts 에
+  `function` 키 3건 등록. ② 전수 픽스처는 배열 리터럴 하나에 92개를 넣으면 TS2589
+  (재귀 한도) — 이름별 `void` 사용으로 우회.
+- **덤 발견(미수리, 소유자 판단 대기)** — `dimap` 오기가 docs 산문에도 있다:
+  docs/Optics.md 5곳·internals.md 3곳(영어판 동수). 런타임 profunctor 메서드는 `promap`
+  뿐(실측 grep — dimap 은 주석 1곳뿐). Lens.d.ts 만 승인 범위라 docs 는 손대지 않았다.
 
 - **1 (확정+확대)** — default fp 타입에서 6개 누락: `Strong`·`Choice`·`Wander`·`Identity`·
   `fst`·`snd`. `fst`/`snd` 는 utilities.d.ts 에 선언 자체가 없고, Strong/Choice/Wander 는

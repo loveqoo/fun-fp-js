@@ -9,6 +9,7 @@ import { writeFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import fp from '../index.js';
 import { test, assertEquals, logSection } from './utils.js';
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -52,4 +53,41 @@ test('배포 d.ts 가 nodenext 소비자 설정에서 오류 없이 컴파일된
         '--moduleResolution', 'nodenext', '--target', 'es2020', join(dir, 't.ts')],
         { encoding: 'utf8' });
     assertEquals(r.status, 0, `번들 d.ts 컴파일 실패\n${(r.stdout || '').split('\n').slice(0, 6).join('\n')}`);
+});
+
+// 표면 전수 게이트 — 런타임 공개 이름 전원을 값으로 import 해 선언과 대조한다.
+// 외부 리뷰(2026-08-28)가 여섯 이름의 선언 누락/타입 전용을 잡았다: fst·snd 는 선언이
+// 없었고 Strong·Choice·Wander 는 타입으로만 있었다. 픽스처를 런타임에서 생성하므로
+// 새 공개 이름이 선언 없이 추가되면 여기서 빨강이 난다.
+test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임 사실과 정합한다', () => {
+    const tsc = join(rootDir, 'node_modules', '.bin', 'tsc');
+    assertEquals(existsSync(tsc), true, 'tsc 가 없다 — devDependencies 를 설치하라');
+    const dir = mkdtempSync(join(tmpdir(), 'funfp-surface-'));
+    const names = Object.keys(fp).sort();
+    // 배열 리터럴 하나에 92개를 넣으면 TS2589(재귀 한도) — 이름별 void 로 값 사용만 만든다
+    writeFileSync(join(dir, 'roster.ts'),
+        `import { ${names.join(', ')} } from ${JSON.stringify(distEsm)};\n` +
+        names.map(n => `void ${n};`).join('\n') + '\n');
+    // 같은 리뷰의 선언↔런타임 불일치 세 건을 컴파일 주장으로 고정한다
+    writeFileSync(join(dir, 'claims.ts'),
+        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either } from ${JSON.stringify(distEsm)};\n` +
+        `import type { Either as E } from ${JSON.stringify(distEsm)};\n` +
+        // traverse 는 런타임처럼 3인자 — 커링 호출은 오류여야 한다
+        `const trav = Traversable.lookup('array');\n` +
+        `const app = Applicative.lookup('maybe');\n` +
+        `void trav.traverse(app, (n: number) => Maybe.Just(n + 1), [1, 2, 3]);\n` +
+        `// @ts-expect-error traverse 는 커링이 아니다\n` +
+        `void trav.traverse(app);\n` +
+        // Choice.left 는 Left 쪽 변환 (런타임 실측 Left(3) → Left(6))
+        `const l: (e: E<number, string>) => E<number, string> =\n` +
+        `    Choice.lookup('function').left((n: number) => n * 2);\n` +
+        `void l(Either.Left(3) as E<number, string>);\n` +
+        // raiseError 는 문맥에서 슬롯을 추론하고, handleError 는 실제 값을 받는다 (never 오염 금지)
+        `const ME = MonadError.lookup('either');\n` +
+        `const e: E<string, number> = ME.raiseError('boom');\n` +
+        `void ME.handleError(() => Either.Right(0) as unknown as E<string, number>, e);\n`);
+    const r = spawnSync(tsc, ['--noEmit', '--strict', '--module', 'nodenext',
+        '--moduleResolution', 'nodenext', '--target', 'es2020',
+        join(dir, 'roster.ts'), join(dir, 'claims.ts')], { encoding: 'utf8' });
+    assertEquals(r.status, 0, `표면 대조 실패 (${names.length}개 이름)\n${(r.stdout || '').split('\n').slice(0, 8).join('\n')}`);
 });

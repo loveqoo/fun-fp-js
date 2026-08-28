@@ -74,12 +74,17 @@ export interface Chain<F extends TypeLambda> extends Apply<F> {
 export interface Monad<F extends TypeLambda> extends Applicative<F>, Chain<F> {}
 
 // ─── MonadError (명세 밖 — 실패를 일급으로) ─────────────────────────
+// 한계: 클래스 수준 제네릭은 인스턴스별 에러 채널 슬롯을 모른다. 대입 대상 등 문맥이
+// 있으면 슬롯이 추론되고, 없으면 raiseError 는 unknown 으로 남는다(never 오염 아님 —
+// 명시 지정으로 좁혀라). 키별 완전 타이핑은 docs/internals.md#monaderror 참조.
 export interface MonadError<F extends TypeLambda> extends Monad<F> {
-    raiseError<A = never>(e: unknown): Kind<F, never, never, never, A>;
-    handleError<A>(
-        f: (e: unknown) => Kind<F, never, never, never, A>,
-        fa: Kind<F, never, never, never, A>
-    ): Kind<F, never, never, never, A>;
+    raiseError<A = unknown, In = unknown, Out2 = unknown, Out1 = unknown>(
+        e: unknown
+    ): Kind<F, In, Out2, Out1, A>;
+    handleError<In, Out2, Out1, A>(
+        f: (e: unknown) => Kind<F, In, Out2, Out1, A>,
+        fa: Kind<F, In, Out2, Out1, A>
+    ): Kind<F, In, Out2, Out1, A>;
 }
 
 // ─── Alt / Plus / Alternative ───────────────────────────────────────
@@ -125,11 +130,13 @@ export interface Reducible<F extends TypeLambda> extends Foldable<F> {
 // ─── Traversable ────────────────────────────────────────────────────
 // `G` is the Applicative being distributed through; `F` is the outer
 // Traversable structure. Slot threading is preserved on both.
+// Uncurried 3-arg like the runtime — `traverse(applicative)` alone is an error.
 export interface Traversable<F extends TypeLambda>
     extends Functor<F>, Foldable<F> {
-    readonly traverse: <G extends TypeLambda>(
-        applicative: Applicative<G>
-    ) => <A, B, GIn, GOut2, GOut1, FIn, FOut2, FOut1>(
+    readonly traverse: <
+        G extends TypeLambda, A, B, GIn, GOut2, GOut1, FIn, FOut2, FOut1
+    >(
+        applicative: Applicative<G>,
         f: (a: A) => Kind<G, GIn, GOut2, GOut1, B>,
         fa: Kind<F, FIn, FOut2, FOut1, A>
     ) => Kind<G, GIn, GOut2, GOut1, Kind<F, FIn, FOut2, FOut1, B>>;
@@ -179,9 +186,10 @@ export interface Strong<F extends TypeLambda> extends Profunctor<F> {
 }
 
 export interface Choice<F extends TypeLambda> extends Profunctor<F> {
+    // left transforms the Left slot (runtime: Left(3) → Left(6)); right the Right slot.
     readonly left: <In1, Out2, Out1, T1, C>(
         pab: Kind<F, In1, Out2, Out1, T1>
-    ) => Kind<F, Either<C, In1>, Out2, Out1, Either<C, T1>>;
+    ) => Kind<F, Either<In1, C>, Out2, Out1, Either<T1, C>>;
     readonly right: <In1, Out2, Out1, T1, C>(
         pab: Kind<F, In1, Out2, Out1, T1>
     ) => Kind<F, Either<C, In1>, Out2, Out1, Either<C, T1>>;
@@ -449,6 +457,24 @@ export declare const Profunctor: {
     readonly lookup: <K extends keyof ProfunctorInstances>(
         name: K
     ) => Profunctor<ProfunctorInstances[K]>;
+};
+
+export declare const Strong: {
+    readonly lookup: <K extends keyof StrongInstances>(
+        name: K
+    ) => Strong<StrongInstances[K]>;
+};
+
+export declare const Choice: {
+    readonly lookup: <K extends keyof ChoiceInstances>(
+        name: K
+    ) => Choice<ChoiceInstances[K]>;
+};
+
+export declare const Wander: {
+    readonly lookup: <K extends keyof WanderInstances>(
+        name: K
+    ) => Wander<WanderInstances[K]>;
 };
 
 export declare const Filterable: {

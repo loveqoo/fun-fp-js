@@ -7,7 +7,7 @@
  * use `Optics.compose`. Which P you inject decides the operation, so one definition
  * yields reading, writing and reverse construction.
  *
- *   Iso       exactly 1 target   reaches for `dimap` only — works with every P,
+ *   Iso       exactly 1 target   reaches for `promap` only — works with every P,
  *                                so it is both a Lens and a Prism
  *   Lens      exactly 1 target   reaches for `first`  (product)
  *   Prism     0 or 1 target      reaches for `left`   (sum)
@@ -22,14 +22,14 @@ import type { TraversableInstances, Monoid } from "./TypeClasses";
 
 /**
  * A Profunctor dictionary. Which one you inject decides the operation:
- *   function   → over/set        (needs dimap, first, left, wander)
+ *   function   → over/set        (needs promap, first, left, wander)
  *   Forget<r>  → view/preview/toList
- *   Tagged     → review          (has dimap and left only)
+ *   Tagged     → review          (has promap and left only)
  *
  * `Tagged` lacking `first`/`wander` is what stops `review` on a Lens or Traversal.
  */
 export interface Profunctor2 {
-    readonly dimap: (f: (s: any) => any, g: (b: any) => any, p: any) => any;
+    readonly promap: (f: (s: any) => any, g: (b: any) => any, p: any) => any;
     readonly first?: (p: any) => any;
     readonly left?: (p: any) => any;
     readonly wander?: (traverse: any, p: any) => any;

@@ -1749,6 +1749,15 @@ handler's return value gets checked follows the type: immediately for Either,
 lazily at fork time for Task (keeping Task.catchError's existing contract).
 2026-08-18.
 
+A limit of the type declaration (2026-08-28): `MonadError` is generic at the
+class level, so the declaration does not know which slot holds a given
+instance's error channel. `raiseError('boom')` therefore infers its slots from
+context (such as an assignment target) and falls back to `unknown` without one.
+It used to fall back to `never`, which silently swallowed downstream use, and
+`handleError` rejected real values (`Either<string, number>`) outright. Full
+per-key typing (a declaration that knows each registered key's error channel)
+remains a separate candidate.
+
 ## Reducible — the class for folds with no empty case {#reducible}
 
 `foldMap` requires a Monoid for one reason: the answer for when an empty

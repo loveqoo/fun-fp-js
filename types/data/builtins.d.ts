@@ -38,10 +38,14 @@ declare module "../TypeClasses" {
 
 // ─── Function (HKT registrations) ────────────────────────────────────
 // Runtime: PredicateContravariant (contramap) + FunctionProfunctor (promap) +
-// FunctionSemigroupoid (compose) + FunctionCategory (id).
+// FunctionSemigroupoid (compose) + FunctionCategory (id) + the optics trio
+// FunctionStrong/FunctionChoice/FunctionWander (first/left/wander).
 declare module "../TypeClasses" {
     interface ContravariantInstances { readonly function: FunctionTypeLambda }
     interface ProfunctorInstances    { readonly function: FunctionTypeLambda }
+    interface StrongInstances        { readonly function: FunctionTypeLambda }
+    interface ChoiceInstances        { readonly function: FunctionTypeLambda }
+    interface WanderInstances        { readonly function: FunctionTypeLambda }
     interface SemigroupoidInstances  { readonly function: FunctionTypeLambda }
     interface CategoryInstances      { readonly function: FunctionTypeLambda }
 }

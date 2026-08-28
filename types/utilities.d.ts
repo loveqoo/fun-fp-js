@@ -27,6 +27,9 @@ import type {
 export declare function identity<A>(x: A): A;
 export declare function constant<A>(x: A): () => A;
 export declare function tuple<T extends readonly unknown[]>(...args: T): T;
+// fst/snd: pair projections. Runtime accepts any array-like; typed for pairs.
+export declare function fst<A, B>(pair: readonly [A, B]): A;
+export declare function snd<A, B>(pair: readonly [A, B]): B;
 
 // ─── 2. Binary combinators ────────────────────────────────────────────
 export declare function compose2<A, B, C>(

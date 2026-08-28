@@ -1560,6 +1560,13 @@ Static Land 에 없는 클래스다(Strong/Choice/Wander 와 같은 지위). 세
 Monad 가 아니다. 핸들러 반환 검증의 시점은 타입을 따른다 — Either 는 즉시, Task 는
 게을러서 fork 시점(기존 Task.catchError 문안 유지). 2026-08-18.
 
+타입 선언의 한계(2026-08-28): `MonadError` 는 클래스 수준 제네릭이라, 인스턴스별
+에러 채널이 어느 슬롯인지 선언이 모른다. 그래서 `raiseError('boom')` 는 대입 대상
+같은 문맥이 있으면 슬롯이 추론되고, 없으면 `unknown` 으로 남는다 — 예전에는 `never`
+로 남아 하위 사용을 조용히 삼켰고, `handleError` 는 실제 값(`Either<string, number>`)
+자체를 거부했다. 키별 완전 타이핑(등록 키마다 에러 채널을 아는 선언)은 별건 후보로
+남겨 두었다.
+
 ## Reducible — 빈 경우가 없는 접기의 클래스 {#reducible}
 
 `foldMap` 이 Monoid 를 요구하는 이유는 하나다 — 빈 컨테이너가 들어왔을 때의 답

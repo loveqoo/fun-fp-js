@@ -28,6 +28,15 @@ Currently empty.
   and the runtime died with a `SyntaxError` (external review finding, reproduced). The runtime
   now provides named exports with the same roster. The default export is unchanged, so existing
   code is unaffected.
+- Five type declarations now match runtime facts (external re-review findings, each
+  verified by measurement). New `fst`/`snd` declarations and value declarations for
+  `Strong`/`Choice`/`Wander` (previously types only), plus six names including `Identity`
+  added to the default type; `Traversable.traverse` is 3-argument like the runtime (the
+  curried declaration was a runtime TypeError); the optics `dimap` typo is now `promap`;
+  `Choice.left` transforms the Left side (it was a copy of `right`); and `MonadError` no
+  longer poisons its slots with `never`, which had made `handleError` reject real values.
+  A full-surface gate in `tests/consumer.test.js` now imports all 92 public names as
+  values and compiles them.
 - The shipped type declarations compile under consumer configs without `skipLibCheck`. Our
   own check never compiled the d.ts bundle, so latent errors had piled up (TS2395 ×138 among
   four kinds). Fixed: export mismatches in declaration merging, interfaces closed with `};`,

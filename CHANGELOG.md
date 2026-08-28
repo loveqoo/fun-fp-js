@@ -27,6 +27,13 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일의 �
   하나였는데 타입 선언은 named export 를 약속해서, TypeScript 는 통과시키고 런타임이
   `SyntaxError` 로 죽었습니다(외부 리뷰 지적, 실측 재현). 런타임에 같은 명단의 named
   export 를 더했습니다. default 는 그대로라 기존 코드는 영향이 없습니다.
+- **타입 선언 다섯 곳을 런타임 사실에 맞췄습니다**(외부 재리뷰 지적, 전건 실측 확인).
+  `fst`/`snd` 선언 신설과 `Strong`/`Choice`/`Wander` 값 선언(전에는 타입으로만 존재),
+  default 타입에 `Identity` 포함 여섯 이름 추가; `Traversable.traverse` 를 런타임과 같은
+  3인자로(커링 선언은 런타임에서 TypeError 였습니다); optics 의 `dimap` 오기를 `promap`
+  으로; `Choice.left` 방향을 Left 쪽 변환으로(right 복붙 오류); `MonadError` 의 `never`
+  오염 제거 — `handleError` 가 실제 값을 거부하던 것이 풀립니다. 공개 이름 92개 전원을
+  값으로 import 해 컴파일하는 표면 전수 게이트가 `tests/consumer.test.js` 에 추가됐습니다.
 - **배포 타입 선언이 `skipLibCheck` 없는 소비자 설정에서도 컴파일됩니다.** 우리 검사가
   d.ts 자체를 본 적이 없어 번들에 잠복 오류가 쌓여 있었습니다(TS2395 ×138 등 넷 계열).
   선언 병합의 export 불일치, 인터페이스 닫는 `};`, 객체 리터럴 타입 안의 `this`, 중복
