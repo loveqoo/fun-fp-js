@@ -292,7 +292,7 @@ w2.run();
 the **Array Monoid** (`Writer.of`'s default). So running a law such as
 `chain(of, w)` against this registered instance on a Number-Monoid Writer
 **mixes two different Monoids and throws**. To use a different Monoid, you
-need an instance built with that Monoid — the same way `Const` needs one
+need an instance built with that Monoid, the same way `Const` needs one
 instance per Monoid.
 
 ```javascript

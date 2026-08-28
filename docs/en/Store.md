@@ -2,14 +2,14 @@
 
 > 한국어: [../Store.md](../Store.md)
 
-**A type that already knows the value at every position and only carries where it is looking — the dual of State**
+**A type that already knows the value at every position and only carries where it is looking (the dual of State)**
 
 ## Concept
 
 A Store is made of two things.
 
-- **lookup** — a function `S -> A` from a position to a value
-- **focus** — the position `S` currently being looked at
+- **lookup**: a function `S -> A` from a position to a value
+- **focus**: the position `S` currently being looked at
 
 The arrows point the opposite way from State. State **takes** a state and **produces** a value
 and a new state; Store **already knows** the value at every state and only carries which one it
@@ -17,8 +17,8 @@ is looking at. That is why State is a Monad and Store is a **Comonad**.
 
 | | Function it takes | What it does |
 | --- | --- | --- |
-| `chain` (Monad) | `a -> M b` — builds a context from one value | stitches the built contexts together |
-| `extend` (Comonad) | `W a -> b` — extracts one value from a whole context | extracts at every position and builds a new context |
+| `chain` (Monad) | `a -> M b`: builds a context from one value | stitches the built contexts together |
+| `extend` (Comonad) | `W a -> b`: extracts one value from a whole context | extracts at every position and builds a new context |
 
 ## The doors
 
@@ -60,7 +60,7 @@ console.log(Comonad.lookup('store').extract(w) === w.extract());   // true
 
 ## Game of Life — a local rule becomes the whole board
 
-The signature Store example. The rule knows **one cell and its neighbours** — no code anywhere
+The signature Store example. The rule knows **one cell and its neighbours**: no code anywhere
 knows the whole board. One `extend` is one generation of the entire board.
 
 ```javascript
@@ -103,7 +103,7 @@ console.log(show(next) === '.....\n#.#..\n.##..\n.#...\n.....');   // true   the
 
 `extend` computes nothing. **It only wraps the lookup in one more layer.** So when the rule
 reads several positions, as in the Game of Life, across generations a single read becomes a
-full recomputation of every previous generation — **the cost explodes exponentially.** A rule
+full recomputation of every previous generation. **The cost explodes exponentially.** A rule
 that reads only one position stays linear and needs no memo.
 
 ```javascript no-run problem case — slows down exponentially with the generation count
@@ -112,9 +112,9 @@ for (let g = 0; g < 20; g += 1) board = board.extend(conway);   // cannot run as
 ```
 
 `Store.memo(store, keyOf)` returns a new Store with a cache spliced into the lookup.
-**`keyOf` is required** — how a position becomes a cache key differs per position type, so the
+**`keyOf` is required**: how a position becomes a cache key differs per position type, so the
 library sets no default and delegates it to the caller. For numbers and strings the identity
-(`s => s`) is enough — with one boundary: the cache's Map treats `+0` and `-0` as the same key,
+(`s => s`) is enough, with one boundary: the cache's Map treats `+0` and `-0` as the same key,
 so a lookup that distinguishes them needs a keyOf that does too. For object positions such as
 coordinate arrays, supply a serializer.
 
@@ -131,14 +131,14 @@ const grid = Store.memo(new Store(([x, y]) => x + y, [0, 0]), ([x, y]) => x + ',
 console.log(grid.peek([1, 2]));   // 3
 ```
 
-**If two different positions get the same key, the later read receives the earlier value** —
-keeping keys distinct is the responsibility of whoever supplies `keyOf`. Why there is no
+**If two different positions get the same key, the later read receives the earlier value.**
+Keeping keys distinct is the responsibility of whoever supplies `keyOf`. Why there is no
 default is covered in [internals](./internals.md#store-perf).
 
 ## Related type classes
 
-- **[Comonad](./Comonad.md)** — the home of `extract`. Store is the fourth instance after
-  `Identity`, `Array`, `NonEmptyList` — and the first that is not a container.
-- **[State](./State.md)** — the dual. The side that **moves forward changing** the state.
-- **[Reader](./Reader.md)** — a lookup function with no focus is a Reader. Pick up one focus
+- **[Comonad](./Comonad.md)**: the home of `extract`. Store is the fourth instance after
+  `Identity`, `Array`, `NonEmptyList`, and the first that is not a container.
+- **[State](./State.md)**: the dual, the side that **moves forward changing** the state.
+- **[Reader](./Reader.md)**: a lookup function with no focus is a Reader. Pick up one focus
   and you have a Store.

@@ -95,7 +95,7 @@ it.run(pipeline()).then(r => {
 
 Wire up an interpreter that only records instead of executing, and you can inspect what
 a program would do, as data, before ever running it for real. This isn't a separate
-feature — it's just one use of swapping the interpreter.
+feature. It's just one use of swapping the interpreter.
 
 ```javascript
 const { Free } = FunFP;
@@ -117,7 +117,7 @@ plan.run(program).then(() => {
 ### Multiple apis in one program — `Free.interpreters`
 
 Even when each module declares its own vocabulary separately, programs can already mix
-them — every api's program is the same Free value, so `chain` simply links them
+them: every api's program is the same Free value, so `chain` simply links them
 together. Only execution is where things stop: an interpreter only knows its own
 vocabulary. `Free.interpreters` merges several interpreters into one. Each command
 looks at its own api's tag to pick the right registry, so commands with the same name
@@ -147,21 +147,21 @@ it.run(program).then(r => {
 The result of merging is itself an interpreter, so you can merge it again; and a
 command for an api that appears in none of the merged registries is rejected with the
 same message as a single interpreter would give (`no handler for '<name>'`). If some
-other api happens to use that same name, the message gets an added clause — meaning the
+other api happens to use that same name, the message gets an added clause, meaning the
 interpreter that owns that command simply isn't part of this merge.
 
 ### Cancelling a run — `start`
 
 `run` only returns the result, but `start` also hands back a handle for stopping the
 run partway through. Calling `cancel()` halts execution **at the next command
-boundary** — a handler already in flight is allowed to finish, but its result is
+boundary**: a handler already in flight is allowed to finish, but its result is
 discarded (and any pure step that would follow it never runs), and remaining commands
 never start. A cancelled run arrives as a rejection carrying the message
 `'Free.api.run: cancelled'` and a `cancelled === true` marker, so callers can
 distinguish a genuine failure from a cancellation by checking one field. Calling
 `cancel` on a run that has already finished does nothing, and a program that completes
 synchronously never has a window in which it can be cancelled. If a cancellation and an
-in-flight failure happen to overlap, **the failure arrives as-is** — cancellation only
+in-flight failure happen to overlap, **the failure arrives as-is**: cancellation only
 blocks what hasn't happened yet; it does not change a result that has already occurred.
 
 ```javascript
@@ -187,24 +187,24 @@ h.promise.then(
 
 Two cautions. If your own code manually constructs an error carrying `cancelled: true`,
 this distinction breaks down, so don't do that. And cancellation **does not itself
-interrupt an in-flight request** — that's the handler's job; if you need it, you wire a
+interrupt an in-flight request**: that's the handler's job; if you need it, you wire a
 handler's `AbortController` together with `cancel` yourself (it is not wired up
 automatically).
 
 ### Using it together with Reader, Writer, and State
 
 In a Free program, real side effects happen only inside the interpreter. But the pure
-computation that happens between effects still comes in three flavors — configuration
+computation that happens between effects still comes in three flavors: configuration
 injected from outside, state carried from step to step, and a log that only ever
 accumulates. [Reader](./Reader.md), [State](./State.md), and [Writer](./Writer.md)
 handle these three, respectively.
 
 | Need | Tool | Nature |
 | --- | --- | --- |
-| Inject config | [Reader](./Reader.md) | Pure — reads only |
-| Keep state | [State](./State.md) | Pure — reads, writes, and threads it through |
-| Accumulate a log | [Writer](./Writer.md) | Pure — only stacks up as a value |
-| Real side effects | Vocabulary commands + interpreter | The only impure spot — which is exactly why it's swappable |
+| Inject config | [Reader](./Reader.md) | Pure, reads only |
+| Keep state | [State](./State.md) | Pure, reads, writes, and threads it through |
+| Accumulate a log | [Writer](./Writer.md) | Pure, only stacks up as a value |
+| Real side effects | Vocabulary commands + interpreter | The only impure spot, which is exactly why it's swappable |
 
 The example below processes a single order. The program only describes looking up a
 price and charging for it; in the pure stretch where the looked-up price is already in
@@ -257,7 +257,7 @@ shop.run(buy(['book', 'pen'], { discount: 0.1 })).then(r => {
 });
 ```
 
-Change the config to `{ discount: 0.5 }` and the same program charges 6750 — because
+Change the config to `{ discount: 0.5 }` and the same program charges 6750, because
 the config lives outside the program. `exec` means the same thing for both State and
 Writer: it returns the computation's byproduct (the final state, the log).
 
@@ -267,11 +267,11 @@ Writer: it returns the computation's byproduct (the final state, the log).
 | --- | --- | --- |
 | Building `interpreter(handlers)` | Missing handler / a name not in the vocabulary (typo) | Throws immediately, naming the offender |
 | During `run` | A command from a different `Free.api` gets mixed in | Rejected with `no handler for '<name>'` |
-| During `run` | The handler throws / its Promise rejects | Rejected as-is — never swallowed |
+| During `run` | The handler throws / its Promise rejects | Rejected as-is, never swallowed |
 
 **Rejections leak through steps taken after an async boundary, too.** The first step
 turns whatever the `Promise` constructor throws into a rejection for you, but a step
-that follows after an async command finishes is on its own outside that — so the
+that follows after an async command finishes is on its own outside that, so the
 runner wraps each step separately. Without that wrapping, the exception would vanish
 somewhere no one can catch it.
 
@@ -290,7 +290,7 @@ it.run(api.step(1).chain(() => api.step(2)))
     .catch(e => console.log(e.message));   // 'blew up at the second step'
 ```
 
-A command name is safe even when it matches a prototype name like `toString` — the
+A command name is safe even when it matches a prototype name like `toString`: the
 vocabulary, command, and handler tables are all prototype-less objects and only look at
 their own properties.
 
@@ -307,7 +307,7 @@ it.run(api.hasOwnProperty()).then(v => console.log(v));   // 'H'
 The argument a handler receives is
 exactly what was passed at the call site (positional arguments). If you need to
 validate the shape of a return value, do it in a pure step of the program
-(`.map(v => …validate…)`) or inside the handler yourself — the library doesn't know what
+(`.map(v => …validate…)`) or inside the handler yourself: the library doesn't know what
 counts as valid, because that's up to each domain.
 
 ---
@@ -315,7 +315,7 @@ counts as valid, because that's up to each domain.
 ## Floor 3 — internals: Free itself
 
 From here on this is `Free.api`'s internal structure. None of it is needed to use
-`Free.api` — read it only if you want to know how it works underneath.
+`Free.api`: read it only if you want to know how it works underneath.
 
 ### Pure / Impure — Free's two constructors
 
@@ -400,18 +400,18 @@ console.log(Chain.lookup('free').chain(x => Free.pure(x * 2), Free.pure(5)).valu
 | Form | Level | What |
 | --- | --- | --- |
 | `Free.api(...names)` | Floor 1 | Declares a vocabulary → a bundle of command functions + `interpreter(handlers)` → `{ run, start }` |
-| `interpreter.start(program)` | Floor 2 | A cancellation handle `{ promise, cancel }` — takes effect at the next command boundary |
-| `Free.interpreters(...its)` | Floor 2 | Merges several apis' interpreters into one — routes by tag |
+| `interpreter.start(program)` | Floor 2 | A cancellation handle `{ promise, cancel }`, takes effect at the next command boundary |
+| `Free.interpreters(...its)` | Floor 2 | Merges several apis' interpreters into one, routes by tag |
 | `Free.pipeK(...fns)` / `composeK` | Floor 2 | Kleisli step composition |
 | `Free.of` / `Free.pure(value)` | Floor 3 | Constructs `Pure` |
 | `Free.liftF(functor)` / `Free.impure(functor)` | Floor 3 | Command functor → `Impure` |
 | `Free.isPure` / `isImpure` / `isFree` | Floor 3 | Variant checks |
-| `Free.runSync/runAsync/runWithTask(runner)(p)` | Floor 3 | Runners — all curried |
+| `Free.runSync/runAsync/runWithTask(runner)(p)` | Floor 3 | Runners, all curried |
 | `Free.Thunk` · `trampoline` | Floor 3 | Stack-safe recursion |
 
 ## Related type classes
 
-- **[Functor](./Functor.md)** — `map` · **[Chain](./Monad.md)** — `chain` ·
-  **[Monad](./Monad.md)** — the full sequencing pattern
+- **[Functor](./Functor.md)**: `map` · **[Chain](./Monad.md)**: `chain` ·
+  **[Monad](./Monad.md)**: the full sequencing pattern
 - All four transformers are built on top of Free. Start with the
   [StateT](./StateT.md) document.

@@ -145,7 +145,7 @@ const avg = stats.sum / stats.count;  // 3
 
 ## foldMap — combining fold and map
 
-`foldMap` is a powerful function that combines Foldable and Monoid to **map and then reduce**
+`foldMap` combines Foldable and Monoid to **map and then reduce**
 in a single pass.
 
 ### Concept

@@ -6,7 +6,7 @@
 
 ## Concept
 
-Ord extends Setoid so that two values can also be compared by **order**. Once you define "less than or equal," every comparison — "<", ">", "==" — follows from it.
+Ord extends Setoid so that two values can also be compared by **order**. Once you define "less than or equal," every comparison ("<", ">", "==") follows from it.
 
 ## Laws
 

@@ -70,7 +70,7 @@ console.log(JSON.stringify(RT.runReaderT({ db: 'test' }, profile(7)).value));
 ```
 
 None of the intermediate functions have an `env` parameter. The same program can run
-as-is against a different environment — **this is exactly what makes testing easier.**
+as-is against a different environment. **This is exactly what makes testing easier.**
 
 ## M is passed as a string
 
@@ -122,7 +122,7 @@ console.log(JSON.stringify(result.value));   // {"name":"prod","port":8080}
 
 ### asks - pull out just part of the environment
 
-In most cases `asks` beats `ask` — extracting only what you need narrows the
+In most cases `asks` beats `ask`: extracting only what you need narrows the
 dependency.
 
 ```javascript
@@ -155,7 +155,7 @@ console.log(JSON.stringify(RT.runReaderT({ x: 1 }, program).value));
 // {"outer":1,"inner":999,"after":1}
 ```
 
-The key point is that `after` is `1` again — `local`'s effect only holds inside it.
+The key point is that `after` is `1` again: `local`'s effect only holds inside it.
 
 `local` validates its arguments.
 
@@ -224,7 +224,7 @@ console.log(RT.runReaderT(test, endpoint('/users')).value);
 // http://localhost:3000/users?token=FAKE
 ```
 
-The program itself was never touched — only the environment changed. This is exactly
+The program itself was never touched; only the environment changed. This is exactly
 how you'd inject a mock in tests.
 
 ### 2. An asynchronous storage layer (ReaderT + Task)

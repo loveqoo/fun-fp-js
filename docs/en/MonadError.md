@@ -2,12 +2,12 @@
 
 > 한국어: [../MonadError.md](../MonadError.md)
 
-**A monad that treats failure as a first-class citizen** — a contract for
+**A monad that treats failure as a first-class citizen**: a contract for
 making failures (`raiseError`) and catching them (`handleError`)
 
 ## Concept
 
-The door to handling failure is scattered across types — `Task` has
+The door to handling failure is scattered across types: `Task` has
 `rejected` and `catchError`, `Either` has `Left`. MonadError gives that
 scattered door a single name. Then a combinator that handles failure can be
 written once and applied to any type.
@@ -55,10 +55,10 @@ runs them. Failed Task samples had already been part of the Functor and Monad
 laws, but **this is the first class to pin the failure-making and
 failure-catching operations themselves down with dedicated laws.**
 
-1. Catching means the handler wins — `handleError(f, raiseError(e)) ≡ f(e)`
-2. Success is unchanged — `handleError(f, of(a)) ≡ of(a)`
-3. Nesting/re-failure — if the handler fails again, the outer handler catches it
-4. Failure short-circuits the chain — `chain(f, raiseError(e)) ≡ raiseError(e)`
+1. Catching means the handler wins: `handleError(f, raiseError(e)) ≡ f(e)`
+2. Success is unchanged: `handleError(f, of(a)) ≡ of(a)`
+3. Nesting/re-failure: if the handler fails again, the outer handler catches it
+4. Failure short-circuits the chain: `chain(f, raiseError(e)) ≡ raiseError(e)`
 
 ## Note — the point of validation differs by type
 
@@ -76,19 +76,19 @@ catch (e) { thrown = e.message; }
 console.log(thrown);   // MonadError.handleError: handler must return an Either
 ```
 
-And do not confuse this with `Either.catch` — that door **wraps a
+And do not confuse this with `Either.catch`: that door **wraps a
 throwing function** and turns it into an Either; the door for recovering
 from a failure is `handleError`.
 
 ## Types not registered
 
-- **Maybe** — `Nothing` carries no error value, so the law "the handler
+- **Maybe**: `Nothing` carries no error value, so the law "the handler
   receives an error" becomes vacuous. Choosing an alternative to failure is
   already `Alt.alt`'s job.
-- **Validation** — it is not a Monad (it accumulates failures), and the
+- **Validation**: it is not a Monad (it accumulates failures), and the
   recovery semantics do not line up.
 
 ## Related type classes
 
-- [Monad](./Monad.md) — MonadError inherits Monad (including `of`/`chain`/`map`)
-- [Alt](./Alt.md) — choosing an alternative on failure without a value (Maybe's place)
+- [Monad](./Monad.md): MonadError inherits Monad (including `of`/`chain`/`map`)
+- [Alt](./Alt.md): choosing an alternative on failure without a value (Maybe's place)

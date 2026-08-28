@@ -20,7 +20,7 @@ Writer    w a = [a, w]
 WriterT M w a = M [a, w]
 ```
 
-How the log gets combined is decided by a [Monoid](./Monoid.md) — the default is
+How the log gets combined is decided by a [Monoid](./Monoid.md). The default is
 Array (concatenation), and it can be swapped for String (string concatenation) or
 Number (summation).
 
@@ -94,7 +94,7 @@ try {
 
 ## Construction
 
-`WriterT(M, monoid)` — omit `monoid` and it defaults to Array.
+`WriterT(M, monoid)`: omit `monoid` and it defaults to Array.
 
 ```javascript
 const { WriterT, Monoid } = FunFP;
@@ -155,7 +155,7 @@ const [value, log] = WT.runWriterT(WT.of(42)).value;
 console.log(value, JSON.stringify(log));   // 42 []
 ```
 
-`log` is an empty array — the Monoid's identity element.
+`log` is an empty array, the Monoid's identity element.
 
 ### runWriterT - running it
 
@@ -182,7 +182,7 @@ console.log(JSON.stringify(WT.runWriterT(WT.lift(Maybe.Just(9))).value));   // [
 console.log(WT.runWriterT(WT.lift(Maybe.Nothing())).isNothing());           // true
 ```
 
-With `Nothing`, **the accumulated log disappears along with it** — a failure in `M`
+With `Nothing`, **the accumulated log disappears along with it.** A failure in `M`
 swallows the whole thing.
 
 ```javascript

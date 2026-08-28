@@ -7,7 +7,7 @@
 ## Concept
 
 `Functor.map` applies an ordinary function to a boxed value. When the function itself is inside
-a box, `map` cannot reach it — that is where `Apply.ap` comes in.
+a box, `map` cannot reach it, and that is where `Apply.ap` comes in.
 
 Use it to apply a multi-argument function across several boxes. Chain one `ap` per box and a
 curried function picks up its arguments one at a time.
@@ -55,7 +55,7 @@ console.log(user.value);   // { name: 'kim', age: 40 }
 ### Validation — `ap` collects failures
 
 This is where `ap` parts ways with `chain`. `chain` needs the previous result to continue, but
-the two boxes of `ap` know nothing about each other — so **failures from both sides can be
+the two boxes of `ap` know nothing about each other, so **failures from both sides can be
 collected.** [Validation](./Validation.md) is built on that property.
 
 ```javascript
@@ -70,6 +70,6 @@ console.log(A.ap(A.map(n => a => ({ n, a }), name), age).errors);
 
 ## Related type classes
 
-- **[Functor](./Functor.md)** — the parent. `map` applies an ordinary function.
-- **[Applicative](./Applicative.md)** — the child. Adds `of`, which puts a value into the box.
-- **[Chain](./Chain.md)** — when the next step depends on the previous result, go this way.
+- **[Functor](./Functor.md)**: the parent. `map` applies an ordinary function.
+- **[Applicative](./Applicative.md)**: the child. Adds `of`, which puts a value into the box.
+- **[Chain](./Chain.md)**: when the next step depends on the previous result, go this way.

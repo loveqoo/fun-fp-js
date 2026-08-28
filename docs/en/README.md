@@ -112,7 +112,7 @@ console.log(thrown);   // 'TypeError'
 - [Bifunctor](./Bifunctor.md) - two-way transformation
 - [Contravariant](./Contravariant.md) - transforming the input
 - [Profunctor](./Profunctor.md) - transforming input and output
-- [Strong · Choice · Wander](./Profunctor.md#extensions) - the three profunctor extensions (**outside the spec** — used by optics)
+- [Strong · Choice · Wander](./Profunctor.md#extensions) - the three profunctor extensions (**outside the spec**, used by optics)
 
 ### Stage 8: recursion and Comonad
 
@@ -170,7 +170,7 @@ functions, `x` is a value.
 | `flip(f)` / `flip2(f)` | reverses argument order | `flip2(sub)(3, 10)` → `7` |
 | `flipCurried(f)` / `flipCurried2(f)` | reverses a curried function's argument order | |
 | `apply(f)(argsArray)` | spreads an array into arguments | `apply(add2)([1, 2])` → `3` |
-| `unapply(f)` / `unapply2(f)` | the reverse of `apply` — collects arguments into an array | |
+| `unapply(f)` / `unapply2(f)` | the reverse of `apply`, collects arguments into an array | |
 | `tuple(...xs)` | arguments into an array | `tuple(1, 2)` → `[1, 2]` |
 | `fst(pair)` / `snd(pair)` | first/second of a 2-tuple | `fst([1, 2])` → `1` |
 | `predicate(f)` / `predicateN(f)` | forces a boolean result; a throw becomes `false` | safe predicates |
@@ -182,7 +182,7 @@ functions, `x` is a value.
 | `useOrLift(check)(lift)(x)` | passes it through if the check holds, lifts it otherwise | normalization |
 | `trampoline(program)` | runs a Free program without a stack | [Free](./Free.md) |
 | `transducer` | the transformation-pipeline module | [Transducer](./Transducer.md) |
-| `setStrictMode(bool)` | the type-check mode — **fixed at instance-construction time** | [internals](./internals.md#chain-return) |
+| `setStrictMode(bool)` | the type-check mode: **fixed at instance-construction time** | [internals](./internals.md#chain-return) |
 | `setTapErrorHandler(f)` | receiver for exceptions `tap` swallowed | |
 
 ```javascript
@@ -286,7 +286,7 @@ Maybe.of('array')                  // Just('array') — not a lookup
 ```
 
 If one name did both jobs, that last line would read as a lookup. That's why type classes have
-no `of` — `Functor.of` is `undefined`.
+no `of`: `Functor.of` is `undefined`.
 
 ### `Algebra.all(type)` — every instance of one type, at once
 
@@ -322,14 +322,14 @@ Three things to remember.
 |                                                     |                                                                                                                                       |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Keys are **lowercase only**                          | `Algebra.all('Array')` throws. So does a type that doesn't exist.                                                                       |
-| Grouped by **`.type`**, not by registry key           | `Semigroupoid`'s `maybe` instance is Kleisli composition, so its `.type` is `'function'` — it's in `all('function')`, not `all('maybe')`. |
+| Grouped by **`.type`**, not by registry key           | `Semigroupoid`'s `maybe` instance is Kleisli composition, so its `.type` is `'function'`; it's in `all('function')`, not `all('maybe')`. |
 | **"what exists right now", not an enumeration**       | A parameterized instance only appears once its factory has been called. After `Semigroup.Maybe('number')`, `all('maybe')` gains `maybeNumberSemigroup` too. |
 
 
 Key order is not a promise. Destructure by name instead. `Object.keys` order follows registration
 order, so it shifts whenever the library's internals change.
 
-The third item isn't a limitation — it's a deliberate design choice. The inner type space isn't
+The third item isn't a limitation. It's a deliberate design choice. The inner type space isn't
 closed, so it can't be enumerated in advance. `maybe(maybe(maybe(array)))` works too. **The inner
 type is just a hint; if you need to name one exactly, `lookup` it by its assembled key.**
 
@@ -350,15 +350,15 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | `<type>`              | That type's default instance                                  | `array`, `maybe`, `number`                 | Each type's own doc                |
 | `<ClassName>`         | A different instance of the same type                         | `NumberProductMonoid`, `NumberMaxMonoid`   | [Monoid](./Monoid.md)              |
 | `maybe(<inner>)`      | A Maybe with its inner Semigroup specified                    | `maybe(first)`, `maybe(array)`             | [Monoid](./Monoid.md)              |
-| `<type>`              | **A Monoid derived from `Plus`** — only when that type has no Monoid of its own | `Monoid.lookup('maybe')`                   | [Plus](./Plus.md)                 |
+| `<type>`              | **A Monoid derived from `Plus`**: only when that type has no Monoid of its own | `Monoid.lookup('maybe')`                   | [Plus](./Plus.md)                 |
 | `const(<monoid>)`     | **The `Const` Applicative**                                    | `const(array)`, `const(number)`            | [Applicative](./Applicative.md)   |
-| `writer(<monoid>)`    | **The `Writer` monad using that Monoid** — the registered `writer` is Array-only | `writer(number)`, `writer(string)`         | [Writer](./Writer.md)             |
+| `writer(<monoid>)`    | **The `Writer` monad using that Monoid**: the registered `writer` is Array-only | `writer(number)`, `writer(string)`         | [Writer](./Writer.md)             |
 | `statet(<M>)` etc.    | Transformer                                                    | `statet(maybe)`, `eithert(task)`           | [StateT](./StateT.md)             |
 
 
 `identity` is also registered in nine places (`Functor`/`Apply`/`Applicative`/`Chain`/`Monad`/
 `Extend`/`Comonad`/`Foldable`/`Reducible`). Pass it to `traverse` for "just mapping"
-([Applicative](./Applicative.md)), or use it as a transformer's inner monad —
+([Applicative](./Applicative.md)), or use it as a transformer's inner monad:
 `ReaderT('identity')` produces the same value as a bare `Reader`.
 
 ### Data types
@@ -374,9 +374,9 @@ console.log(inner.concat(Maybe.Just(1), Maybe.Just(2)));  // Just { value: 3, _t
 | Reader                            | Dependency injection                   | Propagating an environment                                                  |
 | Writer                            | Logging / output tracking              | A value + output (Monoid)                                                   |
 | State                             | State transformation                   | Threading state                                                             |
-| [Store](./Store.md)             | Position-based lookup, local→global extension | A (lookup, focus) pair — the dual of State, a Comonad                     |
-| Free                              | Separating program from execution, stack-safe recursion | Pure / Impure — [Free.api](./Free.md#api) lets you use Free without knowing it |
-| [Optics](./Optics.md)            | Partial access and update              | The `Optics` module — Lens/Prism/Traversal, `compose`, `foldMapOf`          |
+| [Store](./Store.md)             | Position-based lookup, local→global extension | A (lookup, focus) pair, the dual of State, a Comonad                     |
+| Free                              | Separating program from execution, stack-safe recursion | Pure / Impure. [Free.api](./Free.md#api) lets you use Free without knowing it |
+| [Optics](./Optics.md)            | Partial access and update              | The `Optics` module: Lens/Prism/Traversal, `compose`, `foldMapOf`          |
 | [Lens](./Lens.md)                | Immutable updates on nested data       | A getter/setter pair, targets exactly one value                            |
 | [Transducer](./Transducer.md)    | Transformation pipelines               | No intermediate arrays, early exit                                         |
 | [Actor](./Actor.md)              | Sequential message processing          | A queue + state, `send` is a Task                                          |
@@ -484,7 +484,7 @@ pipe(
 
 ## To modify `index.js`
 
-[Internals](./internals.md) — the `.type` convention, `'any'`, deriving `Plus`→`Monoid`,
+[Internals](./internals.md): the `.type` convention, `'any'`, deriving `Plus`→`Monoid`,
 Identity/Const, where the validation layers peel off, the Profunctor encoding behind optics,
 transformer registration, the registry's write path. Source comments carry only a one-line
 hint, and the rationale is collected over there.

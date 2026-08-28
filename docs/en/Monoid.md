@@ -74,7 +74,7 @@ num.concat(5, num.empty());  // 5
 
 `Plus` has **both** `alt` (a combining operation) and `zero` (an identity element). That is, it is structurally a Monoid, just without the tag. So a registered `Plus` also gets a paired `Semigroup`/`Monoid` **under that same type name**.
 
-**Except when that type already has a `Monoid`.** `Array` is one such case — its `alt` is exactly `concat`, so the derived instance would behave identically to `ArrayMonoid`, making it redundant.
+**Except when that type already has a `Monoid`.** `Array` is one such case: its `alt` is exactly `concat`, so the derived instance would behave identically to `ArrayMonoid`, making it redundant.
 
 ```javascript
 const { Monoid, Semigroup, Maybe } = FunFP;
@@ -118,7 +118,7 @@ try {
 }
 ```
 
-**Use `maybe(first)` for "merge," and `maybe` for "pick."** The presence of the parentheses marks the difference — parentheses mean an inner comparator was supplied, and that is what lets the inside be opened. `Optics.preview` uses the latter, because it must be able to answer "the first one" regardless of what the array holds.
+**Use `maybe(first)` for "merge," and `maybe` for "pick."** The presence of the parentheses marks the difference: parentheses mean an inner comparator was supplied, and that is what lets the inside be opened. `Optics.preview` uses the latter, because it must be able to answer "the first one" regardless of what the array holds.
 
 Either way, the identity element is `Nothing`.
 

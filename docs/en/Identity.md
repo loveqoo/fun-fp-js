@@ -6,13 +6,13 @@
 
 ## Concept
 
-`Identity` only wraps a value and does nothing else — no failure, no delay, no accumulation.
+`Identity` only wraps a value and does nothing else: no failure, no delay, no accumulation.
 A "box that does nothing" exists so it can **fill a slot that demands a box, without adding an
 effect.** There are two such slots.
 
-- **Pass it to `traverse` and you get "just mapping"** — optics' `over` takes this road.
+- **Pass it to `traverse` and you get "just mapping"**: optics' `over` takes this road.
   Rationale: [internals](./internals.md#identity-const).
-- **Put it in a transformer's inner-monad slot and the plain monad comes back out** —
+- **Put it in a transformer's inner-monad slot and the plain monad comes back out**:
   `ReaderT('identity')` produces the same value as a bare `Reader`.
 
 ## The doors
@@ -30,7 +30,7 @@ console.log(Identity.isIdentity(w));                     // true
 console.log(Identity.isIdentity({ value: 7 }));          // false   a shape-only copy is told apart
 ```
 
-It is registered in nine places — `Functor`, `Apply`, `Applicative`, `Chain`, `Monad`,
+It is registered in nine places: `Functor`, `Apply`, `Applicative`, `Chain`, `Monad`,
 `Extend`, `Comonad`, `Foldable`, `Reducible`.
 
 ## As a transformer's inner monad
@@ -60,6 +60,6 @@ console.log(String(T.traverse(I, n => I.of(n * 10), Maybe.Just(4)).value));   //
 
 ## Related docs
 
-- **[Applicative](./Applicative.md)** — the "Applicative you hand to `traverse`" viewpoint.
-- **[Comonad](./Comonad.md)** — one of the four instances carrying `extract`.
-- **[ReaderT](./ReaderT.md)** and the other transformers — the inner-monad slot.
+- **[Applicative](./Applicative.md)**: the "Applicative you hand to `traverse`" viewpoint.
+- **[Comonad](./Comonad.md)**: one of the four instances carrying `extract`.
+- **[ReaderT](./ReaderT.md)** and the other transformers: the inner-monad slot.

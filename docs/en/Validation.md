@@ -96,7 +96,7 @@ Validation.map(x => x * 2, Validation.Valid(5)); // Valid(10)
 
 ### ap - accumulating errors (Apply)
 
-**The heart of Validation**: `ap` merges Invalid values with a Monoid.
+The heart of Validation: `ap` merges Invalid values with a Monoid.
 
 ```javascript
 const { Apply } = FunFP;
@@ -175,7 +175,7 @@ Validation.fold(
 
 ### Validation.collect - combining several validators
 
-**The most practical method**: it combines validator functions that return Either into a single function that collects all their errors.
+The most practical method: it combines validator functions that return Either into a single function that collects all their errors.
 
 ```javascript
 const { Either } = FunFP;

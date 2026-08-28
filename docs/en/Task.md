@@ -8,7 +8,7 @@
 
 Task represents a **deferred asynchronous computation**. It resembles a Promise, but:
 
-- **Deferred execution**: it does not run when created — only when `fork` is called
+- **Deferred execution**: it does not run when created, only when `fork` is called
 - **Purity**: forking the same Task multiple times runs it fresh every time
 - **Cancellability**: dropping the reference is enough (before it has started running)
 
@@ -262,7 +262,7 @@ fetchIfNeeded({1: 'cached'}, 1).fork(console.error, console.log);  // cached
 
 ## Task.lift - exception-safe function lifting
 
-`Task.lift` lifts a multi-argument function into the Task context, and **automatically turns thrown exceptions into `Task.rejected`**.
+`Task.lift` lifts a multi-argument function into the Task context, and automatically turns thrown exceptions into `Task.rejected`.
 
 ### Basic usage
 
@@ -294,7 +294,7 @@ taskSum3(Task.of(10), Task.of(20), Task.of(12)).fork(
 
 ### Exception safety - the key feature
 
-The most important thing `Task.lift` does is **catch exceptions thrown inside the function and turn them into `Task.rejected` automatically**.
+`Task.lift` catches exceptions thrown inside the function and turns them into `Task.rejected` automatically.
 
 ```javascript
 const { Task } = FunFP;

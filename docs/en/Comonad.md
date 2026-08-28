@@ -44,7 +44,7 @@ extend(f, extend(g, w)) ≡ extend(w => f(extend(g, w)), w)
 
 ## Example
 
-There are four registered instances — `identity`, `array`, `nonemptylist` and `store`.
+There are four registered instances: `identity`, `array`, `nonemptylist` and `store`.
 Pull them out with `lookup`. `store` is the first that is not a container ([Store](./Store.md)).
 
 ```javascript
@@ -62,20 +62,18 @@ console.log(AC.extract([1, 2, 3]));                  // 1
 console.log(AC.extend(xs => xs.length, [1, 2, 3]));  // [3, 2, 1] — the remaining length at each position
 ```
 
-> **Note — `Array` is a `Comonad` only when non-empty.** `extract([])` has no
+> **Note: `Array` is a `Comonad` only when non-empty.** `extract([])` has no
 > value to pull out, so it is `undefined` (mathematically too, the array
 > comonad holds only for NonEmptyArray). The empty array falls outside this
-> instance's domain —
-> reasoning: [`internals.md#array-comonad`](./internals.md#array-comonad).
+> instance's domain. Reasoning:
+> [`internals.md#array-comonad`](./internals.md#array-comonad).
 
 ## Practical use
 
-Comonad is useful in situations like:
-
-- **Cellular automata**: each cell looks at its neighbors to decide its next state
-- **Image processing**: filters based on the context around a pixel
-- **Spreadsheets**: cells referencing other cells
-- **Games**: a character sensing its surrounding environment
+Comonad shows up in cellular automata, where each cell looks at its neighbors
+to decide its next state; in image processing, where filters use the context
+around a pixel; in spreadsheets, where cells reference other cells; and in
+games, where a character senses its surrounding environment.
 
 ## Relationship
 

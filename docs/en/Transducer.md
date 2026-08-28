@@ -19,7 +19,7 @@ operation on a reducer," you can assemble the transformation stages **independen
 any collection**. Once assembly is done, you traverse the data exactly once, via
 `transduce`.
 
-The transducer in fun-fp-js works on anything with a `Symbol.iterator` — arrays, Sets,
+The transducer in fun-fp-js works on anything with a `Symbol.iterator`: arrays, Sets,
 Maps, strings, and generators are all included.
 
 ## Why Transducer?
@@ -58,7 +58,7 @@ console.log(transducer.transduce(xf, push, [], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
 // [12, 14, 16]
 ```
 
-The moment `take(3)` is satisfied, traversal **stops** — the remaining elements are
+The moment `take(3)` is satisfied, traversal **stops**: the remaining elements are
 never touched at all.
 
 ## Creation
@@ -95,7 +95,7 @@ transducer.transduce(transducer.map(x => x * 2), push, [], [1, 2, 3]);
 // [2, 4, 6]
 ```
 
-Swap the reducer and the shape of the result changes — no need to collect into an
+Swap the reducer and the shape of the result changes, with no need to collect into an
 array.
 
 ```javascript
@@ -112,7 +112,7 @@ console.log(transducer.transduce(transducer.map(x => x * 2), sum, 0, [1, 2, 3, 4
 
 The reducer-and-initial-value slot in `transduce` is, most of the time, "collect it
 into an array." `into` reduces those two arguments down to a **single vessel to hold
-the result** — the library looks at the vessel's type and derives the reducer for you.
+the result**: the library looks at the vessel's type and derives the reducer for you.
 
 ```javascript
 const { transducer, compose } = FunFP;
@@ -133,7 +133,7 @@ console.log(transducer.into({}, transducer.map(x => [x, x * 10]), [1, 2]));   //
 ```
 
 The vessel's existing contents are preserved, and the original vessel is left
-unmodified. This follows Clojure's `into` semantics — Ramda's `R.into` discards the
+unmodified. This follows Clojure's `into` semantics. Ramda's `R.into` discards the
 vessel's contents and looks only at its type, so it differs from this one.
 
 ```javascript
@@ -261,7 +261,7 @@ console.log(transducer.transduce(mapThenFilter, push, [], [1, 2, 3, 4, 5]));
 
 ## Caution: take is stateful
 
-`transducer.take(n)` itself **is safe to reuse** — a fresh counter is created every
+`transducer.take(n)` itself **is safe to reuse**: a fresh counter is created every
 time `transduce` runs. But **a reducer you've already applied it to** holds onto that
 counter, and by a second run it is already spent.
 

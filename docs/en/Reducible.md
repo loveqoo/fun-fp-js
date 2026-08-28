@@ -11,7 +11,7 @@ folding rule it accepts not a Monoid but a **Semigroup** alone.
 
 ## Concept
 
-There is exactly one reason `foldMap` requires a Monoid — **the answer when
+There is exactly one reason `foldMap` requires a Monoid: **the answer when
 an empty container comes in.** That answer is the identity element. But a
 container that can never be empty has no such question to begin with. The
 first element serves as the seed, so all that folding needs is "how to
@@ -19,7 +19,7 @@ combine."
 
 That is how a Semigroup with no identity element gets into folding.
 `first` (keep the earlier one) and `last` (keep the later one) are such
-rules — neither can produce an identity element, so neither could get into
+rules: neither can produce an identity element, so neither could get into
 `foldMap`.
 
 ```javascript
@@ -73,7 +73,7 @@ console.log(R.reduceMap(Monoid.lookup('array'), x => [x], NonEmptyList.make(3, 9
 | Key | Carrier | Why it qualifies |
 | --- | --- | --- |
 | `nonemptylist` | [NonEmptyList](./NonEmptyList.md) | Its head slot guarantees the structure is never empty |
-| `identity` | Identity | It always holds exactly one value — the limiting case of "cannot be empty" |
+| `identity` | Identity | It always holds exactly one value, the limiting case of "cannot be empty" |
 
 ```javascript
 const { Reducible, Semigroup, Identity } = FunFP;
@@ -90,7 +90,7 @@ the Semigroup is never called.
 ## What's missing is the point
 
 `Array` and `Maybe` are not here. **They can be empty, so they structurally do
-not qualify** — `[]` and `Nothing` have no "first element." That absence is
+not qualify.** `[]` and `Nothing` have no "first element." That absence is
 what the class means, and so registration is blocked for them.
 
 ```javascript
@@ -106,13 +106,13 @@ catch (e) { console.log(e.message); }   // Reducible.lookup: unsupported key may
 ## Laws
 
 The law gate checks both registered instances every time. The reference value
-is **the element list collected by the inherited `Foldable.reduce`** — folding
+is **the element list collected by the inherited `Foldable.reduce`**: folding
 the same container two ways and getting a mismatch turns the gate red.
 
 | Law | What it pins down |
 | --- | --- |
 | Element preservation | `reduceMap(array Semigroup, x => [x], u)` equals the list collected by `reduce` |
-| `reduceLeft` consistency | Matches folding from the left with the first element as seed — checked with a non-commutative operation, so a wrong direction shows up as a mismatch |
+| `reduceLeft` consistency | Matches folding from the left with the first element as seed, checked with a non-commutative operation, so a wrong direction shows up as a mismatch |
 | `first` / `last` | Each yields the first element and the last element respectively |
 
 ```javascript

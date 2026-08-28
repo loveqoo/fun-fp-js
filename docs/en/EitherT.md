@@ -11,7 +11,7 @@
 ## Concept
 
 [Either](./Either.md) splits success and failure as `Right | Left`. But if you need
-to **find out whether it failed asynchronously**, Either alone isn't enough — you
+to **find out whether it failed asynchronously**, Either alone isn't enough. You
 end up with `Task<Either<E, A>>`, and you have to peel off both layers every time.
 
 EitherT handles those two layers as one.
@@ -21,7 +21,7 @@ Either    e a = Left e | Right a
 EitherT M e a = M (Either e a)
 ```
 
-The most common combination is **`EitherT('task')`** — a computation that is both
+The most common combination is **`EitherT('task')`**: a computation that is both
 asynchronous and can fail, which describes most API calls.
 
 ## Why EitherT?
@@ -118,7 +118,7 @@ const result = ET.runEitherT(ET.of(42));
 console.log(result.value.isRight(), result.value.value);   // true 42
 ```
 
-What comes out is the two-layer structure as-is — an `Either` inside `M` (Maybe).
+What comes out is the two-layer structure as-is: an `Either` inside `M` (Maybe).
 
 ### throwError - failure
 
@@ -166,7 +166,7 @@ console.log(result.value.isRight(), result.value.value);
 // true 'default (cause: network error)'
 ```
 
-The handler can also fail again — a pattern for translating the error and rethrowing.
+The handler can also fail again, a pattern for translating the error and rethrowing.
 
 ```javascript
 const { EitherT } = FunFP;

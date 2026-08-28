@@ -7,7 +7,9 @@
 
 The fun comes from composition results never veering off from what you expect. The types and
 operations this library provides are built to obey mathematical laws, and tests verify those
-laws. Types that keep the laws behave lawfully when combined, so you don't have to test every
+laws to the extent the carrier allows them. Where a carrier itself cannot keep a law exactly
+(floating-point addition and associativity, for one), we say so in the docs instead of hiding it
+([internals](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/internals.md#number-sum)). Types that keep the laws behave lawfully when combined, so you don't have to test every
 combination by hand. The first taste of this is right below: three functions that check name,
 email, and age are chained together, and the combined check collects every failing field's error
 and returns them all at once.
@@ -16,7 +18,7 @@ and returns them all at once.
 npm install fun-fp-js
 ```
 
-The package ships `dist/` (ESM, CJS, min, type declarations) and the READMEs — source and tests
+The package ships `dist/` (ESM, CJS, min, type declarations) and the READMEs. Source and tests
 live in the repository.
 
 ## A taste — collecting errors all at once
@@ -75,7 +77,7 @@ console.log(user.address.city);                               // 'Seoul'  the or
 | fp-ts | 4.52 MB | 0 |
 
 *(The other rows are the npm registry's `dist.unpackedSize`, measured 2026-08-14. Our own row
-was re-measured 2026-08-28 with `npm pack --dry-run` — 8 files, unpackedSize 0.65MB, 0.15MB
+was re-measured 2026-08-28 with `npm pack --dry-run`: 8 files, unpackedSize 0.65MB, 0.15MB
 compressed.)*
 
 As the table shows, `sanctuary` is smaller than us. But it drags along 7 packages with it.
@@ -88,17 +90,17 @@ Zero dependencies also means vulnerability notices only ever come from our own p
 
 | | |
 | --- | --- |
-| Type classes | All 24 from Static Land — `Setoid` `Ord` `Monoid` `Functor` `Monad` `Traversable` … |
+| Type classes | All 24 from Static Land: `Setoid` `Ord` `Monoid` `Functor` `Monad` `Traversable` … |
 | 5 outside the spec | `MonadError` makes failure first-class · `Reducible` folds with no empty case · `Strong` `Choice` `Wander` used by optics |
 | Data types | `Maybe` `Either` `Task` `Validation` `NonEmptyList` `Identity` `Reader` `Writer` `State` `Store` `Free` `Actor` |
-| optics | `Lens` `Prism` `Iso` `Traversal` — a profunctor encoding, so everything composes |
+| optics | `Lens` `Prism` `Iso` `Traversal`, a profunctor encoding, so everything composes |
 | Transformers | `StateT` `EitherT` `ReaderT` `WriterT` |
 | Free ergonomics | `Free.api` declares a vocabulary · `Free.interpreters` composes interpreters · `start` gives cooperative cancellation |
 | Combinators | `compose` `pipe` `pipeWhile` `curry` `flip` `converge` `transducer` … |
 
 Both ESM and CommonJS, with TypeScript declarations included. The syntax ceiling is **ES2018**.
 
-**Static Land compatible** — every type class follows the Static Land interface (static methods,
+**Static Land compatible**: every type class follows the Static Land interface (static methods,
 argument order matching the spec). They're class instances, but the methods don't rely on `this`,
 so you can pull them out as plain dictionaries. **One deviation**: `compose` on `Semigroupoid`
 and `Category` follows convention (right-to-left, the same direction as `fp.compose`) rather than
@@ -112,24 +114,24 @@ need the spec's direction, use `pipe`. Rationale:
 comment against the actual output.** If a value drifts, the tests and the npm publish stop. This README's examples
 are in that count too.
 
-The limits are noted too — the comparison only looks at lines carrying an expected-value comment
+The limits are noted too: the comparison only looks at lines carrying an expected-value comment
 (currently 964 lines). The 136 blocks without a comment run but aren't checked against a value
 (the 408 blocks with no output at all are outside the comparison).
 And normalization strips quotes, so it can't tell `'1'` apart from `1`. Any claim that needs that
 distinction is carried by a dedicated test instead.
 
-The 592 relative links and anchors between docs inside the repository are checked too — within that scope, none of them 404 when clicked (external URLs are outside the gate).
+The 592 relative links and anchors between docs inside the repository are checked too: within that scope, none of them 404 when clicked (external URLs are outside the gate).
 
-- [Guide](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/README.md) — learning order and per-type docs
-- [Internals](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/internals.md) — for anyone modifying `index.js`
+- [Guide](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/README.md): learning order and per-type docs
+- [Internals](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/internals.md): for anyone modifying `index.js`
 - [Changelog](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md)
 
 ## Status — `0.2.x`
 
 **During `0.x` the public API may still change.** Every change is recorded with its version in
-the [CHANGELOG](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md) — the breaking changes since `0.1.0` are listed under `0.2.0`.
+the [CHANGELOG](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md), where the breaking changes since `0.1.0` are listed under `0.2.0`.
 
-Correctness is held by adversarial review (Codex — ten full audits of `index.js`, plus a review
+Correctness is held by adversarial review (Codex: ten full audits of `index.js`, plus a review
 for every change since) and by gates verified with mutation testing. Notable fixes: laws for
 `ChainRec`, `Traversable`, and `Wander` are verified, and defects where **failures silently
 disappeared** in `Task`, `Actor`, the transformers, and the `Free` runner are fixed.
@@ -145,7 +147,7 @@ What holds true at the current state:
 | Registered instances | 157 (sum of distinct instances per type class) |
 | Executed doc examples | 990 (964 of those lines are checked against a value) |
 | Test files | 55 |
-| Package | 0.65MB — all four of ESM, CJS, min, and TypeScript declarations |
+| Package | 0.65MB, all four of ESM, CJS, min, and TypeScript declarations |
 
 ## License
 

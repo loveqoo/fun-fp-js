@@ -2,18 +2,18 @@
 
 > 한국어: [../NonEmptyList.md](../NonEmptyList.md)
 
-**A list that cannot be empty** — non-emptiness is guaranteed not by a check but by structure (the head slot)
+**A list that cannot be empty**: non-emptiness is guaranteed not by a check but by structure (the head slot)
 
 ## Concept
 
 An array can always be empty, and that possibility splits its operations in two: pulling out the
 first element needs a `Maybe` wrapper, folding needs "the answer for the empty case" (a Monoid's
 identity), and `extract` (Comonad) hands back `undefined` on an empty array. NonEmptyList has the
-head slot (`head`) as part of its structure — the type guarantees at least one value exists, so you
+head slot (`head`) as part of its structure: the type guarantees at least one value exists, so you
 never have to pay that cost again.
 
 The only door through which an empty array can enter is `fromArray`, and it's the only place a
-`Maybe` comes out — check once at the boundary, and there's no need to check again inside.
+`Maybe` comes out. Check once at the boundary, and there's no need to check again inside.
 
 ```javascript
 const { NonEmptyList } = FunFP;
@@ -33,9 +33,9 @@ console.log(NonEmptyList.fromArray([]).isNothing());    // true
 `foldMap` requires a Monoid (an associative rule with an identity element) to have an answer for
 the empty list. That's why the `first` (keep the earlier one) and `last` (keep the later one)
 Semigroups, which have no possible identity, can't be used with `foldMap`. NonEmptyList folds
-**with only a Semigroup**, since head serves as the seed — that door is `reduceMap` (transform, then
+**with only a Semigroup**, since head serves as the seed: that door is `reduceMap` (transform, then
 combine) and `reduceLeft` (from the left, with no initial value). The owner of this fold is the
-**[Reducible](./Reducible.md)** type class (`Reducible.lookup('nonemptylist')` — it shares the same
+**[Reducible](./Reducible.md)** type class (`Reducible.lookup('nonemptylist')`, which shares the same
 contract as Identity). The static `NonEmptyList.reduceLeft/reduceMap` entries below delegate to
 that instance.
 
@@ -61,7 +61,7 @@ console.log(NonEmptyList.reduceLeft((a, b) => a + b, nel));   // 16
 
 Functor, Apply, Applicative, Chain, ChainRec, Monad, Semigroup, Alt, Foldable, **Reducible**,
 Traversable, Extend, and Comonad are all registered (`lookup('nonemptylist')`). Notably `extract`
-(Comonad) has no empty case, so it's a **total function that always returns a value** — the array
+(Comonad) has no empty case, so it's a **total function that always returns a value**. The array
 Comonad's `extract([]) === undefined` gap doesn't exist for this type.
 
 ```javascript
@@ -72,7 +72,7 @@ console.log(Functor.lookup('nonemptylist').map(x => x * 2, NonEmptyList.make(1, 
 // [ 2, 4 ]
 ```
 
-**Monoid, Plus, Alternative, and Filterable are deliberately absent** — both the identity element
+**Monoid, Plus, Alternative, and Filterable are deliberately absent**: both the identity element
 and `zero` would have to be "the empty list", and filtering can empty a list out. This absence is
 the whole reason this type exists: "a Semigroup but not a Monoid" gets registered not as two
 abstract instances but as a tangible data type, in the form of `first`/`last`. If you want to
@@ -80,14 +80,14 @@ filter, going out through `toArray` is the honest path.
 
 ## When to use it, and when not to
 
-- **Where an array plus an if is the right fit** — cases checked once inside a single function and
+- **Where an array plus an if is the right fit**: cases checked once inside a single function and
   done. `if (arr.length === 0) return;` is as simple as it gets, and switching to NonEmptyList
   wouldn't improve anything.
-- **Where NonEmptyList is the right fit** — when the condition "there's at least one" has to
-  **travel across several functions**. Pass an array around and every receiving function repeats
+- **Where NonEmptyList is the right fit**: when the condition "there's at least one" has to
+  travel across several functions. Pass an array around and every receiving function repeats
   the same worry about an empty one; pass a NonEmptyList around and that worry ends once, where the
-  list is first created (`fromArray`). It's not a tool that removes the check — it's a tool that
-  **reduces a check made many times to one**.
+  list is first created (`fromArray`). This doesn't remove the check: it reduces a check made
+  many times down to one.
 
 ```javascript
 const { NonEmptyList, Maybe } = FunFP;
@@ -107,6 +107,6 @@ console.log(Maybe.fold(() => 'no candidates', report, NonEmptyList.fromArray([])
 
 ## See also
 
-- [Semigroup](./Semigroup.md) — the combining rule `reduceMap` takes (no identity element needed)
-- [Monoid](./Monoid.md) — the contrast with what `foldMap` requires
-- [Maybe](./Maybe.md) — comes out only at the boundary (`fromArray`)
+- [Semigroup](./Semigroup.md): the combining rule `reduceMap` takes (no identity element needed)
+- [Monoid](./Monoid.md): the contrast with what `foldMap` requires
+- [Maybe](./Maybe.md): comes out only at the boundary (`fromArray`)

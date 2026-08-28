@@ -92,14 +92,14 @@ console.log(Wander.lookup('function') instanceof Strong);  // true
 | Key | Profunctor | Strong | Choice | Wander | Where it is used |
 | --- | :-: | :-: | :-: | :-: | --- |
 | `function` | O | O | O | O | optics' `over` / `set` |
-| `forget(<monoid key>)` | O | O | O | O | optics' `view` / `preview` / `toList` — built with `Wander.Forget(monoid)` |
+| `forget(<monoid key>)` | O | O | O | O | optics' `view` / `preview` / `toList`, built with `Wander.Forget(monoid)` |
 | `tagged` | · | · | O | · | optics' `review` |
 
 `tagged` sits only under `Choice` because it **genuinely lacks `first` and
 `wander`**, and that absence is exactly what "a Lens or a Traversal cannot be
 `review`ed" means.
 
-`forget` is the opposite case — since it has `promap`, it **must also sit
+`forget` is the opposite case: since it has `promap`, it **must also sit
 under `Profunctor`.** For a while that layer alone stood empty, and nowhere
 recorded why. `Forget` is a subordinate concept of `Profunctor` (owner's
 ruling, 2026-08-15), and the registry now has to say so.

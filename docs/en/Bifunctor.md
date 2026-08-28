@@ -65,7 +65,7 @@ bimap(
 
 ### Tuple — must have exactly two elements
 
-A tuple is not a distinct JavaScript type — it is an **array of length 2**.
+A tuple is not a distinct JavaScript type: it is an **array of length 2**.
 So `.type` honestly stays `'Array'`, and "is it two?" is checked by the
 instance itself.
 
@@ -81,7 +81,7 @@ catch (e) { console.log(e.message); }   // 'Bifunctor.bimap: tuple must have exa
 ```
 
 **This check stays alive even in loose mode** (verified). What loose mode lets
-go of is type checking — and getting `[NaN, NaN]` out of an empty array is not
+go of is type checking, and getting `[NaN, NaN]` out of an empty array is not
 a type problem, it is a **bug**.
 
 ## Practical examples

@@ -137,7 +137,7 @@ filter(x => x > 0, Maybe.Nothing()); // Nothing
 They have a filtering operation, but they are **not registered in the registry.**
 `Either` has no value that plays the role of "empty", so it cannot satisfy the
 annihilation law (filtering everything out must always give the same result).
-The same holds for `Task` — a rejected `Task` carries an error. The reasoning
+The same holds for `Task`: a rejected `Task` carries an error. The reasoning
 is in [internals.md](./internals.md#filterable).
 
 Instead of `Filterable.lookup`, use the function **the type itself carries.**

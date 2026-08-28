@@ -2,10 +2,10 @@
 
 > 한국어: [../internals.md](../internals.md)
 
-**This document is for people editing `index.js`.** How to *use* the library
+This document is for people editing `index.js`. How to *use* the library
 lives in the [README](./README.md) and each type's document.
 
-The examples here are also run by `npm test` — **if the explanation drifts from the
+The examples here are also run by `npm test`, so **if the explanation drifts from the
 code, the build goes red.** Source comments carry only a one-line hint; the
 reasoning gathers here.
 
@@ -13,8 +13,8 @@ reasoning gathers here.
 
 ## Where does a constrained instance get built? {#constrained-instances}
 
-There is no `Semigroup.lookup('maybe')`. `Maybe`'s `Semigroup` only exists **when
-the inner type also has a `Semigroup`**.
+There is no `Semigroup.lookup('maybe')`. `Maybe`'s `Semigroup` only exists when
+the inner type also has a `Semigroup`.
 
 ```
 instance Semigroup a => Semigroup (Maybe a)
@@ -22,7 +22,7 @@ instance Semigroup a => Semigroup (Maybe a)
 ```
 
 Haskell resolves this constraint at compile time. There is no compiler here, so
-**the constraint comes in as an argument** — that is the factory.
+the constraint comes in as an argument: that is the factory.
 
 ```javascript
 Semigroup.lookup('maybe')      // none — the constraint was never resolved
@@ -41,13 +41,13 @@ Semigroup.lookup('maybe(array)')  // also works, once the factory has been calle
 
 Two grounds.
 
-**One — it returns the same thing `lookup` returns.** Data types produce values
+One: it returns the same thing `lookup` returns. Data types produce values
 (`Maybe.of`) and type classes produce instances (`Semigroup.lookup`). A factory
 produces an instance, so it belongs on the type class side. This line is what
 [`tests/registry-api.test.js`](../../tests/registry-api.test.js) enforced from the
 start.
 
-**Two — the name reads in type order.**
+Two: the name reads in type order.
 
 ```
 Semigroup.Maybe('array')   →  Semigroup < Maybe < Array > >     correct
@@ -60,21 +60,21 @@ instance)`.
 ### The rule used to be two rules (fixed 2026-08-14)
 
 Six instances lived under `Maybe.Semigroup`, five under `Setoid.Array`, side by
-side. At 5:6 neither side could be called the exception, and **no gate was
-watching this.** 138 spots were renamed to merge them into one, and the gate was
+side. At 5:6 neither side could be called the exception, and no gate was
+watching this. 138 spots were renamed to merge them into one, and the gate was
 added to `registry-api` (it catches all three planted mutations).
 
 Something else surfaced along the way: `Semigroup.Either`'s type declaration took
-**one argument** while the runtime required **two**. Written in TypeScript it
-passed; run it and it threw. The declaration was fixed to match the runtime —
+one argument while the runtime required two. Written in TypeScript it
+passed; run it and it threw. The declaration was fixed to match the runtime:
 `Either` concats both the Left and Right channels, so two is correct.
 
 
 ## `.type` — the type an instance operates on {#type}
 
-Every instance inherits `Algebra` and carries a `.type`. It is **the type of the
-value the instance's operations take as arguments**, and it must be the
-**canonical tag** that `types.of()` returns.
+Every instance inherits `Algebra` and carries a `.type`. It is the type of the
+value the instance's operations take as arguments, and it must be the
+canonical tag that `types.of()` returns.
 
 ```javascript
 const { Setoid, Functor, Semigroupoid } = FunFP;
@@ -84,28 +84,28 @@ console.log(Functor.lookup('array').type);      // 'Array'
 console.log(Semigroupoid.lookup('maybe').type); // 'function'  Kleisli composition, so the argument is a function
 ```
 
-The last line is the trap. **The registry key and `.type` are not the same
-thing.** It was fetched with the key `maybe`, but what `compose(f, g)` takes is a
-**function** of shape `a -> Maybe b`.
+The last line is the trap. The registry key and `.type` are not the same
+thing. It was fetched with the key `maybe`, but what `compose(f, g)` takes is a
+function of shape `a -> Maybe b`.
 
 ### Case sensitivity is safe only conditionally
 
 There are two check paths, and only one has a fallback.
 
-Most checks go through `types.check(val, type)`, and **that path has a
-case-insensitive fallback** — writing `'date'` still passes. But there are three
-places that compare `.type` **literally**, and the three disagree on what happens
+Most checks go through `types.check(val, type)`, and that path has a
+case-insensitive fallback: writing `'date'` still passes. But there are three
+places that compare `.type` literally, and the three disagree on what happens
 when it mismatches.
 
 | Site | Comparison | On mismatch |
 | --- | --- | --- |
 | `Apply.ap` | `types.equals(fs, values, instance.type)` | **throws** |
 | `Alt.alt` | `types.equals(a, b, instance.type)` | **throws** |
-| `unwrapIfSameType` | `instance.type !== source.type` | **silently leaves the wrapper on** — the value is still correct |
+| `unwrapIfSameType` | `instance.type !== source.type` | **silently leaves the wrapper on**, the value is still correct |
 
 Seeing only the first two and concluding "my instance never goes through
 `Apply`/`Alt`, so lowercase is safe" is wrong. The third is called by
-`Monoid`/`Apply`/`Applicative`/`Alt`/`Plus` **constructors**, so it applies far
+`Monoid`/`Apply`/`Applicative`/`Alt`/`Plus` constructors, so it applies far
 more broadly.
 
 ```javascript
@@ -121,18 +121,18 @@ console.log(build('Object', 'Object'));  // true   same tag, so it unwraps
 console.log(build('object', 'Object'));  // false  even a case-only mismatch keeps the wrapper
 ```
 
-**The third case does not create a bug** — an extra check layer just stays on;
+The third case does not create a bug: an extra check layer just stays on;
 the value and the errors come out the same either way. That is exactly why it is
 more dangerous: the first two announce the problem by throwing, this one says
 nothing at all.
 
 For a type with no `Apply`/`Alt` instance, writing the tag lowercase does not
-**throw**. On 2026-08-13 four instances were found in exactly that state —
+**throw**. On 2026-08-13 four instances were found in exactly that state:
 `DateSetoid`/`DateOrd` (`'date'`) and `ObjectFilterable`/`ObjectFoldable`
-(`'object'`) — landmines that would go off the moment `Apply` or `Alt` was added
+(`'object'`), landmines that would go off the moment `Apply` or `Alt` was added
 for that type.
 
-`tests/algebra-type.test.js` enforces two things for every registered instance —
+`tests/algebra-type.test.js` enforces two things for every registered instance:
 ① does the tag actually pass through `Apply.ap` ② does it match the naming
 prefix/exception table.
 
@@ -152,7 +152,7 @@ catch (e) { console.log(e.message); }  // 'Filterable.filter: arguments must be 
 `first`/`last` are `(a, b) => a` · `(a, b) => b`, so they do not care about the
 value's type. Their `.type` is therefore `'any'`, and `types.check` always lets
 them through. **The check that "both arguments must be the same type" is still
-alive, though** — that is the only failure reason left under `'any'`.
+alive, though**: that is the only failure reason left under `'any'`.
 
 ```javascript
 const { Semigroup } = FunFP;
@@ -163,15 +163,15 @@ catch (e) { console.log(e.message); }  // 'Semigroup.concat: arguments must be t
 ```
 
 It used to live in the `/* Object */` section and was registered as `'object'`,
-but that was **just where it happened to sit** — its type declaration
+but that was just where it happened to sit: its type declaration
 (`readonly first: unknown` in `types/data/builtins.d.ts`) always meant every
 type.
 
 ### `lookup('default')` is also `'any'` — so it rejects mixed-type arguments
 
 `DefaultSetoid` (`===`) and `DefaultOrd` (`<=`) also ignore the value type, so
-they are `'any'`. **"Default" in the name does not mean it accepts any two
-values** — the one check that survives under `'any'`, namely "both arguments must
+they are `'any'`. "Default" in the name does not mean it accepts any two
+values: the one check that survives under `'any'`, namely "both arguments must
 be the same type," applies here too.
 
 ```javascript
@@ -186,25 +186,25 @@ try { Ord.lookup('default').lte(1, 'a'); }
 catch (e) { console.log(e.message); }  // 'Ord.lte: arguments must be the same type'
 ```
 
-These two used to be **plain object literals** outside the registry (`{ equals:
+These two used to be plain object literals outside the registry (`{ equals:
 Setoid.op }`). Back then, mixed-type arguments silently returned `false`, and
 because a fresh object came back on every lookup, the container cache did not
 line up either. Now that they are proper instances, they follow the same rule as
-every other `Setoid` — **instead of silently giving a wrong answer, it stops and
-says "cannot compare."**
+every other `Setoid`: instead of silently giving a wrong answer, it stops and
+says "cannot compare."
 
-**Neither of these is a Monoid — there is no identity element.**
+Neither of these is a Monoid: there is no identity element.
 `FirstMonoid`/`LastMonoid` were removed for that reason in commit `e3d2b82`. When
-a Monoid is needed, wrap in `Maybe` — and **which one you want splits into two
-paths.**
+a Monoid is needed, wrap in `Maybe`, and which one you want splits into two
+paths.
 
 | | What it does |
 | --- | --- |
-| `Monoid.Maybe('first')` (= `maybe(first)`) | when both are `Just`, merges **the inner values** with `first` |
-| `Monoid.lookup('maybe')` | picks the first `Just` **whole, without opening it** |
+| `Monoid.Maybe('first')` (= `maybe(first)`) | when both are `Just`, merges the inner values with `first` |
+| `Monoid.lookup('maybe')` | picks the first `Just` whole, without opening it |
 
-When the payload types match, the results match too. **They only diverge when the
-types are mixed**, and there the first one hits the inner `concat`'s type check
+When the payload types match, the results match too. They only diverge when the
+types are mixed, and there the first one hits the inner `concat`'s type check
 and throws.
 
 ```javascript
@@ -221,27 +221,27 @@ catch (e) { console.log('merge: throws'); }                     // merge: throws
 console.log(pick.concat(Maybe.Just(1), Maybe.Just('a')).value); // 1  — never opened, so it passes
 ```
 
-**Use the first one for "merging," the second for "picking."**
+Use the first one for "merging," the second for "picking."
 
 ---
 
 ## Deriving `Monoid` from `Plus` {#plus-monoid}
 
 `Plus` carries both `alt` (an associative binary operation) and `zero` (an
-identity element), so it is **structurally a Monoid already** — it is only
+identity element), so it is structurally a Monoid already, only
 missing the tag. So a registered `Plus` gets its paired `Semigroup`/`Monoid`
-**under that type's own name.** No special case is written down anywhere, so
-**registering a new `Plus` automatically brings its pair along with it.**
+under that type's own name. No special case is written down anywhere, so
+registering a new `Plus` automatically brings its pair along with it.
 
-**Except when that type already has a `Monoid` — then nothing is derived.**
-`Array` is such a case — its `alt` is literally `concat`, so the derived version
+**Except when that type already has a `Monoid`: then nothing is derived.**
+`Array` is such a case: its `alt` is literally `concat`, so the derived version
 and `ArrayMonoid` behave identically (verified). Forcing the registration anyway
 would make `registerAs` silently overwrite `ArrayMonoid`.
 
-> **At one point this key was `plus(<alias>)`. That was a bug.** In this library,
-> `f(x)` means `F<X>`, but `plus(maybe)` returned a `Monoid`, not a `Plus` — the
+> At one point this key was `plus(<alias>)`. That was a bug. In this library,
+> `f(x)` means `F<X>`, but `plus(maybe)` returned a `Monoid`, not a `Plus`: the
 > actual `Plus<Maybe>` was just `Plus.lookup('maybe')`. What was inside the
-> parentheses was not an element, it was **where it came from** — and provenance
+> parentheses was not an element, it was where it came from, and provenance
 > is not a type (owner's ruling, 2026-08-14).
 
 ```javascript
@@ -254,8 +254,8 @@ console.log(Plus.lookup('maybe').zero().isNothing());           // true  the sam
 
 There is a reason `register()` is not used for the derivation. `register()` also
 stores the key under `instance.constructor.name`, and a derived instance's class
-name is just `Monoid`, so it creates `Monoid.types['Monoid']` and **different
-`Plus` instances overwrite each other there.** So, following the precedent set by
+name is just `Monoid`, so it creates `Monoid.types['Monoid']` and different
+`Plus` instances overwrite each other there. So, following the precedent set by
 `Monoid.Maybe`, the key is inserted directly.
 
 ---
@@ -264,19 +264,19 @@ name is just `Monoid`, so it creates `Monoid.types['Monoid']` and **different
 
 | | What it does | Where it's used |
 | --- | --- | --- |
-| `identity` | carries the value through unchanged | turns `traverse` into "plain mapping" — `over` in optics |
-| `const(<monoid>)` | drops the value and only accumulates via the monoid | turns `traverse` into "folding" — `preview` in optics |
+| `identity` | carries the value through unchanged | turns `traverse` into "plain mapping", `over` in optics |
+| `const(<monoid>)` | drops the value and only accumulates via the monoid | turns `traverse` into "folding", `preview` in optics |
 
-`identity` now goes all the way up to `Chain` and `Monad` (2026-08-28) — so it can sit in a
+`identity` now goes all the way up to `Chain` and `Monad` (2026-08-28), so it can sit in a
 transformer's inner-monad slot, and `ReaderT('identity')` produces the same value as a bare
 `Reader`, wrapped in one layer of Identity. That is the very equation cats uses as the
 definition of `Reader`.
 
 **Having an object shape and having type `Object` are different statements.**
-Each of these has its own type — `Identity` and `Const(<monoid key>)`. The
+Each of these has its own type, `Identity` and `Const(<monoid key>)`. The
 carrier announces its own identity.
 
-At one point `Identity`, `Const`, and plain objects were **all three `'Object'`**.
+At one point `Identity`, `Const`, and plain objects were all three `'Object'`.
 Back then they bled into each other (verified):
 
 ```
@@ -286,8 +286,8 @@ a plain { a: 1 } into Identity.map   → passed (the result was {})
 Identity into ObjectFoldable         → passed
 ```
 
-Now all four are rejected. **If there is an inner value type, the type must be
-its own type, not `Object`, and the tag must say what type that value is**
+Now all four are rejected. If there is an inner value type, the type must be
+its own type, not `Object`, and the tag must say what type that value is
 (owner's ruling, 2026-08-14).
 
 ### A tag alone was not enough — `Identity` is a class
@@ -296,7 +296,7 @@ At first it was just an object literal `{ value, _typeName: 'Identity' }` with a
 name tacked on. Owner's ruling (2026-08-15): *"Making a subtype of Object and
 sticking a type name on it was the cheap fix that went wrong."*
 
-`_typeName`'s job is **sum-type convergence** — both `Just` and `Nothing` carry
+`_typeName`'s job is sum-type convergence: both `Just` and `Nothing` carry
 `'Maybe'`, so `types.of` routes them to one instance. It is not a type
 declaration. This repository's design is **types are defined with symbols, and
 values are stamped with strings.**
@@ -317,7 +317,7 @@ console.log(Identity.isIdentity({ value: 5, _typeName: 'Identity' }));  // false
 ```
 
 **Only `isIdentity` looks at the symbol.** [`types.of`](#type) reads the
-`_typeName` string, so an object with that string copied onto it **passes**
+`_typeName` string, so an object with that string copied onto it passes
 type-class methods.
 
 ```javascript
@@ -327,19 +327,19 @@ console.log(Functor.lookup('identity').map(x => x + 1, { value: 5, _typeName: 'I
 ```
 
 A mechanism that pulled the symbol into the value-check path was built and then
-**pulled back out by owner's decision** (2026-08-15) — it was an unagreed
+pulled back out by owner's decision (2026-08-15): it was an unagreed
 implementation. And even that mechanism was not a complete block either.
 `Symbol.for` is a global registry, so with intent someone can open the same slot
 (verified).
 
-`Const` and `Forget` are also classes — the same rule: **if the shape it carries
-is fixed, declare it as a class** (owner, 2026-08-15). Their shape is the
+`Const` and `Forget` are also classes, the same rule: if the shape it carries
+is fixed, declare it as a class (owner, 2026-08-15). Their shape is the
 opposite of `Identity`'s, though.
 
 | | Class | `_typeName` |
 | --- | --- | --- |
-| `Maybe` | **two** — `Just` · `Nothing` | **one** `'Maybe'` — the variants converge |
-| `Const` | **one** — `Const` | **many** — `'Const(array)'` · `'Const(number)'`, one per monoid |
+| `Maybe` | two, `Just` · `Nothing` | one `'Maybe'`, the variants converge |
+| `Const` | one, `Const` | many, `'Const(array)'` · `'Const(number)'`, one per monoid |
 
 ```javascript
 const { Applicative, Wander, Monoid } = FunFP;
@@ -353,7 +353,7 @@ console.log(p.constructor.name);   // 'Forget'
 console.log(typeof p.run);         // 'function'       what it holds is a function
 ```
 
-None of the three has a public entry point — only `fp.Identity` sits at the top
+None of the three has a public entry point: only `fp.Identity` sits at the top
 level; `Const` and `Forget` are reachable only through their factories.
 
 ```javascript
@@ -365,19 +365,19 @@ console.log(Traversable.lookup('array').traverse(Id, x => Id.of(x + 1), [1, 2, 3
 console.log(Functor.lookup('identity').map(x => x + 1, Id.of(1)).value);   // 2
 ```
 
-`Apply.ap` compares tags **literally** via `types.equals(a, b, instance.type)`
+`Apply.ap` compares tags literally via `types.equals(a, b, instance.type)`
 ([no case fallback](#type)), so the carrier's `_typeName` and the instance's
-`.type` must match exactly. `Const`'s tag varies per monoid — `Const(array)`,
+`.type` must match exactly. `Const`'s tag varies per monoid: `Const(array)`,
 `Const(number)`.
 
 ### An unkeyed monoid is told apart by a unique number {#anon-monoid-tag}
 
 A registered monoid has a key, so its tag splits cleanly, e.g. `Const(array)`.
-But a **hand-built, unregistered monoid** has no key, and at one point all of
-them shared the same bare `'Const'` tag — a sum-monoid Const and a
+But a hand-built, unregistered monoid has no key, and at one point all of
+them shared the same bare `'Const'` tag: a sum-monoid Const and a
 product-monoid Const carrier bled into each other (a Codex review caught it).
 Now the same trick used for the transformers' `_transformerAutoId` gives each
-**an instance-specific unique number** — `Const(#1)`, `Const(#2)`. `Forget` had
+an instance-specific unique number, `Const(#1)`, `Const(#2)`. `Forget` had
 the same disease and was fixed the same way (`Forget(#N)`).
 
 ```javascript
@@ -390,34 +390,34 @@ if (A.wrap(2)._typeName === B.wrap(3)._typeName) throw new Error('anonymous mono
 console.log(A.wrap(2)._typeName !== B.wrap(3)._typeName);   // true — different tags, so they do not mix
 ```
 
-This number is not a registry lookup key, it is **for telling carriers apart at
-runtime** (the tag itself is what `types.of` reads), so it only needs to be
+This number is not a registry lookup key, it is for telling carriers apart at
+runtime (the tag itself is what `types.of` reads), so it only needs to be
 "unique within one run." A WeakMap cache is built once per monoid, so it stays
 stable for that monoid.
 
 ### `Writer` factory — the registered one is Array-only, other monoids go through the factory {#writer-factory-internals}
 
-The registered `writer` instance's `of` is `Writer.of`'s default, so it **always
-stamps in the Array monoid.** So running a law like `chain(of, w)` against a
+The registered `writer` instance's `of` is `Writer.of`'s default, so it always
+stamps in the Array monoid. So running a law like `chain(of, w)` against a
 Writer built on a different monoid ends up mixing monoids and throws (a Codex
-review caught it). This is solved with the same factory pattern as `Const` —
+review caught it). This is solved with the same factory pattern as `Const`:
 `buildWriterMonad(monoid)` builds an Applicative/Monad whose `of` closes over
 that monoid, and if the monoid has a key, registers it across five levels
 (Functor through Monad) as `writer(<key>)`. **`of` is the only thing that
 depends on the monoid**, so `map`/`ap`/`chain` are simply borrowed from the
-registered instance. The cache follows the same shape as `Const` — `_keyCache`
+registered instance. The cache follows the same shape as `Const`: `_keyCache`
 for keyed monoids, `_instanceCache` (WeakMap) for unregistered instances. Usage:
 [`docs/Writer.md#writer-factory`](./Writer.md#writer-factory).
 
-Registration is **three levels** — `Functor` → `Apply` → `Applicative`. Raising
+Registration is three levels: `Functor` → `Apply` → `Applicative`. Raising
 only `Applicative` would make `Functor.lookup('const(array)')` fail.
 
 ---
 
 ## Where the check layer gets stripped — `unwrapIfSameType` {#unwrap}
 
-The `map`/`ap` handed up to a superclass are **already wrapped in a check.** When
-`type` matches, the check the superclass would wrap is **literally identical**
+The `map`/`ap` handed up to a superclass are already wrapped in a check. When
+`type` matches, the check the superclass would wrap is literally identical
 (both are `types.isFunction(f) && types.check(a, instance.type)`), so the outer
 layer adds no safety. **That is the only ground for stripping it.** When `type`
 differs, the outer check is a different check, and it is left alone.
@@ -427,7 +427,7 @@ treatment.
 
 **Do not cite performance as the reason.** The same round of changes switched
 `first`/`left` to delegate through `Bifunctor.bimap`, adding a fresh registry
-lookup per element, and **that cost is bigger than the layer it stripped**
+lookup per element, and that cost is bigger than the layer it stripped
 (measured, 1.37–1.60×). Reusing the registry is still the right call and is not
 being reverted.
 
@@ -439,7 +439,7 @@ being reverted.
 Optic s a = P => P a a -> P s s
 ```
 
-**Which `P` gets injected determines the operation.** One definition yields
+Which `P` gets injected determines the operation. One definition yields
 reading, writing, and reconstruction all at once.
 
 | Injected P | Resulting operation | Methods required |
@@ -448,14 +448,14 @@ reading, writing, and reconstruction all at once.
 | `Forget<r>` | `view` / `preview` / `toList` / `foldMapOf` | same (accumulated via a monoid) |
 | `Tagged` | `review` | `dimap` `left` only |
 
-**The fact that `Tagged` has no `first` and no `wander` stands in for type
-safety** — using `review` on a Lens or a Traversal throws a `TypeError` right
+The fact that `Tagged` has no `first` and no `wander` stands in for type
+safety: using `review` on a Lens or a Traversal throws a `TypeError` right
 there.
 
 ### `Forget`'s carrier is wrapped {#forget-newtype}
 
-`Forget<r> a b = a -> r`, so the carrier can be **a bare function.** It actually
-was one, and that is why its `.type` was `'function'` — **the same tag** as
+`Forget<r> a b = a -> r`, so the carrier can be a bare function. It actually
+was one, and that is why its `.type` was `'function'`, the same tag as
 `FunctionWander`.
 
 All four of these used to pass (verified, before 2026-08-15):
@@ -470,7 +470,7 @@ Now the carrier is `{ run, _typeName: 'Forget(array)' }`, and `wrap`/`unwrap` ar
 the door (the same shape as `Applicative.Const`). All four are now rejected.
 
 Since `wrap` passes through `Const.wrap`, **if `f` does not produce a monoid
-value, it fails right there.** Before, only the Traversal path caught this —
+value, it fails right there.** Before, only the Traversal path caught this:
 `concat` only shows up once it goes through `traverse`, while a Lens only uses
 `first`:
 
@@ -487,21 +487,21 @@ try { Optics.review(aLens, 1); }
 catch (e) { console.log('review on a Lens throws'); }
 ```
 
-Because `P` is the first argument, **plain `compose` cannot compose these** —
+Because `P` is the first argument, plain `compose` cannot compose these:
 that's why there is a separate `Optics.compose`.
 
 ### The methods the three dictionaries share determine the kind of optic
 
 | Method | Meaning | Optic produced |
 | --- | --- | --- |
-| `first` | product — touches one side of a pair `[a, c]` | Lens |
-| `left` | sum — touches only `Either`'s `Left` | Prism |
-| `wander` | traversal — touches every slot inside a container | Traversal |
+| `first` | product, touches one side of a pair `[a, c]` | Lens |
+| `left` | sum, touches only `Either`'s `Left` | Prism |
+| `wander` | traversal, touches every slot inside a container | Traversal |
 
 ### Why `Iso` sits at the top of the optic hierarchy
 
-`Iso` uses **only `dimap`.** All three `P`s have `dimap`, so **it works with
-every operation** — it is both a Lens and a Prism, so both `view` and `review`
+`Iso` uses only `dimap`. All three `P`s have `dimap`, so it works with
+every operation: it is both a Lens and a Prism, so both `view` and `review`
 work on it.
 
 ```javascript
@@ -512,16 +512,16 @@ console.log(Optics.view(doubled, 21));                  // 42
 console.log(Optics.review(doubled, 42));                // 21   a Lens cannot do this
 ```
 
-The law is lossless conversion — `from(to(s)) === s`, `to(from(a)) === a`.
+The law is lossless conversion: `from(to(s)) === s`, `to(from(a)) === a`.
 
 ### `view` counts its targets
 
-`view` is Lens/Iso-only — **"exactly one target" is enforced by code, not just
+`view` is Lens/Iso-only: **"exactly one target" is enforced by code, not just
 documented.**
 
 `review` is protected structurally (`Tagged` has no `first`/`wander`). But
-`Forget`, on the `view` side, **does** have `wander`, so passing it a Traversal
-still runs. So counting the targets is the only way — zero means it does not
+`Forget`, on the `view` side, does have `wander`, so passing it a Traversal
+still runs. So counting the targets is the only way: zero means it does not
 silently leak `undefined`, and two or more means it does not silently hand back
 just the first value.
 
@@ -541,14 +541,14 @@ They differ only in what they fold into. The argument order matches
 `over(optic, f, s)`, with the monoid placed first.
 
 **The monoid is never used on the `first` path (Lens/Iso).** So without a check,
-whether it passes or not would depend on the kind of optic — this is required
+whether it passes or not would depend on the kind of optic: this is required
 under the same rule as the existing `foldMap(foldable, monoid)`. Registration is
 not required; anything built with `new Monoid(...)` works.
 
-**The monoid `preview` uses is `Monoid.lookup('maybe')`.** `preview` "picks" a
+The monoid `preview` uses is `Monoid.lookup('maybe')`. `preview` "picks" a
 target rather than "merging" them, so it must pick the option that does not open
 the container. Using `maybe(first)` would try to merge the inner values and
-**throw on a mixed-type target** — "give me the first one" should be answerable
+**throw on a mixed-type target**: "give me the first one" should be answerable
 no matter what an array holds.
 
 ```javascript
@@ -585,49 +585,49 @@ console.log(W.left(x => x * 10)(Either.Left(4)).value);    // 40   Left only
 console.log(W.left(x => x * 10)(Either.Right(4)).value);   // 4    Right passes through
 ```
 
-**`Tagged` only exists under `Choice`.** It is missing from `Strong` and
-`Wander`, and that **absence** is exactly what says "Lenses and Traversals
+`Tagged` only exists under `Choice`. It is missing from `Strong` and
+`Wander`, and that absence is exactly what says "Lenses and Traversals
 cannot be `review`ed." Structure does the job a throwing stub used to do.
 
 `Tagged` is not registered in the `Profunctor` registry either. The spec requires
 a `Profunctor` to become a `Functor` when its first parameter is fixed, and there
-is no `Functor` with `.type` `'any'` — **a guarantee that cannot be kept is not
+is no `Functor` with `.type` `'any'`: **a guarantee that cannot be kept is not
 made** (the same judgment call as dropping `Either`/`Task` from `Filterable`).
 
 ### Why it was not registered as a type class at first — and why that reversed
 
-**On 2026-08-11 the decision went the other way.** Three grounds.
+On 2026-08-11 the decision went the other way. Three grounds.
 
-1. **JS/TS precedent is unanimously internal.** `optika` uses a profunctor
+1. JS/TS precedent is unanimously internal. `optika` uses a profunctor
    encoding but files it under "Internals — Functions which you probably never
    need to use directly," and `monocle-ts` has a full profunctor version but
    marks it "only used internally."
-2. **Exposing it does not actually open real extension use.** Indexed optics,
-   the flagship use case for custom profunctors, need a **separate family** —
-   `Indexed`/`StarI`/`ForgetI` — and an `itraversed` constructor. These three
+2. Exposing it does not actually open real extension use. Indexed optics,
+   the flagship use case for custom profunctors, need a separate family:
+   `Indexed`/`StarI`/`ForgetI`, and an `itraversed` constructor. These three
    alone are not enough.
-3. Haskell's `well-typed/optics` internalizes it mainly for **error-message
-   quality**, which is a type-inference problem and does not apply to JS. It was
+3. Haskell's `well-typed/optics` internalizes it mainly for error-message
+   quality, which is a type-inference problem and does not apply to JS. It was
    not our reason.
 
-**Both of the first two grounds are still true.** This library chose not to
-follow precedent here, and **it did not open up extensibility either.** The
+Both of the first two grounds are still true. This library chose not to
+follow precedent here, and it did not open up extensibility either. The
 grounds for the reversal lie elsewhere (2026-08-14).
 
-- **It was already needed and already in use.** It wasn't hidden because it went
-  unused — **it was used while being hidden.** As a result, Optics ended up
+- It was already needed and already in use. It wasn't hidden because it went
+  unused: it was used while being hidden. As a result, Optics ended up
   building another type's internal representation (`{ value: … }`) as a literal
   and picking it apart via `.value`.
-- **There was zero oversight.** Being outside the registry meant the law suite,
-  the spec check, and the `.type` gate all missed optics entirely — the same
+- There was zero oversight. Being outside the registry meant the law suite,
+  the spec check, and the `.type` gate all missed optics entirely, the same
   shape of hole as `Ord` living on without `Setoid`.
-- **A throwing stub turns into structure.** That is the `Tagged` story above.
+- A throwing stub turns into structure. That is the `Tagged` story above.
 
-The record from back then also noted **the condition under which this should
-flip** — *"when a real need arises for users to register their own profunctor and
+The record from back then also noted the condition under which this should
+flip: *"when a real need arises for users to register their own profunctor and
 extend optics with it."* What actually came was different. It was not extension,
-it was **"a type class the internals need must be implemented explicitly"**
-(owner, 2026-08-14), and `Free` is the precedent — the four transformers use it
+it was "a type class the internals need must be implemented explicitly"
+(owner, 2026-08-14), and `Free` is the precedent: the four transformers use it
 internally, but it is registered under ten keys and has its own document.
 
 > This note has already vanished once. It originally lived in `CLAUDE.md`, and
@@ -639,7 +639,7 @@ internally, but it is registered under ten keys and has its own document.
 
 - **`Wander` has zero laws.** Of `wander`'s three laws, only ①identity can be
   checked; ②composition needs a `Compose` that overlays two Applicatives, which
-  this library does not have; and ③naturality is a requirement over **every**
+  this library does not have; and ③naturality is a requirement over every
   Applicative homomorphism, which cannot be confirmed by sampling.
   `Traversable`/`ChainRec` are missing for the same reason. Checking just one and
   claiming "the laws hold" would overstate what the gate actually blocks, so it
@@ -653,16 +653,16 @@ internally, but it is registered under ten keys and has its own document.
 
 ## Type-class registration for transformers {#transformer-register}
 
-When a transformer is built, it is registered **dynamically** into five spots —
+When a transformer is built, it is registered dynamically into five spots:
 `Functor` → `Apply` → `Applicative` → `Chain` → `Monad`.
 
-- It is built with `registry=null` to **avoid polluting generic keys**, and only
+- It is built with `registry=null` to avoid polluting generic keys, and only
   the alias is inserted manually. Using `register()` would create keys like
   `Functor.types['Functor']` that overwrite each other ([same reason as
   above](#plus-monoid)).
-- `instanceof XT` enforces **nominal typing** — mixing in a value from a
+- `instanceof XT` enforces nominal typing: mixing in a value from a
   different `StateT(M)` throws.
-- **Precondition**: `XT.of` must already be finished by call time. For something
+- Precondition: `XT.of` must already be finished by call time. For something
   like `WriterT` that captures extra parameters, `of` needs to properly close
   over that closure.
 
@@ -676,10 +676,10 @@ console.log(Monad.lookup('statet(maybe)') === Monad.lookup('statet(maybe)'));  /
 
 ### Why `M` must be passed as a string
 
-For a custom monad with no `type`, the alias attached automatically **depends on
-process execution order.** Do not refer to that alias from outside, e.g.
+For a custom monad with no `type`, the alias attached automatically depends on
+process execution order. Do not refer to that alias from outside, e.g.
 `Functor.lookup('statet(m1)')`. Using a string `M` (`'maybe'`, `'either'`) or an
-object `M` that has a `type` property gets you a **deterministic alias**.
+object `M` that has a `type` property gets you a deterministic alias.
 
 ---
 
@@ -687,7 +687,7 @@ object `M` that has a `type` property gets you a **deterministic alias**.
 
 Static Land requires `Ord` to "support `Setoid` algebra for the same `T`."
 Knowing an order means knowing equality too. So `Ord` inherits `Setoid`, and its
-constructor **takes the `Setoid` it is to be paired with** — the same shape as
+constructor takes the `Setoid` it is to be paired with, the same shape as
 `Monoid` taking a `Semigroup`.
 
 ```javascript
@@ -700,8 +700,8 @@ console.log(O instanceof Setoid);           // true
 
 ### Not just any `Setoid` can be the pair
 
-It has to be **the equivalence the order induces.** Comparing strings by length
-puts `'ab'` and `'cd'` in the **same slot**, since `lte` is true in both
+It has to be the equivalence the order induces. Comparing strings by length
+puts `'ab'` and `'cd'` in the same slot, since `lte` is true in both
 directions between them. The antisymmetry law (if `lte(a,b)` and `lte(b,a)` then
 `equals(a,b)`) requires the pair to answer that they are equal. Using literal
 character equality would break that law.
@@ -732,8 +732,8 @@ console.log(Setoid.lookup('StringLocaleSetoid').equals(nfc, nfd));   // true
 
 ### Containers follow the same rule
 
-`Ord.Array(inner)`'s pair is `Setoid.Array(inner)` — pulled **from the inner
-`Ord` itself.** Looking up a `Setoid` by the inner key instead
+`Ord.Array(inner)`'s pair is `Setoid.Array(inner)`, pulled from the inner
+`Ord` itself. Looking up a `Setoid` by the inner key instead
 (`Setoid.Array('string')`) breaks the law under the length-order case above.
 
 ```javascript
@@ -753,8 +753,8 @@ and every factory-built one.
 ## Container Setoid / Ord — building a box comparison from an inner comparison {#container-setoid}
 
 `Setoid.lookup('number')` compares numbers. To compare a box like `Just(1)`, you
-first have to know **how to compare what's inside**, so an assembled key spells
-out the inner type. There is no parameterless `Setoid.lookup('maybe')` — the
+first have to know how to compare what's inside, so an assembled key spells
+out the inner type. There is no parameterless `Setoid.lookup('maybe')`, the
 inside is always spelled out.
 
 ```javascript
@@ -771,8 +771,8 @@ console.log(Ord.lookup('array(number)').lte([1, 2], [1, 3]));         // true  l
 
 ### `Either` has two slots, so it takes two comparators
 
-`Left` holds a failure and `Right` holds a success, and **their types differ.**
-The key carries both, separated by a comma — the same shape already used by
+`Left` holds a failure and `Right` holds a success, and their types differ.
+The key carries both, separated by a comma, the same shape already used by
 `writert(maybe,array)`. Haskell (`(Eq a, Eq b) =>`) and fp-ts (`getEq(EL, EA)`)
 also take two, but there the type checker discovers the requirement; our ground
 here is our own key format.
@@ -799,9 +799,9 @@ comes first, `Left` or `Right`." fp-ts drops it from the core too.
 A record (`{ name, age }`) has a different type per field, so there is no single
 inner comparator. This corresponds to fp-ts's `Eq.struct`.
 
-**There is no string key.** `maybe`/`array`/`either` are this library's named
-types and so live in the registry, but a record is **an ad-hoc shape unique to
-each caller**, and there are infinitely many of those — putting them in the
+There is no string key. `maybe`/`array`/`either` are this library's named
+types and so live in the registry, but a record is an ad-hoc shape unique to
+each caller, and there are infinitely many of those, so putting them in the
 global directory would pollute `Algebra.all('object')` with names like
 `structAddressStructCityStringSetoid`. So it is not registered (it takes the
 `registry=null` path); only a factory is provided.
@@ -819,10 +819,10 @@ const U = Setoid.Struct({ users: Setoid.Array(Setoid.Struct({ name: 'string' }))
 console.log(U.equals({ users: [{ name: 'a' }] }, { users: [{ name: 'a' }] })); // true
 ```
 
-**It is a strict comparison** — the declared field set and the actual key set
+**It is a strict comparison**: the declared field set and the actual key set
 must match exactly. fp-ts ignores extra fields, but to line up with this
 library's check philosophy (strict mode) and not weaken with test migration,
-extras are rejected. There is no `Ord.Struct` — a record's ordering has no
+extras are rejected. There is no `Ord.Struct`, a record's ordering has no
 correct answer either.
 
 ### Why this was built — a test file had a private implementation
@@ -830,14 +830,14 @@ correct answer either.
 `tests/utils.js`'s `deepEquals` (created 2025-12-25) took `Maybe`/`Either` apart
 by hand to compare them, and **58 call sites depended on it while zero tests
 verified it.** All of them now use the library's own `Setoid`, and the private
-implementation is gone — the comparison rule now comes from the library being
+implementation is gone, the comparison rule now comes from the library being
 tested, not from a test helper (`assertEqualsBy`).
 
 ---
 
 ## Number addition does not exactly hold associativity {#number-sum}
 
-`Semigroup` promises associativity — `(a ⊕ b) ⊕ c` and `a ⊕ (b ⊕ c)` must be
+`Semigroup` promises associativity: `(a ⊕ b) ⊕ c` and `a ⊕ (b ⊕ c)` must be
 equal. **Floating-point addition breaks this.** This is not a JavaScript problem,
 it is a property of IEEE 754: every addition rounds, and if the rounding happens
 at a different point, the result diverges.
@@ -850,9 +850,9 @@ console.log(S.concat(S.concat(0.1, 0.2), 0.3));   // 0.6000000000000001
 console.log(S.concat(0.1, S.concat(0.2, 0.3)));   // 0.6
 ```
 
-**This breaks in a different place than [multiplication](#product-group) does.**
+This breaks in a different place than [multiplication](#product-group) does.
 Multiplication breaks on the *inverse* even for ordinary values, while addition's
-inverse is **exact for finite numbers** — `0.1 + (-0.1)` is exactly `0`. What
+inverse is exact for finite numbers: `0.1 + (-0.1)` is exactly `0`. What
 breaks for addition is associativity, and its inverse only breaks at infinity
 (`Infinity + (-Infinity)` is `NaN`).
 
@@ -864,15 +864,15 @@ console.log(S.concat(0.1, G.invert(0.1)));            // 0   the inverse is exac
 console.log(S.concat(Infinity, G.invert(Infinity)));  // NaN   but not for infinity
 ```
 
-**The law gate cannot catch this — the sample values are all safe.** The number
-sample is `[0, 1, 2, -3, 0.5]`, all values represented **exactly** in binary, so
+**The law gate cannot catch this**: the sample values are all safe. The number
+sample is `[0, 1, 2, -3, 0.5]`, all values represented exactly in binary, so
 rounding never happens at all. Running all 125 combinations exhaustively catches
 zero failures (measured). So this section's "green" means "the law holds for
 this sample," not "the law holds." The reasoning is recorded in
 `SAMPLE_OVERRIDES`.
 
 **This is not a fixable defect, it's a fact worth knowing.** If exact addition is
-needed, use integers (e.g. cents) or a decimal library — this library's `number`
+needed, use integers (e.g. cents) or a decimal library, this library's `number`
 instance is plain floating point.
 
 ---
@@ -884,8 +884,8 @@ of 2 is 0.5, and `2 × 0.5 = 1`. **There are values where that promise does not
 hold.** Two causes.
 
 **Zero has no inverse in principle.** No number multiplied by 0 gives 1. Even in
-mathematics, the multiplicative group only holds over numbers excluding zero —
-this is not a library defect.
+mathematics, the multiplicative group only holds over numbers excluding zero.
+This is not a library defect.
 
 **Floating point breaks it even away from zero.** For `a × (1/a)` to be exactly
 1, the rounding has to cancel out, and it fails to even for ordinary values.
@@ -900,7 +900,7 @@ console.log(G.concat(49, G.invert(49)));  // 0.9999999999999999   breaks
 console.log(G.concat(0, G.invert(0)));    // NaN   — 0 has no inverse
 ```
 
-The addition side does not have this problem **for finite values** — `a + (-a)`
+The addition side does not have this problem for finite values: `a + (-a)`
 is exactly 0.
 
 ```javascript
@@ -911,7 +911,7 @@ console.log(G.concat(0.1, G.invert(0.1)));  // 0
 console.log(G.concat(49, G.invert(49)));    // 0
 ```
 
-**But `Infinity` has no inverse even in the addition group** — `∞ + (-∞) = NaN`,
+**But `Infinity` has no inverse even in the addition group**: `∞ + (-∞) = NaN`,
 not 0. Same category as multiplication's zero. Infinity is not a finite number,
 so it doesn't fall under the group over numbers.
 
@@ -923,17 +923,17 @@ if (!Number.isNaN(G.concat(Infinity, G.invert(Infinity)))) throw new Error('Infi
 console.log(G.concat(Infinity, G.invert(Infinity)));  // NaN — infinity has no inverse
 ```
 
-**If exact division is needed, use a rational or decimal type instead of
-`NumberProductGroup`.** This is why the group-law check in
+If exact division is needed, use a rational or decimal type instead of
+`NumberProductGroup`. This is why the group-law check in
 `tests/staticland-laws.test.js` keeps a separate sample just for this instance,
 with the reason recorded alongside that sample.
 
 ## `NaN` sits outside the number `Setoid`/`Ord` {#number-nan}
 
-`Setoid` promises reflexivity — `equals(a, a)` is always true. **`NaN` breaks
+`Setoid` promises reflexivity: `equals(a, a)` is always true. **`NaN` breaks
 this.** `NaN === NaN` is false, and that is not a JavaScript quirk but the IEEE
 754 definition (`NaN` means "not a number," so it is not even equal to itself).
-`Ord` adds more — `NaN` cannot be ordered against any number (`NaN <= x` is
+`Ord` adds more: `NaN` cannot be ordered against any number (`NaN <= x` is
 always false), so it falls outside the total order.
 
 ```javascript
@@ -947,13 +947,13 @@ console.log(eq.equals(NaN, NaN));                   // false — NaN is not even
 
 `Object.is(NaN, NaN)` is true, which looks like a fix, but switching to it would
 split `-0` from `0` (`Object.is(-0, 0)` is false). It's a value that rewrites the
-whole definition of equality, so it is left alone — **do not put `NaN` into a
+whole definition of equality, so it is left alone: **do not put `NaN` into a
 comparison or a sort.** That is why the law gate's number sample has no `NaN`.
 
 ## `Array` is a `Comonad` only when non-empty {#array-comonad}
 
 `Comonad`'s `extract` means "pull one value out of the box." **An empty array has
-no value to pull** — `extract([])` is `undefined`. Mathematically too, the array
+no value to pull**: `extract([])` is `undefined`. Mathematically too, the array
 comonad only holds over NonEmptyArray (a never-empty array).
 
 ```javascript
@@ -966,18 +966,18 @@ console.log(C.extract([]));                // undefined — nothing to pull out
 ```
 
 That is why the law gate (`tests/staticland-laws.test.js`)'s `Comonad` check
-filters empty arrays out of its sample — an empty array is outside this
+filters empty arrays out of its sample, an empty array is outside this
 instance's domain.
 
 ---
 
 ## `Semigroupoid.compose` runs right-to-left — the opposite of Static Land's direction {#compose-direction}
 
-This library's `Semigroupoid.compose(f, g)` means **`f(g(x))`** — `g` runs first
-(the right-to-left convention of math and Ramda). But **the Static Land spec's
-`compose` runs the opposite direction.** The spec signature is `compose :: (T i j,
+This library's `Semigroupoid.compose(f, g)` means `f(g(x))`, `g` runs first
+(the right-to-left convention of math and Ramda). But the Static Land spec's
+`compose` runs the opposite direction. The spec signature is `compose :: (T i j,
 T j k) → T i k`, where the first argument (i→j) takes the input first, so
-`compose(f, g)(x) = g(f(x))` — a **left-to-right** diagrammatic composition where
+`compose(f, g)(x) = g(f(x))`, a left-to-right diagrammatic composition where
 `f` runs first. Same name, exactly opposite direction.
 
 ```javascript
@@ -992,44 +992,44 @@ if (pipe(A, B)('_') !== compose(B, A)('_')) throw new Error('pipe ≠ spec compo
 console.log(pipe(A, B)('_'));   // '_AB' — same direction as the spec's compose(A, B)
 ```
 
-**Why the spec was not followed — this is a deliberate convention choice, not a
-defect.** Three grounds:
+Why the spec was not followed: this is a deliberate convention choice, not a
+defect. Three grounds:
 
-1. **The whole repository is consistently right-to-left.** `fp.compose`,
+1. The whole repository is consistently right-to-left. `fp.compose`,
    `compose2`, every Kleisli `Semigroupoid` is right-to-left. Flipping only
    `Semigroupoid` to match the spec would put it at odds with `fp.compose`, so
    "compose" would mean two opposite directions inside the same library.
-2. **Reference implementations also flip the spec direction, just hidden.**
+2. Reference implementations also flip the spec direction, just hidden.
    Ramda and Sanctuary present their user-facing `compose` as right-to-left by
    convention and hide the Fantasy Land method's left-to-right direction
-   internally. This library's direction **matches what they hand to their
-   users.**
-3. **The spec's direction is itself contested.** TC39's
+   internally. This library's direction matches what they hand to their
+   users.
+3. The spec's direction is itself contested. TC39's
    `proposal-function-helpers` issue #5 gives left-to-right composition its own
-   name (`flow`) and reopens the debate on right-to-left `compose` — the
+   name (`flow`) and reopens the debate on right-to-left `compose`, the
    complaint being that the direction is confusing because it's "named compose
    but behaves like pipe."
 
 Investigation record and sources:
 [`.dev/review/260816-staticland-conformance.md`](../../.dev/review/260816-staticland-conformance.md).
 Every other type-class method (`map`, `ap`, `chain`, `reduce`, `bimap`,
-`traverse`, …) has argument order matching the spec — `compose`'s direction is
+`traverse`, …) has argument order matching the spec, `compose`'s direction is
 the only deviation.
 
 ## Functions are monads without being wrapped {#function-monad}
 
 The `'function'` key carries `Apply`, `Applicative`, `Chain` and `Monad`.
-A **bare function is used as-is**, with no wrapper around it.
+**A bare function is used as-is, with no wrapper around it.**
 
 This is possible because of Static Land. Fantasy Land requires the value itself to
 carry the methods, so a bare function cannot be a monad unless you patch
-`Function.prototype` — which is why a wrapping type is **mandatory** there. Static
+`Function.prototype`, which is why a wrapping type is mandatory there. Static
 Land puts the methods on the module rather than on the value, so that constraint is
 gone. This is exactly what the spec lists as its own advantage: "modules that work
 with built-in types as values".
 
-Read a function as **something that takes an environment and produces a value**.
-`chain` does one thing: it **feeds the same environment to both steps**.
+Read a function as something that takes an environment and produces a value.
+`chain` does one thing: it **feeds the same environment to both steps.**
 
 ```javascript
 const { Monad } = FunFP;
@@ -1042,8 +1042,8 @@ console.log(M.map(n => n * 2, e => e.port)(env));    // 16160   map is post-comp
 console.log(M.ap(e => n => n + e.port, e => 10)(env));  // 8090   ap feeds both sides the same env
 ```
 
-The literature calls this structure the **Reader monad**. So `Chain.lookup('function')`
-and `Chain.lookup('reader')` are **two names for the same thing** — and the values match.
+The literature calls this structure the Reader monad. So `Chain.lookup('function')`
+and `Chain.lookup('reader')` are two names for the same thing, and the values match.
 
 ```javascript
 const { Monad, Reader } = FunFP;
@@ -1070,9 +1070,9 @@ const p = RT.asks(e => e.host).chain(h => RT.of(h.toUpperCase()));
 console.log(String(RT.runReaderT({ host: 'example.com' }, p)));  // Just("EXAMPLE.COM")
 ```
 
-The rule for choosing is simple. **A bare function** when one environment is all you
-need; **`Reader`/`ReaderT`** when it has to stack with another effect. The two cannot be
-mixed — the wrapped instances only accept wrapped values.
+The rule for choosing is simple. A bare function when one environment is all you
+need; `Reader`/`ReaderT` when it has to stack with another effect. The two cannot be
+mixed, the wrapped instances only accept wrapped values.
 
 ```javascript
 const { Chain, Monad } = FunFP;
@@ -1089,25 +1089,25 @@ every other type, but **for the function monad `of` yields a constant function t
 ignores the environment.** An arrow that never looks at the environment cannot tell you
 which environment was passed.
 
-With that in place, mutating `chain` from `f(g(x))(x)` to `f(g(x))(g(x))` left **both
-associativity and left identity green** (measured 2026-08-23). Associativity cannot catch
-it in principle — the mutated form is associative too. Left identity missed it because the
+With that in place, mutating `chain` from `f(g(x))(x)` to `f(g(x))(g(x))` left both
+associativity and left identity green (measured 2026-08-23). Associativity cannot catch
+it in principle, the mutated form is associative too. Left identity missed it because the
 arrow was constant.
 
-So a `KLEISLI_FNS` table now hands the function type **arrows that do read the
-environment**. With those in place, **left identity catches** that same mutation.
+So a `KLEISLI_FNS` table now hands the function type arrows that do read the
+environment. With those in place, left identity catches that same mutation.
 
 ---
 
 ## Three ways to supply the subject last — `composeK` / `Reader` / `ReaderT` {#defer-subject}
 
-All three **compose the operations first and supply the subject last.** What differs is what each
+All three compose the operations first and supply the subject last. What differs is what each
 one buys and what it costs.
 
 ### Starting point — repeated `chain` is arrow composition
 
 Chaining twice equals composing the arrows first and chaining once.
-**This is the monad associativity law** — the `Chain` law in `tests/staticland-laws.test.js` is that
+This is the monad associativity law, the `Chain` law in `tests/staticland-laws.test.js` is that
 exact equation.
 
 ```javascript
@@ -1121,8 +1121,8 @@ console.log(String(M.chain(Maybe.composeK(f2, f1), Maybe.Just(5)))); // Just("v1
 console.log(String(Maybe.pipeK(f1, f2)(5)));                         // Just("v10")   applied to a bare value
 ```
 
-The composed thing is a **function** of shape `value -> Maybe`. `Reader`'s carrier is
-`environment -> value`, so the shapes match — wrapping it is enough to make it run.
+The composed thing is a function of shape `value -> Maybe`. `Reader`'s carrier is
+`environment -> value`, so the shapes match, wrapping it is enough to make it run.
 
 ```javascript
 const { Reader, Maybe } = FunFP;
@@ -1131,7 +1131,7 @@ console.log(String(Reader.asks(Maybe.pipeK(n => Maybe.Just(n * 2))).run(5)));  /
 
 ### `composeK` — what you supply last is **material**
 
-Each step receives **only the previous step's output**. The original is gone once the first step
+Each step receives only the previous step's output. The original is gone once the first step
 consumes it.
 
 ```javascript
@@ -1162,7 +1162,7 @@ console.log(String(changed.run(Maybe.Just(5))));        // Just(210)   105 doubl
 ```
 
 **The cost is `lift`.** `Reader`'s `chain` does not know the value inside is a `Maybe`, so every step
-has to unwrap by hand. Skip it and the result is silently wrong — nothing throws.
+has to unwrap by hand. Skip it and the result is silently wrong: nothing throws.
 
 ```javascript
 const { Reader, Maybe } = FunFP;
@@ -1173,7 +1173,7 @@ console.log(String(find.chain(m => Reader.of(m * 2)).run({ present: true, value:
 ### `ReaderT` — `chain` does that unwrapping for you
 
 The same three steps written both ways give the same results; the only difference is whether `lift`
-appears **three times or zero**.
+appears three times or zero.
 
 ```javascript
 const { Reader, ReaderT, Monad, Maybe } = FunFP;
@@ -1198,8 +1198,8 @@ console.log(String(RT.runReaderT(200, T)));    // Nothing
 
 | | Supplied last | Original mid-pipeline | Unwrapping | Wrapping layers |
 | --- | --- | --- | --- | --- |
-| `composeK` / `pipeK` | a bare value | **not visible** | none needed | 0 |
-| `Reader` | context | `ask`, `local` | **by hand, every step** | 1 |
+| `composeK` / `pipeK` | a bare value | not visible | none needed | 0 |
+| `Reader` | context | `ask`, `local` | by hand, every step | 1 |
 | `ReaderT` | context | `ask`, `local` | done by `chain` | 2 |
 
 Each tier buys one thing the tier below cannot do, and pays one wrapping layer for it.
@@ -1216,33 +1216,33 @@ The whole body of `extend` is this one line.
 ```
 
 **It wraps the lookup in one more layer and computes no position at all.** Values are computed
-at read time. So **when the rule reads several positions** (Life reads eight neighbours per
+at read time. So when the rule reads several positions (Life reads eight neighbours per
 cell), across generations one read becomes a full recomputation of every previous generation,
-and the cost is exponential in the generation count — measured with the Game of Life
+and the cost is exponential in the generation count, measured with the Game of Life
 (2026-08-27): past 4 generations without `memo` the slowdown is plainly visible. A rule that
 reads only one position stacks layers but stays linear (Codex round-3 measurement: 20 extends,
 21 lookups).
 
 That the fix is a cache was never in question. Two things were decided (owner's decisions,
-2026-08-27) — **where the cache lives** (not hidden inside `extend` but behind a separate door,
-`Store.memo`), and **who builds the cache key** (`keyOf` is required — there is no default at all).
+2026-08-27): where the cache lives (not hidden inside `extend` but behind a separate door,
+`Store.memo`), and who builds the cache key (`keyOf` is required, there is no default at all).
 
-- **The core stays pure.** A hidden `Map` inside `extend` makes the same expression cost
-  differently on the first and second call, with no door to observe that state — and a one-shot
+- The core stays pure. A hidden `Map` inside `extend` makes the same expression cost
+  differently on the first and second call, with no door to observe that state, and a one-shot
   `extend` that needs no cache still pays for one.
 - **Every default key is wrong somewhere.** The first implementation defaulted to
-  `JSON.stringify`, and the adversarial Codex review (2026-08-27) measured a counterexample —
-  `NaN` and `null` both collapse to `"null"`, so **the result depends on read order**, and
+  `JSON.stringify`, and the adversarial Codex review (2026-08-27) measured a counterexample:
+  `NaN` and `null` both collapse to `"null"`, so the result depends on read order, and
   circular objects throw. Even an identity default merges `+0`/`-0` under the Map's
   SameValueZero (measured by the Codex re-review), and it silently defeats the cache for
-  object positions like coordinate arrays — which is memo's flagship case. With no correct default, the default was removed: the caller states `s => s` for
+  object positions like coordinate arrays, which is memo's flagship case. With no correct default, the default was removed: the caller states `s => s` for
   numbers and strings, or a serializer for objects.
 
-**As long as keys separate positions and the lookup returns the same value for the same
-position**, `memo` does not change observation — focus untouched. A lookup with side effects
+As long as keys separate positions and the lookup returns the same value for the same
+position, `memo` does not change observation: focus stays untouched. A lookup with side effects
 gets its first value pinned (Codex round-3 counterexample: `() => ++n` reads `1 2` raw but
-`1 1` memoized) — that is what a cache does, so such a lookup is not a memo candidate at all. **If two positions share a key, the later read receives the earlier
-value** — that boundary belongs to whoever supplies `keyOf`. `tests/store.test.js` locks
+`1 1` memoized); that is what a cache does, so such a lookup is not a memo candidate at all. **If two positions share a key, the later read receives the earlier
+value**, that boundary belongs to whoever supplies `keyOf`. `tests/store.test.js` locks
 observational equality, the reduced call count, the `NaN`/`null` distinction (reproducing the
 Codex counterexample), and the rejection of a missing `keyOf`.
 
@@ -1250,13 +1250,13 @@ Codex counterexample), and the rejection of a missing `keyOf`.
 
 ## `chain` also checks what the callback returns — the one direction the gatekeeper cannot see {#chain-return}
 
-Every strict-wrapper check happens **at the door** (incoming arguments). A leaked value is
-usually caught by the next operation's door, but two spots were uncovered — the error blamed
-**the correct code one step later, not the culprit**, and a leak at the **very end** of a
+Every strict-wrapper check happens at the door (incoming arguments). A leaked value is
+usually caught by the next operation's door, but two spots were uncovered, the error blamed
+the correct code one step later, not the culprit, and a leak at the very end of a
 pipeline was never caught (Codex round-7 counterexample, 2026-08-28). Using `chain` where `map`
 belongs is the mistake learners make most.
 
-So the `chain` wrapper alone also checks the return (`checkReturn` — one shared spot).
+So the `chain` wrapper alone also checks the return (`checkReturn`, one shared spot).
 
 ```javascript
 const { Chain, Maybe } = FunFP;
@@ -1266,11 +1266,11 @@ try { chain(x => x + 1, Maybe.Just(10)); }   // chain where map belongs — the 
 catch (e) { console.log(e.message); }   // 'Chain.chain: callback must return Maybe, got number'
 ```
 
-**Boundary — this check cannot catch a lazy type's callback.** `Task`, `Reader`, `State` and
+**Boundary: this check cannot catch a lazy type's callback.** `Task`, `Reader`, `State` and
 `Free` produce their carrier immediately at `chain` time and run the callback later at
 `run`/`fork`, so there is no return to inspect yet. What this catches is a callback mistake in
 the eager types (`Maybe`, `Either`, `Identity`, `Array`, `NonEmptyList`, functions). The cost
-measured below the noise floor (1M chains within jitter, 2026-08-28 — chainRec's internal steps
+measured below the noise floor (1M chains within jitter, 2026-08-28, chainRec's internal steps
 do not pass through this check, so they are not part of the receipt).
 
 ---
@@ -1281,16 +1281,16 @@ Updates in `Optics.prop` and vessel cloning in `transducer.into` both pass throu
 module-private `copyOwn`, because every naive approach became a real defect
 (audits 4-1, 5, 6-1, 9-2, 9-4, 10-1).
 
-- **Copying with `Object.keys` / `Object.assign`** loses symbol keys and non-enumerable
-  properties — writing back what you read does not reproduce the original. And on an own
-  `__proto__` key it **mutates the result's prototype** instead of copying the key.
-- **Moving whole descriptors** fixes both, but drags `configurable: false` along — clone a
-  frozen object once and it can never be updated again.
+- Copying with `Object.keys` / `Object.assign` loses symbol keys and non-enumerable
+  properties, writing back what you read does not reproduce the original. And on an own
+  `__proto__` key it mutates the result's prototype instead of copying the key.
+- **Moving whole descriptors** fixes both, but drags `configurable: false` along: clone a
+  frozen object once and **it can never be updated again.**
 
-So `copyOwn` **moves all descriptors but preserves only the shape of the data (enumerability,
-accessor-ness) and reopens the write/redefine locks** — cloning moves data; it does not inherit
+So `copyOwn` **moves all descriptors but preserves only the shape of the data** (enumerability,
+accessor-ness) and reopens the write/redefine locks: cloning moves data; it does not inherit
 the original's padlocks. The container that collects the descriptors is itself
-`Object.create(null)` — the conclusion after falling twice into the same trap where
+`Object.create(null)`, the conclusion after falling twice into the same trap where
 `to['__proto__'] = …` changes the container's prototype instead of creating a key.
 
 All of it is observable through public doors.
@@ -1338,25 +1338,25 @@ console.log(Filterable.lookup('maybe').filter(() => false, Maybe.Just(1)).isNoth
 ```
 
 `Either` has no such value. It is always either a `Left` or a `Right`, and
-**both carry a value.** `Left('DB failure')` is not "empty," it's a specific
+both carry a value. `Left('DB failure')` is not "empty," it's a specific
 failure.
 
 When a `Left` comes in, there is no value to filter, so the predicate can't even
-be called — the choice has to be keep it, wipe it, or fix on one behavior.
+be called, the choice has to be keep it, wipe it, or fix on one behavior.
 **Either choice breaks one of the rules.**
 
 | On a `Left` | Rule that breaks |
 | --- | --- |
-| keep it | Annihilation — `Left('e1')` and `Left('e2')` both survive as-is, so the results differ |
-| wipe it | Identity — `filter(x => true, Left('e'))` also gets wiped |
+| keep it | Annihilation, `Left('e1')` and `Left('e2')` both survive as-is, so the results differ |
+| wipe it | Identity, `filter(x => true, Left('e'))` also gets wiped |
 
 Telling the left side "this is your empty value" doesn't help either. Not
-touching it breaks annihilation; touching it breaks identity — **this is a
+touching it breaks annihilation; touching it breaks identity: **this is a
 shape problem, not an information problem.** `Task` is the same story: a
 rejected `Task` carries an error.
 
 So neither of these two is registered as `Filterable`. The filtering
-functionality itself is still available — registration is the guarantee "this
+functionality itself is still available, registration is the guarantee "this
 obeys the rules," and it's only that guarantee that has been withdrawn.
 
 ```javascript
@@ -1371,8 +1371,8 @@ console.log(message);   // 'Filterable.lookup: unsupported key either'
 ```
 
 fp-ts and Haskell's `witherable` give `Either` filtering (conditioned on taking
-a `Monoid` for the left side). **That's because their rulebook has no
-annihilation rule** — Haskell's `Filterable` laws are only preservation and
+a `Monoid` for the left side). That's because their rulebook has no
+annihilation rule, Haskell's `Filterable` laws are only preservation and
 composition. It's a conclusion from a place with different premises, so it does
 not transfer directly.
 
@@ -1380,27 +1380,27 @@ not transfer directly.
 
 ## `Task.chainRec` runs synchronous completions as a loop {#chainrec-stack}
 
-Static Land's `ChainRec` does not end with a single equivalence — the rule set
+Static Land's `ChainRec` does not end with a single equivalence, the rule set
 includes a constraint that **`chainRec`'s stack usage must be a constant
 multiple of `f` itself.** It exists precisely to safely run long loops that
 `chain` recursion cannot safely run.
 
 The first implementation was "one step = one recursive call inside the `fork`
 callback." For an asynchronous Task, the event loop empties the stack on every
-step, so there is no problem. But a **synchronous Task, like `Task.of`, calls
+step, so there is no problem. But **a synchronous Task, like `Task.of`, calls
 the callback immediately, so the recursion just piles up.** Measured, the stack
 overflowed somewhere around 800–2,000 steps (the threshold moves with whatever
 state the stack happened to be in at the time).
 
 What's worse is how it dies. `Task`'s `fork` wraps the computation in try/catch,
 but discards an exception thrown after it has already settled. A stack overflow
-happens deep in the recursion — after the outer layers have already settled —
+happens deep in the recursion, after the outer layers have already settled,
 so **the error disappears silently, and the Task never opens, neither reject
 nor resolve, forever.**
 
 So the current implementation detects synchronous completion: if the callback
 arrived before `fork` returned (synchronous), it chains the next step through a
-**loop** instead of recursion; if it arrived after returning (asynchronous), it
+loop instead of recursion; if it arrived after returning (asynchronous), it
 still recurses, but by then the event loop has already emptied the stack, so
 depth does not accumulate.
 
@@ -1417,18 +1417,18 @@ if (result !== 50000) throw new Error('synchronous 50,000 steps did not complete
 console.log(result);   // 50000
 ```
 
-This example is itself the regression test — revert to the recursive
+This example is itself the regression test, revert to the recursive
 implementation and `result` stays `'not opened'`, throwing right here. The same
 check runs against all four registered instances in
 `tests/staticland-laws.test.js`'s `ChainRec` law too.
 
-**One difference from the old implementation — when "code after resolve" runs**
+**One difference from the old implementation: when "code after resolve" runs**
 (Codex cross-review, 2026-08-15). If a step's computation has more code to run
-**after** calling `resolve(...)`, the old implementation ran it **in reverse
-order** after every step had finished — it had piled up on the stack, waiting
+after calling `resolve(...)`, the old implementation ran it in reverse
+order after every step had finished, it had piled up on the stack, waiting
 to unwind, and that pile-up is exactly the overflow above. The current
 implementation runs it right before the next step. No implementation that fixes
-the stack can keep the old order — that order itself *is* the stack buildup.
+the stack can keep the old order, that order itself *is* the stack buildup.
 
 ```javascript
 const { ChainRec, Task } = FunFP;
@@ -1449,10 +1449,10 @@ console.log(log.join(','));   // step0,cleanup0,step1,cleanup1
 A step must be built from the given `next`/`done`. Anything else is **rejected
 with a label.**
 
-It used to be read as **termination** (2026-08-15). The comparison back then was
+It used to be read as termination (2026-08-15). The comparison back then was
 "if it's not `done`, keep going," and that choice excluded rejection because it
-becomes an infinite loop if the tag never changes — **rejection was not among
-the options considered at the time.** Rejecting does not actually cause an
+becomes an infinite loop if the tag never changes, rejection was not among
+the options considered at the time. Rejecting does not actually cause an
 infinite loop (it stops immediately). And reading it as termination lets a typo
 in the callback silently succeed.
 
@@ -1460,10 +1460,10 @@ in the callback silently succeed.
 | --- | --- | --- |
 | a bare value `42`, forgetting `done` | result is **`null`** | `got a value with no tag` |
 | a typo'd `next`, `{ tag: 'nxt' }` | something meant to continue **ends** | `got tag 'nxt'` |
-| a typo'd `tag`, `{ tag: 'don', value: 7 }` | `7` — **plausible enough to go unnoticed** | `got tag 'don'` |
+| a typo'd `tag`, `{ tag: 'don', value: 7 }` | `7`, **plausible enough to go unnoticed** | `got tag 'don'` |
 
 This library rejects the same situation (a callback producing an out-of-spec
-value) in six other places already — `kleisliCompose`'s `chainOf()`,
+value) in six other places already: `kleisliCompose`'s `chainOf()`,
 `MonadError.handleError`, `Task.catchError`, `Prism.match`, `EitherT.catchError`,
 `Actor.handle`. `ChainRec` was the one exception.
 
@@ -1479,7 +1479,7 @@ try { console.log(C.chainRec(() => [42], 0)); }
 catch (e) { console.log(e.message); }   // ChainRec.chainRec: step must be next(...) or done(...), got a value with no tag
 ```
 
-**A `Task` arrives as a rejection instead of throwing** — a throw from a step
+**A `Task` arrives as a rejection instead of throwing**: a throw from a step
 that arrives asynchronously has no one to catch it (a silent hang).
 
 ```javascript
@@ -1495,14 +1495,14 @@ ChainRec.lookup('task')
 
 ## There is one door for writing to the registry {#registry-writes}
 
-**The registry is a directory of well-known types** — it exists to look up an
+**The registry is a directory of well-known types**: it exists to look up an
 already-registered instance by name, and it does not support custom types
 (owner's decision, 2026-08-13). A custom shape is built with a factory
-(`Setoid.Struct`) or a `registry=null` constructor, used **outside the
-directory.**
+(`Setoid.Struct`) or a `registry=null` constructor, used outside the
+directory.
 
 **`registerAs(types, key, instance)` is the only door.** `register(types,
-instance, ...aliases)` is built on top of it too — it inserts the class name and
+instance, ...aliases)` is built on top of it too, it inserts the class name and
 each alias via `registerAs`.
 
 ```javascript
@@ -1525,8 +1525,8 @@ instances both came from.
 
 **Syntax alone cannot block a workaround.** `tests/registry-api.test.js`
 comparing "does every instance in the registry also appear in `Algebra.all`" is
-the only gate. That comparison only sees **instances that exist at that
-moment** — a derivation nobody has built yet slips past it undetected.
+the only gate. That comparison only sees instances that exist at that
+moment, a derivation nobody has built yet slips past it undetected.
 
 ---
 
@@ -1534,9 +1534,9 @@ moment** — a derivation nobody has built yet slips past it undetected.
 
 Usage is in the [README](./README.md). Here's what happens inside.
 
-[The one door](#registry-writes) updates a reverse index — `.type` (lowercase) →
-instances — every time it registers an instance. `Algebra.all` reads that index
-out, so it's **O(k)** — it does not scan.
+[The one door](#registry-writes) updates a reverse index, `.type` (lowercase) →
+instances, every time it registers an instance. `Algebra.all` reads that index
+out, so it's O(k), it does not scan.
 
 | | when it scanned | with the index |
 | --- | --- | --- |
@@ -1559,10 +1559,10 @@ catch (e) { console.log(e.message); }   // 'Algebra.all: key must be lowercase, 
 ```
 
 **Key order is not a contract.** It follows registration order, so it shifts
-whenever registration order shifts — and it actually did shift when the scan
+whenever registration order shifts, and it actually did shift when the scan
 was replaced with the index. Callers destructure by name, so zero call sites
 depend on order, and that's why `npm run baseline`'s grid also looks at the
-result **sorted.** An unsorted line would report meaningless diffs, and someone
+result sorted. An unsorted line would report meaningless diffs, and someone
 would eventually turn that green by accident, hardening an incidental order
 into a contract.
 
@@ -1573,23 +1573,23 @@ into a contract.
 The `polyfills` at line 1 of `index.js` is a promise: "we support older
 runtimes too." But a polyfill can only fill in **methods.** If
 `Array.prototype.flatMap` is missing, `reduce` can stand in for it, but
-**syntax** like `?.` or `??` cannot be substituted that way — a runtime that
+**syntax** like `?.` or `??` cannot be substituted that way, a runtime that
 doesn't know that syntax dies while *parsing* the file, so the polyfill on
 line 1 never even gets a chance to run.
 
-**That's why syntax and methods follow different rules.**
+That's why syntax and methods follow different rules.
 
 | | Crossing the ceiling | Can a polyfill cover it? |
 | --- | --- | --- |
-| Syntax (`?.` `??` `??=` class fields) | dies at parse time | **no** — it must be rewritten as a different expression |
-| Methods (`flatMap` `fromEntries`) | dies at call time | yes — put it in the `polyfills` block |
+| Syntax (`?.` `??` `??=` class fields) | dies at parse time | **no**, it must be rewritten as a different expression |
+| Methods (`flatMap` `fromEntries`) | dies at call time | yes, put it in the `polyfills` block |
 
 ### The benchmark is Google Apps Script
 
 Google **never states anywhere** which ECMAScript version number Apps Script
-supports. Instead it only states individual items — it **explicitly says**
-`async`/`await` and `Promise` work, and says `#private` fields are a **parse
-error**, and that `static` class fields and ES modules are **not supported**. It
+supports. Instead it only states individual items: it **explicitly says**
+`async`/`await` and `Promise` work, and says `#private` fields are a parse
+error, and that `static` class fields and ES modules are not supported. It
 says nothing about the range in between (ES2018–ES2021).
 
 ```
@@ -1599,17 +1599,17 @@ ES2015 ─── ES2017 ─── ES2018 ─ ES2019 ─ ES2020 ─ ES2021 ──
      (up to async/await)                                  (#private, static fields)
 ```
 
-**Not stepping into the range Google is silent about** is the defensible line.
+**Not stepping into the range Google is silent about is the defensible line.**
 That's why the ceiling is set at ES2018. `Promise.prototype.finally` (ES2018) is
 inside the ceiling, so it's used.
 
-Whether `?.` and `??` actually run on Apps Script **was not verified** — there
+Whether `?.` and `??` actually run on Apps Script **was not verified**: there
 was no primary source and no way to run it. The choice was to not lean on
 something unverified.
 
 ### What was used to replace the deleted syntax
 
-`??` is not the same as `||` — it lets `0`, `''`, `false` pass through. So
+`??` is not the same as `||`, it lets `0`, `''`, `false` pass through. So
 instead of switching to `||`, only `undefined`/`null` are checked.
 
 ```javascript no-run just a syntax comparison table, nothing to run
@@ -1634,13 +1634,13 @@ console.log(F.filter(v => v > 1, { a: 1, b: 2, c: 3 }));   // { b: 2, c: 3 }
 ### A polyfill only checks for things *above* the ceiling
 
 Setting the ceiling makes half the polyfills pointless. `Object.entries` and
-`Object.values` are **ES2017**, so a runtime that respects the ceiling is
-**guaranteed to have them** — checking for their presence always goes the same
-way. The fallback implementation never runs, and stays **untested code**
+`Object.values` are ES2017, so a runtime that respects the ceiling is
+**guaranteed to have them**, checking for their presence always goes the same
+way. The fallback implementation never runs, and stays untested code
 forever. So it was removed. Now `Object.entries(...)` is called directly.
 
-The two that remain — `Array.prototype.flatMap` and `Object.fromEntries` — are
-**ES2019**, above the ceiling. They may be missing, so the check has to stay
+The two that remain, `Array.prototype.flatMap` and `Object.fromEntries`, are
+ES2019, above the ceiling. They may be missing, so the check has to stay
 alive.
 
 **Do not lock in the fallback implementation.** Dropping the check and always
@@ -1654,17 +1654,17 @@ using `reduce`+`concat` is tempting for simplicity, but it is **O(n²).**
 | 5,000 | 0.0813ms | 5.6863ms | 69.9× |
 | 20,000 | 0.3869ms | **277.7724ms** | **718×** |
 
-The check buys "still runs on old runtimes" and "fast on new ones" **at the same
-time.** Picking only one of the two loses something either way.
+The check buys "still runs on old runtimes" and "fast on new ones" at the same
+time. Picking only one of the two loses something either way.
 
 ### The rule applies to the whole repository
 
 The ceiling covers not just `index.js` but **every hand-written JavaScript
-file** — both build scripts and every file under `tests/`.
+file**, both build scripts and every file under `tests/`.
 
 Dev files are not shipped and use Node-only APIs like `node:fs`, so they'll
 never run on an older runtime. So the reason for the rule living there is not
-compatibility — it's **consistency.** People copy the convention of the file
+compatibility, it's **consistency.** People copy the convention of the file
 next to them. If half the repository uses `?.`, it leaks into `index.js`. One
 rule, no leaking.
 
@@ -1672,8 +1672,8 @@ rule, no leaking.
 workaround three times would just plant the next drift, so `tests/utils.js`
 keeps a single `allMatches`, and everything uses it.
 
-**Exceptions are recorded in a table along with their reason.** There is one
-right now — the dynamic `import()` in `tests/baseline.js`. It loads HEAD's
+Exceptions are recorded in a table along with their reason. There is one
+right now, the dynamic `import()` in `tests/baseline.js`. It loads HEAD's
 `index.js` by writing it to a temp file, and since the path is only known at
 runtime, ESM leaves no other option. The gate checks both ① that the reason
 field is not empty and ② that the exception is **still actually in use.** If the
@@ -1683,20 +1683,20 @@ was always an exception here."
 ### A gate enforces the rule
 
 [`tests/es-ceiling.test.js`](../../tests/es-ceiling.test.js) reads `index.js`
-**through the TypeScript parser** and walks the syntax tree. It doesn't use
-regex, because this file's comments are full of notation like `Forget<r>`,
+through the TypeScript parser and walks the syntax tree. It **doesn't use
+regex**, because this file's comments are full of notation like `Forget<r>`,
 `a -> b`, `docs/internals.md#anchor`, which produces false positives under plain
 string search. A syntax tree does not see comments.
 
 The exemption applies to **"inside a feature-check ternary," not "inside a
 polyfill block."** At first the whole block was exempted, which misses a defect
-where the block itself calls the raw API without checking — this was confirmed
-by planting the defect. Only the ternary's **condition and true-branch** earn
-the right to look at the raw API; everywhere else must go through `polyfills.*`.
+where the block itself calls the raw API without checking, this was confirmed
+by planting the defect. **Only the ternary's condition and true-branch earn
+the right to look at the raw API**; everywhere else must go through `polyfills.*`.
 
-What the gate **cannot** catch is also written at the top of the file. Calling a
+**What the gate cannot catch is also written at the top of the file.** Calling a
 method by a string name (`obj['flatMap']()`), and cases where what got
-standardized is not syntax but *behavior* — the flagship example being
+standardized is not syntax but *behavior*, the flagship example being
 `Array.prototype.sort`'s stability (ES2019). Right now `index.js`'s only `sort`
 call is on an array of unique keys, so stability doesn't matter there.
 
@@ -1710,54 +1710,54 @@ separately would just do the same job twice.
 
 **But that identity only holds when the build has actually been run.** If it
 hasn't, `dist/` stays a stale copy of an old `index.js`, and at that point what
-users get diverges from the source. This actually happened —
-after `?.` was removed from `index.js`, `dist/` still had 4 instances of `?.`
+users get diverges from the source. This actually happened, after `?.` was
+removed from `index.js`, `dist/` still had 4 instances of `?.`
 and 3 of `??`.
 
 So [`tests/dist-sync.test.js`](../../tests/dist-sync.test.js) does not check the
-*content* of the build output — it checks **"does `dist/` match what building
-`index.js` right now would produce."** When this check is green, whatever was
+*content* of the build output, it checks "does `dist/` match what building
+`index.js` right now would produce." When this check is green, whatever was
 proven about `index.js` automatically holds for `dist/` too.
 
-The check does not **copy** the transformation rule. It loads and uses
-`buildOutputs` exported straight from `build.js` — copying it would silently
+**The check does not copy the transformation rule.** It loads and uses
+`buildOutputs` exported straight from `build.js`, copying it would silently
 drift the moment `build.js` changes, and at that point this check would become a
 false green.
 
-`dist/fun-fp.d.ts` is bound the same way, but with a different partner — its
+`dist/fun-fp.d.ts` is bound the same way, but with a different partner, its
 source of truth is not `index.js` but the `types/` folder, and
 `build-types.js` concatenates the declaration files inside it. So the check
 reads `types/` and diffs the result of rebuilding it against `dist/fun-fp.d.ts`.
 
-**There is one more trap here.** `build-types.js`'s file manifest is written by
+There is one more trap here. `build-types.js`'s file manifest is written by
 hand. Create a new declaration file and forget to add it to the manifest, and it
-**silently drops out** of the shipped `.d.ts` — only the type disappears, the
+**silently drops out** of the shipped `.d.ts`, only the type disappears, the
 runtime behavior stays fine, so nothing else catches it. So the actual `.d.ts`
 files under `types/` and the manifest are cross-checked in both directions. It
 catches a file missing from the manifest, and also a manifest entry with no file
-behind it. (`types/__tests__/*.test-d.ts` is excluded — it's not shipped.)
+behind it. (`types/__tests__/*.test-d.ts` is excluded, it's not shipped.)
 
 ## MonadError — the grounds for a class outside the spec {#monaderror}
 
 A class not in Static Land (the same standing as Strong/Choice/Wander). Two
-reasons it was built — the door for creating and catching a failure was
+reasons it was built: the door for creating and catching a failure was
 scattered by type (only Task had catchError, Either had none), and the law
 gate only looked at the success path. Only Task and Either are registered:
 for Maybe, Nothing carries no error value, so the law would be vacuous (that
 slot belongs to Alt/Plus instead), and Validation is not a Monad. When the
-handler's return value gets checked follows the type — immediately for Either,
+handler's return value gets checked follows the type: immediately for Either,
 lazily at fork time for Task (keeping Task.catchError's existing contract).
 2026-08-18.
 
 ## Reducible — the class for folds with no empty case {#reducible}
 
-`foldMap` requires a Monoid for one reason — the answer for when an empty
+`foldMap` requires a Monoid for one reason: the answer for when an empty
 container comes in (the identity element). A container that can never be
 empty doesn't even have that question, so a fold that only needs a Semigroup
 (`reduceLeft`/`reduceMap`) works. `Reducible extends Foldable` turns that into
-a contract (the same standing as cats's Reducible, outside the spec —
-like MonadError, it is not added to the SPEC table or the dependency graph).
-There are two instances, NonEmptyList and Identity — Identity, which must
+a contract (the same standing as cats's Reducible, outside the spec: like
+MonadError, it is not added to the SPEC table or the dependency graph).
+There are two instances: NonEmptyList and Identity. Identity, which must
 always carry exactly one value, is the limiting case of "cannot be empty."
 Array and Maybe can become empty, so they structurally do not qualify, and
 that absence is what gives this class its meaning.

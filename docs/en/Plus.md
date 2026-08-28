@@ -55,11 +55,11 @@ Alt ──> Plus ──> Alternative
 
 ## You get a Monoid for free
 
-`Plus` carries **both** `alt` (the combining operation) and `zero` (the
-identity element) — that is precisely the definition of a Monoid. So **a
+`Plus` carries both `alt` (the combining operation) and `zero` (the
+identity element): that is precisely the definition of a Monoid. So **a
 registered `Plus` gets a matching `Semigroup`/`Monoid` under that same type's
 name, for free.** The one exception is when the type already has its own
-`Monoid` — it is not derived in that case (`Array` is such a case).
+`Monoid`: it is not derived in that case (`Array` is such a case).
 
 ```javascript
 const { Plus, Monoid, Maybe } = FunFP;
@@ -69,7 +69,7 @@ console.log(Monoid.lookup('maybe').concat(Maybe.Just(1), Maybe.Just(2)).value); 
 console.log(Monoid.lookup('maybe').empty().isNothing());                       // true
 ```
 
-Registering a new `Plus` brings the pair along with it — there is no need to
+Registering a new `Plus` brings the pair along with it, so there is no need to
 build it separately. For details, and how this differs from `maybe(first)`,
 see the [Monoid](./Monoid.md) document.
 

@@ -295,7 +295,7 @@ Every Monad type supports both `pipeK` and `composeK`:
 - **Either**: an error-handling pipeline
 - **Task**: an async workflow
 - **Reader**: composition sharing an environment
-- **Writer**: composition accumulating output (the registered instance is Array-Monoid-only — for any other Monoid use the `Monad.Writer(m)` factory, see [Writer](./Writer.md))
+- **Writer**: composition accumulating output (the registered instance is Array-Monoid-only, for any other Monoid use the `Monad.Writer(m)` factory, see [Writer](./Writer.md))
 - **State**: composition threading state
 - **Free**: DSL composition
 

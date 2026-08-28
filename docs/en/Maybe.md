@@ -249,7 +249,7 @@ Maybe.toEither('Not found', Maybe.Nothing()); // Left('Not found')
 
 ## Maybe.pipe / Maybe.pipeK
 
-Static Land–style chaining that reads cleanly:
+Static Land-style chaining that reads cleanly:
 
 ### Maybe.pipe — apply functions in sequence
 
@@ -265,7 +265,7 @@ Maybe.pipe(
 // Just('Seoul') or Nothing
 ```
 
-`Maybe.pipe` sits on top of the general-purpose combinator `pipeWhile` — `pipeWhile(Maybe.isJust)`
+`Maybe.pipe` sits on top of the general-purpose combinator `pipeWhile`: `pipeWhile(Maybe.isJust)`
 is its body, and `Either.pipe` uses the same skeleton (`pipeWhile(Either.isRight)`).
 
 ### pipeWhile — a pipe that only continues while a predicate holds {#pipewhile}
@@ -310,7 +310,7 @@ getCityFromUser({ name: 'Bob' });  // Nothing
 ## Reading it in output — `toString` {#tostring}
 
 `Just(1)` and `Nothing()` are nearly the same object underneath, so their string forms are made to
-diverge. The JSON representation is unchanged — `_typeName` is what type checks read, so it is left
+diverge. The JSON representation is unchanged: `_typeName` is what type checks read, so it is left
 alone.
 
 ```javascript

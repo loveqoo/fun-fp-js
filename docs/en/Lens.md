@@ -28,10 +28,8 @@ over(userCity, s => s.toUpperCase(), user);
 console.log(user.address.city);    // 'Seoul'
 ```
 
-Once built, `userCity` serves **all three purposes — reading, writing, and
-transforming.**
-
-transforming.**
+Once built, `userCity` serves all three purposes: reading, writing, and
+transforming.
 
 ## Concept
 
@@ -43,7 +41,7 @@ it's a value, it **composes.**
 Lens s a = { get: s -> a, set: (a, s) -> s }
 ```
 
-The key point is that the setter never mutates the original — it **returns a
+The key point is that the setter never mutates the original: it **returns a
 new structure.** So every update done through a Lens is immutable.
 
 ## Why Lens?
@@ -74,7 +72,7 @@ const cityName = user && user.address && user.address.city
 
 ## Construction
 
-`Lens(getter, setter)` — the setter's argument order is `(newValue,
+`Lens(getter, setter)`: the setter's argument order is `(newValue,
 originalStructure) => newStructure`.
 
 ```javascript
@@ -146,7 +144,7 @@ console.log(original.name);  // 'A' — the original is unchanged
 
 ### over - transforming the current value with a function
 
-Reads, applies, and writes back — all in one step.
+Reads, applies, and writes back, all in one step.
 
 ```javascript
 const { Lens, over } = FunFP.Optics;
@@ -277,7 +275,7 @@ console.log(users[1].name);                      // 'Kim' — the original is un
 console.log(renamed[0] === users[0]);            // true — an unchanged item shares its reference
 ```
 
-The last line matters — items that didn't change **keep the same
+The last line matters: items that didn't change **keep the same
 reference**, which plays well with reference-comparison-based change
 detection (React's `memo` and the like).
 
@@ -330,7 +328,7 @@ console.log(normalize({ name: '  anthony  ', age: -5 }));
 
 - [Profunctor](./Profunctor.md) - the `P` a Lens takes. A Lens uses its
   `first` (product) side. `view` injects `Forget`; `over`/`set` inject a
-  function — which is why reading and writing both come out of a single Lens.
+  function, which is why reading and writing both come out of a single Lens.
 - [Semigroupoid](./Semigroupoid.md) - `compose` is composition for Lenses.
   Because of the F-explicit encoding it isn't compatible with regular
   `compose`, though, so it's offered as a dedicated function.

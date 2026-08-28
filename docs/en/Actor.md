@@ -69,7 +69,7 @@ console.log(account.getState());  // 20 — always
 
 ## Creation
 
-`Actor({ init, handle, notifyInOrder, timeout })` — `handle` returns a `[result, newState]`
+`Actor({ init, handle, notifyInOrder, timeout })`: `handle` returns a `[result, newState]`
 tuple. If it is asynchronous, return a **Promise or Task** wrapping that same tuple (this
 matches the idiom used by `Free.api` interpreter handlers, so you can pass
 `it.run(program).then(v => [v, newState])` directly). Whichever path is taken, returning
@@ -108,7 +108,7 @@ slow.send('stuck').fork(
 **In environments without a timer, expiry takes effect at the next boundary.** Google
 Apps Script has no `setTimeout`. In such environments there is no way to wake up at the
 exact deadline instant, so the deadline is checked and expired at the **next queue
-boundary** (when a new message arrives or the queue advances to the next item) — the
+boundary** (when a new message arrives or the queue advances to the next item). This is the
 same semantics as [cooperative cancellation](./Free.md#api) in `Free.api`. If nothing
 happens, the expiry is delayed accordingly.
 
@@ -163,7 +163,7 @@ try {
 
 ### send - sending a message
 
-Returns a Task. It is not deferred execution — the message **enters the queue
+Returns a Task. It is not deferred execution: the message **enters the queue
 immediately**, and the Task is only the channel through which you receive the result.
 
 ```javascript
@@ -300,7 +300,7 @@ console.log(await run(strict.send(5)));    // 15
 console.log(strict.getState());            // 15
 ```
 
-A failed message **does not change state** — after processing `-1` above, the state
+A failed message **does not change state**. After processing `-1` above, the state
 was still 10.
 
 ## Practical examples

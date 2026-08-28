@@ -295,7 +295,7 @@ Either.toMaybe(Either.Left('error'));  // Nothing
 
 ## Either.pipe / Either.pipeK
 
-Static Land–style chaining that reads cleanly. `Either.pipe` is `pipeWhile(Either.isRight)` —
+Static Land-style chaining that reads cleanly. `Either.pipe` is `pipeWhile(Either.isRight)`:
 for an explanation of the skeleton and examples, see [the pipeWhile section of the Maybe docs](./Maybe.md#pipewhile).
 
 ### Either.pipe — apply functions in sequence
@@ -341,7 +341,7 @@ validateNumber('200');  // Left('Must be <= 100')
 
 ## Reading it in output — `toString` {#tostring}
 
-`Left` and `Right` also diverge in their string form. The JSON representation is unchanged —
+`Left` and `Right` also diverge in their string form. The JSON representation is unchanged:
 `_typeName` is what type checks read, so it is left alone.
 
 ```javascript

@@ -157,11 +157,11 @@ console.log(C.wrap([7]).value);                          // [ 7 ]
 console.log(Applicative.lookup('const(array)') === C);       // true
 ```
 
-The key point is that `map` discards the value — which is exactly what turns `traverse` into
+The key point is that `map` discards the value, which is exactly what turns `traverse` into
 "walk the structure and fold it with a monoid." `Optics.foldMapOf(monoid, optic, f, s)` is
 precisely that.
 
-There is one more factory of the same shape — `Applicative.Writer(monoid)`. The registered
+There is one more factory of the same shape: `Applicative.Writer(monoid)`. The registered
 `writer` instance is Array-Monoid-only, so an `of`-chaining Writer Applicative/Monad over any
 other Monoid comes from this factory. See [Writer](./Writer.md#writer-factory) for details.
 

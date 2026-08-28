@@ -2,7 +2,7 @@
 
 > 한국어: [../Optics.md](../Optics.md)
 
-**Composable accessors that point at part of your data** — Iso, Lens, Prism, Traversal
+**Composable accessors that point at part of your data**: Iso, Lens, Prism, Traversal
 
 An optic turns **the way you read and write a part of a larger structure**
 into a value. Being a value, it composes, and once built, one optic serves
@@ -35,7 +35,7 @@ console.log(user.address.city);                     // 'Seoul'  the original sta
 ```
 
 **It also accepts array indices.** Since the copy preserves its own shape, an
-array stays an array — that's what lets it compose with a traversal optic
+array stays an array, which is what lets it compose with a traversal optic
 downstream.
 
 ```javascript
@@ -47,7 +47,7 @@ const xs = Optics.compose(Optics.prop('xs'), Optics.traversed('array'));
 console.log(Optics.over(xs, x => x * 10, { xs: [1, 2, 3] }));   // { xs: [ 10, 20, 30 ] }
 ```
 
-To build one yourself, use `Lens(getter, setter)` — `prop` is just a special
+To build one yourself, use `Lens(getter, setter)`. `prop` is just a special
 case of it.
 
 ```javascript
@@ -105,7 +105,7 @@ const updated = {
 
 ### Iso — lossless two-way conversion
 
-`Iso(to, from)` — use it when two representations can go back and forth
+`Iso(to, from)`: use it when two representations can go back and forth
 without losing information.
 
 ```javascript
@@ -143,7 +143,7 @@ console.log(set(fahrenheit, 212, 0));          // 100
 console.log(review(fahrenheit, 32));           // 0
 ```
 
-**A reversed Iso doesn't need to be built separately** — it's derived from
+**A reversed Iso doesn't need to be built separately.** It's derived from
 `view` and `review`.
 
 ```javascript
@@ -173,7 +173,7 @@ console.log(view(nameLens, { name: 'Anthony', age: 30 }));  // 'Anthony'
 
 ### Prism — 0 or 1
 
-`Prism(match, build)` — `match` **must return a `Maybe`.**
+`Prism(match, build)`: `match` **must return a `Maybe`.**
 
 ```javascript
 const { Maybe } = FunFP;
@@ -223,7 +223,7 @@ console.log(toList(inMaybe, Maybe.Nothing()));  // [] — no target
 
 ## Main operations
 
-Three for reading, two for writing. **Only `view` is Lens-specific** — the
+Three for reading, two for writing. **Only `view` is Lens-specific**; the
 rest work on all three optics.
 
 | operation | result | when 0 targets | when 2+ targets |
@@ -236,7 +236,7 @@ rest work on all three optics.
 | `set(optic, b, s)` | `s` | unchanged original | all replaced |
 | `review(prism, a)` | `s` | Prism/Iso only | not applicable |
 
-**`view` only works when there's exactly one target** — it counts the
+**`view` only works when there's exactly one target.** It counts the
 targets and throws for anything else.
 
 ```javascript
@@ -279,7 +279,7 @@ console.log(toList(scores, [{ score: 10 }, { score: 20 }]));  // [10, 20]
 
 ### foldMapOf - collecting with a Monoid you choose
 
-`preview` and `toList` each collect in a fixed way — "the first target" and
+`preview` and `toList` each collect in a fixed way: "the first target" and
 "an array," respectively. To collect differently, use `foldMapOf(monoid,
 optic, f, s)` to **choose the Monoid yourself.**
 
@@ -304,7 +304,7 @@ const { traversed, foldMapOf } = FunFP.Optics;
 console.log(foldMapOf(Monoid.lookup('number'), traversed('array'), x => x, []));  // 0
 ```
 
-`toList` and `preview` are special cases of this — they're just `foldMapOf`
+`toList` and `preview` are special cases of this: they're just `foldMapOf`
 with the Monoid pinned to `array` and `maybe` respectively.
 
 ```javascript
@@ -317,7 +317,7 @@ console.log(JSON.stringify(toList(each, [1, 2, 3])));   // [1,2,3]   same as abo
 ```
 
 **Monoids you never registered work too.** They just have to be an actual
-`Monoid`, not an `{ empty, concat }` literal — the same rule as
+`Monoid`, not an `{ empty, concat }` literal, the same rule as
 [`foldMap`](./Foldable.md).
 
 ```javascript
@@ -368,7 +368,7 @@ console.log(preview(rightP, built).value);            // 42 — law: preview ∘
 ```
 
 `review` only works **on a Prism.** `Tagged` ignores its input and holds only
-the output, which lets it construct the `a -> s` direction — but in exchange
+the output, which lets it construct the `a -> s` direction, but in exchange
 it can't implement product (`first`) or traversal (`wander`). Using it on a
 Lens or Traversal fails right there.
 
@@ -408,7 +408,7 @@ console.log(preview(rightEven, review(rightEven, 8)).value);   // 8 — the law 
 
 `compose(...)` takes its arguments **from outside in.** You can mix
 different kinds freely, and the target count of the result is their
-**product** — Lens (1 target) × Traversal (n targets) = n targets.
+**product**: Lens (1 target) × Traversal (n targets) = n targets.
 
 ```javascript
 const { Maybe } = FunFP;
@@ -423,7 +423,7 @@ console.log(toList(evens, [1, 2, 3, 4]));              // [2, 4]
 console.log(over(evens, x => x * 100, [1, 2, 3, 4]));    // [1, 200, 3, 400]
 ```
 
-Lenses compose with each other using the very same function — there's no
+Lenses compose with each other using the very same function; there's no
 need for a kind-specific name.
 
 ```javascript
@@ -553,7 +553,7 @@ console.log(shouted.map(u => u.name));                           // ['ALICE', 'b
 ### 4. Safe deep reads
 
 `preview` returns `Nothing` no matter where along the path something is
-missing — no defensive code needed.
+missing, no defensive code needed.
 
 ```javascript
 const { Maybe } = FunFP;
@@ -591,7 +591,7 @@ once.
 | --- | --- |
 | a function (`a -> b`) | `over`, `set` |
 | `Forget<r>` (`a -> r`) | `view`, `preview`, `toList` |
-| `Tagged` (holds only `b` — ignores the input) | `review` |
+| `Tagged` (holds only `b`, ignores the input) | `review` |
 
 The four optics differ in which method of `P` they use.
 
@@ -604,7 +604,7 @@ The four optics differ in which method of `P` they use.
 
 **`Tagged` has neither `first` nor `wander`**, and that alone is the
 constraint behind "Lens and Traversal can't be `review`ed." Conversely,
-**`Iso` uses only `dimap`, so it works with every `P`** — being both a Lens
+**`Iso` uses only `dimap`, so it works with every `P`**: being both a Lens
 and a Prism, both `view` and `review` work on it. It demands the least, which
 is why it sits at the top of the optics hierarchy.
 
@@ -630,4 +630,4 @@ in the [Profunctor](./Profunctor.md) registry.
 ## Learn more
 
 - [Profunctor Optics: Modular Data Accessors](https://arxiv.org/abs/1703.10857) (Pickering, Gibbons, Wu)
-- [Van Laarhoven Lenses](https://www.twanvl.nl/blog/haskell/cps-functional-references) — an earlier encoding
+- [Van Laarhoven Lenses](https://www.twanvl.nl/blog/haskell/cps-functional-references) (an earlier encoding)

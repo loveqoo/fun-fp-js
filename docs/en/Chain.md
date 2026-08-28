@@ -7,7 +7,7 @@
 ## Concept
 
 A `map` callback normally returns a value. When the callback **returns a box**, `map` nests the
-boxes — `Maybe<Maybe<number>>`. `chain` takes the same callback but flattens the result back to
+boxes: `Maybe<Maybe<number>>`. `chain` takes the same callback but flattens the result back to
 one layer. That gives you a sequence where each step looks at the previous result to decide the
 next.
 
@@ -48,7 +48,7 @@ console.log(String(chain(half, chain(half, Maybe.Just(8)))));   // Just(2)   a s
 ### The callback must return a box
 
 Using `chain` where `map` belongs is the most common mistake. Strict mode rejects it
-**at the site of the mistake** — the rationale and the boundary (lazy types) are in
+**at the site of the mistake**: the rationale and the boundary (lazy types) are in
 [internals](./internals.md#chain-return).
 
 ```javascript
@@ -62,7 +62,7 @@ catch (e) { console.log(e.message); }   // 'Chain.chain: callback must return Ma
 ### Kleisli composition — joining arrows before any value arrives
 
 Functions of shape `a -> Chain b` (Kleisli arrows) can be composed before any value exists.
-Chaining twice equals composing the arrows first and chaining once — that is the associativity
+Chaining twice equals composing the arrows first and chaining once, which is the associativity
 law above.
 
 ```javascript
@@ -77,6 +77,6 @@ console.log(String(pipeline(7)));   // Nothing
 
 ## Related type classes
 
-- **[Apply](./Apply.md)** — the parent. Combining boxes that know nothing about each other.
-- **[Monad](./Monad.md)** — `chain` plus `of`. Every registered Chain goes all the way to Monad.
-- **[ChainRec](./ChainRec.md)** — the sibling that runs `chain` recursion without a stack.
+- **[Apply](./Apply.md)**: the parent. Combining boxes that know nothing about each other.
+- **[Monad](./Monad.md)**: `chain` plus `of`. Every registered Chain goes all the way to Monad.
+- **[ChainRec](./ChainRec.md)**: the sibling that runs `chain` recursion without a stack.

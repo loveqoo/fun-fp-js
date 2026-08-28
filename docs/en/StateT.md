@@ -81,7 +81,7 @@ makes the type name depend on execution order.
 | Call | `_typeName` | Registry alias |
 | --- | --- | --- |
 | `StateT('maybe')` | `StateT(Maybe)` | `statet(maybe)` |
-| `StateT(Maybe)` | `StateT(M1)` | `statet(m1)` — depends on execution order |
+| `StateT(Maybe)` | `StateT(M1)` | `statet(m1)`, depends on execution order |
 
 This is because an object has no `type` property, so `M1`, `M2`, ... get attached
 in order instead (`resolveMonadType` in `index.js`).
@@ -135,7 +135,7 @@ Every Transformer provides three things.
 | `lift(ma)` | Lift a value **already inside the underlying monad `M`** into the Transformer |
 | `chain(f)` | Chain to the next step |
 
-The difference between `of` and `lift` is the key point — `of` takes a plain value,
+The difference between `of` and `lift` is the key point: `of` takes a plain value,
 `lift` takes a value already wrapped in `M`.
 
 ```javascript
@@ -189,7 +189,7 @@ const ST = StateT('maybe');
 console.log(JSON.stringify(ST.runState(7, ST.get).value));   // [7, 7]
 ```
 
-Both the value and the state are `7` — `get` also produces the state as its result.
+Both the value and the state are `7`; `get` also produces the state as its result.
 
 ### put - replace the state
 
@@ -221,7 +221,7 @@ const ST = StateT('maybe');
 console.log(JSON.stringify(ST.runState(5, ST.gets(s => s + 10)).value));   // [15, 5]
 ```
 
-The state itself is left untouched — only the derived value is extracted.
+The state itself is left untouched; only the derived value is extracted.
 
 ### runState / eval / exec - running it
 
@@ -282,7 +282,7 @@ console.log(JSON.stringify(order.run(10).value));   // [8, 2]
 console.log(order.run(6).isNothing());              // true
 ```
 
-The second line matters — if it fails partway through, **the partial update never
+The second line matters: if it fails partway through, **the partial update never
 leaks out.**
 
 ### 2. Asynchronous state transitions (StateT + Task)
@@ -352,7 +352,7 @@ console.log(users.map(u => u.id));   // ['user-1', 'user-2', 'user-3']
 console.log(nextCounter);            // 4
 ```
 
-It's safe to build up the program via `reduce`, too — being Free-based, the stack
+It's safe to build up the program via `reduce`, too. Being Free-based, the stack
 never blows up.
 
 ## Related type classes

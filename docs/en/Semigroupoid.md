@@ -17,9 +17,9 @@ const compose = (f, g) => x => f(g(x))
 // f ∘ g: runs g first, then passes the result to f
 ```
 
-> **Mind the direction** — this `compose` runs right-to-left (the math /
+> **Mind the direction**: this `compose` runs right-to-left (the math /
 > Ramda convention, the same as `fp.compose`). The Static Land spec's
-> `compose` runs in the **opposite** direction (left-to-right, first argument
+> `compose` runs in the opposite direction (left-to-right, first argument
 > first), which matches this library's `pipe`. This is a deliberate
 > departure in favor of the more familiar convention; the reasoning is in
 > [`internals.md#compose-direction`](./internals.md#compose-direction).
