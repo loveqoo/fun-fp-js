@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
- * Version: 0.2.1
- * Commit: 04cf02d803fe886360f47e55572233fe11edfcef
- * Built: 2026-08-27T17:34:16.225Z
+ * Version: 0.2.2
+ * Commit: fa844f531ecab21fb4bbcfcab6100e5a8374b9fb
+ * Built: 2026-08-28T05:50:02.071Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -3624,6 +3624,22 @@ const extra = (() => {
     return { path, template };
 })();
 export default {
+    Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
+    Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
+    Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable, Reducible,
+    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State, Store,
+    StateT, EitherT, ReaderT, WriterT, Actor,
+    Optics,
+    identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
+    constant, tuple, fst, snd, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
+    predicate, predicateN, negate, negateN,
+    flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
+    tap, also, pipeFrom, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
+    extra, setStrictMode, setTapErrorHandler
+};
+// named export — d.ts 가 약속하는 표면과 런타임을 일치시킨다(0.2.1 까지는 default 뿐이라 `import { Maybe }` 가 죽었다)
+export {
+
     Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
     Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
     Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable, Reducible,
