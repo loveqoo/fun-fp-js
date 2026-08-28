@@ -59,6 +59,37 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ⬜ 열림 — 타입 선언 5건 수리 + 표면 전수 게이트 (2026-08-28 승인, 착수 전)
+
+외부 재리뷰(ChatGPT) 후보 5 + 경미 1 을 **전부 실측 확정**했다. 소유자 승인(우선순위 1→5),
+컴팩션 후 착수. 전부 `types/` 선언 수리 — 런타임 무변경.
+
+- **1 (확정+확대)** — default fp 타입에서 6개 누락: `Strong`·`Choice`·`Wander`·`Identity`·
+  `fst`·`snd`. `fst`/`snd` 는 utilities.d.ts 에 선언 자체가 없고, Strong/Choice/Wander 는
+  타입으로만 존재(값 선언 없음). 소비자 재현: `import { fst }` → TS2614, `Strong` 값 사용 →
+  TS2693. **수리**: fst/snd 선언 신설(`<A, B>(pair: readonly [A, B]) => A` 꼴), 셋의 Static
+  값 선언(다른 클래스 패턴), index.d.ts default 타입에 6개 추가.
+- **2 (확정)** — TypeClasses.d.ts 의 `Traversable.traverse` 가 커링 `(A)(f, fa)`, 런타임은
+  3인자(실측: 커링 호출은 TypeError). **수리**: 3인자 언커리드로.
+- **3 (확정)** — Lens.d.ts `Profunctor2` 가 `dimap` 요구, 런타임 optics 는 `promap` 호출.
+  **수리**: dimap → promap(주석 산문도 정합하게).
+- **4 (확정)** — 런타임 `Choice.left` 는 Left 쪽 변환(실측 `Left(3)→Left(6)`), 선언은
+  left·right 동일 시그니처(둘 다 Right 방향) — left 복붙 오류. **수리**: left 를
+  `Either<In1, C> → Either<T1, C>` 로.
+- **5 (확정, 반쪽 수리 승인)** — `MonadError.raiseError('boom')` 추론이 `Either<never, never>`
+  (실측). 클래스 수준 제네릭은 인스턴스별 에러 채널 슬롯을 모름 — **never 오염만 제거**
+  (`never` → 슬롯 제네릭/unknown)하고 한계를 d.ts 주석 + internals 에 기록. 키별 완전
+  타이핑은 별건 후보로 남김.
+- **경미 (확정)** — README 상태표 「Test files 55」 → 실제 56(consumer 테스트 추가분).
+  한·영 갱신.
+- **게이트 신설** — consumer.test.js 확장: 테스트가 `Object.keys(fp)` 전원(92개)을 **값으로
+  import 하는 픽스처를 생성**해 nodenext 컴파일 — 런타임↔선언 표면 전수 대조. 1번 계열의
+  재발 방지. 뮤테이션(선언 하나 지우면 빨강)으로 게이트 확인.
+- **완료조건** — 소비자 픽스처(named 92 + traverse 3인자 + left 방향 + raiseError 비-never)
+  컴파일 통과, 전체 테스트 + typecheck 초록, 수리 전에는 각 픽스처가 빨강이었음을 확인.
+- **참고** — 재현 픽스처는 스크래치패드 `rev/`(t1: 표면, t5b: never 추론). 0.2.2 발행은
+  이 수리까지 실어서 하기로 함(아직 미발행).
+
 ## ✅ 닫힘 — Free.api 이름 공간 분리 (2026-08-28)
 
 README 새 맛보기의 Free 예제를 보던 소유자 문답에서 나온 설계 판정. `api.interpreter` 가
