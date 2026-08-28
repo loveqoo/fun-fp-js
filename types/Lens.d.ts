@@ -13,8 +13,12 @@
  *   Prism     0 or 1 target      reaches for `left`   (sum)
  *   Traversal 0..n targets       reaches for `wander` (delegates to Traversable)
  *
- * The three share one TypeScript shape — at runtime they differ only in which
- * Profunctor method they call. `review` is the one helper that narrows to Prism.
+ * The four share one runtime shape and differ only in which Profunctor method
+ * they reach for — so the type carries exactly that: a phantom set of required
+ * capabilities (`C`). Composition unions the sets, and `review` (the one
+ * capability-gated helper — the runtime rejects a Lens/Traversal outright)
+ * accepts only optics whose set stays within `left`. `view` is value-gated at
+ * runtime (exactly one target), so it stays open to every kind here.
  */
 
 import type { Maybe } from "./data/Maybe";
@@ -45,16 +49,24 @@ export interface Profunctor2 {
 // phantom member — without it TypeScript cannot infer `A` at call sites like
 // `over(lens, s => s.toUpperCase(), p)`.
 declare const OPTIC_FOCUS: unique symbol;
+declare const OPTIC_CAPS: unique symbol;
 
-export interface Optic<S, A> {
+// The P methods an optic reaches for beyond `promap`. Iso needs none (never),
+// Lens `first`, Prism `left`, Traversal `wander`; composing unions the sets.
+export type OpticCap = "first" | "left" | "wander";
+
+// `C` defaults to the full set: a bare `Optic<S, A>` means "kind unknown" —
+// every value-gated helper takes it, only `review` refuses it.
+export interface Optic<S, A, C extends OpticCap = OpticCap> {
     (P: Profunctor2): (pab: any) => (s: S) => any;
     readonly [OPTIC_FOCUS]?: (a: A) => A;
+    readonly [OPTIC_CAPS]?: C;
 }
 
-export type Iso<S, A> = Optic<S, A>;
-export type Lens<S, A> = Optic<S, A>;
-export type Prism<S, A> = Optic<S, A>;
-export type Traversal<S, A> = Optic<S, A>;
+export type Iso<S, A> = Optic<S, A, never>;
+export type Lens<S, A> = Optic<S, A, "first">;
+export type Prism<S, A> = Optic<S, A, "left">;
+export type Traversal<S, A> = Optic<S, A, "wander">;
 
 // ── Construction ─────────────────────────────────────────────────────
 
@@ -85,9 +97,10 @@ declare function prop<S, A>(key: string | number): Lens<S, A>;
 
 // ── Reading ──────────────────────────────────────────────────────────
 
-// View through a Lens or Iso — exactly one target.
-// Zero or 2+ targets throw at runtime; use preview/toList instead.
-declare function view<S, A>(lens: Lens<S, A>, s: S): A;
+// View through an optic with exactly one target — meant for Lens/Iso, but
+// value-gated at runtime (a matching Prism or a 1-element Traversal passes),
+// so the type stays open. Zero or 2+ targets throw; use preview/toList instead.
+declare function view<S, A>(lens: Optic<S, A>, s: S): A;
 
 // First target, if any. Works for every optic.
 declare function preview<S, A>(optic: Optic<S, A>, s: S): Maybe<A>;
@@ -95,8 +108,10 @@ declare function preview<S, A>(optic: Optic<S, A>, s: S): Maybe<A>;
 // Every target, in order. Works for every optic.
 declare function toList<S, A>(optic: Optic<S, A>, s: S): A[];
 
-// Build an S back from a focus. Prism and Iso only — Lens/Traversal throw at runtime.
-declare function review<S, A>(prism: Prism<S, A> | Iso<S, A>, a: A): S;
+// Build an S back from a focus. Prism and Iso only — the runtime rejects a
+// Lens/Traversal outright, so the type does too: the capability set must stay
+// within `left` (never ⊆ left ⊆ left; first/wander, and any union with them, fail).
+declare function review<S, A>(prism: Optic<S, A, "left">, a: A): S;
 
 // ── Writing ──────────────────────────────────────────────────────────
 
@@ -113,22 +128,29 @@ declare function set<S, A>(optic: Optic<S, A>, b: A, s: S): S;
 // ── Composition ──────────────────────────────────────────────────────
 
 // Compose optics outer-to-inner — this is plain function composition at the P layer.
+// The capability sets union, so the kind of the composite follows automatically
+// (iso∘prism stays reviewable, lens∘prism does not — matches the runtime).
 // Overloads up to arity 4.
-declare function composeOptics<S, T, A>(
-    o1: Optic<S, T>,
-    o2: Optic<T, A>
-): Optic<S, A>;
-declare function composeOptics<S, T1, T2, A>(
-    o1: Optic<S, T1>,
-    o2: Optic<T1, T2>,
-    o3: Optic<T2, A>
-): Optic<S, A>;
-declare function composeOptics<S, T1, T2, T3, A>(
-    o1: Optic<S, T1>,
-    o2: Optic<T1, T2>,
-    o3: Optic<T2, T3>,
-    o4: Optic<T3, A>
-): Optic<S, A>;
+declare function composeOptics<S, T, A, C1 extends OpticCap, C2 extends OpticCap>(
+    o1: Optic<S, T, C1>,
+    o2: Optic<T, A, C2>
+): Optic<S, A, C1 | C2>;
+declare function composeOptics<
+    S, T1, T2, A, C1 extends OpticCap, C2 extends OpticCap, C3 extends OpticCap
+>(
+    o1: Optic<S, T1, C1>,
+    o2: Optic<T1, T2, C2>,
+    o3: Optic<T2, A, C3>
+): Optic<S, A, C1 | C2 | C3>;
+declare function composeOptics<
+    S, T1, T2, T3, A,
+    C1 extends OpticCap, C2 extends OpticCap, C3 extends OpticCap, C4 extends OpticCap
+>(
+    o1: Optic<S, T1, C1>,
+    o2: Optic<T1, T2, C2>,
+    o3: Optic<T2, T3, C3>,
+    o4: Optic<T3, A, C4>
+): Optic<S, A, C1 | C2 | C3 | C4>;
 
 // ── The Optics module object ─────────────────────────────────────────
 // Everything above is namespaced under a single export — `set`, `over` and

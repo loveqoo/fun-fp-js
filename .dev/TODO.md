@@ -59,16 +59,25 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
-## ⬜ 열림 — optic 종류 구분(phantom brand): 재리뷰 3차 5번 (2026-08-28 분리)
+## ✅ 닫힘 — optic 종류 구분(능력 집합 brand): 재리뷰 3차 5번 (2026-08-29)
 
 - **원인** — Lens/Prism/Iso/Traversal 이 전부 같은 구조 타입(`Optic<S, A>`)이라
   `Optics.review(lens, 1)` 이 TS 를 통과하고 런타임이 던진다(c5 실측, 런타임 문안
   `review: argument must be a Prism (a Lens cannot be reviewed)`).
-- **해결책(안)** — phantom brand 로 optic 종류를 타입에서 구분. 생성자 반환 타입과
-  `Optics.compose` 의 종류 합성 규칙(Lens∘Prism=Traversal 등)까지 번지는 설계 작업이라
-  별도 회차로 분리(소유자 동의 2026-08-28).
-- **완료조건** — `// @ts-expect-error Optics.review(lens, v)` 픽스처가 성립하고, 기존
-  optics 사용 픽스처가 전부 초록.
+- **결정(소유자, 2026-08-29)** — 선택지 가(능력 집합)/나(종류 이름표+합성표) 중 **가**.
+  종류란 「어느 P 메서드에 손을 대는가」이므로 `OpticCap = 'first'|'left'|'wander'` 를
+  공변 팬텀으로 싣고, 합성은 `C1 | C2` 유니온 — 합성표 없이 종류가 자동 전파된다.
+  `review` 만 `Optic<S, A, 'left'>` 로 조인다(런타임에서 능력 검사인 유일한 헬퍼).
+- **사전 실측** — review: Iso·Prism ✓, Lens·Traversal 즉시 거부, `compose(iso,prism)` ✓
+  / `compose(lens,prism)` ✗ (전파 확인). view 는 값 검사(맞은 Prism·원소 1개 Traversal
+  통과) — 그래서 view 의 파라미터는 종류 불문으로 열어 두고 선언을 `Lens` 에서
+  `Optic` 으로 넓혔다(기존 허용 표면 유지).
+- **검증** — 소비자 게이트 claims 확장: 양성 3(review(prism)·review(iso)·
+  review(iso∘prism)) + 음성 3(`@ts-expect-error` — lens·traversal·lens∘prism) + 값
+  검사 헬퍼 종류 불문 1. 뮤테이션: dist 에서 review 파라미터를 무능력으로 되돌림 →
+  TS2578 ×2 빨강, 복원 초록. 전체 56/56 + typecheck 초록(기존 내부 타입 테스트의
+  optics 사용 전부 비파괴 — view(lens)·review(prism)·compose(lens,lens) 그대로).
+- **참고** — types/Lens.d.ts, CHANGELOG 0.2.2 절 한·영.
 
 ## ✅ 닫힘 — 외부 재리뷰 3차: 1~4 + 경미 2 수리 (2026-08-28)
 

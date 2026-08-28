@@ -27,6 +27,13 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일의 �
   하나였는데 타입 선언은 named export 를 약속해서, TypeScript 는 통과시키고 런타임이
   `SyntaxError` 로 죽었습니다(외부 리뷰 지적, 실측 재현). 런타임에 같은 명단의 named
   export 를 더했습니다. default 는 그대로라 기존 코드는 영향이 없습니다.
+- **optic 종류가 타입에 실립니다**(외부 재리뷰 3차 5번). 런타임이 즉시 거부하는
+  `review(lens)`·`review(traversal)` 가 이제 컴파일에서 거부됩니다. 방식은 능력
+  집합 — 종류란 결국 「어느 P 메서드에 손을 대는가」이므로(Iso 는 promap 만, Lens 는
+  `first`, Prism 은 `left`, Traversal 은 `wander`) 그 집합을 팬텀으로 실었고, 합성은
+  유니온이라 `compose(iso, prism)` 은 review 가능하고 `compose(lens, prism)` 은 아닌
+  것까지 자동으로 따라옵니다(런타임 실측과 일치). `view` 등 값 검사 헬퍼는 종류
+  불문 그대로입니다.
 - **타입 선언과 런타임 레지스트리의 어긋남을 한 번 더 걷어냈습니다**(외부 재리뷰 3차,
   전건 실측 확인). 런타임엔 있는데 TS 등록이 빠져 `lookup` 이 거부되던 키 26개를
   등록했습니다(함수 모나드 셋, identity 의 Chain·Monad·Extend·Comonad, Store, tuple

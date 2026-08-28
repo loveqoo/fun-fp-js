@@ -70,7 +70,8 @@ test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임
         names.map(n => `void ${n};`).join('\n') + '\n');
     // 같은 리뷰의 선언↔런타임 불일치 세 건을 컴파일 주장으로 고정한다
     writeFileSync(join(dir, 'claims.ts'),
-        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either, Semigroup, Monoid } from ${JSON.stringify(distEsm)};\n` +
+        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either, Semigroup, Monoid, Optics } from ${JSON.stringify(distEsm)};\n` +
+        `import type { Maybe as MB } from ${JSON.stringify(distEsm)};\n` +
         `import type { Either as E } from ${JSON.stringify(distEsm)};\n` +
         // traverse 는 런타임처럼 3인자 — 커링 호출은 오류여야 한다
         `const trav = Traversable.lookup('array');\n` +
@@ -94,7 +95,24 @@ test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임
         `void Applicative.lookup('identity').of(1).map((n: number) => n + 1);\n` +
         // 타입 클래스 직접 생성이 선언에도 있다 (재리뷰 3차 4번 — 문서 26곳이 가르치는 문)
         `const sg = new Semigroup((a: number, b: number) => a + b, 'number');\n` +
-        `void new Monoid(sg, () => 0, 'number');\n`);
+        `void new Monoid(sg, () => 0, 'number');\n` +
+        // optic 능력 집합 brand (재리뷰 3차 5번) — review 는 left 이하만, 합성은 유니온
+        `const iso = Optics.Iso((s: string) => s.length, (n: number) => 'x'.repeat(n));\n` +
+        `const pr = Optics.Prism(\n` +
+        `    (n: number) => (n > 0 ? Maybe.Just(n) : Maybe.Nothing()) as MB<number>,\n` +
+        `    (n: number) => n);\n` +
+        `const lens = Optics.prop<{ a: number }, number>('a');\n` +
+        `void Optics.review(pr, 3);\n` +
+        `void Optics.review(iso, 3);\n` +
+        `void Optics.review(Optics.compose(iso, pr), 3);\n` +
+        `// @ts-expect-error Lens 는 review 불가 (런타임: a Lens cannot be reviewed)\n` +
+        `void Optics.review(lens, 1);\n` +
+        `// @ts-expect-error Traversal 은 review 불가\n` +
+        `void Optics.review(Optics.traversed('array'), 1);\n` +
+        `// @ts-expect-error lens∘prism 도 first 가 남아 review 불가\n` +
+        `void Optics.review(Optics.compose(lens, pr), 1);\n` +
+        // 값 검사 헬퍼는 종류 불문 — 기존 사용이 깨지지 않는다
+        `void Optics.view(pr, 5);\n`);
     const r = spawnSync(tsc, ['--noEmit', '--strict', '--module', 'nodenext',
         '--moduleResolution', 'nodenext', '--target', 'es2020',
         join(dir, 'roster.ts'), join(dir, 'claims.ts')], { encoding: 'utf8' });

@@ -28,6 +28,14 @@ Currently empty.
   and the runtime died with a `SyntaxError` (external review finding, reproduced). The runtime
   now provides named exports with the same roster. The default export is unchanged, so existing
   code is unaffected.
+- Optic kinds are now carried in the types (third re-review, finding 5).
+  `review(lens)` and `review(traversal)`, which the runtime rejects outright, are
+  now rejected at compile time. The mechanism is a capability set: a kind is
+  ultimately "which P methods the optic reaches for" (Iso only `promap`, Lens
+  `first`, Prism `left`, Traversal `wander`), so that set rides along as a
+  phantom, and composition unions it — which makes `compose(iso, prism)`
+  reviewable and `compose(lens, prism)` not, automatically, matching the
+  measured runtime. Value-gated helpers such as `view` stay open to every kind.
 - A further pass removed the drift between the type declarations and the runtime
   registry (third external re-review, each finding verified by measurement). 26 keys
   that exist at runtime but were missing from the TS registries are now registered
