@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.2.2
- * Commit: dbd3336b23411aee3e642c83db7fad04b0b32ec3
- * Built: 2026-08-28T14:53:28.638Z
+ * Commit: 5c1244e64a82618a0fb34b6af3d145379682a52d
+ * Built: 2026-08-28T15:07:42.710Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
