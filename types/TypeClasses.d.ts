@@ -18,7 +18,7 @@
  */
 
 import type { Kind, TypeClass, TypeLambda } from "./HKT";
-import type { ConstTypeLambda } from "./TypeLambdas";
+import type { ConstTypeLambda, ForgetTypeLambda } from "./TypeLambdas";
 import type { WriterTypeLambda } from "./data/Writer";
 
 // ── Algebra — base class for every type-class instance at runtime ────
@@ -349,12 +349,15 @@ export interface MonoidInstances {}
 export interface GroupInstances {}
 
 // ─── Dispatch entry points ──────────────────────────────────────────
+// `.types` 는 공개 레지스트리다(소유자 판정 2026-08-29) — 문서·테스트가
+// Monoid.types.ArrayMonoid 처럼 직접 접근한다. 값은 그 클래스의 인스턴스들이다.
 // Signature mirrors the runtime: `TypeClass.lookup('name')` returns the
 // instance for that name. The TS side resolves via the *Instances maps.
 // Type classes have no `of` — that name means value injection (`Maybe.of(1)`,
 // and the `of` on an Applicative *instance*).
 
 export declare const Functor: {
+    readonly types: Record<string, Functor<any>>;
     // 직접 생성도 공개 API 다(docs/internals.md 의 new Functor 예제). 즉석 모양은
     // TypeLambda 가 없으므로 느슨하게 — 정밀한 F 가 필요하면 타입 인자로 지정하라.
     new <F extends TypeLambda = TypeLambda>(
@@ -367,6 +370,7 @@ export declare const Functor: {
 };
 
 export declare const Apply: {
+    readonly types: Record<string, Apply<any>>;
     new <F extends TypeLambda = TypeLambda>(
         functor: Functor<F>,
         ap: (ff: any, fa: any) => any,
@@ -377,15 +381,27 @@ export declare const Apply: {
     ) => Apply<ApplyInstances[K]>;
 };
 
+// Const 인스턴스의 실제 표면 — Applicative 에 wrap/unwrap 이 붙는다(런타임 실측,
+// docs/internals.md 의 정식 사용법). 캐리어는 { value } 다.
+export interface ConstApplicative extends Applicative<ConstTypeLambda> {
+    readonly wrap: <A>(value: A) => { readonly value: A };
+    readonly unwrap: <A>(c: { readonly value: A }) => A;
+}
+
 export declare const Applicative: {
-    readonly lookup: <K extends keyof ApplicativeInstances>(
-        name: K
-    ) => Applicative<ApplicativeInstances[K]>;
+    readonly types: Record<string, Applicative<any>>;
+    readonly lookup: {
+        <K extends keyof ApplicativeInstances>(
+            name: K
+        ): Applicative<ApplicativeInstances[K]>;
+        // Const 는 키로 켜면 const(<키>) 로 등록된다 — lookup 으로도 같은 인스턴스가 나온다.
+        <K extends keyof MonoidInstances>(name: `const(${K})`): ConstApplicative;
+    };
     // Const<r> — 값을 버리고 monoid 로 r 만 모은다. traverse 를 "접기" 로 쓸 때 넘긴다.
     // Monoid.Maybe(innerSG) 와 같은 모양: 키면 const(<키>) 로 등록하고, 인스턴스면 캐시한다.
     readonly Const: {
-        <K extends keyof MonoidInstances>(monoid: K): Applicative<ConstTypeLambda>;
-        <R>(monoid: Monoid<R>): Applicative<ConstTypeLambda>;
+        <K extends keyof MonoidInstances>(monoid: K): ConstApplicative;
+        <R>(monoid: Monoid<R>): ConstApplicative;
     };
     // Writer<w> — 등록된 writer 는 Array Monoid 전용이라, 다른 Monoid 는 여기서 만든다.
     readonly Writer: {
@@ -395,12 +411,14 @@ export declare const Applicative: {
 };
 
 export declare const Chain: {
+    readonly types: Record<string, Chain<any>>;
     readonly lookup: <K extends keyof ChainInstances>(
         name: K
     ) => Chain<ChainInstances[K]>;
 };
 
 export declare const Monad: {
+    readonly types: Record<string, Monad<any>>;
     readonly lookup: <K extends keyof MonadInstances>(
         name: K
     ) => Monad<MonadInstances[K]>;
@@ -412,90 +430,120 @@ export declare const Monad: {
 };
 
 export declare const MonadError: {
+    readonly types: Record<string, MonadError<any>>;
     readonly lookup: <K extends keyof MonadErrorInstances>(
         name: K
     ) => MonadError<MonadErrorInstances[K]>;
 };
 
 export declare const Alt: {
+    readonly types: Record<string, Alt<any>>;
     readonly lookup: <K extends keyof AltInstances>(
         name: K
     ) => Alt<AltInstances[K]>;
 };
 
 export declare const Plus: {
+    readonly types: Record<string, Plus<any>>;
     readonly lookup: <K extends keyof PlusInstances>(
         name: K
     ) => Plus<PlusInstances[K]>;
 };
 
 export declare const Alternative: {
+    readonly types: Record<string, Alternative<any>>;
     readonly lookup: <K extends keyof AlternativeInstances>(
         name: K
     ) => Alternative<AlternativeInstances[K]>;
 };
 
 export declare const Foldable: {
+    readonly types: Record<string, Foldable<any>>;
     readonly lookup: <K extends keyof FoldableInstances>(
         name: K
     ) => Foldable<FoldableInstances[K]>;
 };
 
 export declare const Reducible: {
+    readonly types: Record<string, Reducible<any>>;
     readonly lookup: <K extends keyof ReducibleInstances>(
         name: K
     ) => Reducible<ReducibleInstances[K]>;
 };
 
 export declare const Traversable: {
+    readonly types: Record<string, Traversable<any>>;
     readonly lookup: <K extends keyof TraversableInstances>(
         name: K
     ) => Traversable<TraversableInstances[K]>;
 };
 
 export declare const Bifunctor: {
+    readonly types: Record<string, Bifunctor<any>>;
     readonly lookup: <K extends keyof BifunctorInstances>(
         name: K
     ) => Bifunctor<BifunctorInstances[K]>;
 };
 
 export declare const Contravariant: {
+    readonly types: Record<string, Contravariant<any>>;
     readonly lookup: <K extends keyof ContravariantInstances>(
         name: K
     ) => Contravariant<ContravariantInstances[K]>;
 };
 
 export declare const Profunctor: {
+    readonly types: Record<string, Profunctor<any>>;
     readonly lookup: <K extends keyof ProfunctorInstances>(
         name: K
     ) => Profunctor<ProfunctorInstances[K]>;
 };
 
 export declare const Strong: {
+    readonly types: Record<string, Strong<any>>;
     readonly lookup: <K extends keyof StrongInstances>(
         name: K
     ) => Strong<StrongInstances[K]>;
 };
 
 export declare const Choice: {
+    readonly types: Record<string, Choice<any>>;
     readonly lookup: <K extends keyof ChoiceInstances>(
         name: K
     ) => Choice<ChoiceInstances[K]>;
 };
 
+// Forget<r> 인스턴스의 실제 표면 — 완전한 Wander 에 wrap/unwrap 이 붙는다(런타임 실측).
+// 캐리어는 { run: a -> r } 이고, 팩토리가 유일한 문이다(lookup 키는 없다 — 실측).
+export interface Forget<R> {
+    readonly run: (a: any) => R;
+}
+export interface ForgetWander extends Wander<ForgetTypeLambda> {
+    readonly wrap: <R>(run: (a: any) => R) => Forget<R>;
+    readonly unwrap: <R>(p: Forget<R>) => (a: any) => R;
+}
+
 export declare const Wander: {
+    readonly types: Record<string, Wander<any>>;
     readonly lookup: <K extends keyof WanderInstances>(
         name: K
     ) => Wander<WanderInstances[K]>;
+    // Forget<r> — 접기 방향만 남긴 Profunctor. Applicative.Const 와 같은 모양의 문.
+    readonly Forget: {
+        <K extends keyof MonoidInstances>(monoid: K): ForgetWander;
+        <R>(monoid: Monoid<R>): ForgetWander;
+    };
 };
 
 export declare const Filterable: {
+    readonly types: Record<string, Filterable<any>>;
     readonly lookup: <K extends keyof FilterableInstances>(
         name: K
     ) => Filterable<FilterableInstances[K]>;
 };
 
 export declare const ChainRec: {
+    readonly types: Record<string, ChainRec<any>>;
     readonly lookup: <K extends keyof ChainRecInstances>(
         name: K
     ) => ChainRec<ChainRecInstances[K]>;
@@ -505,18 +553,21 @@ export declare const ChainRec: {
 };
 
 export declare const Extend: {
+    readonly types: Record<string, Extend<any>>;
     readonly lookup: <K extends keyof ExtendInstances>(
         name: K
     ) => Extend<ExtendInstances[K]>;
 };
 
 export declare const Comonad: {
+    readonly types: Record<string, Comonad<any>>;
     readonly lookup: <K extends keyof ComonadInstances>(
         name: K
     ) => Comonad<ComonadInstances[K]>;
 };
 
 export declare const Semigroupoid: {
+    readonly types: Record<string, Semigroupoid<any>>;
     new <F extends TypeLambda = TypeLambda>(
         compose: (bc: any, ab: any) => any,
         type: string
@@ -527,9 +578,12 @@ export declare const Semigroupoid: {
 };
 
 export declare const Category: {
+    readonly types: Record<string, Category<any>>;
+    // id 는 항등 사상 자체다(썽크 아님) — 런타임이 () => id 로 감싸 category.id() 가
+    // 사상을 돌려준다. 썽크를 넘기면 id() 가 사상이 아니라 썽크가 된다(실측 NaN).
     new <F extends TypeLambda = TypeLambda>(
         semigroupoid: Semigroupoid<F>,
-        id: () => any,
+        id: (a: any) => any,
         type: string
     ): Category<F>;
     readonly lookup: <K extends keyof CategoryInstances>(
@@ -544,12 +598,24 @@ export declare const Category: {
 // 여기 붙인다 — 인스턴스를 돌려주는 것은 전부 타입 클래스 쪽에 산다(lookup 과 같은 자리).
 
 export interface SetoidStatic {
+    readonly types: Record<string, Setoid<any>>;
     // 런타임 클래스는 직접 생성이 공개 API 다(docs/Setoid.md 의 new Setoid 예제).
     // registry 인자(내부 등록용)는 선언에서 뺀다 — 등록은 라이브러리 몫이다.
     new <A>(equals: (a: A, b: A) => boolean, type: string): Setoid<A>;
-    readonly lookup: <K extends keyof SetoidInstances>(
-        name: K
-    ) => Setoid<SetoidInstances[K]>;
+    // 합성 키는 resolver 가 즉석 해석한다 — 'array(number)'·'maybe(number)'·
+    // 'either(string,number)' 전부 런타임 실측. 템플릿 리터럴이 안쪽 키까지 좁힌다.
+    readonly lookup: {
+        <K extends keyof SetoidInstances>(name: K): Setoid<SetoidInstances[K]>;
+        <K extends keyof SetoidInstances>(
+            name: `array(${K})`
+        ): Setoid<ReadonlyArray<SetoidInstances[K]>>;
+        <K extends keyof SetoidInstances>(
+            name: `maybe(${K})`
+        ): Setoid<Maybe<SetoidInstances[K]>>;
+        <K1 extends keyof SetoidInstances, K2 extends keyof SetoidInstances>(
+            name: `either(${K1},${K2})`
+        ): Setoid<Either<SetoidInstances[K1], SetoidInstances[K2]>>;
+    };
     // Container factories — the inner comparison must always be named.
     // Composed keys resolve lazily too: Setoid.lookup('maybe(number)'),
     // 'array(number)', 'either(string,number)'. Struct is factory-only —
@@ -570,9 +636,14 @@ export interface SetoidStatic {
 export declare const Setoid: SetoidStatic;
 
 export interface OrdStatic {
-    readonly lookup: <K extends keyof OrdInstances>(
-        name: K
-    ) => Ord<OrdInstances[K]>;
+    readonly types: Record<string, Ord<any>>;
+    readonly lookup: {
+        <K extends keyof OrdInstances>(name: K): Ord<OrdInstances[K]>;
+        // 사전식 배열 비교 — 런타임 resolver 가 즉석 해석한다.
+        <K extends keyof OrdInstances>(
+            name: `array(${K})`
+        ): Ord<ReadonlyArray<OrdInstances[K]>>;
+    };
     // Lexicographic. Ord.lookup('array(number)') resolves lazily too.
     readonly Array: {
         <K extends keyof OrdInstances>(inner: K): Ord<ReadonlyArray<OrdInstances[K]>>;
@@ -582,6 +653,7 @@ export interface OrdStatic {
 export declare const Ord: OrdStatic;
 
 export interface SemigroupStatic {
+    readonly types: Record<string, Semigroup<any>>;
     new <A>(concat: (a: A, b: A) => A, type: string): Semigroup<A>;
     readonly lookup: <K extends keyof SemigroupInstances>(
         name: K
@@ -590,6 +662,7 @@ export interface SemigroupStatic {
 export declare const Semigroup: SemigroupStatic;
 
 export interface MonoidStatic {
+    readonly types: Record<string, Monoid<any>>;
     new <A>(semigroup: Semigroup<A>, empty: () => A, type: string): Monoid<A>;
     readonly lookup: <K extends keyof MonoidInstances>(
         name: K
@@ -598,6 +671,7 @@ export interface MonoidStatic {
 export declare const Monoid: MonoidStatic;
 
 export declare const Group: {
+    readonly types: Record<string, Group<any>>;
     new <A>(monoid: Monoid<A>, invert: (a: A) => A, type: string): Group<A>;
     readonly lookup: <K extends keyof GroupInstances>(
         name: K

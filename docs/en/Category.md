@@ -37,18 +37,18 @@ const { Category, Semigroupoid } = FunFP;
 // Semigroupoid: function composition
 const funcSemi = new Semigroupoid((f, g) => x => f(g(x)), 'function');
 
-// Category: function composition + identity function
-const funcCategory = new Category(funcSemi, () => x => x, 'function');
+// Category: function composition + identity — pass the identity morphism itself (not a thunk)
+const funcCategory = new Category(funcSemi, x => x, 'function');
 
 const double = x => x * 2;
 const addOne = x => x + 1;
 
 // compose runs right to left
-funcCategory.compose(double, addOne)(5);  // 12 (5 + 1 = 6, 6 * 2 = 12)
+console.log(funcCategory.compose(double, addOne)(5));  // 12   5 + 1 = 6, 6 * 2 = 12
 
-// id is the identity function
-funcCategory.compose(double, funcCategory.id())(5);  // 10
-funcCategory.compose(funcCategory.id(), double)(5);  // 10
+// id is the identity function — composing with it changes nothing
+console.log(funcCategory.compose(double, funcCategory.id())(5));  // 10
+console.log(funcCategory.compose(funcCategory.id(), double)(5));  // 10
 ```
 
 ## Relationship

@@ -70,7 +70,7 @@ test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임
         names.map(n => `void ${n};`).join('\n') + '\n');
     // 같은 리뷰의 선언↔런타임 불일치 세 건을 컴파일 주장으로 고정한다
     writeFileSync(join(dir, 'claims.ts'),
-        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either, Semigroup, Monoid, Optics } from ${JSON.stringify(distEsm)};\n` +
+        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either, Semigroup, Monoid, Optics, Setoid, Ord, Wander, Category, Semigroupoid } from ${JSON.stringify(distEsm)};\n` +
         `import type { Maybe as MB } from ${JSON.stringify(distEsm)};\n` +
         `import type { Either as E } from ${JSON.stringify(distEsm)};\n` +
         // traverse 는 런타임처럼 3인자 — 커링 호출은 오류여야 한다
@@ -112,7 +112,26 @@ test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임
         `// @ts-expect-error lens∘prism 도 first 가 남아 review 불가\n` +
         `void Optics.review(Optics.compose(lens, pr), 1);\n` +
         // 값 검사 헬퍼는 종류 불문 — 기존 사용이 깨지지 않는다
-        `void Optics.view(pr, 5);\n`);
+        `void Optics.view(pr, 5);\n` +
+        // Category 생성자는 항등 사상 자체를 받는다 (재리뷰 4차 1번 — 썽크 선언이 올바른 사용을 거부했었다)
+        `const semi2 = new Semigroupoid((f: any, g: any) => (x: any) => f(g(x)), 'function');\n` +
+        `void new Category(semi2, (x: number) => x, 'function');\n` +
+        // 합성 키를 resolver 형태 그대로 (재리뷰 4차 2번 — 안쪽 키까지 좁혀진다)
+        `void Setoid.lookup('array(string)');\n` +
+        `void Setoid.lookup('either(string,number)');\n` +
+        `void Setoid.lookup('maybe(number)').equals(Maybe.Just(1) as MB<number>, Maybe.Just(1) as MB<number>);\n` +
+        `void Ord.lookup('array(number)');\n` +
+        // Const/Forget 의 실제 표면 (재리뷰 4차 3번 — 문서가 가르치는 wrap/unwrap)
+        `const CN = Applicative.Const('number');\n` +
+        `void CN.unwrap(CN.wrap(3));\n` +
+        `void Applicative.lookup('const(array)').wrap([1]);\n` +
+        `void Wander.Forget('array').wrap((a: number) => [a]);\n` +
+        // Setoid default 는 객체도 받는다 (재리뷰 4차 4번 — 참조 동등)
+        `const obj = { a: 1 };\n` +
+        `void Setoid.lookup('default').equals(obj, obj);\n` +
+        // .types 는 공개 레지스트리 (재리뷰 4차 5번 — 문서·테스트의 직접 접근)
+        `void Monoid.types.ArrayMonoid;\n` +
+        `void Category.types.FunctionCategory;\n`);
     const r = spawnSync(tsc, ['--noEmit', '--strict', '--module', 'nodenext',
         '--moduleResolution', 'nodenext', '--target', 'es2020',
         join(dir, 'roster.ts'), join(dir, 'claims.ts')], { encoding: 'utf8' });

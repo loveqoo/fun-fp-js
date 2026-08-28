@@ -27,6 +27,19 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일의 �
   하나였는데 타입 선언은 named export 를 약속해서, TypeScript 는 통과시키고 런타임이
   `SyntaxError` 로 죽었습니다(외부 리뷰 지적, 실측 재현). 런타임에 같은 명단의 named
   export 를 더했습니다. default 는 그대로라 기존 코드는 영향이 없습니다.
+- **Category 문서의 실질 오류를 잡았습니다**(외부 재리뷰 4차 1번). 생성자의 `id` 는
+  항등 사상 자체인데 문서 예제(한·영)가 썽크를 가르쳤고, 그 줄의 `// 10` 주석은 실제로
+  `NaN` 이었습니다 — 값 대조 게이트 밖(맨 표현식)에 있어 안 잡혔던 것으로, 예제를
+  `console.log` 로 바꿔 게이트 안에 넣고 타입 선언도 사상 자체를 받게 고쳤습니다.
+- **런타임이 받는 표면을 타입이 더 넓게 따라갑니다**(외부 재리뷰 4차 2~5번, 전건 실측).
+  합성 키(`Setoid.lookup('maybe(number)')`·`'array(string)'`·`'either(string,number)'`,
+  `Ord.lookup('array(number)')`, `Applicative.lookup('const(array)')`)가 템플릿 리터럴
+  오버로드로 안쪽 키까지 좁혀지며 컴파일됩니다 — d.ts 주석이 약속만 하던 형태입니다.
+  `Applicative.Const` 는 `wrap`/`unwrap` 을 가진 표면으로, `Wander.Forget` 은 선언
+  자체가 없던 것을 완전한 Wander + `wrap`/`unwrap` 으로 선언했습니다. `Setoid` 의
+  `default` 는 원시값 제한을 풀었습니다(런타임은 `===` 라 객체도 받습니다 — 제한은
+  Ord 쪽 사실). `.types` 레지스트리(문서·테스트가 쓰는 `Monoid.types.ArrayMonoid`
+  같은 직접 접근)를 29개 타입 클래스 전부에 공개로 선언했습니다.
 - **optic 종류가 타입에 실립니다**(외부 재리뷰 3차 5번). 런타임이 즉시 거부하는
   `review(lens)`·`review(traversal)` 가 이제 컴파일에서 거부됩니다. 방식은 능력
   집합 — 종류란 결국 「어느 P 메서드에 손을 대는가」이므로(Iso 는 promap 만, Lens 는

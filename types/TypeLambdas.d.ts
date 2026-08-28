@@ -40,6 +40,15 @@ export interface ConstTypeLambda extends TypeLambda {
     readonly type: { readonly value: unknown };
 }
 
+// Forget<r> — p a b = a -> r. 값 방향을 버리고 r 만 모으는 optics 의 접기 Profunctor.
+// (객체 리터럴 타입 안의 this 는 그 리터럴에 묶인다: TS2526 — 캐리어를 이름으로 분리)
+export interface ForgetCarrier<In> {
+    readonly run: (a: In) => unknown;
+}
+export interface ForgetTypeLambda extends TypeLambda {
+    readonly type: ForgetCarrier<this["In"]>;
+}
+
 export interface FunctionTypeLambda extends TypeLambda {
     readonly type: (a: this["In"]) => this["Target"];
 }

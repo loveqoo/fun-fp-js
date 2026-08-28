@@ -28,6 +28,23 @@ Currently empty.
   and the runtime died with a `SyntaxError` (external review finding, reproduced). The runtime
   now provides named exports with the same roster. The default export is unchanged, so existing
   code is unaffected.
+- Caught a real error in the Category docs (fourth re-review, finding 1). The
+  constructor's `id` is the identity morphism itself, but the example (both
+  languages) taught a thunk, and the lines annotated `// 10` actually produced
+  `NaN` — they sat outside the value-comparison gate as bare expressions. The
+  example now uses `console.log` (so the gate compares it) and the type
+  declaration takes the morphism itself.
+- The types now follow more of what the runtime accepts (fourth re-review,
+  findings 2–5, each measured). Composed keys (`Setoid.lookup('maybe(number)')`,
+  `'array(string)'`, `'either(string,number)'`, `Ord.lookup('array(number)')`,
+  `Applicative.lookup('const(array)')`) compile via template-literal overloads
+  that narrow down to the inner key — a form the d.ts comment had only promised.
+  `Applicative.Const` now returns a surface with `wrap`/`unwrap`, and
+  `Wander.Forget`, previously undeclared, is a full Wander plus `wrap`/`unwrap`.
+  `Setoid`'s `default` key drops the primitives-only restriction (the runtime
+  uses `===`, so objects work; the restriction is an Ord fact). The `.types`
+  registry (the direct access docs and tests use, like `Monoid.types.ArrayMonoid`)
+  is declared public on all 29 type classes.
 - Optic kinds are now carried in the types (third re-review, finding 5).
   `review(lens)` and `review(traversal)`, which the runtime rejects outright, are
   now rejected at compile time. The mechanism is a capability set: a kind is

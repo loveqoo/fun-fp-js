@@ -113,8 +113,8 @@ comment against the actual output.** If a value drifts, the tests and the npm pu
 are in that count too.
 
 The limits are noted too: the comparison only looks at lines carrying an expected-value comment
-(currently 968 lines). The 136 blocks without a comment run but aren't checked against a value
-(the 408 blocks with no output at all are outside the comparison).
+(currently 974 lines). The 134 blocks without a comment run but aren't checked against a value
+(the 406 blocks with no output at all are outside the comparison).
 And normalization strips quotes, so it can't tell `'1'` apart from `1`. Any claim that needs that
 distinction is carried by a dedicated test instead.
 
@@ -143,7 +143,7 @@ What holds true at the current state:
 | --- | --- |
 | Type classes | 29 (24 from Static Land + 5 outside the spec) |
 | Registered instances | 157 (sum of distinct instances per type class) |
-| Executed doc examples | 992 (968 of those lines are checked against a value) |
+| Executed doc examples | 992 (974 of those lines are checked against a value) |
 | Test files | 56 |
 | Package | 0.65MB, all four of ESM, CJS, min, and TypeScript declarations |
 

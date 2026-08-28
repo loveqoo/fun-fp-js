@@ -96,8 +96,8 @@ declare module "../TypeClasses" {
         readonly number: number;
         readonly string: string;
         readonly date: Date;
-        // default 는 원시값 전용이다 — 객체는 문자열로 뭉개져 거부한다(0.2.0 변경 기록).
-        readonly default: number | string | boolean | bigint;
+        // default Setoid 는 === 라 객체도 받는다(참조 동등, 실측) — 원시값 제한은 Ord 쪽이다.
+        readonly default: unknown;
     }
     interface OrdInstances {
         readonly number: number;

@@ -37,18 +37,18 @@ const { Category, Semigroupoid } = FunFP;
 // Semigroupoid: 함수 합성
 const funcSemi = new Semigroupoid((f, g) => x => f(g(x)), 'function');
 
-// Category: 함수 합성 + 항등 함수
-const funcCategory = new Category(funcSemi, () => x => x, 'function');
+// Category: 함수 합성 + 항등 함수 — 항등 사상 자체를 넘긴다 (썽크 아님)
+const funcCategory = new Category(funcSemi, x => x, 'function');
 
 const double = x => x * 2;
 const addOne = x => x + 1;
 
 // compose는 오른쪽에서 왼쪽
-funcCategory.compose(double, addOne)(5);  // 12 (5 + 1 = 6, 6 * 2 = 12)
+console.log(funcCategory.compose(double, addOne)(5));  // 12   5 + 1 = 6, 6 * 2 = 12
 
-// id는 항등 함수
-funcCategory.compose(double, funcCategory.id())(5);  // 10
-funcCategory.compose(funcCategory.id(), double)(5);  // 10
+// id는 항등 함수 — 합성해도 상대를 바꾸지 않는다
+console.log(funcCategory.compose(double, funcCategory.id())(5));  // 10
+console.log(funcCategory.compose(funcCategory.id(), double)(5));  // 10
 ```
 
 ## 관계

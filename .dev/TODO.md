@@ -59,6 +59,35 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ✅ 닫힘 — 외부 재리뷰 4차: 5건 + README 수치 (2026-08-29)
+
+리뷰어 번호 그대로, 전건 실측 확정 후 소유자 승인(범위 1~5 전부, `.types` 공개,
+합성 키 실측 형태 전부). 재현 픽스처는 스크래치패드 `rev4/`(r1~r5).
+
+- **1 (실질 결함 — 문서까지)** — Category 생성자의 `id` 는 항등 사상 자체(런타임이
+  `() => id` 로 감싼다, FunctionCategory 도 `identity` 를 직접 전달). 그런데 d.ts 는
+  썽크(`() => any`)를 선언해 **올바른 사용을 거부**했고(r1: TS2345), 문서 예제(한·영)는
+  썽크를 가르치는데 그 줄의 `// 10` 실제값이 `NaN`/함수였다 — 맨 표현식이라 값 대조
+  게이트 밖(「기대값 주석 없는 블록 134개」 문제의 실례). **수리**: 선언을 사상으로,
+  예제를 사상 전달 + `console.log` 화(대조 974줄로 편입).
+- **2** — 합성 키 5형태(setoid array/maybe/either·ord array·applicative const) 런타임
+  동작·TS 거부(r2·r2b: TS2345) → 템플릿 리터럴 오버로드로 안쪽 키까지 정밀 타이핑.
+  리뷰의 `forget(...)` lookup 추측은 반증 — 런타임도 거부, Forget 은 팩토리 전용(실측).
+- **3** — `Applicative.Const` 반환에 wrap/unwrap 없음, `Wander.Forget` 선언 부재(r3:
+  TS2339) → `ConstApplicative`·`Forget<R>`/`ForgetWander`(+ForgetTypeLambda) 신설.
+  Forget 런타임 실측: 완전한 Wander 인스턴스 + wrap/unwrap, unwrap(p)=run.
+- **4** — Setoid `default` 는 `===` 라 객체도 받는다(equals(obj,obj)=true 실측) — 직전
+  회차의 원시값 제한은 과잉 축소(Ord 쪽 사실의 오적용). `unknown` 으로 수리.
+- **5** — `.types` 는 공개(소유자 판정): 29개 정적 표면 전부에
+  `readonly types: Record<string, X<any>>` 선언. Algebra 는 런타임에 .types 없음(실측)
+  이라 제외.
+- **README 수치** — 대조 968→974줄, 주석 없는 블록 136→134, 출력 없는 블록 408→406
+  (게이트 출력 실측, 한·영).
+- **검증** — 수리 전 빨강 6픽스처(r1~r5 + const/default) → 수리 후 전부 초록, 게이트
+  claims 편입(Category 사상·합성 키 4·Const/Forget 3·default 객체·types 2). 뮤테이션
+  5건(id 썽크 되돌림·maybe() 오버로드 삭제·wrap 개명·default 재축소·types 삭제) 전부
+  빨강 확인 후 복원. docs 게이트 992예제·974줄 초록, 전체 56/56 + typecheck 초록.
+
 ## ✅ 닫힘 — optic 종류 구분(능력 집합 brand): 재리뷰 3차 5번 (2026-08-29)
 
 - **원인** — Lens/Prism/Iso/Traversal 이 전부 같은 구조 타입(`Optic<S, A>`)이라
