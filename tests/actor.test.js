@@ -284,7 +284,7 @@ testAsync('5차 후속: Promise 거부는 그대로 거부로 도착하고 큐�
 
 testAsync('5차 후속: Free.api.run 의 Promise 를 그대로 넘길 수 있다 (조합)', async () => {
     const api = Free.api('inc');
-    const it = api.interpreter({ inc: n => Promise.resolve(n + 1) });
+    const it = Free.interpreter(api, { inc: n => Promise.resolve(n + 1) });
     const actor = Actor({ init: 0, handle: (state, n) => it.run(api.inc(n)).then(v => [v, state + v]) });
     const v = await new Promise((res, rej) => actor.send(1).fork(rej, res));
     assertEquals(v, 2);

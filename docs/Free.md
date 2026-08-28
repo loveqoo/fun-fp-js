@@ -30,7 +30,7 @@ const program = api.getUser(1)
 
 // ③ 해석기 — 핸들러는 인자를 그대로 받고, 값 | Promise | Task 아무거나 반환한다
 const db = { users: { 1: { id: 1, name: 'anthony' } }, posts: { 1: [{}, {}] } };
-const real = api.interpreter({
+const real = Free.interpreter(api, {
     getUser: id => Promise.resolve(db.users[id]),
     getPosts: userId => Task.of(db.posts[userId]),
     saveUser: user => user,
@@ -57,7 +57,7 @@ const { Free } = FunFP;
 const api = Free.api('getUser', 'getPosts');
 const program = api.getUser(1).chain(u => api.getPosts(u.id).map(p => u.name + ':' + p.length));
 
-const mock = api.interpreter({ getUser: () => ({ id: 0, name: 'MOCK' }), getPosts: () => [] });
+const mock = Free.interpreter(api, { getUser: () => ({ id: 0, name: 'MOCK' }), getPosts: () => [] });
 mock.run(program).then(r => {
     if (r !== 'MOCK:0') throw new Error('mock 해석이 틀렸다: ' + r);
     console.log(r);                       // MOCK:0 — 테스트가 곧 해석기 교체다
@@ -82,7 +82,7 @@ const step1 = () => api.fetch('/users/1');
 const step2 = user => api.log('이름: ' + user.name).map(() => user);
 const pipeline = Free.pipeK(step1, step2);   // 단계별 거시 구조
 
-const it = api.interpreter({ fetch: path => ({ name: 'kim', path }), log: msg => msg });
+const it = Free.interpreter(api, { fetch: path => ({ name: 'kim', path }), log: msg => msg });
 it.run(pipeline()).then(r => {
     if (r.name !== 'kim') throw new Error('pipeK 단계가 어긋났다');
     console.log(r.name);                  // kim
@@ -101,7 +101,7 @@ const api = Free.api('scan', 'fire');
 const program = api.scan().chain(danger => danger ? api.fire() : Free.of('대기'));
 
 const steps = [];
-const plan = api.interpreter({
+const plan = Free.interpreter(api, {
     scan: () => { steps.push('scan'); return true; },   // 가짜 상황을 주입하면
     fire: () => { steps.push('fire'); return '발사'; },  // 그 경로가 펼쳐진다
 });
@@ -130,8 +130,8 @@ const program = db.load('u1').chain(user => mail.send(user + '에게 인사'));
 
 // 실행은 여러 명부를 아는 문지기가 맡는다
 const it = Free.interpreters(
-    db.interpreter({ load: k => '유저:' + k }),
-    mail.interpreter({ send: msg => '발송:' + msg })
+    Free.interpreter(db, { load: k => '유저:' + k }),
+    Free.interpreter(mail, { send: msg => '발송:' + msg })
 );
 it.run(program).then(r => {
     if (r !== '발송:유저:u1에게 인사') throw new Error('라우팅이 틀렸다: ' + r);
@@ -160,7 +160,7 @@ const { Free } = FunFP;
 
 const api = Free.api('step');
 const calls = [];
-const it = api.interpreter({
+const it = Free.interpreter(api, {
     step: n => { calls.push(n); return new Promise(res => setTimeout(() => res(n), 20)); },
 });
 const program = api.step(1).chain(() => api.step(2)).chain(() => api.step(3));
@@ -233,7 +233,7 @@ const buy = (names, cfg) =>
 
 // 해석기 — 실제 동작은 여기서만 일어난다
 const priceDb = { 책: 12000, 펜: 3000 };
-const shop = api.interpreter({
+const shop = Free.interpreter(api, {
     fetchPrice: name => Promise.resolve(priceDb[name]),
     charge: amount => ({ paid: amount }),
 });
@@ -265,7 +265,7 @@ shop.run(buy(['책', '펜'], { discount: 0.1 })).then(r => {
 const { Free } = FunFP;
 
 const api = Free.api('step');
-const it = api.interpreter({
+const it = Free.interpreter(api, {
     step: n => n === 2
         ? Promise.reject(new Error('두 번째 걸음에서 터짐'))
         : Promise.resolve('ok')
@@ -283,7 +283,7 @@ it.run(api.step(1).chain(() => api.step(2)))
 const { Free } = FunFP;
 
 const api = Free.api('toString', 'hasOwnProperty');
-const it = api.interpreter({ toString: () => 'T', hasOwnProperty: () => 'H' });
+const it = Free.interpreter(api, { toString: () => 'T', hasOwnProperty: () => 'H' });
 
 it.run(api.toString()).then(v => console.log(v));         // 'T'
 it.run(api.hasOwnProperty()).then(v => console.log(v));   // 'H'

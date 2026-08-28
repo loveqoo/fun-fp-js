@@ -31,7 +31,7 @@ const program = api.getUser(1)
 
 // ③ interpreter — handlers receive the argument as-is and return a value | Promise | Task, whichever
 const db = { users: { 1: { id: 1, name: 'anthony' } }, posts: { 1: [{}, {}] } };
-const real = api.interpreter({
+const real = Free.interpreter(api, {
     getUser: id => Promise.resolve(db.users[id]),
     getPosts: userId => Task.of(db.posts[userId]),
     saveUser: user => user,
@@ -59,7 +59,7 @@ const { Free } = FunFP;
 const api = Free.api('getUser', 'getPosts');
 const program = api.getUser(1).chain(u => api.getPosts(u.id).map(p => u.name + ':' + p.length));
 
-const mock = api.interpreter({ getUser: () => ({ id: 0, name: 'MOCK' }), getPosts: () => [] });
+const mock = Free.interpreter(api, { getUser: () => ({ id: 0, name: 'MOCK' }), getPosts: () => [] });
 mock.run(program).then(r => {
     if (r !== 'MOCK:0') throw new Error('the mock interpreter got it wrong: ' + r);
     console.log(r);                       // MOCK:0 — testing is just swapping the interpreter
@@ -84,7 +84,7 @@ const step1 = () => api.fetch('/users/1');
 const step2 = user => api.log('name: ' + user.name).map(() => user);
 const pipeline = Free.pipeK(step1, step2);   // staged, macro-level structure
 
-const it = api.interpreter({ fetch: path => ({ name: 'kim', path }), log: msg => msg });
+const it = Free.interpreter(api, { fetch: path => ({ name: 'kim', path }), log: msg => msg });
 it.run(pipeline()).then(r => {
     if (r.name !== 'kim') throw new Error('pipeK stages went out of sync');
     console.log(r.name);                  // kim
@@ -104,7 +104,7 @@ const api = Free.api('scan', 'fire');
 const program = api.scan().chain(danger => danger ? api.fire() : Free.of('standby'));
 
 const steps = [];
-const plan = api.interpreter({
+const plan = Free.interpreter(api, {
     scan: () => { steps.push('scan'); return true; },   // inject a fake situation and
     fire: () => { steps.push('fire'); return 'fire'; },  // that path unfolds
 });
@@ -135,8 +135,8 @@ const program = db.load('u1').chain(user => mail.send(user + ' greeting'));
 
 // running it is the job of a gatekeeper that knows several registries
 const it = Free.interpreters(
-    db.interpreter({ load: k => 'user:' + k }),
-    mail.interpreter({ send: msg => 'sent:' + msg })
+    Free.interpreter(db, { load: k => 'user:' + k }),
+    Free.interpreter(mail, { send: msg => 'sent:' + msg })
 );
 it.run(program).then(r => {
     if (r !== 'sent:user:u1 greeting') throw new Error('routing went wrong: ' + r);
@@ -169,7 +169,7 @@ const { Free } = FunFP;
 
 const api = Free.api('step');
 const calls = [];
-const it = api.interpreter({
+const it = Free.interpreter(api, {
     step: n => { calls.push(n); return new Promise(res => setTimeout(() => res(n), 20)); },
 });
 const program = api.step(1).chain(() => api.step(2)).chain(() => api.step(3));
@@ -245,7 +245,7 @@ const buy = (names, cfg) =>
 
 // interpreter — the actual action happens only here
 const priceDb = { book: 12000, pen: 3000 };
-const shop = api.interpreter({
+const shop = Free.interpreter(api, {
     fetchPrice: name => Promise.resolve(priceDb[name]),
     charge: amount => ({ paid: amount }),
 });
@@ -279,7 +279,7 @@ somewhere no one can catch it.
 const { Free } = FunFP;
 
 const api = Free.api('step');
-const it = api.interpreter({
+const it = Free.interpreter(api, {
     step: n => n === 2
         ? Promise.reject(new Error('blew up at the second step'))
         : Promise.resolve('ok')
@@ -298,7 +298,7 @@ their own properties.
 const { Free } = FunFP;
 
 const api = Free.api('toString', 'hasOwnProperty');
-const it = api.interpreter({ toString: () => 'T', hasOwnProperty: () => 'H' });
+const it = Free.interpreter(api, { toString: () => 'T', hasOwnProperty: () => 'H' });
 
 it.run(api.toString()).then(v => console.log(v));         // 'T'
 it.run(api.hasOwnProperty()).then(v => console.log(v));   // 'H'

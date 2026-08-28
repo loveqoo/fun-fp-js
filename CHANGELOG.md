@@ -11,6 +11,11 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일의 �
 
 ## 0.2.2 — 2026-08-28
 
+- **해석기 문이 api 밖으로 나갑니다: `api.interpreter(h)` → `Free.interpreter(api, h)`.**
+  api 객체는 사용자 어휘만 싣습니다 — `'interpreter'` 예약어가 사라지고, 어떤 도메인
+  단어든 명령 이름이 됩니다(외부 리뷰 문답에서 소유자가 짚은 설계 결함: 사용자 어휘와
+  라이브러리 문이 한 이름 공간을 나눠 쓰고 있었습니다). `Free.interpreters`(합치기)와
+  같은 자리입니다.
 - **`import { Maybe } from 'fun-fp-js'` 가 됩니다.** 지금까지 런타임은 default export
   하나였는데 타입 선언은 named export 를 약속해서, TypeScript 는 통과시키고 런타임이
   `SyntaxError` 로 죽었습니다(외부 리뷰 지적, 실측 재현). 런타임에 같은 명단의 named

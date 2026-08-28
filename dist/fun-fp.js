@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.2.2
- * Commit: fa844f531ecab21fb4bbcfcab6100e5a8374b9fb
- * Built: 2026-08-28T05:50:02.071Z
+ * Commit: 41c0885fe0068543b6606b37e45a10d31abbb507
+ * Built: 2026-08-28T12:40:47.502Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -3520,6 +3520,7 @@ const runApiContinuation = (fns, value, token) => {
 };
 // 해석기 → 라우팅 명부. 모듈 사설 WeakMap — 밖에서 등록·열람·변조가 불가능하다(위조 차단).
 const interpreterRegistry = new WeakMap();
+const apiVocabulary = new WeakMap(); // Free.api 가 만든 api ↔ 그 어휘 — Free.interpreter 가 조회한다
 // 취소는 사용 오류가 아니다 — TypeError 대신 Error, 문안+표식 이중 신호. 핸들러가 이 표식을 직접 만들면 자기 발등이다.
 const cancelledError = () => {
     const e = new Error('Free.api.run: cancelled');
@@ -3561,30 +3562,35 @@ Free.api = (...names) => {
     const vocabulary = Object.create(null);
     for (const name of names) {
         (typeof name !== 'string' || name.length === 0) && raise(new TypeError('Free.api: command name must be a non-empty string'));
-        name === 'interpreter' && raise(new TypeError("Free.api: command name 'interpreter' is reserved"));
         vocabulary[name] && raise(new TypeError(`Free.api: duplicate command name '${name}'`));
         vocabulary[name] = true;
     }
+    // api 객체는 사용자 어휘만 싣는다 — 라이브러리의 문과 이름 공간을 섞지 않는다(예약어 0개).
     const api = Object.create(null);
     for (const name of names) api[name] = (...args) => Free.liftF(makeApiCommand(name, args, null, vocabulary));
-    api.interpreter = handlers => {
-        types.isPlainObject(handlers) || raise(new TypeError('Free.api.interpreter: handlers must be a plain object (inherited handlers are not accepted)'));
-        const table = Object.create(null);
-        // own key 만 본다 — 상속된 핸들러를 인정하면 프로토타입이 어휘 대조를 우회한다.
-        for (const key of Object.keys(handlers)) {
-            vocabulary[key] || raise(new TypeError(`Free.api.interpreter: unknown command '${key}'`));
-            table[key] = handlers[key];
-        }
-        for (const name of names) {
-            typeof table[name] !== 'function' && raise(new TypeError(`Free.api.interpreter: missing handler '${name}'`));
-        }
-        const tables = new Map([[vocabulary, table]]);
-        const start = makeApiStart(tables);
-        const it = { run: program => start(program).promise, start };
-        interpreterRegistry.set(it, tables);
-        return it;
-    };
+    apiVocabulary.set(api, { vocabulary, names });
     return api;
+};
+// 해석기 문은 api 밖에 산다 — Free.interpreters(합치기)와 나란한 자리. docs/Free.md
+Free.interpreter = (api, handlers) => {
+    const entry = apiVocabulary.get(api);
+    entry || raise(new TypeError('Free.interpreter: first argument must be an api from Free.api(...)'));
+    const { vocabulary, names } = entry;
+    types.isPlainObject(handlers) || raise(new TypeError('Free.interpreter: handlers must be a plain object (inherited handlers are not accepted)'));
+    const table = Object.create(null);
+    // own key 만 본다 — 상속된 핸들러를 인정하면 프로토타입이 어휘 대조를 우회한다.
+    for (const key of Object.keys(handlers)) {
+        vocabulary[key] || raise(new TypeError(`Free.interpreter: unknown command '${key}'`));
+        table[key] = handlers[key];
+    }
+    for (const name of names) {
+        typeof table[name] !== 'function' && raise(new TypeError(`Free.interpreter: missing handler '${name}'`));
+    }
+    const tables = new Map([[vocabulary, table]]);
+    const start = makeApiStart(tables);
+    const it = { run: program => start(program).promise, start };
+    interpreterRegistry.set(it, tables);
+    return it;
 };
 /* Free.interpreters — 여러 api 의 명부를 아는 문지기. 명령의 표식이 자기 명부를 고른다. */
 Free.interpreters = (...its) => {

@@ -59,6 +59,23 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ✅ 닫힘 — Free.api 이름 공간 분리 (2026-08-28)
+
+README 새 맛보기의 Free 예제를 보던 소유자 문답에서 나온 설계 판정. `api.interpreter` 가
+맞는 문인지 → 맞음(소스·문서·게이트 확인). 그럼 `Free.api('interpreter')` 는? → 예약어로
+거부됨(실측). **소유자: "우회다. 사용자 어휘와 중복될 수 있으니 설계 문제다."** — 동의.
+예약어는 증상 봉합이고, 원인은 사용자 어휘와 라이브러리 문이 한 객체를 나눠 쓰는 것.
+
+- **결정** — 선택지 셋(문 이동/어휘 안쪽으로/현상 유지) 중 「가」: `Free.interpreter(api,
+  handlers)` 로 문을 밖으로. api 는 순수 어휘만(예약어 0), `Free.interpreters` 와 나란한
+  자리. 소유자 판정 "파괴적 아님"(외부 사용자 0) — 별칭 없이 옛 문 제거, 0.2.2 에 실림.
+- **구현** — index.js: apiVocabulary WeakMap(api↔어휘), 예약어 검사 삭제, 문 이동(가짜
+  api 는 `first argument must be an api from Free.api(...)` 로 거부). 치환 71곳(테스트
+  47·문서 24), d.ts(FreeApi 에서 interpreter 제거 + Free.interpreter 정적), CHANGELOG.
+- **검증** — `Free.api('interpreter', 'run')` 이 명령으로 동작(예약어 테스트를 반전한 새
+  게이트: api 객체는 어휘만 싣는다), 실행 실측 `ok KIM`. 56/56 + typecheck + 소비자
+  컴파일(nodenext) 초록.
+
 ## ✅ 닫힘 — 영어 문서 전면 윤문 + 소비자 표면 수리, 0.2.2 준비 (2026-08-28)
 
 **윤문(소유자 지시: humanizer 스킬 + 병렬 서브에이전트)** — 영어 문서 48개를 7개 Sonnet

@@ -54,8 +54,8 @@ import { Free } from 'fun-fp-js';
 const api = Free.api('fetchUser', 'log');
 const program = api.fetchUser(1).chain(user => api.log('hello ' + user.name));
 
-const real = api.interpreter({ fetchUser: id => ({ id, name: 'kim' }), log: msg => msg });
-const test = api.interpreter({ fetchUser: id => ({ id, name: 'test' }), log: msg => msg });
+const real = Free.interpreter(api, { fetchUser: id => ({ id, name: 'kim' }), log: msg => msg });
+const test = Free.interpreter(api, { fetchUser: id => ({ id, name: 'test' }), log: msg => msg });
 
 real.run(program).then(r => console.log(r));   // hello kim
 test.run(program).then(r => console.log(r));   // hello test   같은 프로그램, 다른 실행
