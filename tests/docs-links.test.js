@@ -37,6 +37,7 @@ const anchorsOf = source => {
 const files = [
     { label: 'README.md', path: join(rootDir, 'README.md') },
     { label: 'CHANGELOG.md', path: join(rootDir, 'CHANGELOG.md') },
+    { label: 'CHANGELOG.en.md', path: join(rootDir, 'CHANGELOG.en.md') },
     { label: 'CLAUDE.md', path: join(rootDir, 'CLAUDE.md') },
     ...readdirSync(docsDir).filter(n => n.endsWith('.md')).sort()
         .map(n => ({ label: `docs/${n}`, path: join(docsDir, n) })),

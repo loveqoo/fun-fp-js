@@ -122,12 +122,12 @@ The 592 relative links and anchors between docs inside the repository are checke
 
 - [Guide](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/README.md): learning order and per-type docs
 - [Internals](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/internals.md): for anyone modifying `index.js`
-- [Changelog](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md)
+- [Changelog](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.en.md)
 
 ## Status — `0.2.x`
 
 **During `0.x` the public API may still change.** Every change is recorded with its version in
-the [CHANGELOG](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md), where the breaking changes since `0.1.0` are listed under `0.2.0`.
+the [CHANGELOG](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.en.md), where the breaking changes since `0.1.0` are listed under `0.2.0`.
 
 Correctness is held by adversarial review (Codex: ten full audits of `index.js`, plus a review
 for every change since) and by gates verified with mutation testing. Notable fixes: laws for
@@ -135,7 +135,7 @@ for every change since) and by gates verified with mutation testing. Notable fix
 disappeared** in `Task`, `Actor`, the transformers, and the `Free` runner are fixed.
 
 The conditions for reaching `1.0.0` are written in the
-[CHANGELOG](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md#100-까지).
+[CHANGELOG](https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.en.md#until-1-0-0).
 
 What holds true at the current state:
 
