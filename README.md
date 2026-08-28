@@ -10,8 +10,8 @@
 검증합니다. 캐리어 자체가 법칙을 정확히 못 지키는 자리(부동소수 덧셈의 결합법칙 등)는
 숨기지 않고 문서에 적어 둡니다([internals](https://github.com/loveqoo/fun-fp-js/blob/main/docs/internals.md#number-sum)). 법칙을 지키는
 타입은 조합해도 법칙대로 동작하므로, 사용자는 조합할 때마다 동작 여부를 일일이 시험할
-필요가 없습니다. 바로 아래 맛보기가 첫 예입니다. 이름·이메일·나이를 검사하는 함수 세 개를
-이으면 합쳐진 검사가 실패한 항목의 에러를 전부 모아 한 번에 돌려줍니다.
+필요가 없습니다. 아래 세 걸음이 그 맛보기입니다 — 함수를 잇고, 없는 값을 안전하게 다루고,
+프로그램과 실행을 떼어 놓습니다.
 
 ```bash
 npm install fun-fp-js
@@ -19,47 +19,46 @@ npm install fun-fp-js
 
 배포물은 `dist/`(ESM·CJS·min·타입 선언)와 README 뿐입니다 — 소스·테스트는 저장소에 있습니다.
 
-## 맛보기 — 에러를 모아서 한 번에
+## 맛보기 — 세 걸음
 
-`try/catch` 는 첫 에러에서 멈춥니다. 에러를 전부 모으려면 사용자가 에러 배열을 직접
-관리하는 코드를 짜야 합니다.
+함수 둘을 이으면 새 함수가 됩니다. `compose` 는 오른쪽부터 적용합니다.
 
 ```javascript
-import fp from 'fun-fp-js';
+import { compose } from 'fun-fp-js';
 
-const { Validation, Applicative, Traversable, sequence } = fp;
-const A = Applicative.lookup('validation');
-const T = Traversable.lookup('array');
+const discount = price => price - 1000;
+const addTax = price => price * 1.1;
+const finalPrice = compose(addTax, discount);   // 할인 먼저, 세금 나중
 
-const notEmpty = (field, s) => s.length > 0
-    ? Validation.Valid(s) : Validation.Invalid([`${field} 가 비었다`]);
-const isEmail = s => s.includes('@')
-    ? Validation.Valid(s) : Validation.Invalid(['이메일 형식이 아니다']);
-const adult = n => n >= 18
-    ? Validation.Valid(n) : Validation.Invalid([`미성년: ${n}`]);
-
-// 검사 셋을 배열로 묶으면 하나의 검사가 된다
-const validate = u => sequence(T, A, [notEmpty('name', u.name), isEmail(u.email), adult(u.age)]);
-
-console.log(validate({ name: 'anthony', email: 'a@b.c', age: 40 }).value);
-// [ 'anthony', 'a@b.c', 40 ]
-
-console.log(validate({ name: '', email: 'nope', age: 12 }).errors);
-// [ 'name 가 비었다', '이메일 형식이 아니다', '미성년: 12' ]   ← 셋 다 모인다
+console.log(finalPrice(10000));   // 9900
 ```
 
-## 중첩된 데이터를 불변으로
+값이 없을 수 있으면 `Maybe` 에 담습니다. 없는 경우는 `map` 이 알아서 건너뜁니다 —
+null 검사가 사라집니다.
 
 ```javascript
-import fp from 'fun-fp-js';
+import { Maybe } from 'fun-fp-js';
 
-const { Optics } = fp;
-const cityL = Optics.compose(Optics.prop('address'), Optics.prop('city'));
-const user = { id: 7, address: { city: 'Seoul', zip: '04524' } };
+const first = xs => xs.length ? Maybe.Just(xs[0]) : Maybe.Nothing();
 
-console.log(Optics.view(cityL, user));                        // 'Seoul'
-console.log(Optics.set(cityL, 'Busan', user).address.city);   // 'Busan'
-console.log(user.address.city);                               // 'Seoul'  원본은 그대로
+console.log(String(first([7, 8]).map(n => n * 10)));   // Just(70)
+console.log(String(first([]).map(n => n * 10)));       // Nothing   건너뛰었다
+```
+
+`Free.api` 는 프로그램과 실행을 떼어 놓습니다. 같은 프로그램을 실전 해석기로도,
+시험 해석기로도 돌립니다 — 목 주입 프레임워크가 필요 없습니다.
+
+```javascript
+import { Free } from 'fun-fp-js';
+
+const api = Free.api('fetchUser', 'log');
+const program = api.fetchUser(1).chain(user => api.log('hello ' + user.name));
+
+const real = api.interpreter({ fetchUser: id => ({ id, name: 'kim' }), log: msg => msg });
+const test = api.interpreter({ fetchUser: id => ({ id, name: 'test' }), log: msg => msg });
+
+real.run(program).then(r => console.log(r));   // hello kim
+test.run(program).then(r => console.log(r));   // hello test   같은 프로그램, 다른 실행
 ```
 
 ## 가볍다
@@ -106,10 +105,10 @@ ESM 과 CommonJS 둘 다, TypeScript 선언 포함. 문법 상한은 **ES2018** 
 
 ## 문서도 테스트가 검증합니다
 
-**문서의 예제 990개(영어판 포함)를 테스트가 실행하고, 예제에 적힌 `// 기대값` 을 실제 출력과 대조합니다.**
+**문서의 예제 992개(영어판 포함)를 테스트가 실행하고, 예제에 적힌 `// 기대값` 을 실제 출력과 대조합니다.**
 값이 달라지면 테스트와 npm 발행이 멈춥니다. 이 README 의 예제도 그 안에 있습니다.
 
-한계도 적어 둡니다 — 대조는 기대값 주석이 붙은 줄만 봅니다(지금 964줄). 주석 없는 블록
+한계도 적어 둡니다 — 대조는 기대값 주석이 붙은 줄만 봅니다(지금 968줄). 주석 없는 블록
 136개는 실행만 되고 값은 안 봅니다(출력 자체가 없는 408개는 대조 대상이 아닙니다). 그리고 정규화가 따옴표를 지우므로 `'1'` 과 `1` 을 못
 가릅니다. 그 구분이 필요한 주장은 전용 테스트가 집니다.
 
@@ -137,7 +136,7 @@ ESM 과 CommonJS 둘 다, TypeScript 선언 포함. 문법 상한은 **ES2018** 
 | --- | --- |
 | 타입 클래스 | 29종 (Static Land 24 + 명세 밖 5) |
 | 등록된 인스턴스 | 157개 (타입 클래스별 고유 인스턴스의 합) |
-| 실행되는 문서 예제 | 990개 (그중 964줄은 값까지 대조) |
+| 실행되는 문서 예제 | 992개 (그중 968줄은 값까지 대조) |
 | 테스트 파일 | 55개 |
 | 배포물 | 0.65MB — ESM·CJS·min·TypeScript 선언 네 벌 |
 

@@ -10,9 +10,8 @@ operations this library provides are built to obey mathematical laws, and tests 
 laws to the extent the carrier allows them. Where a carrier itself cannot keep a law exactly
 (floating-point addition and associativity, for one), we say so in the docs instead of hiding it
 ([internals](https://github.com/loveqoo/fun-fp-js/blob/main/docs/en/internals.md#number-sum)). Types that keep the laws behave lawfully when combined, so you don't have to test every
-combination by hand. The first taste of this is right below: three functions that check name,
-email, and age are chained together, and the combined check collects every failing field's error
-and returns them all at once.
+combination by hand. The three steps below are the taste: compose functions, handle absent
+values safely, and keep a program separate from its execution.
 
 ```bash
 npm install fun-fp-js
@@ -21,47 +20,46 @@ npm install fun-fp-js
 The package ships `dist/` (ESM, CJS, min, type declarations) and the READMEs. Source and tests
 live in the repository.
 
-## A taste — collecting errors all at once
+## A taste, in three steps
 
-`try/catch` stops at the first error. To collect every error, you'd normally have to write code
-that manages an error array by hand.
+Join two functions and you get a new one. `compose` applies right to left.
 
 ```javascript
-import fp from 'fun-fp-js';
+import { compose } from 'fun-fp-js';
 
-const { Validation, Applicative, Traversable, sequence } = fp;
-const A = Applicative.lookup('validation');
-const T = Traversable.lookup('array');
+const discount = price => price - 1000;
+const addTax = price => price * 1.1;
+const finalPrice = compose(addTax, discount);   // discount first, then tax
 
-const notEmpty = (field, s) => s.length > 0
-    ? Validation.Valid(s) : Validation.Invalid([`${field} is empty`]);
-const isEmail = s => s.includes('@')
-    ? Validation.Valid(s) : Validation.Invalid(['not a valid email format']);
-const adult = n => n >= 18
-    ? Validation.Valid(n) : Validation.Invalid([`underage: ${n}`]);
-
-// bundle the three checks into an array and they become one check
-const validate = u => sequence(T, A, [notEmpty('name', u.name), isEmail(u.email), adult(u.age)]);
-
-console.log(validate({ name: 'anthony', email: 'a@b.c', age: 40 }).value);
-// [ 'anthony', 'a@b.c', 40 ]
-
-console.log(validate({ name: '', email: 'nope', age: 12 }).errors);
-// [ 'name is empty', 'not a valid email format', 'underage: 12' ]   ← all three collected
+console.log(finalPrice(10000));   // 9900
 ```
 
-## Immutable updates on nested data
+When a value may be absent, put it in a `Maybe`. `map` skips the absent case for you,
+and the null checks disappear.
 
 ```javascript
-import fp from 'fun-fp-js';
+import { Maybe } from 'fun-fp-js';
 
-const { Optics } = fp;
-const cityL = Optics.compose(Optics.prop('address'), Optics.prop('city'));
-const user = { id: 7, address: { city: 'Seoul', zip: '04524' } };
+const first = xs => xs.length ? Maybe.Just(xs[0]) : Maybe.Nothing();
 
-console.log(Optics.view(cityL, user));                        // 'Seoul'
-console.log(Optics.set(cityL, 'Busan', user).address.city);   // 'Busan'
-console.log(user.address.city);                               // 'Seoul'  the original stays unchanged
+console.log(String(first([7, 8]).map(n => n * 10)));   // Just(70)
+console.log(String(first([]).map(n => n * 10)));       // Nothing   skipped
+```
+
+`Free.api` keeps a program separate from its execution. The same program runs under a real
+interpreter or a test interpreter, with no mocking framework involved.
+
+```javascript
+import { Free } from 'fun-fp-js';
+
+const api = Free.api('fetchUser', 'log');
+const program = api.fetchUser(1).chain(user => api.log('hello ' + user.name));
+
+const real = api.interpreter({ fetchUser: id => ({ id, name: 'kim' }), log: msg => msg });
+const test = api.interpreter({ fetchUser: id => ({ id, name: 'test' }), log: msg => msg });
+
+real.run(program).then(r => console.log(r));   // hello kim
+test.run(program).then(r => console.log(r));   // hello test   same program, different run
 ```
 
 ## Lightweight
@@ -110,12 +108,12 @@ need the spec's direction, use `pipe`. Rationale:
 
 ## The docs are tested too
 
-**The test suite runs all 990 examples in the docs (English pages included) and checks each example's `// expected value`
+**The test suite runs all 992 examples in the docs (English pages included) and checks each example's `// expected value`
 comment against the actual output.** If a value drifts, the tests and the npm publish stop. This README's examples
 are in that count too.
 
 The limits are noted too: the comparison only looks at lines carrying an expected-value comment
-(currently 964 lines). The 136 blocks without a comment run but aren't checked against a value
+(currently 968 lines). The 136 blocks without a comment run but aren't checked against a value
 (the 408 blocks with no output at all are outside the comparison).
 And normalization strips quotes, so it can't tell `'1'` apart from `1`. Any claim that needs that
 distinction is carried by a dedicated test instead.
@@ -145,7 +143,7 @@ What holds true at the current state:
 | --- | --- |
 | Type classes | 29 (24 from Static Land + 5 outside the spec) |
 | Registered instances | 157 (sum of distinct instances per type class) |
-| Executed doc examples | 990 (964 of those lines are checked against a value) |
+| Executed doc examples | 992 (968 of those lines are checked against a value) |
 | Test files | 55 |
 | Package | 0.65MB, all four of ESM, CJS, min, and TypeScript declarations |
 
