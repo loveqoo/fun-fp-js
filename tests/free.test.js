@@ -287,6 +287,9 @@ test('Free.api - 선언·해석기 시점 에러 문안 (동기 6종)', () => {
     const rsv = fp.Free.api('interpreter', 'run');
     assertEquals(typeof rsv.interpreter, 'function', "명령 이름 'interpreter' 가 허용된다");
     assertEquals(Object.keys(rsv).join(','), 'interpreter,run', 'api 객체는 어휘만 싣는다');
+    // Free.interpreter 는 Free.api 가 만든 api 만 받는다 — WeakMap 정체 대조라 모양 복제도 거부.
+    assertThrowsWith(() => fp.Free.interpreter({}, {}), 'Free.interpreter: first argument must be an api from Free.api(...)');
+    assertThrowsWith(() => fp.Free.interpreter({ ...rsv }, {}), 'Free.interpreter: first argument must be an api from Free.api(...)');
     assertThrowsWith(() => fp.Free.api('a', 'a'), "Free.api: duplicate command name 'a'");
     const api = fp.Free.api('a');
     assertThrowsWith(() => Free.interpreter(api, null), 'Free.interpreter: handlers must be a plain object');
