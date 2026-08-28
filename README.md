@@ -27,8 +27,9 @@ npm install fun-fp-js
 ```javascript
 import fp from 'fun-fp-js';
 
-const { Validation, Applicative } = fp;
+const { Validation, Applicative, Traversable, sequence } = fp;
 const A = Applicative.lookup('validation');
+const T = Traversable.lookup('array');
 
 const notEmpty = (field, s) => s.length > 0
     ? Validation.Valid(s) : Validation.Invalid([`${field} 가 비었다`]);
@@ -37,12 +38,11 @@ const isEmail = s => s.includes('@')
 const adult = n => n >= 18
     ? Validation.Valid(n) : Validation.Invalid([`미성년: ${n}`]);
 
-const mkUser = name => email => age => ({ name, email, age });
-const validate = u =>
-    A.ap(A.ap(A.ap(A.of(mkUser), notEmpty('name', u.name)), isEmail(u.email)), adult(u.age));
+// 검사 셋을 배열로 묶으면 하나의 검사가 된다
+const validate = u => sequence(T, A, [notEmpty('name', u.name), isEmail(u.email), adult(u.age)]);
 
 console.log(validate({ name: 'anthony', email: 'a@b.c', age: 40 }).value);
-// { name: 'anthony', email: 'a@b.c', age: 40 }
+// [ 'anthony', 'a@b.c', 40 ]
 
 console.log(validate({ name: '', email: 'nope', age: 12 }).errors);
 // [ 'name 가 비었다', '이메일 형식이 아니다', '미성년: 12' ]   ← 셋 다 모인다

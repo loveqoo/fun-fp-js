@@ -29,8 +29,9 @@ that manages an error array by hand.
 ```javascript
 import fp from 'fun-fp-js';
 
-const { Validation, Applicative } = fp;
+const { Validation, Applicative, Traversable, sequence } = fp;
 const A = Applicative.lookup('validation');
+const T = Traversable.lookup('array');
 
 const notEmpty = (field, s) => s.length > 0
     ? Validation.Valid(s) : Validation.Invalid([`${field} is empty`]);
@@ -39,12 +40,11 @@ const isEmail = s => s.includes('@')
 const adult = n => n >= 18
     ? Validation.Valid(n) : Validation.Invalid([`underage: ${n}`]);
 
-const mkUser = name => email => age => ({ name, email, age });
-const validate = u =>
-    A.ap(A.ap(A.ap(A.of(mkUser), notEmpty('name', u.name)), isEmail(u.email)), adult(u.age));
+// bundle the three checks into an array and they become one check
+const validate = u => sequence(T, A, [notEmpty('name', u.name), isEmail(u.email), adult(u.age)]);
 
 console.log(validate({ name: 'anthony', email: 'a@b.c', age: 40 }).value);
-// { name: 'anthony', email: 'a@b.c', age: 40 }
+// [ 'anthony', 'a@b.c', 40 ]
 
 console.log(validate({ name: '', email: 'nope', age: 12 }).errors);
 // [ 'name is empty', 'not a valid email format', 'underage: 12' ]   ← all three collected
