@@ -23,4 +23,3 @@ export declare class Identity<A> {
     static isIdentity(x: unknown): x is Identity<unknown>;
 }
 
-export type { IdentityTypeLambda };

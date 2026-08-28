@@ -3629,3 +3629,19 @@ export default {
     tap, also, pipeFrom, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
     extra, setStrictMode, setTapErrorHandler
 };
+// named export — d.ts 가 약속하는 표면과 런타임을 일치시킨다(0.2.1 까지는 default 뿐이라 `import { Maybe }` 가 죽었다)
+export {
+
+    Algebra, Setoid, Ord, Semigroup, Monoid, Group, Semigroupoid, Category,
+    Filterable, Functor, Bifunctor, Contravariant, Profunctor, Strong, Choice, Wander,
+    Apply, Applicative, Alt, Plus, Alternative, Chain, ChainRec, Monad, MonadError, Foldable, Reducible,
+    Extend, Comonad, Traversable, Identity, Maybe, Either, Task, Free, Validation, NonEmptyList, Reader, Writer, State, Store,
+    StateT, EitherT, ReaderT, WriterT, Actor,
+    Optics,
+    identity, compose, compose2, sequence, foldMap, lift, pipeK, composeK, runCatch,
+    constant, tuple, fst, snd, apply, unapply, unapply2, curry, curry2, uncurry, uncurry2,
+    predicate, predicateN, negate, negateN,
+    flip, flip2, flipCurried, flipCurried2, pipe, pipe2, pipeWhile,
+    tap, also, pipeFrom, useOrLift, partial, once, converge, range, rangeBy, transducer, trampoline,
+    extra, setStrictMode, setTapErrorHandler
+};

@@ -31,8 +31,9 @@ const exportBody = exportStatement
     .replace('export default ', 'return ')
     .replace(/;$/, ';');
 
-// Remove the export statement from source
-const coreCode = source.replace(exportStatement, '').trim();
+// Remove the export statements from source (named export 는 ESM 전용 — UMD 팩토리 안에서는 문법 오류다)
+const namedExportMatch = source.match(/\/\/ named export[^\n]*\nexport \{[\s\S]*?\};/);
+const coreCode = source.replace(exportStatement, '').replace(namedExportMatch ? namedExportMatch[0] : '', '').trim();
 
 // Build timestamp
 const buildInfo = `/**

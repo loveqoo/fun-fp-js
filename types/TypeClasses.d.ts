@@ -516,7 +516,7 @@ export interface SetoidStatic {
     readonly Struct: (
         fields: Record<string, string | Setoid<unknown>>
     ) => Setoid<Record<string, unknown>>;
-};
+}
 export declare const Setoid: SetoidStatic;
 
 export interface OrdStatic {
@@ -528,21 +528,21 @@ export interface OrdStatic {
         <K extends keyof OrdInstances>(inner: K): Ord<ReadonlyArray<OrdInstances[K]>>;
         <A>(inner: Ord<A>): Ord<ReadonlyArray<A>>;
     };
-};
+}
 export declare const Ord: OrdStatic;
 
 export interface SemigroupStatic {
     readonly lookup: <K extends keyof SemigroupInstances>(
         name: K
     ) => Semigroup<SemigroupInstances[K]>;
-};
+}
 export declare const Semigroup: SemigroupStatic;
 
 export interface MonoidStatic {
     readonly lookup: <K extends keyof MonoidInstances>(
         name: K
     ) => Monoid<MonoidInstances[K]>;
-};
+}
 export declare const Monoid: MonoidStatic;
 
 export declare const Group: {

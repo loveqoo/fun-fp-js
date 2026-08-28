@@ -28,7 +28,11 @@ export interface ArrayTypeLambda extends TypeLambda {
 
 // Identity — traverse 에 넘겨 "그냥 매핑" 으로 쓰는 Applicative. 담는 모양은 { value }.
 export interface IdentityTypeLambda extends TypeLambda {
-    readonly type: { readonly value: this["Target"] };
+    readonly type: IdentityCarrier<this["Target"]>;
+}
+// 객체 리터럴 타입 안의 this 는 그 리터럴에 묶인다(TS2526) — 캐리어 모양을 이름으로 분리
+export interface IdentityCarrier<A> {
+    readonly value: A;
 }
 
 // Const<r> — 담는 모양은 Identity 와 같은 { value } 지만 map 이 값을 버린다.

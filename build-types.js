@@ -119,6 +119,7 @@ function unwrapDeclareModule(src) {
         let depth = 1;
         while (i < lines.length && depth > 0) {
             const inner = lines[i];
+            const depthBefore = depth;
             // Count braces ignoring ones inside string literals (quick
             // approximation — our d.ts files don't embed `{`/`}` in strings).
             for (const ch of inner) {
@@ -138,7 +139,10 @@ function unwrapDeclareModule(src) {
                 break;
             }
             // Dedent by one level (matches our 4-space indent convention).
-            out.push(inner.replace(/^ {4}/, ''));
+            // 병합 상대(export interface X {})가 export 라, 풀린 선언도 export 라야 한다 —
+            // 섞이면 소비자 컴파일이 TS2395 로 죽는다(0.2.1 실측, nodenext).
+            const dedented = inner.replace(/^ {4}/, '');
+            out.push(depthBefore === 1 && /^(interface|type)\s/.test(dedented) ? 'export ' + dedented : dedented);
             i++;
         }
     }
