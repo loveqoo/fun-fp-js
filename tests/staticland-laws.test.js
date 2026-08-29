@@ -46,7 +46,7 @@
 //   - KNOWN_DEVIATIONS 에 있는 것은 검사에서 빠진다. 조용히 빠지지 않도록 목록과 이유를
 //     별도 검사가 고정한다.
 //   - **Strong/Choice 는 표준 법칙 넷 중 둘만 돈다.** 쌍대(first ≡ swap∘second∘swap)와
-//     사영(lmap(fst) ≡ rmap(fst)∘first)은 돌지만, 결합(first∘first ≡ dimap assoc unassoc ∘ first)
+//     사영(lmap(fst) ≡ rmap(fst)∘first)은 돌지만, 결합(first∘first ≡ promap assoc unassoc ∘ first)
 //     과 자연성은 튜플·Either 재결합 함수가 더 필요해 넣지 않았다.
 //   - Wander 는 두 사영으로만 본다 — Identity 로 열면 map(FunctionWander), Const 로 접으면
 //     foldMap(Forget). 이 둘이 Traversal 을 가르는 표준 사영이지만 ∀ Applicative 는 아니다.

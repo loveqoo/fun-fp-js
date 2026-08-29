@@ -25,7 +25,7 @@
 node --input-type=module -e "import fp from './index.js'; console.log(Object.keys(fp.Monoid.types))"
 ```
 
-**신호**: 지역 변수가 `{empty, concat}` · `{of, map, ap}` · `{dimap, ...}` 모양이면 멈춰라.
+**신호**: 지역 변수가 `{empty, concat}` · `{of, map, ap}` · `{promap, ...}` 모양이면 멈춰라.
 그건 타입 클래스 인스턴스다. 레지스트리에 있는지, 없다면 등록해야 하는지 물어라.
 
 **그리고 "없다" 는 사실만 보지 마라 — `git log -S "<이름>" -- <파일>` 로 왜 없는지 봐라.**

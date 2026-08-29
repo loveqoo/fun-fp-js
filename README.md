@@ -98,6 +98,11 @@ Zero dependencies also means vulnerability notices only ever come from our own p
 
 Both ESM and CommonJS, with TypeScript declarations included. The syntax ceiling is **ES2018**.
 
+**JavaScript-first.** JavaScript is the officially supported language; the TypeScript
+declarations are a convenience so editors and TS consumers get correct types — not an attempt
+to compete with TS-native FP libraries. The bar for the declarations is honesty (nothing that
+compiles but dies at runtime), not type-level richness.
+
 **Static Land compatible**: every type class follows the Static Land interface (static methods,
 argument order matching the spec). They're class instances, but the methods don't rely on `this`,
 so you can pull them out as plain dictionaries. **One deviation**: `compose` on `Semigroupoid`

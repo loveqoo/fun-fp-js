@@ -42,7 +42,7 @@ model: opus
 1. **레지스트리에 있는 것을 사설로 다시 만듦**
    예: `_arrayMonoid = { empty: () => [], concat: (a,b) => [...a,...b] }` ←
    `Monoid.of('array')` 와 완전 동일했다.
-   → 새로 만든 `{ empty, concat }` / `{ of, map, ap }` / `{ dimap, ... }` 를 보면
+   → 새로 만든 `{ empty, concat }` / `{ of, map, ap }` / `{ promap, ... }` 를 보면
    **반드시** 해당 레지스트리(`Monoid.types`, `Applicative.types`, `Profunctor.types` ...)를
    조회해 이미 있는지 확인하라.
 

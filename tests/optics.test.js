@@ -185,7 +185,7 @@ test('compose — non-function argument throws', () => {
 });
 
 /* ═══════════════════════════════════════════════════
-   Iso — dimap만 쓰므로 모든 P에서 동작한다 (Lens이자 Prism)
+   Iso — promap만 쓰므로 모든 P에서 동작한다 (Lens이자 Prism)
    ═══════════════════════════════════════════════════ */
 logSection('Iso');
 

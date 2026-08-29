@@ -96,6 +96,11 @@ test.run(program).then(r => console.log(r));   // hello test   같은 프로그�
 
 ESM 과 CommonJS 둘 다, TypeScript 선언 포함. 문법 상한은 **ES2018** 입니다.
 
+**자바스크립트 우선.** 공식 지원 언어는 자바스크립트이고, TypeScript 선언은 에디터와
+TS 사용자가 올바른 타입을 받도록 하는 부가기능입니다 — TS 전용 FP 라이브러리와
+경쟁하려는 것이 아닙니다. 선언의 기준은 타입 수준의 풍부함이 아니라 정직함(컴파일은
+통과하는데 런타임에서 죽는 표면이 없을 것)입니다.
+
 **Static Land 호환** — 모든 타입 클래스가 Static Land 인터페이스(정적 메서드, 명세와 같은
 인자 순서)를 따릅니다. 클래스 인스턴스지만 메서드가 `this` 에 의존하지 않아 딕셔너리로 떼어
 쓸 수 있습니다. **한 가지 이탈**: `Semigroupoid`·`Category` 의 `compose` 는 관례(우→좌,
