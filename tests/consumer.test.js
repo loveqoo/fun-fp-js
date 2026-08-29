@@ -70,8 +70,8 @@ test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임
         names.map(n => `void ${n};`).join('\n') + '\n');
     // 같은 리뷰의 선언↔런타임 불일치 세 건을 컴파일 주장으로 고정한다
     writeFileSync(join(dir, 'claims.ts'),
-        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either, Semigroup, Monoid, Optics, Setoid, Ord, Wander, Category, Semigroupoid } from ${JSON.stringify(distEsm)};\n` +
-        `import type { Maybe as MB } from ${JSON.stringify(distEsm)};\n` +
+        `import { Traversable, Applicative, MonadError, Choice, Maybe, Either, Semigroup, Monoid, Optics, Setoid, Ord, Wander, Category, Semigroupoid, Monad, Profunctor, Reader, State, Writer } from ${JSON.stringify(distEsm)};\n` +
+        `import type { Maybe as MB, Writer as WR } from ${JSON.stringify(distEsm)};\n` +
         `import type { Either as E } from ${JSON.stringify(distEsm)};\n` +
         // traverse 는 런타임처럼 3인자 — 커링 호출은 오류여야 한다
         `const trav = Traversable.lookup('array');\n` +
@@ -131,7 +131,31 @@ test('공개 이름 전원이 값으로 선언되어 있고, 선언이 런타임
         `void Setoid.lookup('default').equals(obj, obj);\n` +
         // .types 는 공개 레지스트리 (재리뷰 4차 5번 — 문서·테스트의 직접 접근)
         `void Monoid.types.ArrayMonoid;\n` +
-        `void Category.types.FunctionCategory;\n`);
+        `void Category.types.FunctionCategory;\n` +
+        // 재귀 합성 키 — 바깥층 정밀, 안쪽 unknown (재리뷰 5차 1번, 전부 런타임 실측)
+        `void Setoid.lookup('maybe(array(number))');\n` +
+        `void Setoid.lookup('either(maybe(number),array(string))');\n` +
+        `void Ord.lookup('maybe(number)');\n` +
+        `void Semigroup.lookup('maybe(number)');\n` +
+        `void Semigroup.lookup('maybe(maybe(array))');\n` +
+        `void Monoid.lookup('maybe(first)');\n` +
+        // 팩토리 생성 키 — 호출 후에만 런타임에 존재 (재리뷰 5차 2번, d.ts 주석이 전제를 짊어진다)
+        `void Monad.Writer('number');\n` +
+        `void Monad.lookup('writer(number)');\n` +
+        `void Wander.lookup('forget(array)');\n` +
+        `void Profunctor.lookup('forget(array)');\n` +
+        // 데이터 타입 직접 생성 (재리뷰 5차 3번 — 문서의 new Reader/State/Writer)
+        `void new Reader((env: { x: number }) => env.x);\n` +
+        `void new State((s: number) => [s, s + 1] as [number, number]);\n` +
+        `void new Writer(1, ['log']);\n` +
+        // 팩토리가 모노이드 캐리어를 고정한다 (재리뷰 5차 4번 — 런타임에선 뒤의 ap 가 던지는 실수)
+        `// @ts-expect-error number monoid 의 Const 에 string 은 못 싸맨다\n` +
+        `void CN.wrap('oops');\n` +
+        `const ww: WR<number, number> = Monad.Writer('number').of(1);\n` +
+        `void ww;\n` +
+        // .types 의 부재 키는 undefined (재리뷰 5차 5번)
+        `// @ts-expect-error 없는 키는 undefined 일 수 있다 — 좁히기 없이 못 쓴다\n` +
+        `void Monoid.types.nope.concat([1], [2]);\n`);
     const r = spawnSync(tsc, ['--noEmit', '--strict', '--module', 'nodenext',
         '--moduleResolution', 'nodenext', '--target', 'es2020',
         join(dir, 'roster.ts'), join(dir, 'claims.ts')], { encoding: 'utf8' });

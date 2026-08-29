@@ -36,8 +36,16 @@ export interface WriterTypeLambda extends TypeLambda {
     readonly type: Writer<this["Out1"], this["Target"]>;
 }
 
+// 모노이드가 정해진 Writer 의 람다 — 팩토리(Applicative.Writer 등)와 writer(<키>)
+// lookup 이 W 를 고정해 쓴다. of(1) 이 Writer<W, number> 로 떨어진다.
+export interface WriterWithTypeLambda<W> extends TypeLambda {
+    readonly type: Writer<W, this["Target"]>;
+}
+
 // ── Value namespace ──────────────────────────────────────────────────
 export declare const Writer: {
+    // 직접 생성이 공개 API 다(docs/Writer.md). monoid 생략 시 Array Monoid.
+    new <W, A>(value: A, output: W, monoid?: { readonly concat: (a: W, b: W) => W }): Writer<W, A>;
     // `of` starts with an empty output (from the monoid).
     readonly of: <A, W = unknown[]>(a: A, monoid?: unknown) => Writer<W, A>;
     readonly isWriter: (x: unknown) => x is Writer<unknown, unknown>;

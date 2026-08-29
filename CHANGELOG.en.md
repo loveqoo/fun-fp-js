@@ -28,6 +28,18 @@ Currently empty.
   and the runtime died with a `SyntaxError` (external review finding, reproduced). The runtime
   now provides named exports with the same roster. The default export is unchanged, so existing
   code is unaffected.
+- The types now follow resolver- and factory-made keys, and the data-type
+  constructors (fifth re-review, each measured). Nested composed keys
+  (`maybe(array(number))` and friends) are accepted with a precise outer layer
+  and unknown inside, and Semigroup/Monoid/Ord composed keys opened up. The
+  `writer(<key>)`/`forget(<key>)` lookups that factories register now compile
+  (the "only after the factory call" precondition lives in a d.ts comment; the
+  previous round's "forget has no lookup key" verdict was measured before the
+  call and is corrected). `new Reader/State/Writer` are declared. The Const,
+  Forget, and Writer factories pin the chosen monoid's carrier in the types,
+  so a mistake like `Const('number').wrap('oops')`, which the runtime only
+  catches later, fails at compile time. `.types` values carry `| undefined`
+  (the actual runtime value for unregistered keys).
 - Caught a real error in the Category docs (fourth re-review, finding 1). The
   constructor's `id` is the identity morphism itself, but the example (both
   languages) taught a thunk, and the lines annotated `// 10` actually produced

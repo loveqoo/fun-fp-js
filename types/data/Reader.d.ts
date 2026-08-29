@@ -26,6 +26,8 @@ export interface ReaderTypeLambda extends TypeLambda {
 
 // ── Value namespace ──────────────────────────────────────────────────
 export declare const Reader: {
+    // 직접 생성이 공개 API 다(docs/Reader.md 의 new Reader 예제).
+    new <R, A>(run: (env: R) => A): Reader<R, A>;
     readonly of: <R, A>(a: A) => Reader<R, A>;
     readonly isReader: (x: unknown) => x is Reader<unknown, unknown>;
 

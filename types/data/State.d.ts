@@ -29,6 +29,8 @@ export interface StateTypeLambda extends TypeLambda {
 
 // ── Value namespace ──────────────────────────────────────────────────
 export declare const State: {
+    // 직접 생성이 공개 API 다(docs/State.md 의 new State 예제). run 은 [값, 다음 상태].
+    new <S, A>(run: (s: S) => [A, S]): State<S, A>;
     readonly of: <S, A>(a: A) => State<S, A>;
     readonly isState: (x: unknown) => x is State<unknown, unknown>;
 

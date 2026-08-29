@@ -27,6 +27,16 @@ dist 파일만 받아 쓰는 경우: 헤더의 `Commit:` 줄이 그 파일의 �
   하나였는데 타입 선언은 named export 를 약속해서, TypeScript 는 통과시키고 런타임이
   `SyntaxError` 로 죽었습니다(외부 리뷰 지적, 실측 재현). 런타임에 같은 명단의 named
   export 를 더했습니다. default 는 그대로라 기존 코드는 영향이 없습니다.
+- **resolver·팩토리가 만드는 키와 데이터 타입 생성자까지 타입이 따라갑니다**(외부
+  재리뷰 5차, 전건 실측). 중첩 합성 키(`maybe(array(number))` 등)는 바깥층 정밀·안쪽
+  unknown 으로 받고, Semigroup·Monoid·Ord 의 합성 키도 열렸습니다. 팩토리 호출 후
+  등록되는 `writer(<키>)`·`forget(<키>)` lookup 이 컴파일되며(호출 후에만 유효하다는
+  전제는 d.ts 주석이 짊어집니다 — 직전 판의 「forget 은 lookup 불가」는 호출 전
+  실측이라 정정), `new Reader/State/Writer` 생성자가 선언에 열렸습니다. Const·Forget·
+  Writer 팩토리는 고른 모노이드의 캐리어를 타입에 고정합니다 —
+  `Const('number').wrap('oops')` 같은, 런타임에선 나중에야 터지는 실수가 컴파일에서
+  막힙니다. `.types` 의 값 타입에는 `| undefined` 가 붙었습니다(등록 안 된 키의 실제
+  런타임 값).
 - **Category 문서의 실질 오류를 잡았습니다**(외부 재리뷰 4차 1번). 생성자의 `id` 는
   항등 사상 자체인데 문서 예제(한·영)가 썽크를 가르쳤고, 그 줄의 `// 10` 주석은 실제로
   `NaN` 이었습니다 — 값 대조 게이트 밖(맨 표현식)에 있어 안 잡혔던 것으로, 예제를

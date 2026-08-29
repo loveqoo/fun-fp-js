@@ -59,6 +59,35 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ✅ 닫힘 — 외부 재리뷰 5차: 5건 + 4차 오판 정정 (2026-08-29)
+
+리뷰어 번호 그대로, 전건 실측 확정 후 소유자 승인 3건(재귀 키는 바깥층 정밀 + 안쪽
+unknown / 팩토리 키는 넣되 전제 주석 / 범위 1~5 전부). 픽스처는 스크래치패드
+`rev5/`(s1~s5). 전부 `types/` 선언, 런타임 무변경.
+
+- **정정(중요)** — 4차 닫힘 기록의 「Forget 은 팩토리 전용, lookup 키 없음(실측)」은
+  **팩토리 호출 전** 프로세스의 실측이었다. 호출 후에는 `forget(array)`·`writer(number)`
+  lookup 이 동작하고 팩토리 반환과 동일 인스턴스(`===` 실측). d.ts 주석도 함께 정정.
+- **1** — 중첩 합성 키(`maybe(array(number))`·`either(maybe(number),array(string))` 등)
+  런타임 동작·TS 거부(s1) → 소유자 결정 「바깥층 정밀 + 안쪽 unknown」: 정밀 1단
+  오버로드 뒤에 느슨한 꼬리 오버로드(문자열 전체를 받되 `Maybe<unknown>` 꼴로).
+  Semigroup(maybe·either)·Monoid(maybe — 안쪽은 **Semigroup 키**: 'maybe(first)' 성립)·
+  Ord(maybe) 합성 키도 신설.
+- **2** — 팩토리 생성 키를 lookup 오버로드에 넣음(소유자 결정): writer(K) 는
+  Functor·Apply·Applicative·Chain·Monad, forget(K) 는 Profunctor·Strong·Choice·Wander.
+  「팩토리 호출 후에만 존재」 전제는 d.ts 주석이 짊어진다(타입은 시간 조건을 못 싣는다).
+- **3** — `new Reader/State/Writer` 생성자 선언(Store 선례). 런타임 시그니처 실측:
+  Reader(run)·State(run: s → [값, 다음상태])·Writer(value, output, monoid?=Array).
+- **4** — 팩토리의 모노이드 캐리어 고정: `ConstApplicative<R>`·`ForgetWander<R>`·
+  `WriterWithTypeLambda<W>`(Writer.d.ts 신설). `Const('number').wrap('oops')` 가 컴파일
+  거부된다(런타임 실피해 실측: 뒤의 ap 가 Semigroup.concat 에서 던짐). `Writer('number')
+  .of(1)` 이 `Writer<number, number>` 로 떨어진다(전에는 W 슬롯 미고정).
+- **5** — `.types` 29곳 값 타입에 `| undefined`(부재 키의 런타임 실측값). 직전 회차
+  과잉 선언의 보정.
+- **검증** — 수리 전 빨강 s1~s5(TS2769·TS2345·TS2351·TS2578 계열) → 수리 후 전부 초록,
+  게이트 claims 17줄 편입. 뮤테이션 5건(중첩 오버로드 삭제·writer(K) 삭제·Reader 생성자
+  삭제·wrap 임의화·undefined 제거) 전부 빨강 확인 후 복원. 전체 56/56 + typecheck 초록.
+
 ## ✅ 닫힘 — 외부 재리뷰 4차: 5건 + README 수치 (2026-08-29)
 
 리뷰어 번호 그대로, 전건 실측 확정 후 소유자 승인(범위 1~5 전부, `.types` 공개,
