@@ -1,8 +1,8 @@
 /**
  * Fun-FP-JS - Functional Programming Library
  * Version: 0.2.2
- * Commit: 3cf374a33e5b006a48bdf43581da7439a1392c9b
- * Built: 2026-08-28T15:55:52.197Z
+ * Commit: 808eac92281f35295d237ded92f83a67d56568a0
+ * Built: 2026-08-29T00:40:02.624Z
  * Changelog: https://github.com/loveqoo/fun-fp-js/blob/main/CHANGELOG.md
  * Static Land specification compliant
  */
@@ -158,7 +158,7 @@ const pipeWhile = predicate => {
 // 꺼내는 수단을 새로 쓰지 않고 조합자로 세운다 — apply(identity) 가 첫 인자, flip 을 씌우면 마지막 인자다.
 const fst = apply(identity);
 const snd = apply(flip(identity));
-// 모듈 지역이다 — second/right 유도(dimap(swap, swap) ∘ first)에만 쓰이므로 공개하지 않는다.
+// 모듈 지역이다 — second/right 유도(promap(swap, swap) ∘ first)에만 쓰이므로 공개하지 않는다.
 const swap = apply(flip(tuple));
 const tap = (...fs) => x => (fs.forEach(f => runCatch(f, config.tapErrorHandler)(x)), x);
 const also = flipCurried(tap);
@@ -2970,7 +2970,7 @@ const { Optics } = (() => {
         wander: () => raise(new TypeError('review: argument must be a Prism (a Traversal cannot be reviewed)')),
     });
     // ── optic 생성자 ───────────────────────────────────────────────────
-    // Iso 는 dimap 만 써서 모든 연산에 통한다(계층 최상단) — docs/internals.md#optics
+    // Iso 는 promap 만 써서 모든 연산에 통한다(계층 최상단) — docs/internals.md#optics
     const Iso = (to, from) => {
         typeof to !== 'function' && raise(new TypeError('Iso: to must be a function'));
         typeof from !== 'function' && raise(new TypeError('Iso: from must be a function'));
