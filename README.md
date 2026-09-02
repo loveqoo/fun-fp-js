@@ -1,5 +1,9 @@
 # fun-fp-js
 
+<a href="https://github.com/fantasyland/static-land">
+  <img width="96" height="60" alt="Static Land" src="https://raw.githubusercontent.com/fantasyland/static-land/master/logo/logo.svg" />
+</a>
+
 > 한국어: [./README.ko.md](./README.ko.md)
 
 **Fun functional programming.** A type-class library based on

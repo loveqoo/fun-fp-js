@@ -1,5 +1,9 @@
 # fun-fp-js
 
+<a href="https://github.com/fantasyland/static-land">
+  <img width="96" height="60" alt="Static Land" src="https://raw.githubusercontent.com/fantasyland/static-land/master/logo/logo.svg" />
+</a>
+
 > English: [./README.md](./README.md)
 
 **즐거운 함수형 프로그래밍.** [Static Land](https://github.com/fantasyland/static-land)

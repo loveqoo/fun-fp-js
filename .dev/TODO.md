@@ -59,6 +59,33 @@
   발행이 끝난다.
 - **참고** — 로그인 험로 기록은 「0.2.0 첫 npm 발행」 닫힘 항목.
 
+## ⬜ 후보 — Free 동시성: fan-out/fan-in·race(k)·fiber (2026-08-29 등록, 착수 미정)
+
+소유자 판정: Task 와 별개로 Free 어휘·해석기 차원에서 쉽게 구현 가능하다. 다만 "지금
+하자는 것은 아님" — 가능성만 기록. 형태는 본체가 아니라 **fun-fp-js 에 의존하는 별도
+라이브러리** 방향(런타임 타는 기능 — GAS 에선 실익 없음 — 을 본체 밖에 두고, freeze 와
+같은 방향). 설계 이치·본 공사 위치·착수 전 확인 사항은
+[`plan/260829-free-concurrency-candidates.md`](./plan/260829-free-concurrency-candidates.md).
+
+- **완료조건** — 없음(후보). 착수는 소유자의 명시 지시가 있을 때만, 그때 완료조건을 세운다.
+
+## ⬜ 열림 — Static Land 「Compatible libraries」 위키에 등재 (2026-09-02 등록)
+
+- **어디** — Static Land 저장소 README 의 「Compatible libraries」 절. 원문: *"We have a
+  list in the wiki. Feel free to add your library there."* 링크는
+  <https://github.com/rpominov/static-land/wiki/Compatible-libraries>. 위키 첫 줄도 *"Feel free
+  to add more libraries to this list."* (2026-09-02 조회)
+- **현황** — 16개 등재(Most·Kefir·Fluture·Funfix·hkts·Freer 등). **fun-fp-js 없음.**
+  항목 형식은 「이름(링크) — 한 줄 설명」.
+- **누가** — 소유자의 GitHub 계정으로 위키를 직접 편집한다(밖으로 나가는 행위, 에이전트가
+  대신 하지 않는다). 위키가 누구나 편집 가능하게 열려 있는지는 확인 안 함 — 닫혀 있으면
+  이슈로 요청하는 길.
+- **완료조건** — 위키 목록에 fun-fp-js 항목이 보인다.
+- **덤(2026-09-03, 완료·미커밋)** — 소유자 지시로 README.md·README.ko.md 제목 아래에 Static
+  Land 로고(SVG, fantasyland 경로 — rpominov 는 리다이렉트)를 링크와 함께 넣었다. 위키
+  등재 라이브러리 중 fun-task·most 가 같은 로고를 쓴다(원문 확인). 문서 게이트 4종
+  (links·translation·examples·coverage) 4/4 통과.
+
 ## ⏸ 소유자 결정 대기 — 런타임 점검 6차: 수정 권고 없음, index.js freeze 권고 (2026-08-30)
 
 외부 점검이 **런타임 정확성만** 훑었다(Task 정착·예외 채널·thenable 동화·Free 러너·
@@ -81,6 +108,19 @@ optics/Forget 팩토리 경로). **재현 가능한 런타임 결함 0** — 수
 많다 — 소유자). 외부 리뷰 1~5차로 「선언의 거짓말」은 걷어냈으니 여기서 멈춘다. 이후
 TS 리뷰 후보는 **기본 보류** — 착수는 소유자의 명시 지시가 있을 때만. 이 위치 설정은
 README(한·영 「자바스크립트 우선」 절)에 공표했다.
+
+## ✅ 닫힘 — 0.2.2 발행 (2026-08-29)
+
+외부 리뷰 1~5차 타입 선언 수리·optic 능력 집합·Free 문 이동·「자바스크립트 우선」 선언을
+실은 발행. 발행 직전 커밋 둘(dimap 잔재 정리 + dist 재빌드) 푸시, 56/56 + typecheck 초록.
+OTP 인증이 필요해 발행 자체는 소유자가 `! npm publish` 로 직접 수행(에이전트 시도는 EOTP
+로 거부됨 — 발행은 소유자 몫이라는 역할 재확인).
+
+- **검증** — `npm view fun-fp-js version` → `0.2.2`; 레지스트리 shasum
+  `702a558a9158…` 이 발행 전 `npm pack --dry-run` 실측값과 일치(같은 꾸러미가 올라감).
+  태그 `v0.2.2` 생성·푸시 완료.
+- **덤** — CHANGELOG 0.2.2 절 날짜가 08-28(준비일)인데 실제 발행은 08-29. 수정 여부는
+  소유자에게 물음.
 
 ## ✅ 닫힘 — 외부 재리뷰 5차: 5건 + 4차 오판 정정 (2026-08-29)
 
@@ -263,7 +303,7 @@ unknown / 팩토리 키는 넣되 전제 주석 / 범위 1~5 전부). 픽스처�
 - **완료조건** — 소비자 픽스처(named 92 + traverse 3인자 + left 방향 + raiseError 비-never)
   컴파일 통과, 전체 테스트 + typecheck 초록, 수리 전에는 각 픽스처가 빨강이었음을 확인.
 - **참고** — 재현 픽스처는 스크래치패드 `rev/`(t1: 표면, t5b: never 추론). 0.2.2 발행은
-  이 수리까지 실어서 하기로 함(아직 미발행).
+  이 수리까지 실어서 함 — 2026-08-29 발행됨(「0.2.2 발행」 닫힘 항목).
 
 ## ✅ 닫힘 — Free.api 이름 공간 분리 (2026-08-28)
 
@@ -305,7 +345,8 @@ HEAD 와 바이트 동일(위반 0), 잔여 대시 전수 조사(정당한 예�
 - 지적 2(ArrayComonad)는 기존 결정·문서화 확인(internals#array-comonad, NEL 이 그 보완)
   으로 보류. 지적 3(README lawful)은 한·영 첫 문단을 「캐리어가 허용하는 범위」로 좁힘.
 
-**0.2.2 준비 완료** — 버전·CHANGELOG·재빌드(헤더 0.2.2), 56/56 + typecheck. 발행 대기.
+**0.2.2 준비 완료** — 버전·CHANGELOG·재빌드(헤더 0.2.2), 56/56 + typecheck.
+→ 2026-08-29 발행됨(「0.2.2 발행」 닫힘 항목).
 
 ## ✅ 닫힘 — 0.2.1 발행 (2026-08-28)
 

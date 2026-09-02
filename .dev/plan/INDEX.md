@@ -10,6 +10,7 @@
 | `260805-02c344-1-test-gate.md` | 테스트 게이트 복구 계획 — **완료** (npm test 도입) |
 | `260814-type-ast.md` | `.type` 을 문자열에서 타입 AST 로 — **계획, 착수 전.** 결정 넷이 열려 있다 |
 | `260814-strong-choice-wander.md` | `Strong`/`Choice`/`Wander` 타입 클래스 — **완료 (5단계 전부).** 완료조건 하나 미달(optics 테스트 3줄 수정) — `.dev/TODO.md` 참조 |
+| `260829-free-concurrency-candidates.md` | Free 동시성 후보(fan-out/fan-in·race(k)·fiber) — **가능성 기록, 착수 미정.** 소유자 명시 지시 시에만 착수 |
 
 ## 정정 — 개별 문서보다 이쪽이 우선한다
 
