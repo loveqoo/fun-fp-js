@@ -12,19 +12,28 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     strategy:
-      # Node 20 에서만 깨지는 문제와 양쪽 다 깨지는 문제를 구분하려면 두 결과가 모두 필요하다.
+      # 한 버전에서만 깨지는 문제와 전부 깨지는 문제를 구분하려면 모든 결과가 필요하다.
       fail-fast: false
       matrix:
-        node: [20, 22]
+        # engines(>=14) 가 약속하는 메이저 전부. 새 메이저가 나오면 여기 더한다 — 규칙은 CLAUDE.md.
+        node: [14, 16, 18, 20, 22, 24, 26]
     steps:
       - uses: actions/checkout@v7
 
+      # 설치는 새 npm 으로 한다 — Node 14 의 npm 6 은 lockfileVersion 3 을 못 읽는다(실측).
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: npm
 
       - run: npm ci
+
+      # 테스트·빌드는 매트릭스 버전으로 — 여기서부터 PATH 의 node 가 바뀐다.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: node --version
 
       # tests/*.test.js 전체 + tsc --noEmit. 하나라도 실패하면 non-zero.
       - run: npm test

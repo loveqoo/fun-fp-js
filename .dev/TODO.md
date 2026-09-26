@@ -42,7 +42,7 @@
 영수증이 없으면 **「확인 안 함」이라고 쓰십시오.** 그것은 완결된 답이지 실패가 아닙니다.
 문장을 낮추는 비용은 항상 나중에 철회하는 비용보다 쌉니다.
 
-상태: `⬜` 안 함 · `🟡` 진행 중 · `✅` 닫힘 · `⏸` 소유자 결정 대기 · `🔒` 병합 전 필수
+상태: `♾` 상시 · `⬜` 안 함 · `🟡` 진행 중 · `✅` 닫힘 · `⏸` 소유자 결정 대기 · `🔒` 병합 전 필수
 
 ---
 
@@ -53,33 +53,38 @@
 
 ---
 
-## 🟡 진행 — Node 버전 지원 (2026-09-26 등록, **상시 작업**)
+## ♾ 상시 — Node 버전 지원 (2026-09-26 등록)
 
-- **소유자 지시 (2026-09-26)** — "node 버전 지원은 추가로 필요합니다. 이는 계속 지원해야 하는
-  작업입니다." 한 번 닫고 끝나는 항목이 아니라, **새 Node 가 나올 때마다 다시 여는 항목**이다.
-- **원인** — `package.json` 은 `engines: node >=14` 를 약속하는데 CI 는 20·22 만 돌렸다.
-  14·16·18 은 아무도 확인하지 않는 약속이었다. `package-lock.json` 은 `0.0.0`·`>=20` 인 채
-  낡아 있었다(2026-09-26 재생성).
-- **실측 (2026-09-26)** — nodejs.org 공식 바이너리로 `node tests/run.js` 전체를 버전마다 돌렸다.
-  결과는 아래 「검증」.
-- **해결책** — 미정(범위를 소유자에게 묻는 중). 후보: CI 매트릭스를 `engines` 하한부터 현재
-  버전까지 넓히고, 새 Node 메이저가 나오면 매트릭스에 더한다.
-- **완료조건** — 상시 항목이라 「닫힘」 이 없다. 대신 **불변식**: `engines` 가 약속하는 모든
-  메이저 중 소유자가 정한 대표 버전이 CI 매트릭스에서 초록이다.
-- **검증 (2026-09-26, 이 컨테이너, `PATH=<버전>/bin:$PATH node tests/run.js`)** — 경고·deprecation
-  출력 0줄(`grep -iE 'warn|deprecat'` 무일치).
+- **소유자 결정 (2026-09-26)** — CI 는 **모든 메이저**(14~26)를 돈다 · Node 14 는 **계속 지원** ·
+  새 메이저 추가는 **자동화 없이 규칙으로만**. 규칙 본문은 `CLAUDE.md`(항상 로드).
+- **불변식** — `ci.yml` 매트릭스가 `engines` 하한부터 nodejs.org 최신 메이저까지 전부 담고 초록이다.
+  닫힘이 없는 항목이다. 새 메이저를 더할 때마다 아래 표에 한 줄 더한다.
+- **왜 하한까지 돌리나 (영수증)** — `Setoid.Struct` 의 `names.every(...)` 를 같은 뜻의
+  `names.findLast(...) === undefined` 로 바꾸는 뮤테이션(ES2023 API, ES2018 게이트 목록에 없음):
+  Node 22 → `55 passed, 1 failed`(dist-sync 뿐 — dist 를 안 다시 지어서지 동작이 아니다),
+  Node 14 → `50 passed, 6 failed`(setoid·monoid·optics·staticland-laws·docs-examples + dist-sync).
+  복원 후 `git status` 에 index.js 변경 없음.
+- **설치 단계의 함정** — Node 14 의 npm 6.14.18 은 lockfileVersion 3 을 못 읽는다(`npm ci` →
+  `Cannot read property 'typescript' of undefined`, 실측). 그래서 CI 는 Node 22 로 `npm ci` 한 뒤
+  매트릭스 버전으로 갈아타 테스트한다. 이 순서를 깨끗한 사본에서 재현: npm 10 으로 설치 →
+  Node 14·npm 6 으로 `npm test` exit 0(`56 passed, 0 failed`, typecheck passed) → 빌드 exit 0.
+  라이브러리 사용자에게는 무관 — 의존성 0개라 우리 lock 을 안 읽는다.
+- **다음에 올 벽(추측)** — `typescript` 를 올리다 새 버전이 Node 14 를 버리면 typecheck 가
+  14 에서 깨진다. 그때는 소유자에게 묻는다(규칙).
+- **검증 — 로컬 전체 실행 (2026-09-26, `PATH=<버전>/bin:$PATH node tests/run.js`)** — 경고 0줄.
 
-  | Node | 받은 바이너리 | 결과 |
+  | Node | 바이너리 | 결과 |
   | --- | --- | --- |
   | 14 | v14.21.3 | 56 passed, 0 failed · typecheck passed |
   | 16 | v16.20.2 | 56 passed, 0 failed · typecheck passed |
   | 18 | v18.20.8 | 56 passed, 0 failed · typecheck passed |
   | 20 | v20.20.2 | 56 passed, 0 failed · typecheck passed |
-  | 22 | v22.22.2 (컨테이너 기본) | 56 passed, 0 failed · typecheck passed |
+  | 22 | v22.22.2 | 56 passed, 0 failed · typecheck passed |
   | 24 | v24.21.0 (현 LTS) | 56 passed, 0 failed · typecheck passed |
   | 26 | v26.10.0 (최신) | 56 passed, 0 failed · typecheck passed |
 
-  CI 매트릭스는 아직 `[20, 22]` 그대로 — 위는 로컬 1회 실측이지 CI 가 지키는 것이 아니다.
+  **CI 에서의 첫 실행은 확인 안 함** — 이 브랜치는 `main` 푸시도 PR 도 아니라 CI 가 안 돈다.
+  PR 을 열거나 `main` 에 합칠 때 7줄 전부 초록인지 본다.
 
 ## ⏸ 보류 — provenance 발행 체계 (2026-08-28 등록, 2026-09-26 보류)
 
