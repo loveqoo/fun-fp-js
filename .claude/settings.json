@@ -14,5 +14,17 @@
       "Bash(.claude/harness/bin/harness promote:*)",
       "Bash(.claude/harness/bin/harness auto-skip status)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
   }
 }
