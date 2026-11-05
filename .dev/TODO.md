@@ -83,8 +83,12 @@
   | 24 | v24.21.0 (현 LTS) | 56 passed, 0 failed · typecheck passed |
   | 26 | v26.10.0 (최신) | 56 passed, 0 failed · typecheck passed |
 
-  **CI 에서의 첫 실행은 확인 안 함** — 이 브랜치는 `main` 푸시도 PR 도 아니라 CI 가 안 돈다.
-  PR 을 열거나 `main` 에 합칠 때 7줄 전부 초록인지 본다.
+  **CI 첫 실행 (2026-11-05, [PR #1](https://github.com/loveqoo/fun-fp-js/pull/1), run 41982314350)** — 7잡 전부
+  success. 잡마다 `node --version` 이 자기 매트릭스 메이저를 찍었다: v14.21.3 · v16.20.2 · v18.20.8 ·
+  v20.20.2 · v22.23.4 · v24.22.1 · v26.13.0(Node 14 잡의 npm 은 6.14.18 — 설치는 22/npm 10.9.9 가 했다).
+  7잡 모두 `test files : 56 passed, 0 failed` · `typecheck  : passed` · `Build complete!`, `##[warning]`·
+  `deprecat`·`EBADENGINE` 0건. 잡음 둘은 무해: 첫 실행이라 npm 캐시 저장 경쟁(`Unable to reserve cache` —
+  24 잡이 저장), checkout 의 git `master` 기본 브랜치 안내.
 
 ## ⏸ 보류 — provenance 발행 체계 (2026-08-28 등록, 2026-09-26 보류)
 
