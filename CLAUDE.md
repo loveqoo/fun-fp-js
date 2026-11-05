@@ -24,6 +24,12 @@ out (syntax cannot be polyfilled); `matchAll` → `allMatches` in `tests/utils.j
 Rebuild `dist/` before you commit. Why, and what to write instead:
 [`docs/internals.md#es-ceiling`](./docs/internals.md#es-ceiling).
 
+**Node `>=14` is a standing promise, kept by CI running every major** (owner, 2026-09-26).
+Before a release, and whenever you touch CI, check <https://nodejs.org/dist/index.json>;
+a new major goes into the `ci.yml` matrix. Never drop a version or raise `engines` without
+the owner — if a dev tool stops running on an old Node, ask. The ES2018 gate does not
+replace this: it misses runtime APIs like `findLast` that only Node 14/16 catch.
+
 ## How to work here
 
 - **Start by reading [`.dev/TODO.md`](./.dev/TODO.md), and keep it current as you
